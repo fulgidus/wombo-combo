@@ -81,14 +81,14 @@ jobs:
             echo "From GitHub (bun):"
             echo ""
             echo '```sh'
-            echo "bun install -g github:fulgidus/wombo"
+            echo "bun add -g github:fulgidus/wombo-combo"
             echo '```'
             echo ""
             echo "Or pin to this version:"
             echo ""
             echo '```sh'
             echo "npm install -g wombo-combo@${GITHUB_REF#refs/tags/v}"
-            echo "bun install -g github:fulgidus/wombo#${GITHUB_REF#refs/tags/}"
+            echo "bun add -g github:fulgidus/wombo-combo#${GITHUB_REF#refs/tags/}"
             echo '```'
           } > RELEASE_BODY.md
 

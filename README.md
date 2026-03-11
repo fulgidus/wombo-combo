@@ -9,7 +9,7 @@ AI agent orchestration for parallel feature development.
 npm install -g wombo-combo
 
 # bun (from GitHub)
-bun install -g github:fulgidus/wombo
+bun add -g github:fulgidus/wombo-combo
 ```
 
 ## Quick start
