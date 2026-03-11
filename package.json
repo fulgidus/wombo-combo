@@ -21,11 +21,11 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/fulgidus/wombo.git"
+        "url": "git+https://github.com/fulgidus/wombo-combo.git"
     },
-    "homepage": "https://github.com/fulgidus/wombo",
+    "homepage": "https://github.com/fulgidus/wombo-combo",
     "bugs": {
-        "url": "https://github.com/fulgidus/wombo/issues"
+        "url": "https://github.com/fulgidus/wombo-combo/issues"
     },
     "keywords": [
         "ai",
