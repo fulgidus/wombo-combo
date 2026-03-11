@@ -4,4 +4,4 @@ dist/
 .wombo-logs/
 *.tmp
 *.log
-bun.lock
+
