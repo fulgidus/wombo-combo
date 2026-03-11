@@ -22,6 +22,12 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Setup Node (for npm publish)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -65,6 +71,14 @@ jobs:
             echo ""
             echo "### Install"
             echo ""
+            echo "From npm:"
+            echo ""
+            echo '```sh'
+            echo "npm install -g woco"
+            echo '```'
+            echo ""
+            echo "From GitHub (bun):"
+            echo ""
             echo '```sh'
             echo "bun install -g github:fulgidus/wombo"
             echo '```'
@@ -72,6 +86,7 @@ jobs:
             echo "Or pin to this version:"
             echo ""
             echo '```sh'
+            echo "npm install -g woco@${GITHUB_REF#refs/tags/v}"
             echo "bun install -g github:fulgidus/wombo#${GITHUB_REF#refs/tags/}"
             echo '```'
           } > RELEASE_BODY.md
@@ -84,3 +99,8 @@ jobs:
             --title "${{ github.ref_name }}" \
             --notes-file RELEASE_BODY.md \
             dist/*
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.WOMBO_NPMJS }}
