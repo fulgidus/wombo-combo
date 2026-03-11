@@ -25,6 +25,7 @@
  *   wombo features archive [feature-id] [--dry-run]
  *   wombo features show <feature-id>
  *   wombo help
+ *   wombo --version
  */
 
 import { resolve } from "node:path";
@@ -319,6 +320,7 @@ Launch Options:
   --max-retries N          Max retries per agent (default: from config)
 
 General:
+  --version, -V            Print version and exit
   --force                  Force overwrite (e.g., for init) / skip prompts (e.g., for upgrade)
   --output <fmt>           Output format: text (default on TTY) or json (default when piped)
   -o <fmt>                 Alias for --output
@@ -393,6 +395,18 @@ async function main(): Promise<void> {
   }
 
   // Commands that don't need config loading
+  if (args.command === "--version" || args.command === "-V") {
+    const pkgPath = resolve(import.meta.dir, "..", "package.json");
+    try {
+      const raw = readFileSync(pkgPath, "utf-8");
+      const pkg = JSON.parse(raw);
+      console.log(`wombo ${pkg.version}`);
+    } catch {
+      console.log("wombo (unknown version)");
+    }
+    return;
+  }
+
   if (args.command === "help" || args.command === "--help" || args.command === "-h") {
     cmdHelp();
     return;
