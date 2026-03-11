@@ -57,6 +57,7 @@ import {
   printAgentUpdate,
 } from "../lib/ui.js";
 import { WomboTUI } from "../lib/tui.js";
+import { ensureAgentDefinition } from "../lib/templates.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -634,6 +635,9 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   const { projectRoot, config } = opts;
 
   console.log("\n--- Wombo: Launch ---\n");
+
+  // Ensure agent definition exists — reinstall from template if missing
+  ensureAgentDefinition(projectRoot, config);
 
   // Load features
   const data = loadFeatures(projectRoot, config);
