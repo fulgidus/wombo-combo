@@ -55,6 +55,17 @@ export interface WomboConfig {
     /** tmux session name prefix */
     tmuxPrefix: string;
   };
+  /** Portless integration for localhost server testing */
+  portless: {
+    /** Whether portless is enabled for agent worktrees */
+    enabled: boolean;
+    /** Path to portless binary (null = auto-detect via PATH) */
+    bin: string | null;
+    /** Proxy port (portless default is 1355) */
+    proxyPort: number;
+    /** Whether to use HTTPS mode */
+    https: boolean;
+  };
   /** Default runtime values */
   defaults: {
     /** Max concurrent agents */
@@ -91,6 +102,12 @@ export const DEFAULT_CONFIG: WomboConfig = {
     name: "wave-worker",
     configFiles: [".opencode/", "opencode.json", "AGENTS.md", "agent/"],
     tmuxPrefix: "wombo",
+  },
+  portless: {
+    enabled: true,
+    bin: null,
+    proxyPort: 1355,
+    https: false,
   },
   defaults: {
     maxConcurrent: 6,
