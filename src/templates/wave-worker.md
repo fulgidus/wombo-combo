@@ -70,6 +70,17 @@ If something fails:
 4. If truly blocked by an external factor, document the blocker in a commit message, implement what you can, and move on.
 5. Never leave the worktree in a broken state — if you cannot complete a feature, revert partial changes and document why.
 
+## Server Testing (portless)
+
+If portless is enabled in the project config, your environment is preconfigured for collision-free localhost servers:
+
+- **`PORTLESS_ENABLED=1`** is set when portless integration is active.
+- **Do NOT hardcode port numbers.** Use `process.env.PORT` or let your framework pick a port automatically.
+- **Use `portless run <cmd>`** to start dev servers (e.g., `portless run npm start`). This auto-assigns a port and gives you a stable `.localhost` URL via `PORTLESS_URL`.
+- **Check `PORTLESS_URL`** in your environment for the stable URL assigned to your worktree's server.
+- Multiple agents can run dev servers simultaneously without port conflicts — portless handles routing through its proxy.
+- If portless is not available, servers will still work — just use `PORT=0` to let the OS assign a free port.
+
 ## What You Must Never Do
 
 - Never ask for human input or confirmation
@@ -78,3 +89,4 @@ If something fails:
 - Never commit code that breaks the build
 - Never ignore errors without investigation
 - Never push to remote
+- Never hardcode port numbers when portless is enabled
