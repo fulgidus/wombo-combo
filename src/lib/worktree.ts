@@ -14,7 +14,7 @@
 
 import { exec, execSync } from "node:child_process";
 import { existsSync, cpSync, statSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, basename } from "node:path";
 import type { WomboConfig } from "../config.js";
 
 // ---------------------------------------------------------------------------
@@ -355,24 +355,47 @@ export function listWorktrees(projectRoot: string): WorktreeInfo[] {
 
 /**
  * List only wombo-related worktrees.
+ *
+ * SAFETY: Filters by checking that the *basename* of the worktree path
+ * starts with the worktreePrefix. A naive `.includes()` on the full path
+ * would match the main repo itself if its directory name contained the
+ * prefix (e.g. "wombo-combo" contains "wombo-"), causing cleanup to
+ * destroy the project root.
+ *
+ * Additionally, the main repo worktree (projectRoot) is always excluded
+ * as a defensive guard.
  */
 export function listWomboWorktrees(
   projectRoot: string,
   config: WomboConfig
 ): WorktreeInfo[] {
-  return listWorktrees(projectRoot).filter((wt) =>
-    wt.path.includes(config.git.worktreePrefix)
-  );
+  const resolvedRoot = resolve(projectRoot);
+  return listWorktrees(projectRoot).filter((wt) => {
+    // Never include the main project root
+    if (resolve(wt.path) === resolvedRoot) return false;
+    // Match only worktrees whose directory name starts with the prefix
+    return basename(wt.path).startsWith(config.git.worktreePrefix);
+  });
 }
 
 /**
  * Remove a worktree and optionally delete its branch.
+ *
+ * SAFETY: Refuses to remove the project root itself. This is a hard guard
+ * against bugs in worktree filtering that could otherwise destroy the main repo.
  */
 export function removeWorktree(
   projectRoot: string,
   wtPath: string,
   deleteBranchToo: boolean = true
 ): void {
+  // Hard safety check: never remove the main project root
+  if (resolve(wtPath) === resolve(projectRoot)) {
+    throw new Error(
+      `SAFETY: refusing to remove project root as worktree: ${wtPath}`
+    );
+  }
+
   const worktrees = listWorktrees(projectRoot);
   const wt = worktrees.find((w) => w.path === wtPath);
 
@@ -435,6 +458,10 @@ export function cleanupAllWorktrees(
       console.error(`Failed to remove worktree ${wt.path}: ${err.message}`);
     }
   }
-  runSync("git worktree prune", { cwd: projectRoot });
+  try {
+    runSync("git worktree prune", { cwd: projectRoot });
+  } catch {
+    // Prune is best-effort — may fail if repo state is already clean
+  }
   return removed;
 }
