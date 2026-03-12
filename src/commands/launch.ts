@@ -63,6 +63,7 @@ import { WomboTUI } from "../lib/tui.js";
 import { ensureAgentDefinition } from "../lib/templates.js";
 import { ensureProxyRunning, isPortlessAvailable, portlessUrl } from "../lib/portless.js";
 import { outputError, type OutputFormat } from "../lib/output.js";
+import { exportWaveHistory } from "../lib/history.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -777,6 +778,14 @@ async function launchWaveHeadless(
   // Wave complete — tear down TUI and show final summary
   if (tuiRef.current) tuiRef.current.stop();
   printDashboard(state);
+
+  // Auto-export wave history
+  try {
+    const historyPath = exportWaveHistory(projectRoot, state);
+    console.log(`Wave history exported to ${historyPath}`);
+  } catch (err: any) {
+    console.error(`Warning: failed to export wave history: ${err.message}`);
+  }
 
   // Auto-push base branch if requested
   if (opts.autoPush) {
