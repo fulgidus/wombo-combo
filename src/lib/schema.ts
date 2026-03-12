@@ -249,7 +249,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     positionals: [],
     flags: [
       { name: "--check", description: "Only check for updates, don't install", type: "boolean", default: false },
-      { name: "--version", description: "Install a specific version (e.g., v0.1.0)", type: "string" },
+      { name: "--tag", alias: "--release", description: "Install a specific version (e.g., v0.1.0)", type: "string" },
       { name: "--force", description: "Force reinstall even if up to date", type: "boolean", default: false },
     ],
     mutating: true,
@@ -367,6 +367,16 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   {
     name: "help",
     summary: "Show help text",
+    positionals: [],
+    flags: [],
+    mutating: false,
+    supportsDryRun: false,
+  },
+
+  // --- version -----------------------------------------------------------
+  {
+    name: "version",
+    summary: "Print version and exit (also: -v, -V)",
     positionals: [],
     flags: [],
     mutating: false,

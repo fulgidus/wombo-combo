@@ -26,7 +26,8 @@
  *   wombo features show <feature-id>
  *   wombo features graph [--ascii] [--mermaid] [--subtasks] [--status <s>]
  *   wombo help
- *   wombo --version
+ *   wombo version
+ *   wombo -v
  */
 
 import { resolve } from "node:path";
@@ -124,7 +125,7 @@ interface CLIArgs {
   outputFmt: OutputFormat;
   // Upgrade options
   checkOnly: boolean;
-  version?: string;
+  tag?: string;
   // Features subcommand extras
   status?: string;
   ready?: boolean;
@@ -222,8 +223,9 @@ function parseArgs(argv: string[]): CLIArgs {
       case "--check":
         result.checkOnly = true;
         break;
-      case "--version":
-        result.version = args[++i];
+      case "--tag":
+      case "--release":
+        result.tag = args[++i];
         break;
       case "--output":
       case "-o":
@@ -306,6 +308,7 @@ Commands:
   features       Manage .features.yml (see below)
   upgrade        Check for updates and upgrade wombo
   describe       Emit JSON schema of a command (for AI agents)
+  version        Print version and exit
   help           Show this help
 
 Features Subcommands:
@@ -338,7 +341,6 @@ Launch Options:
   --max-retries N          Max retries per agent (default: from config)
 
 General:
-  --version, -V            Print version and exit
   --force                  Force overwrite (e.g., for init) / skip prompts (e.g., for upgrade)
   --output <fmt>           Output format: text (default on TTY) or json (default when piped)
   -o <fmt>                 Alias for --output
@@ -347,7 +349,7 @@ General:
 
 Upgrade Options:
   --check                  Only check for updates, don't install
-  --version <tag>          Install a specific version (e.g., v0.1.0)
+  --tag <tag>              Install a specific version (e.g., v0.1.0)
 
 Examples:
   wombo init
@@ -413,7 +415,7 @@ async function main(): Promise<void> {
   }
 
   // Commands that don't need config loading
-  if (args.command === "--version" || args.command === "-V") {
+  if (args.command === "version" || args.command === "-v" || args.command === "-V") {
     const pkgPath = resolve(import.meta.dir, "..", "package.json");
     try {
       const raw = readFileSync(pkgPath, "utf-8");
@@ -460,7 +462,7 @@ async function main(): Promise<void> {
   if (args.command === "upgrade") {
     await cmdUpgrade({
       force: args.force,
-      version: args.version,
+      tag: args.tag,
       checkOnly: args.checkOnly,
     });
     return;
