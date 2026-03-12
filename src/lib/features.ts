@@ -214,7 +214,46 @@ export function loadFeatures(
 ): FeaturesFile {
   const filePath = resolve(projectRoot, config.featuresFile);
   const raw = readFileSync(filePath, "utf-8");
-  const parsed = parseYaml(raw) as FeaturesFile;
+
+  let parsed: FeaturesFile;
+  try {
+    parsed = parseYaml(raw) as FeaturesFile;
+  } catch (err: any) {
+    const reason = err?.message ?? String(err);
+    throw new Error(
+      `Failed to parse ${config.featuresFile}: ${reason}`
+    );
+  }
+
+  // Validate basic schema: parsed must be an object with features as array (or null)
+  if (parsed === null || parsed === undefined || typeof parsed !== "object") {
+    throw new Error(
+      `Invalid ${config.featuresFile}: file must contain a YAML mapping with a "features" key, ` +
+      `but got ${parsed === null ? "null" : typeof parsed}.`
+    );
+  }
+
+  if (
+    parsed.features !== null &&
+    parsed.features !== undefined &&
+    !Array.isArray(parsed.features)
+  ) {
+    throw new Error(
+      `Invalid ${config.featuresFile}: "features" must be a list (array), ` +
+      `but got ${typeof parsed.features}. Check the file structure.`
+    );
+  }
+
+  if (
+    parsed.archive !== null &&
+    parsed.archive !== undefined &&
+    !Array.isArray(parsed.archive)
+  ) {
+    throw new Error(
+      `Invalid ${config.featuresFile}: "archive" must be a list (array), ` +
+      `but got ${typeof parsed.archive}. Check the file structure.`
+    );
+  }
 
   // Normalize: ensure top-level arrays are never null/undefined (YAML parses
   // empty keys as null).
