@@ -1,13 +1,13 @@
 /**
- * features.test.ts — Unit tests for features YAML parsing, validation,
+ * features.test.ts — Unit tests for tasks YAML parsing, validation,
  * duration parsing, and dependency resolution.
  *
  * Coverage:
- *   - loadFeatures with null features, empty arrays, valid data
+ *   - loadFeatures with null tasks, empty arrays, valid data
  *   - parseDurationMinutes for ISO 8601 durations
  *   - formatDuration for human-readable output
  *   - Dependency resolution (areDependenciesMet, getReadyFeatures)
- *   - normalizeFeature defaults
+ *   - normalizeTask defaults
  *   - createBlankFeature
  *   - findFeatureById (recursive search)
  *   - selectFeatures strategies
@@ -33,14 +33,14 @@ import {
   featureSummary,
   PRIORITY_ORDER,
   DIFFICULTY_ORDER,
-} from "../src/lib/features.js";
+} from "../src/lib/tasks.js";
 import type {
   Feature,
   FeaturesFile,
   Subtask,
   Priority,
   Difficulty,
-} from "../src/lib/features.js";
+} from "../src/lib/tasks.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,7 +48,8 @@ import type {
 
 function makeConfig(overrides?: Partial<WomboConfig>): WomboConfig {
   return {
-    featuresFile: ".features.yml",
+    tasksFile: "tasks.yml",
+    archiveFile: "archive.yml",
     baseBranch: "main",
     build: { command: "bun run build", timeout: 300_000, artifactDir: "dist" },
     install: { command: "bun install", timeout: 120_000 },
@@ -92,7 +93,7 @@ function makeFeature(overrides?: Partial<Feature>): Feature {
 }
 
 function makeFeaturesFile(
-  features: Feature[] = [],
+  tasks: Feature[] = [],
   archive: Feature[] = []
 ): FeaturesFile {
   return {
@@ -104,9 +105,26 @@ function makeFeaturesFile(
       generator: "test",
       maintainer: "tester",
     },
-    features,
+    tasks,
     archive,
   };
+}
+
+/**
+ * Write a YAML string to the .wombo-combo/tasks.yml inside the given tmpDir.
+ * Also creates the .wombo-combo directory.
+ */
+function writeTasksYaml(dir: string, yaml: string): void {
+  mkdirSync(join(dir, ".wombo-combo"), { recursive: true });
+  writeFileSync(join(dir, ".wombo-combo", "tasks.yml"), yaml);
+}
+
+/**
+ * Write archive YAML to .wombo-combo/archive.yml.
+ */
+function writeArchiveYaml(dir: string, yaml: string): void {
+  mkdirSync(join(dir, ".wombo-combo"), { recursive: true });
+  writeFileSync(join(dir, ".wombo-combo", "archive.yml"), yaml);
 }
 
 let tmpDir: string;
@@ -227,7 +245,7 @@ describe("formatDuration", () => {
 describe("loadFeatures", () => {
   const config = makeConfig();
 
-  test("loads valid features file", () => {
+  test("loads valid tasks file", () => {
     const yaml = `
 version: "1"
 meta:
@@ -236,7 +254,7 @@ meta:
   project: test
   generator: test
   maintainer: tester
-features:
+tasks:
   - id: feat-a
     title: Feature A
     description: Description of A
@@ -253,17 +271,16 @@ features:
     references: []
     notes: []
     subtasks: []
-archive: []
 `;
-    writeFileSync(join(tmpDir, ".features.yml"), yaml);
+    writeTasksYaml(tmpDir, yaml);
     const data = loadFeatures(tmpDir, config);
-    expect(data.features).toHaveLength(1);
-    expect(data.features[0].id).toBe("feat-a");
-    expect(data.features[0].priority).toBe("high");
+    expect(data.tasks).toHaveLength(1);
+    expect(data.tasks[0].id).toBe("feat-a");
+    expect(data.tasks[0].priority).toBe("high");
     expect(data.archive).toHaveLength(0);
   });
 
-  test("handles null features (empty YAML key)", () => {
+  test("handles null tasks (empty YAML key)", () => {
     const yaml = `
 version: "1"
 meta:
@@ -272,18 +289,17 @@ meta:
   project: test
   generator: test
   maintainer: tester
-features:
-archive:
+tasks:
 `;
-    writeFileSync(join(tmpDir, ".features.yml"), yaml);
+    writeTasksYaml(tmpDir, yaml);
     const data = loadFeatures(tmpDir, config);
-    expect(data.features).toBeArray();
-    expect(data.features).toHaveLength(0);
+    expect(data.tasks).toBeArray();
+    expect(data.tasks).toHaveLength(0);
     expect(data.archive).toBeArray();
     expect(data.archive).toHaveLength(0);
   });
 
-  test("handles features with null depends_on and arrays", () => {
+  test("handles tasks with null depends_on and arrays", () => {
     const yaml = `
 version: "1"
 meta:
@@ -292,7 +308,7 @@ meta:
   project: test
   generator: test
   maintainer: tester
-features:
+tasks:
   - id: feat-a
     title: Feature A
     description: ""
@@ -303,13 +319,12 @@ features:
     effort: PT1H
     started_at: null
     ended_at: null
-archive: []
 `;
-    writeFileSync(join(tmpDir, ".features.yml"), yaml);
+    writeTasksYaml(tmpDir, yaml);
     const data = loadFeatures(tmpDir, config);
-    expect(data.features).toHaveLength(1);
-    // normalizeFeature should default null arrays to []
-    const f = data.features[0];
+    expect(data.tasks).toHaveLength(1);
+    // normalizeTask should default null arrays to []
+    const f = data.tasks[0];
     expect(f.depends_on).toBeArray();
     expect(f.depends_on).toHaveLength(0);
     expect(f.constraints).toBeArray();
@@ -328,7 +343,7 @@ meta:
   project: test
   generator: test
   maintainer: tester
-features:
+tasks:
   - id: feat-a
     title: Feature A
     description: ""
@@ -350,11 +365,10 @@ features:
         effort: PT30M
         started_at: null
         ended_at: null
-archive: []
 `;
-    writeFileSync(join(tmpDir, ".features.yml"), yaml);
+    writeTasksYaml(tmpDir, yaml);
     const data = loadFeatures(tmpDir, config);
-    const subtask = data.features[0].subtasks[0];
+    const subtask = data.tasks[0].subtasks[0];
     expect(subtask.id).toBe("sub-1");
     expect(subtask.depends_on).toBeArray();
     expect(subtask.constraints).toBeArray();
@@ -362,7 +376,7 @@ archive: []
   });
 
   test("throws on corrupted YAML", () => {
-    writeFileSync(join(tmpDir, ".features.yml"), "{{{{not valid yaml::::");
+    writeTasksYaml(tmpDir, "{{{{not valid yaml::::");
     expect(() => loadFeatures(tmpDir, config)).toThrow();
   });
 
@@ -370,8 +384,8 @@ archive: []
     expect(() => loadFeatures("/nonexistent/path", config)).toThrow();
   });
 
-  test("handles custom features file path", () => {
-    const customConfig = makeConfig({ featuresFile: "custom-features.yml" });
+  test("handles custom tasks file path", () => {
+    const customConfig = makeConfig({ tasksFile: "custom-tasks.yml" });
     const yaml = `
 version: "1"
 meta:
@@ -380,12 +394,45 @@ meta:
   project: test
   generator: test
   maintainer: tester
-features: []
-archive: []
+tasks: []
 `;
-    writeFileSync(join(tmpDir, "custom-features.yml"), yaml);
+    mkdirSync(join(tmpDir, ".wombo-combo"), { recursive: true });
+    writeFileSync(join(tmpDir, ".wombo-combo", "custom-tasks.yml"), yaml);
     const data = loadFeatures(tmpDir, customConfig);
-    expect(data.features).toHaveLength(0);
+    expect(data.tasks).toHaveLength(0);
+  });
+
+  test("supports legacy 'features' YAML key", () => {
+    const yaml = `
+version: "1"
+meta:
+  created_at: "2025-01-01T00:00:00Z"
+  updated_at: "2025-01-01T00:00:00Z"
+  project: test
+  generator: test
+  maintainer: tester
+features:
+  - id: legacy-feat
+    title: Legacy Feature
+    description: Loaded via features key
+    status: backlog
+    completion: 0
+    difficulty: medium
+    priority: medium
+    depends_on: []
+    effort: PT1H
+    started_at: null
+    ended_at: null
+    constraints: []
+    forbidden: []
+    references: []
+    notes: []
+    subtasks: []
+`;
+    writeTasksYaml(tmpDir, yaml);
+    const data = loadFeatures(tmpDir, config);
+    expect(data.tasks).toHaveLength(1);
+    expect(data.tasks[0].id).toBe("legacy-feat");
   });
 });
 
@@ -606,7 +653,7 @@ describe("selectFeatures", () => {
     expect(selected[0].id).toBe("low-quick");
   });
 
-  test("featureIds selects specific features", () => {
+  test("featureIds selects specific features (backward compat)", () => {
     const selected = selectFeatures(data, {
       featureIds: ["high-pri", "low-quick"],
     });

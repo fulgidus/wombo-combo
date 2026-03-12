@@ -15,10 +15,10 @@ bun add -g github:fulgidus/wombo-combo
 ## Quick start
 
 ```sh
-# Initialize project (generates wombo.json and .features.yml)
+# Initialize project (generates .wombo-combo/config.json and .wombo-combo/tasks.yml)
 woco init
 
-# Edit .features.yml to define your features, then launch agents
+# Edit .wombo-combo/tasks.yml to define your features, then launch agents
 woco launch --all-ready
 
 # Monitor, verify, merge
@@ -42,7 +42,7 @@ woco merge
 | `woco features list` | List features |
 | `woco features add` | Add a feature |
 | `woco features set-status <id> <status>` | Update feature status |
-| `woco features check` | Validate features file |
+| `woco features check` | Validate tasks file |
 | `woco features show <id>` | Show feature details |
 | `woco upgrade` | Check for updates and upgrade |
 

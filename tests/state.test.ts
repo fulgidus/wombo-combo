@@ -15,7 +15,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -213,7 +213,7 @@ describe("saveState / loadState", () => {
       ],
     });
     saveState(tmpDir, state);
-    const raw = readFileSync(join(tmpDir, ".wombo-state.json"), "utf-8");
+    const raw = readFileSync(join(tmpDir, ".wombo-combo", "state.json"), "utf-8");
     const parsed = JSON.parse(raw);
     expect(parsed.wave_id).toBe(state.wave_id);
     expect(parsed.agents).toHaveLength(2);
@@ -223,9 +223,9 @@ describe("saveState / loadState", () => {
     const state = makeWaveState();
     saveState(tmpDir, state);
     // The .tmp file should not exist after a successful save
-    expect(existsSync(join(tmpDir, ".wombo-state.json.tmp"))).toBe(false);
+    expect(existsSync(join(tmpDir, ".wombo-combo", "state.json.tmp"))).toBe(false);
     // The actual file should exist
-    expect(existsSync(join(tmpDir, ".wombo-state.json"))).toBe(true);
+    expect(existsSync(join(tmpDir, ".wombo-combo", "state.json"))).toBe(true);
   });
 
   test("returns null when no state file exists", () => {
@@ -234,8 +234,9 @@ describe("saveState / loadState", () => {
   });
 
   test("returns null on corrupted JSON", () => {
+    mkdirSync(join(tmpDir, ".wombo-combo"), { recursive: true });
     writeFileSync(
-      join(tmpDir, ".wombo-state.json"),
+      join(tmpDir, ".wombo-combo", "state.json"),
       "{{not valid json!!!",
       "utf-8"
     );
@@ -244,7 +245,8 @@ describe("saveState / loadState", () => {
   });
 
   test("returns null on empty file", () => {
-    writeFileSync(join(tmpDir, ".wombo-state.json"), "", "utf-8");
+    mkdirSync(join(tmpDir, ".wombo-combo"), { recursive: true });
+    writeFileSync(join(tmpDir, ".wombo-combo", "state.json"), "", "utf-8");
     const loaded = loadState(tmpDir);
     expect(loaded).toBeNull();
   });

@@ -104,10 +104,10 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- init ---------------------------------------------------------------
   {
     name: "init",
-    summary: "Generate wombo.json config in the current project",
+    summary: "Generate .wombo-combo/config.json in the current project",
     description:
       "Interactive guided setup that walks through every config section. " +
-      "Creates wombo.json and .features.yml from template.",
+      "Creates .wombo-combo/config.json and .wombo-combo/tasks.yml from template.",
     positionals: [],
     flags: [
       {
@@ -132,7 +132,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     name: "launch",
     summary: "Launch a wave of agents to implement features",
     description:
-      "Select features from .features.yml, create worktrees, and spawn agents. " +
+      "Select features from the tasks file, create worktrees, and spawn agents. " +
       "Supports multiple selection strategies.",
     positionals: [],
     flags: [
@@ -247,10 +247,10 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- history ------------------------------------------------------------
   {
     name: "history",
-    summary: "List/view past wave results from .wombo-history/",
+    summary: "List/view past wave results from .wombo-combo/history/",
     description:
       "Wave history is auto-exported when a wave completes. Records are stored " +
-      "separately from .wombo-state.json and survive cleanup. Use without arguments " +
+      "separately from .wombo-combo/state.json and survive cleanup. Use without arguments " +
       "to list all waves, or pass a wave ID to see detailed results.",
     positionals: [
       { name: "wave-id", description: "Specific wave ID to show details for (optional)", required: false },
@@ -295,7 +295,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- logs ---------------------------------------------------------------
   {
     name: "logs",
-    summary: "Pretty-print agent logs from .wombo-logs/<feature-id>.log",
+    summary: "Pretty-print agent logs from .wombo-combo/logs/<feature-id>.log",
     description:
       "Reads log files written by agents during headless runs and displays " +
       "them with colorized output. Supports tailing and following.",
@@ -313,7 +313,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- features (parent with subcommands) ---------------------------------
   {
     name: "features",
-    summary: "Manage .features.yml",
+    summary: "Manage tasks file",
     positionals: [],
     flags: [],
     mutating: false,
@@ -393,7 +393,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "features check",
-        summary: "Validate .features.yml (schema, deps, duplicates, cycles)",
+        summary: "Validate tasks file (schema, deps, duplicates, cycles)",
         positionals: [],
         flags: [],
         mutating: false,

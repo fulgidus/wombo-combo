@@ -16,7 +16,7 @@ import {
   saveFeatures,
   findFeatureById,
   type Priority,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
 
 // ---------------------------------------------------------------------------

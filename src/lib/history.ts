@@ -3,14 +3,14 @@
  *
  * Responsibilities:
  *   - Define the shape of wave history records
- *   - Save wave history to .wombo-history/<wave-id>.json
+ *   - Save wave history to .wombo-combo/history/<wave-id>.json
  *   - Load individual history records
  *   - List all saved history records
  *   - Export wave state to history on completion
  *
  * History records survive `wombo cleanup` because they are stored
- * separately from .wombo-state.json. The .wombo-history/ directory
- * is gitignored.
+ * separately from .wombo-combo/state.json. The .wombo-combo/history/
+ * directory is gitignored.
  */
 
 import {
@@ -84,7 +84,7 @@ export interface WaveHistoryRecord {
 // Constants
 // ---------------------------------------------------------------------------
 
-const HISTORY_DIR = ".wombo-history";
+const HISTORY_DIR = ".wombo-combo/history";
 
 // ---------------------------------------------------------------------------
 // History Directory
@@ -170,7 +170,7 @@ export function waveStateToHistory(state: WaveState): WaveHistoryRecord {
 // ---------------------------------------------------------------------------
 
 /**
- * Save a wave history record to .wombo-history/<wave-id>.json.
+ * Save a wave history record to .wombo-combo/history/<wave-id>.json.
  * Writes atomically (tmp + rename).
  */
 export function saveHistory(

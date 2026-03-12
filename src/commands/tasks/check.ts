@@ -25,7 +25,7 @@ import {
   type Priority,
   type Difficulty,
   type FeatureStatus,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,7 +61,7 @@ function collectAllItems(data: FeaturesFile): (Feature | Subtask)[] {
       if (item.subtasks?.length) collect(item.subtasks);
     }
   };
-  collect(data.features ?? []);
+  collect(data.tasks ?? []);
   collect(data.archive ?? []);
   return items;
 }
@@ -167,7 +167,7 @@ export async function cmdFeaturesCheck(opts: FeaturesCheckOptions): Promise<void
   const result = checkFeatures(data);
 
   const allItems = collectAllItems(data);
-  console.log(`\nChecking ${config.featuresFile} (${allItems.length} items)...\n`);
+  console.log(`\nChecking ${config.tasksFile} (${allItems.length} items)...\n`);
 
   if (result.errors.length === 0 && result.warnings.length === 0) {
     console.log("  All checks passed. No issues found.");

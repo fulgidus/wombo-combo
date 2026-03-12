@@ -19,7 +19,8 @@ import type { WorktreeInfo } from "../src/lib/worktree.js";
 
 function makeConfig(overrides?: Partial<WomboConfig["git"]>): WomboConfig {
   return {
-    featuresFile: ".features.yml",
+    tasksFile: "tasks.yml",
+    archiveFile: "archive.yml",
     baseBranch: "main",
     build: { command: "bun run build", timeout: 300_000, artifactDir: "dist" },
     install: { command: "bun install", timeout: 120_000 },

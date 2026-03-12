@@ -12,7 +12,7 @@
  */
 
 import type { WomboConfig } from "../config.js";
-import { loadFeatures } from "../lib/features.js";
+import { loadFeatures, type Feature } from "../lib/tasks.js";
 import { loadState, saveState } from "../lib/state.js";
 import { printDashboard } from "../lib/ui.js";
 import { handleBuildVerification } from "./launch.js";
@@ -63,7 +63,7 @@ export async function cmdVerify(opts: VerifyCommandOptions): Promise<void> {
   const data = loadFeatures(projectRoot, config);
 
   for (const agent of toVerify) {
-    const feature = data.features.find((f) => f.id === agent.feature_id);
+    const feature = data.tasks.find((f: Feature) => f.id === agent.feature_id);
     if (!feature) continue;
 
     await handleBuildVerification(projectRoot, state, agent, feature, config, opts.model);

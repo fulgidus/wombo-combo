@@ -17,7 +17,7 @@ import {
   DIFFICULTY_ORDER,
   type Priority,
   type Difficulty,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
 import { validateEnum } from "../../lib/validate.js";
 
@@ -123,7 +123,7 @@ export async function cmdFeaturesAdd(opts: FeaturesAddOptions): Promise<void> {
   }
 
   // Append to features list
-  data.features.push(feature);
+  data.tasks.push(feature);
   saveFeatures(projectRoot, config, data);
 
   outputMessage(fmt, `Added feature: ${opts.id} — ${opts.title}`, {

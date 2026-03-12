@@ -144,6 +144,8 @@ export class WomboTUI {
   private showingLogFile: boolean = false;
   private logFileBox: Widgets.Log | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private waveComplete: boolean = false;
+  private waveCompleteResolve: (() => void) | null = null;
 
   /** Saved originals for console interception */
   private origConsoleLog: typeof console.log = console.log;
@@ -292,7 +294,13 @@ export class WomboTUI {
     // Quit
     this.screen.key(["q", "C-c"], () => {
       this.stop();
-      this.onQuit();
+      if (this.waveComplete && this.waveCompleteResolve) {
+        // Wave is done — just close TUI and resolve the wait promise
+        this.waveCompleteResolve();
+      } else {
+        // Wave still running — trigger the abort/interrupt handler
+        this.onQuit();
+      }
     });
 
     // Navigate agent list
@@ -406,6 +414,26 @@ export class WomboTUI {
     this.state = state;
   }
 
+  /**
+   * Mark the wave as complete. The TUI stays open so the user can browse
+   * agent logs, build output, etc. The header shows a WAVE COMPLETE banner
+   * and the status bar tells the user to press q to exit.
+   */
+  markWaveComplete(): void {
+    this.waveComplete = true;
+    this.refresh();
+  }
+
+  /**
+   * Returns a Promise that resolves when the user presses q to quit.
+   * Used after wave completion so the TUI stays open for post-mortem browsing.
+   */
+  waitForQuit(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.waveCompleteResolve = resolve;
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Refresh Logic
   // -------------------------------------------------------------------------
@@ -425,6 +453,9 @@ export class WomboTUI {
     const done = counts.verified + counts.merged;
 
     let line1 = ` {bold}Wombo{/bold} {gray-fg}${s.wave_id}{/gray-fg}`;
+    if (this.waveComplete) {
+      line1 += `  {gray-fg}│{/gray-fg}  {bold}{green-fg}WAVE COMPLETE{/green-fg}{/bold}`;
+    }
     line1 += `  {gray-fg}│{/gray-fg}  Base: {cyan-fg}${s.base_branch}{/cyan-fg}`;
     line1 += `  {gray-fg}│{/gray-fg}  Mode: ${s.interactive ? "{green-fg}interactive{/green-fg}" : "{blue-fg}headless{/blue-fg}"}`;
     if (s.model) {
@@ -593,7 +624,12 @@ export class WomboTUI {
       ? "{gray-fg}Enter{/gray-fg} attach session"
       : "{gray-fg}Enter{/gray-fg} view log";
 
-    const line1 = ` {bold}Keys:{/bold} {gray-fg}↑↓{/gray-fg} navigate  ${enterHint}  {gray-fg}b{/gray-fg} build log  {gray-fg}p{/gray-fg} ${scrollStatus}  {gray-fg}q{/gray-fg} quit`;
+    let line1: string;
+    if (this.waveComplete) {
+      line1 = ` {bold}{green-fg}Wave complete.{/green-fg}{/bold}  ${enterHint}  {gray-fg}b{/gray-fg} build log  {gray-fg}p{/gray-fg} ${scrollStatus}  {bold}{yellow-fg}q{/yellow-fg} exit{/bold}`;
+    } else {
+      line1 = ` {bold}Keys:{/bold} {gray-fg}↑↓{/gray-fg} navigate  ${enterHint}  {gray-fg}b{/gray-fg} build log  {gray-fg}p{/gray-fg} ${scrollStatus}  {gray-fg}q{/gray-fg} quit`;
+    }
     const line2 = ` ${agentInfo}`;
 
     this.statusBar.setContent(`${line1}\n${line2}`);
@@ -659,7 +695,8 @@ export class WomboTUI {
 
     const logPath = resolve(
       this.projectRoot,
-      ".wombo-logs",
+      ".wombo-combo",
+      "logs",
       `${agent.feature_id}.log`
     );
     let content: string;

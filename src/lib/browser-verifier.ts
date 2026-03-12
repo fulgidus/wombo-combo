@@ -99,7 +99,7 @@ export async function runBrowserVerification(
   if (!config.browser.enabled) {
     return {
       ran: false,
-      skipReason: "Browser testing is disabled (set browser.enabled: true in wombo.json)",
+      skipReason: "Browser testing is disabled (set browser.enabled: true in .wombo-combo/config.json)",
       browserResult: null,
     };
   }
@@ -124,7 +124,7 @@ export async function runBrowserVerification(
   if (!manager.isAvailable()) {
     return {
       ran: false,
-      skipReason: "No browser binary found (install chromium or set browser.bin in wombo.json)",
+      skipReason: "No browser binary found (install chromium or set browser.bin in .wombo-combo/config.json)",
       browserResult: null,
     };
   }

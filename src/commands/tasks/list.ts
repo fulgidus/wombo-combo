@@ -21,7 +21,7 @@ import {
   type Priority,
   type Difficulty,
   type FeaturesFile,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { output, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output.js";
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ export async function cmdFeaturesList(opts: FeaturesListOptions): Promise<void> 
   const { projectRoot, config } = opts;
   const data = loadFeatures(projectRoot, config);
 
-  let features: Feature[] = [...data.features];
+  let features: Feature[] = [...data.tasks];
 
   // Include archive if requested
   if (opts.includeArchive && data.archive?.length) {

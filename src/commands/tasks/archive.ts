@@ -13,7 +13,7 @@ import {
   saveFeatures,
   findFeatureById,
   type Feature,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ export async function cmdFeaturesArchive(opts: FeaturesArchiveOptions): Promise<
 
   if (opts.featureId) {
     // Archive a specific feature
-    const idx = data.features.findIndex((f) => f.id === opts.featureId);
+    const idx = data.tasks.findIndex((f: Feature) => f.id === opts.featureId);
     if (idx === -1) {
       // Check if already in archive
       if (data.archive.find((f) => f.id === opts.featureId)) {
@@ -60,11 +60,11 @@ export async function cmdFeaturesArchive(opts: FeaturesArchiveOptions): Promise<
       outputError(fmt, `Feature "${opts.featureId}" not found.`);
       return;
     }
-    toArchive = [data.features[idx]];
+    toArchive = [data.tasks[idx]];
   } else {
     // Archive all done + cancelled features
-    toArchive = data.features.filter(
-      (f) => f.status === "done" || f.status === "cancelled"
+    toArchive = data.tasks.filter(
+      (f: Feature) => f.status === "done" || f.status === "cancelled"
     );
   }
 
@@ -90,7 +90,7 @@ export async function cmdFeaturesArchive(opts: FeaturesArchiveOptions): Promise<
 
   // Move features from active to archive
   const archiveIds = new Set(toArchive.map((f) => f.id));
-  data.features = data.features.filter((f) => !archiveIds.has(f.id));
+  data.tasks = data.tasks.filter((f: Feature) => !archiveIds.has(f.id));
   data.archive.push(...toArchive);
 
   saveFeatures(projectRoot, config, data);

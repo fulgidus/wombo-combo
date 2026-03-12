@@ -3,15 +3,15 @@
  *
  * Usage: wombo resume [options]
  *
- * Restores from .wombo-state.json:
+ * Restores from .wombo-combo/state.json:
  *   - Agents in "running"/"installing" whose PID is dead → re-check or re-launch
  *   - Agents in "queued" → launch them
  *   - Agents in terminal states (verified/failed/merged) → leave alone
  */
 
 import type { WomboConfig } from "../config.js";
-import type { Feature } from "../lib/features.js";
-import { loadFeatures } from "../lib/features.js";
+import type { Feature } from "../lib/tasks.js";
+import { loadFeatures } from "../lib/tasks.js";
 import {
   loadState,
   saveState,
@@ -51,6 +51,7 @@ import {
   launchAllReady,
   markFeatureDone,
   attemptMerge,
+  dumpFailedAgentLogs,
 } from "./launch.js";
 import {
   detectMultiplexer,
@@ -92,7 +93,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
   // Load feature data for prompt generation
   const data = loadFeatures(projectRoot, config);
-  const featureMap = new Map(data.features.map((f) => [f.id, f]));
+  const featureMap = new Map(data.tasks.map((f: Feature) => [f.id, f]));
 
   // Triage agents by current state
   let toRelaunch: AgentState[] = [];
@@ -576,8 +577,17 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
       }
     }
 
-    if (tuiRef.current) tuiRef.current.stop();
+    // Wave complete — keep TUI open for post-mortem browsing
+    if (tuiRef.current) {
+      tuiRef.current.updateState(state);
+      tuiRef.current.markWaveComplete();
+      await tuiRef.current.waitForQuit();
+    }
+
     printDashboard(state);
+
+    // Dump full logs for failed agents (post-mortem)
+    dumpFailedAgentLogs(projectRoot, state);
 
     // Auto-export wave history
     try {

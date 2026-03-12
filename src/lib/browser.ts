@@ -197,7 +197,7 @@ export class BrowserManager {
   launch(featureId: string, worktreePath: string): BrowserInstance {
     if (!this.browserBin) {
       throw new Error(
-        "No browser binary found. Install chromium or set browser.bin in wombo.json"
+        "No browser binary found. Install chromium or set browser.bin in .wombo-combo/config.json"
       );
     }
 

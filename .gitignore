@@ -1,10 +1,14 @@
 node_modules/
 dist/
+# wombo-combo user artifacts (generated per-project)
+.wombo-combo/
+*.tmp
+*.log
+# Legacy paths (pre-refactor)
 .wombo-state.json
 .wombo-logs/
 .wombo-history/
-*.tmp
-*.log
-# Features file backups
+.features.yml
 .features.yml.bak
 .features.yml.*.bak
+wombo.json

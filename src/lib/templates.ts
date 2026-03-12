@@ -34,7 +34,7 @@ const DEFAULT_RUNTIME = "Bun (not Node). TypeScript, strict mode, ESM only.";
  * Render the agent template by replacing {{placeholders}} with config values.
  *
  * Supported placeholders:
- *   - {{featuresFile}}  — path to the features YAML file (e.g. ".features.yml")
+ *   - {{tasksFile}}  — path to the tasks YAML file (e.g. ".wombo-combo/tasks.yml")
  *   - {{branchPrefix}}  — git branch prefix (e.g. "feature/")
  *   - {{buildCommand}}  — build command (e.g. "bun run build")
  *   - {{runtime}}       — project runtime description
@@ -48,7 +48,7 @@ export function renderAgentTemplate(
   const projectName = projectRoot.split("/").pop() ?? "project";
 
   return raw
-    .replace(/\{\{featuresFile\}\}/g, config.featuresFile)
+    .replace(/\{\{tasksFile\}\}/g, config.tasksFile)
     .replace(/\{\{branchPrefix\}\}/g, config.git.branchPrefix)
     .replace(/\{\{buildCommand\}\}/g, config.build.command)
     .replace(/\{\{runtime\}\}/g, DEFAULT_RUNTIME)
