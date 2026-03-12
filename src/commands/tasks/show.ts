@@ -15,7 +15,7 @@ import {
   getDoneFeatureIds,
   type Feature,
   type Subtask,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { output, outputError, filterFields, type OutputFormat } from "../../lib/output.js";
 
 // ---------------------------------------------------------------------------

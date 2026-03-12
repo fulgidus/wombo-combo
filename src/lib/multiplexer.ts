@@ -5,7 +5,7 @@
  * dmux (preferred, Rust-based) or tmux (fallback). Auto-detects which
  * multiplexer is available, preferring dmux when both are present.
  *
- * Configurable via wombo.json `agent.multiplexer` field:
+ * Configurable via .wombo-combo/config.json `agent.multiplexer` field:
  *   - "auto"  — prefer dmux, fall back to tmux (default)
  *   - "dmux"  — use dmux only (error if not available)
  *   - "tmux"  — use tmux only (error if not available)
@@ -66,7 +66,7 @@ export function detectMultiplexer(
       if (!isAvailable("dmux")) {
         throw new Error(
           "dmux is configured as the multiplexer but is not installed. " +
-            "Install dmux or set agent.multiplexer to 'auto' or 'tmux' in wombo.json."
+            "Install dmux or set agent.multiplexer to 'auto' or 'tmux' in .wombo-combo/config.json."
         );
       }
       result = { backend: "dmux", bin: "dmux" };
@@ -76,7 +76,7 @@ export function detectMultiplexer(
       if (!isAvailable("tmux")) {
         throw new Error(
           "tmux is configured as the multiplexer but is not installed. " +
-            "Install tmux or set agent.multiplexer to 'auto' or 'dmux' in wombo.json."
+            "Install tmux or set agent.multiplexer to 'auto' or 'dmux' in .wombo-combo/config.json."
         );
       }
       result = { backend: "tmux", bin: "tmux" };

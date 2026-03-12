@@ -2,14 +2,15 @@
  * state.ts — Persistent wave state management.
  *
  * Responsibilities:
- *   - Define the shape of .wombo-state.json
+ *   - Define the shape of .wombo-combo/state.json
  *   - Read/write state atomically
  *   - Generate wave IDs
  *   - Update individual agent state within a wave
  */
 
-import { readFileSync, writeFileSync, existsSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, renameSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { WOMBO_DIR } from "../config.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,7 +83,7 @@ export interface SerializedSchedulePlan {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATE_FILE = ".wombo-state.json";
+const STATE_FILE = ".wombo-combo/state.json";
 
 // ---------------------------------------------------------------------------
 // Wave ID Generation
@@ -133,6 +134,8 @@ export function loadState(projectRoot: string): WaveState | null {
  * Save wave state to disk atomically (write to tmp then rename).
  */
 export function saveState(projectRoot: string, state: WaveState): void {
+  const dir = resolve(projectRoot, WOMBO_DIR);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   state.updated_at = new Date().toISOString();
   const p = statePath(projectRoot);
   const tmp = p + ".tmp";

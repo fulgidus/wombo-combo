@@ -1,5 +1,5 @@
 /**
- * init.ts — Interactive guided setup for wombo.json.
+ * init.ts — Interactive guided setup for .wombo-combo/config.json.
  *
  * Usage: wombo init [--force]
  *
@@ -10,8 +10,8 @@
 import { existsSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { CONFIG_FILE, DEFAULT_CONFIG, type WomboConfig } from "../config.js";
-import { FEATURES_TEMPLATE_PATH } from "../lib/features.js";
+import { CONFIG_FILE, DEFAULT_CONFIG, WOMBO_DIR, type WomboConfig } from "../config.js";
+import { FEATURES_TEMPLATE_PATH } from "../lib/tasks.js";
 import { renderAgentTemplate } from "../lib/templates.js";
 
 export interface InitOptions {
@@ -117,7 +117,7 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
 
     // -- General ----------------------------------------------------------
     section("General");
-    cfg.featuresFile = await p.string("Features YAML file", cfg.featuresFile);
+    cfg.tasksFile = await p.string("Tasks YAML file", cfg.tasksFile);
     cfg.baseBranch = await p.string("Base branch", cfg.baseBranch);
 
     // -- Build ------------------------------------------------------------
@@ -180,9 +180,11 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
     console.log(`\nCreated ${CONFIG_FILE}`);
 
     // -- Create features file from template -------------------------------
-    const featuresPath = resolve(opts.projectRoot, cfg.featuresFile);
+    const womboDir = resolve(opts.projectRoot, WOMBO_DIR);
+    if (!existsSync(womboDir)) mkdirSync(womboDir, { recursive: true });
+    const featuresPath = resolve(womboDir, cfg.tasksFile);
     if (existsSync(featuresPath) && !opts.force) {
-      console.log(`${cfg.featuresFile} already exists, skipping.`);
+      console.log(`${cfg.tasksFile} already exists, skipping.`);
     } else {
       const template = readFileSync(FEATURES_TEMPLATE_PATH, "utf-8");
       const now = new Date().toISOString();
@@ -190,7 +192,7 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
         .replace(/created_at:\s*".*?"/, `created_at: "${now}"`)
         .replace(/updated_at:\s*".*?"/, `updated_at: "${now}"`);
       writeFileSync(featuresPath, content, "utf-8");
-      console.log(`Created ${cfg.featuresFile} from template.`);
+      console.log(`Created ${cfg.tasksFile} from template.`);
     }
 
     // -- Install agent definition template --------------------------------

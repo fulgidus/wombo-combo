@@ -12,7 +12,7 @@ Wombo (wombo-combo) is an AI agent orchestration system for parallel feature
 development. It manages multiple AI coding agents working on different features
 simultaneously, handling:
 
-- Feature tracking and prioritization (`.features.yml`)
+- Task tracking and prioritization (`.wombo-combo/tasks.yml`)
 - Git worktree management (isolated branches per feature)
 - Agent launching and monitoring
 - Build verification
@@ -27,18 +27,19 @@ Key things to know:
 
 1. **You are in a worktree**, not the main repository clone. Your changes are
    on a feature branch (e.g., `feature/my-feature-id`).
-2. **Your task** is described in the feature's `.features.yml` entry. The
-   feature ID was passed to your agent session.
+2. **Your task** is described in the project's `.wombo-combo/tasks.yml` entry.
+   The feature ID was passed to your agent session.
 3. **Build verification** will run after you finish. Make sure your code builds
    and passes any existing tests.
 
 ## Configuration
 
-The project using wombo has a `wombo.json` config file at its root. Key fields:
+The project using wombo has a `.wombo-combo/config.json` file at its root. Key fields:
 
 ```json
 {
-  "featuresFile": ".features.yml",
+  "tasksFile": "tasks.yml",
+  "archiveFile": "archive.yml",
   "baseBranch": "develop",
   "build": {
     "command": "bun run build",
@@ -72,9 +73,9 @@ wombo features check --output json
 
 Set `WOMBO_OUTPUT=json` to default all output to JSON without the flag.
 
-## Feature file schema
+## Task file schema
 
-Features are tracked in `.features.yml`. Each feature has:
+Tasks are tracked in `.wombo-combo/tasks.yml`. Each task has:
 
 - `id` — Unique kebab-case identifier
 - `title` — Human-readable name
@@ -82,13 +83,15 @@ Features are tracked in `.features.yml`. Each feature has:
 - `status` — One of: backlog, planned, in_progress, blocked, in_review, done, cancelled
 - `priority` — One of: critical, high, medium, low, wishlist
 - `difficulty` — One of: trivial, easy, medium, hard, very_hard
-- `depends_on` — List of feature IDs that must be done first
+- `depends_on` — List of task IDs that must be done first
 - `effort` — ISO 8601 duration (e.g., "PT2H", "P1D")
 - `subtasks` — Recursive subtask list (same schema)
 - `constraints` — Things you MUST do
 - `forbidden` — Things you MUST NOT do
 - `references` — URLs/paths for relevant docs
 - `notes` — Chronological status updates
+
+Completed/cancelled tasks are archived to `.wombo-combo/archive.yml` (same schema).
 
 ## Rules for agents
 
@@ -98,7 +101,7 @@ Features are tracked in `.features.yml`. Each feature has:
    boundaries set by the project maintainer.
 3. **Keep commits focused.** Use conventional commits. Reference the feature ID.
 4. **Don't push directly.** Wombo handles branch management. Just commit locally.
-5. **Don't modify `.features.yml` directly** unless your task explicitly
+5. **Don't modify `.wombo-combo/tasks.yml` directly** unless your task explicitly
    requires it. Status updates are handled by wombo.
 6. **Build must pass.** Wombo will run the build command after you finish.
    Verify your changes build before completing.

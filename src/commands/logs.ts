@@ -1,5 +1,5 @@
 /**
- * logs.ts — Pretty-print agent logs from .wombo-logs/<feature-id>.log.
+ * logs.ts — Pretty-print agent logs from .wombo-combo/logs/<feature-id>.log.
  *
  * Usage:
  *   wombo logs <feature-id>
@@ -20,7 +20,7 @@ import { output, outputError, type OutputFormat } from "../lib/output.js";
 // Constants
 // ---------------------------------------------------------------------------
 
-const LOG_DIR_NAME = ".wombo-logs";
+const LOG_DIR_NAME = ".wombo-combo/logs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -268,7 +268,7 @@ export async function cmdLogs(opts: LogsCommandOptions): Promise<void> {
       `Log file not found: ${logPath}\n` +
         `No logs exist for feature "${featureId}". ` +
         `Logs are created when agents run in headless mode.\n` +
-        `Hint: Check .wombo-logs/ for available log files, or run 'wombo launch' first.`
+        `Hint: Check .wombo-combo/logs/ for available log files, or run 'wombo launch' first.`
     );
   }
 

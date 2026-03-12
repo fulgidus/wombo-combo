@@ -1,7 +1,7 @@
 /**
- * config.ts — Load wombo.json, merge with defaults, validate, expose typed config.
+ * config.ts — Load .wombo-combo/config.json, merge with defaults, validate, expose typed config.
  *
- * The config file lives at the target project root (the repo being orchestrated).
+ * The config file lives at .wombo-combo/config.json inside the target project root.
  * All values have sensible defaults so minimal config works out of the box.
  */
 
@@ -10,12 +10,21 @@ import { resolve } from "node:path";
 import type { MultiplexerPreference } from "./lib/multiplexer.js";
 
 // ---------------------------------------------------------------------------
+// .wombo-combo directory constant
+// ---------------------------------------------------------------------------
+
+/** Name of the directory that holds all wombo-combo files */
+export const WOMBO_DIR = ".wombo-combo";
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface WomboConfig {
-  /** Path to the features YAML file relative to project root */
-  featuresFile: string;
+  /** Path to the tasks YAML file relative to .wombo-combo/ */
+  tasksFile: string;
+  /** Path to the archive YAML file relative to .wombo-combo/ */
+  archiveFile: string;
   /** Base branch to create feature branches from */
   baseBranch: string;
   /** Build configuration */
@@ -111,7 +120,8 @@ export interface BrowserConfig {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_CONFIG: WomboConfig = {
-  featuresFile: ".features.yml",
+  tasksFile: "tasks.yml",
+  archiveFile: "archive.yml",
   baseBranch: "develop",
   build: {
     command: "bun run build",
@@ -166,7 +176,7 @@ export const DEFAULT_CONFIG: WomboConfig = {
 // Config File Name
 // ---------------------------------------------------------------------------
 
-export const CONFIG_FILE = "wombo.json";
+export const CONFIG_FILE = `${WOMBO_DIR}/config.json`;
 
 // ---------------------------------------------------------------------------
 // Loader
@@ -198,7 +208,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
 }
 
 /**
- * Load wombo.json from the given project root and merge with defaults.
+ * Load .wombo-combo/config.json from the given project root and merge with defaults.
  * Returns the full config. If no config file exists, returns defaults.
  */
 export function loadConfig(projectRoot: string): WomboConfig {
@@ -233,8 +243,11 @@ export function resolveAgentBin(config: WomboConfig): string {
  * Validate the config for obvious issues. Throws on error.
  */
 export function validateConfig(config: WomboConfig): void {
-  if (!config.featuresFile) {
-    throw new Error("config.featuresFile must be a non-empty string");
+  if (!config.tasksFile) {
+    throw new Error("config.tasksFile must be a non-empty string");
+  }
+  if (!config.archiveFile) {
+    throw new Error("config.archiveFile must be a non-empty string");
   }
   if (!config.baseBranch) {
     throw new Error("config.baseBranch must be a non-empty string");
@@ -263,7 +276,7 @@ export function validateConfig(config: WomboConfig): void {
 }
 
 /**
- * Generate the default wombo.json content string (for `wombo init`).
+ * Generate the default .wombo-combo/config.json content string (for `wombo init`).
  */
 export function generateDefaultConfig(): string {
   return JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n";

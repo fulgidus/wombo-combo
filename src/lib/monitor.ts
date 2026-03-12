@@ -19,7 +19,7 @@ import { resolve } from "node:path";
 // Log directory name (configurable would be overkill here)
 // ---------------------------------------------------------------------------
 
-const LOG_DIR_NAME = ".wombo-logs";
+const LOG_DIR_NAME = ".wombo-combo/logs";
 
 // ---------------------------------------------------------------------------
 // Types — OpenCode JSON Events

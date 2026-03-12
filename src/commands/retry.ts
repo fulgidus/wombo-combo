@@ -8,7 +8,7 @@
  */
 
 import type { WomboConfig } from "../config.js";
-import { loadFeatures, type Feature } from "../lib/features.js";
+import { loadFeatures, type Feature } from "../lib/tasks.js";
 import {
   loadState,
   saveState,
@@ -90,9 +90,9 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
   saveState(projectRoot, state);
 
   const data = loadFeatures(projectRoot, config);
-  const feature = data.features.find((f) => f.id === opts.featureId);
+  const feature = data.tasks.find((f: Feature) => f.id === opts.featureId);
   if (!feature) {
-    console.error(`Feature ${opts.featureId} not found in ${config.featuresFile}`);
+    console.error(`Feature ${opts.featureId} not found in ${config.tasksFile}`);
     process.exit(1);
     return; // unreachable — helps TypeScript narrow
   }

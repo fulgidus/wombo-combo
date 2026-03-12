@@ -13,7 +13,7 @@
  * IMPORTANT: All dependency resolution is fully programmatic — no LLM calls.
  */
 
-import type { Feature, FeaturesFile } from "./features.js";
+import type { Feature, FeaturesFile } from "./tasks.js";
 
 // ---------------------------------------------------------------------------
 // Types

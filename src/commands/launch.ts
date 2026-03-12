@@ -16,9 +16,11 @@
  */
 
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { WomboConfig } from "../config.js";
-import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/features.js";
-import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/features.js";
+import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks.js";
+import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/tasks.js";
 import {
   loadState,
   saveState,
@@ -58,7 +60,7 @@ import {
 } from "../lib/launcher.js";
 import { ProcessMonitor } from "../lib/monitor.js";
 import { runBuild, runFullVerification } from "../lib/verifier.js";
-import { mergeBranch, mergeBaseIntoFeature, pushBaseBranch } from "../lib/merger.js";
+import { mergeBranch, mergeBaseIntoFeature, pushBaseBranch, canMerge, enqueueMerge } from "../lib/merger.js";
 import {
   printDashboard,
   printFeatureSelection,
@@ -146,7 +148,7 @@ export function markFeatureDone(
     }
 
     const data = loadFeatures(projectRoot, config);
-    const feature = data.features.find((f) => f.id === featureId);
+    const feature = data.tasks.find((f: Feature) => f.id === featureId);
     if (feature && feature.status !== "done") {
       feature.status = "done";
       feature.completion = 100;
@@ -369,6 +371,9 @@ export async function handleBuildVerification(
  * Handles conflict detection, base-into-feature merge, and resolver agent
  * launch. Extracted from handleBuildVerification so it can be called
  * independently (e.g., from resume's sequential merge phase).
+ *
+ * All merge operations are serialized via enqueueMerge() to prevent
+ * concurrent checkout races on the project root.
  */
 export async function attemptMerge(
   projectRoot: string,
@@ -378,125 +383,176 @@ export async function attemptMerge(
   config: WomboConfig,
   model?: string,
 ): Promise<void> {
-  printAgentUpdate(agent, "auto-merging...");
-  try {
-    const mergeResult = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+  return enqueueMerge(async () => {
+    printAgentUpdate(agent, "auto-merging...");
+    try {
+      // Pre-flight check: detect conflicts before attempting the real merge.
+      // This avoids the expensive merge-then-abort dance for known conflicts.
+      const preCheck = await canMerge(projectRoot, agent.branch, state.base_branch);
+      if (!preCheck.canMerge) {
+        printAgentUpdate(agent, `conflict detected (pre-flight) — attempting resolution...`);
+        await handleMergeConflict(
+          projectRoot, state, agent, feature, config, model,
+          preCheck.reason
+        );
+        return;
+      }
 
-    if (mergeResult.success) {
+      const mergeResult = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+
+      if (mergeResult.success) {
+        handleMergeSuccess(projectRoot, state, agent, config, mergeResult.commitHash);
+        return;
+      }
+
+      // Merge failed despite clean pre-flight — race with another merge or
+      // a git state issue. Fall through to conflict resolution.
+      printAgentUpdate(agent, `MERGE CONFLICT — attempting resolution...`);
+      await handleMergeConflict(
+        projectRoot, state, agent, feature, config, model,
+        mergeResult.error ?? "Unknown merge error"
+      );
+    } catch (mergeErr: any) {
+      // Unexpected exception — stay in "verified" (retryable) but record the
+      // error so the user can see what went wrong instead of silent stalling.
+      printAgentUpdate(agent, `AUTO-MERGE ERROR: ${mergeErr.message?.slice(0, 100)}`);
       updateAgent(state, agent.feature_id, {
-        status: "merged",
-        completed_at: new Date().toISOString(),
+        error: `Auto-merge error: ${mergeErr.message}`,
       });
       saveState(projectRoot, state);
-      printAgentUpdate(agent, `MERGED (${mergeResult.commitHash?.slice(0, 7)})`);
-
-      // Mark feature as done in .features.yml so it won't be re-selected
-      markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
-
-      // Clean up worktree after successful merge — but preserve it if
-      // downstream agents in the same chain share this worktree.
-      const hasChainSuccessor = agent.depended_on_by.some((depId) => {
-        const depAgent = state.agents.find((a) => a.feature_id === depId);
-        return depAgent && depAgent.worktree === agent.worktree;
-      });
-
-      if (hasChainSuccessor) {
-        printAgentUpdate(agent, "worktree preserved for chain successor");
-      } else {
-        try {
-          removeWorktree(projectRoot, agent.worktree, true);
-          printAgentUpdate(agent, "worktree and branch removed");
-        } catch {
-          // Not critical — worktree cleanup is best-effort
-        }
-      }
-    } else {
-      // Merge failed — attempt automatic conflict resolution
-      const mergeError = mergeResult.error ?? "Unknown merge error";
-      printAgentUpdate(agent, `MERGE CONFLICT — attempting resolution...`);
-
-      try {
-        // Merge base INTO the feature worktree to create conflict markers
-        const conflictResult = await mergeBaseIntoFeature(
-          agent.worktree,
-          state.base_branch,
-          config
-        );
-
-        if (conflictResult.error && !conflictResult.conflicting) {
-          printAgentUpdate(agent, `CONFLICT SETUP FAILED: ${conflictResult.error.slice(0, 100)}`);
-          return; // Leave as "verified" for manual resolution
-        }
-
-        if (!conflictResult.conflicting) {
-          // Base merged cleanly into feature — retry merge into base.
-          printAgentUpdate(agent, "base merged cleanly into feature — retrying merge...");
-          const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
-          if (retryMerge.success) {
-            updateAgent(state, agent.feature_id, {
-              status: "merged",
-              completed_at: new Date().toISOString(),
-            });
-            saveState(projectRoot, state);
-            printAgentUpdate(agent, `MERGED after rebase (${retryMerge.commitHash?.slice(0, 7)})`);
-            markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
-            // Preserve worktree for chain successors
-            const hasChainSuccessorRebase = agent.depended_on_by.some((depId) => {
-              const depAgent = state.agents.find((a) => a.feature_id === depId);
-              return depAgent && depAgent.worktree === agent.worktree;
-            });
-            if (!hasChainSuccessorRebase) {
-              try {
-                removeWorktree(projectRoot, agent.worktree, true);
-              } catch {}
-            }
-            return;
-          }
-
-          // Retry still failed — launch resolver agent
-          printAgentUpdate(agent, `retry merge still failed — launching resolver agent...`);
-
-          const secondConflict = await mergeBaseIntoFeature(
-            agent.worktree,
-            state.base_branch,
-            config
-          );
-
-          const conflictFiles = secondConflict.conflicting
-            ? secondConflict.files
-            : ["(unknown — merge direction mismatch)"];
-          const resolverMergeError = retryMerge.error ?? mergeError;
-
-          await launchResolverAndRetryMerge(
-            projectRoot, state, agent, feature, config, model,
-            resolverMergeError, conflictFiles
-          );
-          return;
-        }
-
-        // There are real conflicts — launch a resolver agent
-        printAgentUpdate(
-          agent,
-          `${conflictResult.files.length} conflicting file(s): ${conflictResult.files.join(", ")}`
-        );
-
-        await launchResolverAndRetryMerge(
-          projectRoot, state, agent, feature, config, model,
-          mergeError, conflictResult.files
-        );
-      } catch (conflictErr: any) {
-        printAgentUpdate(agent, `CONFLICT RESOLUTION ERROR: ${conflictErr.message?.slice(0, 100)}`);
-        // Leave as "verified" for manual resolution
-      }
     }
-  } catch (mergeErr: any) {
-    printAgentUpdate(agent, `AUTO-MERGE ERROR: ${mergeErr.message?.slice(0, 100)}`);
+  });
+}
+
+/**
+ * Handle a successful merge: update state, mark feature done, clean up.
+ */
+function handleMergeSuccess(
+  projectRoot: string,
+  state: WaveState,
+  agent: AgentState,
+  config: WomboConfig,
+  commitHash: string | null,
+  label = "MERGED",
+): void {
+  updateAgent(state, agent.feature_id, {
+    status: "merged",
+    completed_at: new Date().toISOString(),
+  });
+  saveState(projectRoot, state);
+  printAgentUpdate(agent, `${label} (${commitHash?.slice(0, 7)})`);
+
+  markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
+
+  // Clean up worktree — but preserve it if downstream agents in the same
+  // chain share this worktree.
+  const hasChainSuccessor = agent.depended_on_by.some((depId) => {
+    const depAgent = state.agents.find((a) => a.feature_id === depId);
+    return depAgent && depAgent.worktree === agent.worktree;
+  });
+
+  if (hasChainSuccessor) {
+    printAgentUpdate(agent, "worktree preserved for chain successor");
+  } else {
+    try {
+      removeWorktree(projectRoot, agent.worktree, true);
+      printAgentUpdate(agent, "worktree and branch removed");
+    } catch {
+      // Not critical — worktree cleanup is best-effort
+    }
+  }
+}
+
+/**
+ * Handle a merge conflict: merge base into feature, then either retry the
+ * direct merge (if base merged cleanly) or launch a resolver agent.
+ *
+ * All failure paths record the error on the agent (which stays "verified")
+ * so the merge can be retried without silently stalling.
+ */
+async function handleMergeConflict(
+  projectRoot: string,
+  state: WaveState,
+  agent: AgentState,
+  feature: Feature,
+  config: WomboConfig,
+  model: string | undefined,
+  mergeError: string,
+): Promise<void> {
+  try {
+    // Merge base INTO the feature worktree to create conflict markers
+    const conflictResult = await mergeBaseIntoFeature(
+      agent.worktree,
+      state.base_branch,
+      config
+    );
+
+    if (conflictResult.error && !conflictResult.conflicting) {
+      // Setup itself failed — stay as "verified" (retryable) with error
+      printAgentUpdate(agent, `CONFLICT SETUP FAILED: ${conflictResult.error.slice(0, 100)}`);
+      updateAgent(state, agent.feature_id, {
+        error: `Conflict setup failed: ${conflictResult.error}`,
+      });
+      saveState(projectRoot, state);
+      return;
+    }
+
+    if (!conflictResult.conflicting) {
+      // Base merged cleanly into feature — retry merge into base.
+      printAgentUpdate(agent, "base merged cleanly into feature — retrying merge...");
+      const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+      if (retryMerge.success) {
+        handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after rebase");
+        return;
+      }
+
+      // Retry still failed — need conflict resolution.
+      // Merge base into feature again to get conflict files for the resolver.
+      printAgentUpdate(agent, `retry merge still failed — launching resolver agent...`);
+      const secondConflict = await mergeBaseIntoFeature(
+        agent.worktree,
+        state.base_branch,
+        config
+      );
+
+      const conflictFiles = secondConflict.conflicting
+        ? secondConflict.files
+        : ["(unknown — merge direction mismatch)"];
+
+      await launchResolverAndRetryMerge(
+        projectRoot, state, agent, feature, config, model,
+        retryMerge.error ?? mergeError, conflictFiles
+      );
+      return;
+    }
+
+    // There are real conflicts — launch a resolver agent
+    printAgentUpdate(
+      agent,
+      `${conflictResult.files.length} conflicting file(s): ${conflictResult.files.join(", ")}`
+    );
+
+    await launchResolverAndRetryMerge(
+      projectRoot, state, agent, feature, config, model,
+      mergeError, conflictResult.files
+    );
+  } catch (conflictErr: any) {
+    // Unexpected error during conflict handling — stay "verified" with error
+    printAgentUpdate(agent, `CONFLICT RESOLUTION ERROR: ${conflictErr.message?.slice(0, 100)}`);
+    updateAgent(state, agent.feature_id, {
+      error: `Conflict resolution error: ${conflictErr.message}`,
+    });
+    saveState(projectRoot, state);
   }
 }
 
 /**
  * Launch a conflict resolver agent, wait for it to finish, re-verify build,
- * and retry the merge. Extracted to avoid duplicating the resolver flow.
+ * and retry the merge. Supports configurable retry attempts (defaults to 1,
+ * up to config.defaults.maxRetries + 1).
+ *
+ * The resolver is re-launched with updated conflict state on each attempt,
+ * so it sees the current conflict markers, not stale ones.
  */
 async function launchResolverAndRetryMerge(
   projectRoot: string,
@@ -508,95 +564,119 @@ async function launchResolverAndRetryMerge(
   mergeError: string,
   conflictFiles: string[]
 ): Promise<void> {
-  const conflictPrompt = generateConflictResolutionPrompt(
-    feature,
-    state.base_branch,
-    mergeError,
-    config
-  );
+  const maxResolverAttempts = Math.max(1, (config.defaults.maxRetries ?? 0) + 1);
 
-  updateAgent(state, agent.feature_id, {
-    status: "resolving_conflict",
-    activity: `resolving ${conflictFiles.length} conflict(s)...`,
-  });
-  saveState(projectRoot, state);
+  for (let attempt = 1; attempt <= maxResolverAttempts; attempt++) {
+    const conflictPrompt = generateConflictResolutionPrompt(
+      feature,
+      state.base_branch,
+      mergeError,
+      config
+    );
 
-  const resolverResult = launchConflictResolver({
-    worktreePath: agent.worktree,
-    featureId: agent.feature_id,
-    prompt: conflictPrompt,
-    model,
-    config,
-  });
+    const attemptLabel = maxResolverAttempts > 1
+      ? ` (attempt ${attempt}/${maxResolverAttempts})`
+      : "";
 
-  updateAgent(state, agent.feature_id, {
-    pid: resolverResult.pid,
-  });
-  saveState(projectRoot, state);
+    updateAgent(state, agent.feature_id, {
+      status: "resolving_conflict",
+      activity: `resolving ${conflictFiles.length} conflict(s)${attemptLabel}...`,
+    });
+    saveState(projectRoot, state);
 
-  // Wait for the resolver process to complete, then re-verify and retry merge.
-  // We intentionally do NOT add the resolver to the ProcessMonitor because
-  // the monitor's onComplete callback would trigger handleBuildVerification
-  // again, causing infinite recursion. Instead we await the process directly.
-  const resolverExitCode = await new Promise<number | null>((resolve) => {
-    resolverResult.process.on("exit", (code) => resolve(code));
-    resolverResult.process.on("error", () => resolve(null));
-  });
+    const resolverResult = launchConflictResolver({
+      worktreePath: agent.worktree,
+      featureId: agent.feature_id,
+      prompt: conflictPrompt,
+      model,
+      config,
+    });
 
-  printAgentUpdate(agent, `conflict resolver exited (code ${resolverExitCode}) — re-verifying build...`);
+    updateAgent(state, agent.feature_id, {
+      pid: resolverResult.pid,
+    });
+    saveState(projectRoot, state);
 
-  // Re-verify build after conflict resolution
-  const rebuildResult = await runBuild(agent.worktree, config);
+    // Wait for the resolver process to complete, then re-verify and retry merge.
+    // We intentionally do NOT add the resolver to the ProcessMonitor because
+    // the monitor's onComplete callback would trigger handleBuildVerification
+    // again, causing infinite recursion. Instead we await the process directly.
+    const resolverExitCode = await new Promise<number | null>((resolve) => {
+      resolverResult.process.on("exit", (code) => resolve(code));
+      resolverResult.process.on("error", () => resolve(null));
+    });
 
-  if (!rebuildResult.passed) {
-    printAgentUpdate(agent, `POST-CONFLICT BUILD FAILED`);
+    printAgentUpdate(
+      agent,
+      `conflict resolver exited (code ${resolverExitCode})${attemptLabel} — re-verifying build...`
+    );
+
+    // Re-verify build after conflict resolution
+    const rebuildResult = await runBuild(agent.worktree, config);
+
+    if (!rebuildResult.passed) {
+      if (attempt < maxResolverAttempts) {
+        printAgentUpdate(agent, `POST-CONFLICT BUILD FAILED${attemptLabel} — retrying resolver...`);
+        continue; // Try again with a fresh resolver
+      }
+      printAgentUpdate(agent, `POST-CONFLICT BUILD FAILED (all ${maxResolverAttempts} attempts exhausted)`);
+      updateAgent(state, agent.feature_id, {
+        status: "failed",
+        build_passed: false,
+        build_output: rebuildResult.errorSummary,
+        error: "Build failed after conflict resolution",
+        completed_at: new Date().toISOString(),
+      });
+      saveState(projectRoot, state);
+      cancelDownstream(state, agent.feature_id);
+      saveState(projectRoot, state);
+      return;
+    }
+
+    printAgentUpdate(agent, "post-conflict build passed — retrying merge...");
+
+    const retryMerge = await mergeBranch(
+      projectRoot,
+      agent.branch,
+      state.base_branch,
+      config
+    );
+
+    if (retryMerge.success) {
+      handleMergeSuccess(
+        projectRoot, state, agent, config,
+        retryMerge.commitHash, "MERGED after conflict resolution"
+      );
+      return;
+    }
+
+    // Merge still failed after resolver. If we have attempts left, re-merge
+    // base into feature to refresh conflict markers and try again.
+    if (attempt < maxResolverAttempts) {
+      printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED${attemptLabel} — retrying resolver...`);
+      const refreshConflict = await mergeBaseIntoFeature(
+        agent.worktree,
+        state.base_branch,
+        config
+      );
+      conflictFiles = refreshConflict.conflicting
+        ? refreshConflict.files
+        : conflictFiles;
+      mergeError = retryMerge.error ?? mergeError;
+      continue;
+    }
+
+    // All attempts exhausted
+    printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED (all ${maxResolverAttempts} attempts exhausted): ${retryMerge.error}`);
     updateAgent(state, agent.feature_id, {
       status: "failed",
-      build_passed: false,
-      build_output: rebuildResult.errorSummary,
-      error: "Build failed after conflict resolution",
+      error: `Merge still failed after ${maxResolverAttempts} conflict resolution attempt(s): ${retryMerge.error}`,
       completed_at: new Date().toISOString(),
     });
+    saveState(projectRoot, state);
+    cancelDownstream(state, agent.feature_id);
     saveState(projectRoot, state);
     return;
-  }
-
-  printAgentUpdate(agent, "post-conflict build passed — retrying merge...");
-
-  const retryMerge = await mergeBranch(
-    projectRoot,
-    agent.branch,
-    state.base_branch,
-    config
-  );
-
-  if (retryMerge.success) {
-    updateAgent(state, agent.feature_id, {
-      status: "merged",
-      build_passed: true,
-      completed_at: new Date().toISOString(),
-    });
-    saveState(projectRoot, state);
-    printAgentUpdate(agent, `MERGED after conflict resolution (${retryMerge.commitHash?.slice(0, 7)})`);
-    markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
-    // Preserve worktree for chain successors
-    const hasChainSuccessorConflict = agent.depended_on_by.some((depId) => {
-      const depAgent = state.agents.find((a) => a.feature_id === depId);
-      return depAgent && depAgent.worktree === agent.worktree;
-    });
-    if (!hasChainSuccessorConflict) {
-      try {
-        removeWorktree(projectRoot, agent.worktree, true);
-      } catch {}
-    }
-  } else {
-    printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED: ${retryMerge.error}`);
-    updateAgent(state, agent.feature_id, {
-      status: "failed",
-      error: `Merge still failed after conflict resolution: ${retryMerge.error}`,
-      completed_at: new Date().toISOString(),
-    });
-    saveState(projectRoot, state);
   }
 }
 
@@ -696,6 +776,56 @@ export function launchAllReady(
 
     launchSingleHeadless(projectRoot, state, next, feature, monitor, config, model);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Post-mortem: dump failed agent logs
+// ---------------------------------------------------------------------------
+
+/**
+ * Print full log contents for every failed agent so the user can diagnose
+ * issues after the wave finishes. Handles missing log files gracefully.
+ */
+export function dumpFailedAgentLogs(projectRoot: string, state: WaveState): void {
+  const failed = state.agents.filter((a) => a.status === "failed");
+  if (failed.length === 0) return;
+
+  const logDir = resolve(projectRoot, ".wombo-combo/logs");
+
+  console.log(
+    `\n${"=".repeat(72)}\n` +
+    `  FAILED AGENT LOGS (${failed.length} agent${failed.length > 1 ? "s" : ""})\n` +
+    `${"=".repeat(72)}`
+  );
+
+  for (const agent of failed) {
+    const logFile = resolve(logDir, `${agent.feature_id}.log`);
+
+    console.log(
+      `\n${"─".repeat(72)}\n` +
+      `  Feature: ${agent.feature_id}\n` +
+      (agent.error ? `  Error:   ${agent.error}\n` : "") +
+      `${"─".repeat(72)}`
+    );
+
+    if (!existsSync(logFile)) {
+      console.log("  (no log file found)");
+      continue;
+    }
+
+    try {
+      const contents = readFileSync(logFile, "utf-8");
+      if (contents.trim().length === 0) {
+        console.log("  (log file is empty)");
+      } else {
+        console.log(contents);
+      }
+    } catch (err: any) {
+      console.log(`  (error reading log: ${err.message})`);
+    }
+  }
+
+  console.log(`\n${"=".repeat(72)}\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -927,9 +1057,19 @@ async function launchWaveHeadless(
     }
   }
 
-  // Wave complete — tear down TUI and show final summary
-  if (tuiRef.current) tuiRef.current.stop();
+  // Wave complete — keep TUI open for post-mortem browsing
+  if (tuiRef.current) {
+    tuiRef.current.updateState(state);
+    tuiRef.current.markWaveComplete();
+    // Wait for the user to press q to exit the TUI
+    await tuiRef.current.waitForQuit();
+  }
+
+  // Print final dashboard after TUI is closed
   printDashboard(state);
+
+  // Dump full logs for failed agents (post-mortem)
+  dumpFailedAgentLogs(projectRoot, state);
 
   // Auto-export wave history
   try {
@@ -1097,7 +1237,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
       // Finalize any merged agents by marking their features as done
       if (merged.length > 0) {
-        console.log("\nFinalizing merged features in .features.yml...");
+        console.log("\nFinalizing merged tasks in tasks file...");
         for (const agent of merged) {
           markFeatureDone(projectRoot, agent.feature_id, config, existingState.base_branch);
           // Clean up worktree and branch (already merged, safe to delete)
@@ -1140,7 +1280,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   if (opts.quickestWins) selOpts.quickestWins = opts.quickestWins;
   if (opts.priority) selOpts.priority = opts.priority;
   if (opts.difficulty) selOpts.difficulty = opts.difficulty;
-  if (opts.features) selOpts.featureIds = opts.features;
+  if (opts.features) selOpts.taskIds = opts.features;
   if (opts.allReady) selOpts.allReady = true;
 
   // Select features
@@ -1176,7 +1316,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   // ---------------------------------------------------------------------------
   // Dependency graph analysis
   // ---------------------------------------------------------------------------
-  const depGraph = buildDepGraph(selected, data.features);
+  const depGraph = buildDepGraph(selected, data.tasks);
   let schedulePlan: SchedulePlan | null = null;
 
   // Check if any features actually have dependencies within the selected set

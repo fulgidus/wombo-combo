@@ -4,18 +4,19 @@
  * Usage: wombo merge [feature-id]
  *
  * Merges all verified agents (or a specific one) into the base branch.
- * After merging, cleans up the worktree as best-effort.
+ * Uses the full merge pipeline including pre-flight conflict detection,
+ * automatic conflict resolution, and configurable retry attempts.
  */
 
 import type { WomboConfig } from "../config.js";
 import {
   loadState,
-  saveState,
-  updateAgent,
 } from "../lib/state.js";
-import { mergeBranch, pushBaseBranch } from "../lib/merger.js";
-import { removeWorktree } from "../lib/worktree.js";
+import { pushBaseBranch } from "../lib/merger.js";
+import type { Feature } from "../lib/tasks.js";
+import { loadFeatures } from "../lib/tasks.js";
 import { printDashboard, printAgentUpdate } from "../lib/ui.js";
+import { attemptMerge } from "./launch.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +28,7 @@ export interface MergeCommandOptions {
   featureId?: string;
   autoPush?: boolean;
   dryRun?: boolean;
+  model?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,29 +67,32 @@ export async function cmdMerge(opts: MergeCommandOptions): Promise<void> {
     return;
   }
 
+  // Load features for conflict resolution prompt generation.
+  // Build a flat map of all feature/subtask IDs so we can look up any agent.
+  const data = loadFeatures(projectRoot, config);
+  const featureMap = new Map<string, Feature>();
+  function indexFeatures(items: Feature[]) {
+    for (const f of items) {
+      featureMap.set(f.id, f);
+      if (f.subtasks) {
+        indexFeatures(f.subtasks as unknown as Feature[]);
+      }
+    }
+  }
+  indexFeatures(data.tasks);
+  indexFeatures(data.archive);
+
   console.log(`\nMerging ${toMerge.length} branch(es)...\n`);
 
   for (const agent of toMerge) {
-    printAgentUpdate(agent, "merging...");
-    const result = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
-
-    if (result.success) {
-      updateAgent(state, agent.feature_id, {
-        status: "merged",
-      });
-      saveState(projectRoot, state);
-      printAgentUpdate(agent, `MERGED (${result.commitHash?.slice(0, 7)})`);
-
-      // Clean up worktree
-      try {
-        removeWorktree(projectRoot, agent.worktree, false);
-        printAgentUpdate(agent, "worktree removed");
-      } catch {
-        // Not critical
-      }
-    } else {
-      printAgentUpdate(agent, `MERGE FAILED: ${result.error}`);
+    const feature = featureMap.get(agent.feature_id);
+    if (!feature) {
+      printAgentUpdate(agent, `SKIP — feature "${agent.feature_id}" not found in features file`);
+      continue;
     }
+
+    // Use the full merge pipeline (pre-flight, conflict resolution, retry)
+    await attemptMerge(projectRoot, state, agent, feature, config, opts.model);
   }
 
   // Auto-push if requested

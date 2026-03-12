@@ -6,7 +6,7 @@
  *   wombo history <wave-id>          Show details of a specific wave
  *   wombo history --output json      Output as JSON
  *
- * Wave history is stored in .wombo-history/<wave-id>.json and survives
+ * Wave history is stored in .wombo-combo/history/<wave-id>.json and survives
  * `wombo cleanup`. Records are auto-exported when a wave completes.
  */
 

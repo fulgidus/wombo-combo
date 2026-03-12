@@ -10,7 +10,7 @@
 
 import type { WaveState, AgentState, AgentStatus } from "./state.js";
 import { agentCounts, areAgentDepsReady } from "./state.js";
-import { formatDuration, parseDurationMinutes } from "./features.js";
+import { formatDuration, parseDurationMinutes } from "./tasks.js";
 
 // ---------------------------------------------------------------------------
 // ANSI Color Helpers

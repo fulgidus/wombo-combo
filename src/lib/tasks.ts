@@ -1,0 +1,834 @@
+/**
+ * tasks.ts -- Parse tasks YAML and provide task selection/filtering.
+ *
+ * Responsibilities:
+ *   - Load and parse the tasks file with full type safety
+ *   - Load and parse the archive file separately
+ *   - Parse ISO 8601 durations into comparable minutes
+ *   - Filter tasks by status, priority, difficulty, dependency readiness
+ *   - Select tasks by various strategies (top-priority, quickest-wins, etc.)
+ *   - Resolve dependency graphs to determine which tasks are ready to start
+ *   - Write-back capability for task management commands
+ */
+
+import { readFileSync, writeFileSync, existsSync, copyFileSync, readdirSync, unlinkSync, renameSync, mkdirSync } from "node:fs";
+import { resolve, dirname, join, basename } from "node:path";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { createInterface } from "node:readline";
+import type { WomboConfig } from "../config.js";
+import { WOMBO_DIR } from "../config.js";
+
+// ---------------------------------------------------------------------------
+// Template path (resolved relative to this source file)
+// ---------------------------------------------------------------------------
+
+export const TASKS_TEMPLATE_PATH = join(dirname(import.meta.dir), "templates", "tasks.yml");
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type TaskStatus =
+  | "backlog"
+  | "planned"
+  | "in_progress"
+  | "blocked"
+  | "in_review"
+  | "done"
+  | "cancelled";
+
+export type Priority = "critical" | "high" | "medium" | "low" | "wishlist";
+
+export type Difficulty = "trivial" | "easy" | "medium" | "hard" | "very_hard";
+
+/**
+ * Unified task type. Previously split into Feature and Subtask, but the shapes
+ * are identical so there is no reason to maintain two names.
+ */
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  completion: number;
+  difficulty: Difficulty;
+  priority: Priority;
+  depends_on: string[];
+  effort: string;
+  started_at: string | null;
+  ended_at: string | null;
+  constraints: string[];
+  forbidden: string[];
+  references: string[];
+  notes: string[];
+  subtasks: Task[];
+}
+
+/**
+ * Shape of tasks.yml (active tasks).
+ */
+export interface TasksFile {
+  version: string;
+  meta: {
+    created_at: string;
+    updated_at: string;
+    project: string;
+    generator: string;
+    maintainer: string;
+  };
+  tasks: Task[];
+}
+
+/**
+ * Shape of archive.yml (archived tasks). Same structure as TasksFile.
+ */
+export type ArchiveFile = TasksFile;
+
+// Backward-compat aliases (ease migration in consuming code)
+export type Feature = Task;
+export type Subtask = Task;
+export type FeatureStatus = TaskStatus;
+export type FeaturesFile = TasksFile & { archive: Task[] };
+
+// Priority ordering (lower = more important)
+const PRIORITY_ORDER: Record<Priority, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  wishlist: 4,
+};
+
+// Difficulty ordering (lower = easier)
+const DIFFICULTY_ORDER: Record<Difficulty, number> = {
+  trivial: 0,
+  easy: 1,
+  medium: 2,
+  hard: 3,
+  very_hard: 4,
+};
+
+// ---------------------------------------------------------------------------
+// ISO 8601 Duration Parser
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse an ISO 8601 duration string into total minutes.
+ * Supports: P[nY][nM][nD][T[nH][nM][nS]]
+ * Examples: PT1H -> 60, PT30M -> 30, P1D -> 1440, P2DT4H -> 3360, PT1H30M -> 90
+ *           P1Y -> 525600, P2M -> 86400
+ * Year/month approximations: 1Y = 365D, 1M = 30D
+ */
+export function parseDurationMinutes(iso: string): number {
+  const match = iso.match(
+    /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/
+  );
+  if (!match) return Infinity; // unparseable -> sort to end
+  const years = parseInt(match[1] || "0", 10);
+  const months = parseInt(match[2] || "0", 10);
+  const days = parseInt(match[3] || "0", 10);
+  const hours = parseInt(match[4] || "0", 10);
+  const minutes = parseInt(match[5] || "0", 10);
+  const seconds = parseInt(match[6] || "0", 10);
+  const totalDays = years * 365 + months * 30 + days;
+  return totalDays * 24 * 60 + hours * 60 + minutes + Math.ceil(seconds / 60);
+}
+
+/**
+ * Format minutes into a human-readable string.
+ */
+export function formatDuration(minutes: number): string {
+  if (minutes === Infinity) return "unknown";
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    if (rh === 0 && m === 0) return `${d}d`;
+    if (m === 0) return `${d}d ${rh}h`;
+    return `${d}d ${rh}h ${m}m`;
+  }
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// ---------------------------------------------------------------------------
+// .wombo-combo directory helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensure the .wombo-combo directory exists.
+ */
+export function ensureWomboDir(projectRoot: string): string {
+  const dir = resolve(projectRoot, WOMBO_DIR);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+/**
+ * Resolve a file path within the .wombo-combo directory.
+ */
+function womboPath(projectRoot: string, filename: string): string {
+  return resolve(projectRoot, WOMBO_DIR, filename);
+}
+
+// ---------------------------------------------------------------------------
+// Tasks File Existence Guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Prompt the user with a yes/no question via stdin.
+ */
+function promptYesNo(question: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase().startsWith("y"));
+    });
+  });
+}
+
+/**
+ * Ensure the tasks file exists before any command that needs it.
+ * If the file is missing, prompt the user to generate one from the template.
+ */
+export async function ensureTasksFile(
+  projectRoot: string,
+  config: WomboConfig
+): Promise<void> {
+  const filePath = womboPath(projectRoot, config.tasksFile);
+
+  if (existsSync(filePath)) return;
+
+  console.log(`\nTasks file not found: ${WOMBO_DIR}/${config.tasksFile}`);
+
+  const generate = await promptYesNo(
+    "Generate a new tasks file from template? (y/N): "
+  );
+
+  if (!generate) {
+    console.error(
+      `Cannot proceed without a tasks file. Create one manually or run again and accept the prompt.`
+    );
+    process.exit(1);
+  }
+
+  // Ensure .wombo-combo/ directory exists
+  ensureWomboDir(projectRoot);
+
+  // Read template, update timestamps, write to .wombo-combo/
+  const template = readFileSync(TASKS_TEMPLATE_PATH, "utf-8");
+  const now = new Date().toISOString();
+  const content = template
+    .replace(/created_at:\s*".*?"/, `created_at: "${now}"`)
+    .replace(/updated_at:\s*".*?"/, `updated_at: "${now}"`);
+
+  writeFileSync(filePath, content, "utf-8");
+  console.log(`Created ${WOMBO_DIR}/${config.tasksFile} from template.\n`);
+
+  // Also create an empty archive file
+  const archivePath = womboPath(projectRoot, config.archiveFile);
+  if (!existsSync(archivePath)) {
+    const archiveContent = stringifyYaml({
+      version: "1.0",
+      meta: {
+        created_at: now,
+        updated_at: now,
+        project: "unknown",
+        generator: "wombo",
+        maintainer: "unknown",
+      },
+      tasks: [],
+    }, { lineWidth: 120 });
+    writeFileSync(archivePath, archiveContent, "utf-8");
+    console.log(`Created ${WOMBO_DIR}/${config.archiveFile}.\n`);
+  }
+}
+
+// Backward-compat alias
+export const ensureFeaturesFile = ensureTasksFile;
+
+// ---------------------------------------------------------------------------
+// Loader
+// ---------------------------------------------------------------------------
+
+/**
+ * Load and parse the tasks YAML file from .wombo-combo/.
+ */
+export function loadTasks(
+  projectRoot: string,
+  config: WomboConfig
+): TasksFile {
+  const filePath = womboPath(projectRoot, config.tasksFile);
+  const raw = readFileSync(filePath, "utf-8");
+
+  let parsed: any;
+  try {
+    parsed = parseYaml(raw);
+  } catch (err: any) {
+    const reason = err?.message ?? String(err);
+    throw new Error(
+      `Failed to parse ${WOMBO_DIR}/${config.tasksFile}: ${reason}`
+    );
+  }
+
+  // Validate basic schema
+  if (parsed === null || parsed === undefined || typeof parsed !== "object") {
+    throw new Error(
+      `Invalid ${WOMBO_DIR}/${config.tasksFile}: file must contain a YAML mapping with a "tasks" key, ` +
+      `but got ${parsed === null ? "null" : typeof parsed}.`
+    );
+  }
+
+  // Support both "tasks" and legacy "features" key
+  const tasks = parsed.tasks ?? parsed.features ?? null;
+
+  if (tasks !== null && tasks !== undefined && !Array.isArray(tasks)) {
+    throw new Error(
+      `Invalid ${WOMBO_DIR}/${config.tasksFile}: "tasks" must be a list (array), ` +
+      `but got ${typeof tasks}. Check the file structure.`
+    );
+  }
+
+  const result: TasksFile = {
+    version: parsed.version ?? "1.0",
+    meta: parsed.meta ?? {
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      project: "unknown",
+      generator: "wombo",
+      maintainer: "unknown",
+    },
+    tasks: tasks ?? [],
+  };
+
+  for (const t of result.tasks) {
+    normalizeTask(t);
+  }
+
+  return result;
+}
+
+/**
+ * Load the archive file from .wombo-combo/.
+ * Returns an empty ArchiveFile if the file doesn't exist.
+ */
+export function loadArchive(
+  projectRoot: string,
+  config: WomboConfig
+): ArchiveFile {
+  const filePath = womboPath(projectRoot, config.archiveFile);
+
+  if (!existsSync(filePath)) {
+    return {
+      version: "1.0",
+      meta: {
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        project: "unknown",
+        generator: "wombo",
+        maintainer: "unknown",
+      },
+      tasks: [],
+    };
+  }
+
+  const raw = readFileSync(filePath, "utf-8");
+
+  let parsed: any;
+  try {
+    parsed = parseYaml(raw);
+  } catch (err: any) {
+    const reason = err?.message ?? String(err);
+    throw new Error(
+      `Failed to parse ${WOMBO_DIR}/${config.archiveFile}: ${reason}`
+    );
+  }
+
+  if (parsed === null || parsed === undefined || typeof parsed !== "object") {
+    return {
+      version: "1.0",
+      meta: { created_at: "", updated_at: "", project: "", generator: "wombo", maintainer: "" },
+      tasks: [],
+    };
+  }
+
+  const tasks = parsed.tasks ?? parsed.features ?? [];
+  const result: ArchiveFile = {
+    version: parsed.version ?? "1.0",
+    meta: parsed.meta ?? { created_at: "", updated_at: "", project: "", generator: "wombo", maintainer: "" },
+    tasks: Array.isArray(tasks) ? tasks : [],
+  };
+
+  for (const t of result.tasks) {
+    normalizeTask(t);
+  }
+
+  return result;
+}
+
+/**
+ * Backward-compat: load tasks + archive merged into a single FeaturesFile shape.
+ * This eases migration — callers that used loadFeatures() keep working.
+ */
+export function loadFeatures(
+  projectRoot: string,
+  config: WomboConfig
+): FeaturesFile {
+  const tasksData = loadTasks(projectRoot, config);
+  const archiveData = loadArchive(projectRoot, config);
+  return {
+    ...tasksData,
+    // Map "tasks" to "features" for backward compat (FeaturesFile has .features)
+    // Actually FeaturesFile extends TasksFile which has .tasks, but add .archive
+    archive: archiveData.tasks,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Writer
+// ---------------------------------------------------------------------------
+
+/**
+ * Save the tasks file back to disk.
+ * Before writing:
+ *   1. Creates a timestamped backup of the existing file
+ *   2. Rotates old backups to keep only the last N (config.backup.maxBackups)
+ *   3. Writes atomically via tmp file + rename
+ */
+export function saveTasks(
+  projectRoot: string,
+  config: WomboConfig,
+  data: TasksFile
+): void {
+  ensureWomboDir(projectRoot);
+  const filePath = womboPath(projectRoot, config.tasksFile);
+
+  // Backup existing file before overwriting
+  if (existsSync(filePath)) {
+    createTimestampedBackup(filePath, config.backup.maxBackups);
+  }
+
+  // Atomic write
+  data.meta.updated_at = new Date().toISOString();
+  const yaml = stringifyYaml(data, {
+    lineWidth: 120,
+    defaultKeyType: "PLAIN",
+    defaultStringType: "PLAIN",
+  });
+  const tmp = filePath + ".tmp";
+  writeFileSync(tmp, yaml, "utf-8");
+  renameSync(tmp, filePath);
+}
+
+/**
+ * Save the archive file back to disk.
+ */
+export function saveArchive(
+  projectRoot: string,
+  config: WomboConfig,
+  data: ArchiveFile
+): void {
+  ensureWomboDir(projectRoot);
+  const filePath = womboPath(projectRoot, config.archiveFile);
+
+  // Backup existing file before overwriting
+  if (existsSync(filePath)) {
+    createTimestampedBackup(filePath, config.backup.maxBackups);
+  }
+
+  data.meta.updated_at = new Date().toISOString();
+  const yaml = stringifyYaml(data, {
+    lineWidth: 120,
+    defaultKeyType: "PLAIN",
+    defaultStringType: "PLAIN",
+  });
+  const tmp = filePath + ".tmp";
+  writeFileSync(tmp, yaml, "utf-8");
+  renameSync(tmp, filePath);
+}
+
+/**
+ * Backward-compat: save a FeaturesFile (tasks + archive in one object).
+ * Splits and writes to both tasks.yml and archive.yml.
+ */
+export function saveFeatures(
+  projectRoot: string,
+  config: WomboConfig,
+  data: FeaturesFile
+): void {
+  const tasksData: TasksFile = {
+    version: data.version,
+    meta: { ...data.meta },
+    tasks: data.tasks,
+  };
+  saveTasks(projectRoot, config, tasksData);
+
+  if (data.archive && data.archive.length > 0) {
+    const archiveData: ArchiveFile = {
+      version: data.version,
+      meta: { ...data.meta },
+      tasks: data.archive,
+    };
+    saveArchive(projectRoot, config, archiveData);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Backup Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a timestamped backup and rotate old backups.
+ * Backups are stored in .wombo-combo/backups/
+ */
+function createTimestampedBackup(filePath: string, maxBackups: number): void {
+  const dir = dirname(filePath);
+  const backupDir = join(dir, "backups");
+  if (!existsSync(backupDir)) {
+    mkdirSync(backupDir, { recursive: true });
+  }
+
+  const base = basename(filePath);
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/:/g, "-")
+    .replace(/\.\d{3}Z$/, "");
+  const backupName = `${base}.${timestamp}.bak`;
+  const backupPath = join(backupDir, backupName);
+
+  copyFileSync(filePath, backupPath);
+  rotateBackups(backupDir, base, maxBackups);
+}
+
+/**
+ * Remove old backup files, keeping only the most recent `maxBackups`.
+ */
+function rotateBackups(dir: string, baseName: string, maxBackups: number): void {
+  const pattern = new RegExp(
+    `^${escapeRegExp(baseName)}\\.\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}\\.bak$`
+  );
+
+  if (maxBackups <= 0) {
+    const entries = readdirSync(dir).filter((f) => pattern.test(f));
+    for (const entry of entries) {
+      unlinkSync(join(dir, entry));
+    }
+    return;
+  }
+
+  const backups = readdirSync(dir)
+    .filter((f) => pattern.test(f))
+    .sort();
+
+  while (backups.length > maxBackups) {
+    const oldest = backups.shift()!;
+    unlinkSync(join(dir, oldest));
+  }
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeTask(t: Task): void {
+  t.depends_on = t.depends_on ?? [];
+  t.constraints = t.constraints ?? [];
+  t.forbidden = t.forbidden ?? [];
+  t.references = t.references ?? [];
+  t.notes = t.notes ?? [];
+  t.subtasks = t.subtasks ?? [];
+  for (const s of t.subtasks) {
+    normalizeTask(s);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dependency Resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Get all task IDs that are done (status === "done" or completion === 100).
+ */
+function getDoneIds(tasks: Task[], archive: Task[]): Set<string> {
+  const done = new Set<string>();
+  const collectDone = (items: Task[]) => {
+    for (const item of items) {
+      if (item.status === "done" || item.completion === 100) {
+        done.add(item.id);
+      }
+      if (item.subtasks?.length) {
+        collectDone(item.subtasks);
+      }
+    }
+  };
+  collectDone(tasks);
+  collectDone(archive);
+  return done;
+}
+
+/**
+ * Check if a task's dependencies are all satisfied.
+ */
+export function areDependenciesMet(
+  task: Task,
+  doneIds: Set<string>
+): boolean {
+  return task.depends_on.every((dep) => doneIds.has(dep));
+}
+
+/**
+ * Get all tasks that are ready to start (backlog + deps met).
+ */
+export function getReadyTasks(data: TasksFile, archive?: Task[]): Task[] {
+  const doneIds = getDoneIds(data.tasks, archive ?? []);
+  return data.tasks.filter(
+    (t) =>
+      t.status === "backlog" &&
+      t.completion === 0 &&
+      areDependenciesMet(t, doneIds)
+  );
+}
+
+/**
+ * Get done IDs (exported for use in selection error messages).
+ */
+export function getDoneTaskIds(data: TasksFile, archive?: Task[]): Set<string> {
+  return getDoneIds(data.tasks, archive ?? []);
+}
+
+// Backward-compat aliases
+export function getReadyFeatures(data: FeaturesFile): Task[] {
+  return getReadyTasks(data, data.archive);
+}
+
+export function getDoneFeatureIds(data: FeaturesFile): Set<string> {
+  return getDoneTaskIds(data, data.archive);
+}
+
+// ---------------------------------------------------------------------------
+// Selection Strategies
+// ---------------------------------------------------------------------------
+
+export interface SelectionOptions {
+  /** Select top N by priority (highest priority first, then lowest effort) */
+  topPriority?: number;
+  /** Select N quickest wins (lowest effort first) */
+  quickestWins?: number;
+  /** Select all tasks matching this priority level */
+  priority?: Priority;
+  /** Select all tasks matching this difficulty level */
+  difficulty?: Difficulty;
+  /** Select specific task IDs (comma-separated) */
+  taskIds?: string[];
+  /** Select all ready tasks */
+  allReady?: boolean;
+}
+
+/**
+ * Select tasks based on the given strategy.
+ * Always filters to only ready tasks (backlog + deps met) first.
+ */
+export function selectTasks(
+  data: TasksFile,
+  options: SelectionOptions,
+  archive?: Task[]
+): Task[] {
+  const ready = getReadyTasks(data, archive);
+
+  if (options.allReady) {
+    return sortByPriorityThenEffort(ready);
+  }
+
+  if (options.taskIds?.length) {
+    const idSet = new Set(options.taskIds);
+    const selected = ready.filter((t) => idSet.has(t.id));
+    const missing = options.taskIds.filter(
+      (id) => !selected.find((t) => t.id === id)
+    );
+    if (missing.length) {
+      const allIds = data.tasks.map((t) => t.id);
+      const doneIds = getDoneIds(data.tasks, archive ?? []);
+      for (const m of missing) {
+        if (!allIds.includes(m)) {
+          console.error(`  Task "${m}" does not exist in the tasks file`);
+        } else {
+          const task = data.tasks.find((t) => t.id === m)!;
+          console.error(
+            `  Task "${m}" is not ready (status: ${task.status}, deps met: ${areDependenciesMet(task, doneIds)})`
+          );
+        }
+      }
+    }
+    return sortByPriorityThenEffort(selected);
+  }
+
+  if (options.priority) {
+    return sortByPriorityThenEffort(
+      ready.filter((t) => t.priority === options.priority)
+    );
+  }
+
+  if (options.difficulty) {
+    return sortByEffort(ready.filter((t) => t.difficulty === options.difficulty));
+  }
+
+  if (options.topPriority) {
+    return sortByPriorityThenEffort(ready).slice(0, options.topPriority);
+  }
+
+  if (options.quickestWins) {
+    return sortByEffort(ready).slice(0, options.quickestWins);
+  }
+
+  // Default: return all ready, sorted by priority
+  return sortByPriorityThenEffort(ready);
+}
+
+// Backward-compat alias
+export function selectFeatures(
+  data: FeaturesFile,
+  options: SelectionOptions & { featureIds?: string[] }
+): Task[] {
+  // Map featureIds -> taskIds for backward compat
+  const opts: SelectionOptions = {
+    ...options,
+    taskIds: options.taskIds ?? options.featureIds,
+  };
+  return selectTasks(data, opts, data.archive);
+}
+
+// ---------------------------------------------------------------------------
+// Sorting Helpers
+// ---------------------------------------------------------------------------
+
+function sortByPriorityThenEffort(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    const pDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    if (pDiff !== 0) return pDiff;
+    return parseDurationMinutes(a.effort) - parseDurationMinutes(b.effort);
+  });
+}
+
+function sortByEffort(tasks: Task[]): Task[] {
+  return [...tasks].sort(
+    (a, b) => parseDurationMinutes(a.effort) - parseDurationMinutes(b.effort)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Utility Exports
+// ---------------------------------------------------------------------------
+
+export { PRIORITY_ORDER, DIFFICULTY_ORDER };
+
+/**
+ * Get a compact summary of a task for display.
+ */
+export function taskSummary(t: Task): string {
+  const effort = formatDuration(parseDurationMinutes(t.effort));
+  return `[${t.priority}/${t.difficulty}] ${t.id} -- ${t.title} (${effort})`;
+}
+
+// Backward-compat alias
+export const featureSummary = taskSummary;
+
+/**
+ * Recursively search a list of tasks (and their subtasks) for a matching ID.
+ */
+function findInList(tasks: Task[], id: string): Task | undefined {
+  for (const t of tasks) {
+    if (t.id === id) return t;
+    if (t.subtasks?.length) {
+      const found = findInList(t.subtasks, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Find a task by ID across active tasks, their subtasks
+ * (recursively), and the archive list.
+ */
+export function findTaskById(
+  data: TasksFile,
+  id: string,
+  archive?: Task[]
+): Task | undefined {
+  return (
+    findInList(data.tasks, id) ??
+    (archive ? findInList(archive, id) : undefined)
+  );
+}
+
+// Backward-compat alias
+export function findFeatureById(
+  data: FeaturesFile,
+  id: string
+): Task | undefined {
+  return findTaskById(data, id, data.archive);
+}
+
+/**
+ * Create a blank task with all required fields initialized.
+ */
+export function createBlankTask(
+  id: string,
+  title: string,
+  description: string = "",
+  opts?: {
+    priority?: Priority;
+    difficulty?: Difficulty;
+    effort?: string;
+  }
+): Task {
+  return {
+    id,
+    title,
+    description,
+    status: "backlog",
+    completion: 0,
+    difficulty: opts?.difficulty ?? "medium",
+    priority: opts?.priority ?? "medium",
+    depends_on: [],
+    effort: opts?.effort ?? "PT1H",
+    started_at: null,
+    ended_at: null,
+    constraints: [],
+    forbidden: [],
+    references: [],
+    notes: [],
+    subtasks: [],
+  };
+}
+
+// Backward-compat alias
+export const createBlankFeature = createBlankTask;
+
+/**
+ * Get all task IDs (active + archive), useful for validation.
+ */
+export function allTaskIds(data: TasksFile, archive?: Task[]): string[] {
+  const ids: string[] = [];
+  const collect = (items: Task[]) => {
+    for (const item of items) {
+      ids.push(item.id);
+      if (item.subtasks?.length) collect(item.subtasks);
+    }
+  };
+  collect(data.tasks);
+  collect(archive ?? []);
+  return ids;
+}
+
+// Backward-compat alias
+export function allFeatureIds(data: FeaturesFile): string[] {
+  return allTaskIds(data, data.archive);
+}
+
+// Re-export the old template path name for migration
+export const FEATURES_TEMPLATE_PATH = TASKS_TEMPLATE_PATH;

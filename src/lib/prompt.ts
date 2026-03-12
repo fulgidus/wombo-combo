@@ -8,8 +8,8 @@
  *   - All project-specific values come from config (no hardcoded Astro references)
  */
 
-import type { Feature, Subtask } from "./features.js";
-import { formatDuration, parseDurationMinutes } from "./features.js";
+import type { Feature, Subtask } from "./tasks.js";
+import { formatDuration, parseDurationMinutes } from "./tasks.js";
 import type { WomboConfig } from "../config.js";
 import { isPortlessAvailable, portlessUrl } from "./portless.js";
 
@@ -169,7 +169,7 @@ export function generatePrompt(
   sections.push("- Commit after each logical unit of work (roughly per subtask)");
   sections.push("- Do NOT squash all changes into one commit");
   sections.push("- Do NOT push to remote -- the orchestrator handles that");
-  sections.push(`- Do NOT modify \`${config.featuresFile}\` -- the orchestrator handles that`);
+  sections.push(`- Do NOT modify \`${config.tasksFile}\` -- the orchestrator handles that`);
 
   // Final instruction
   sections.push(`\n## Execution\n`);
@@ -246,7 +246,7 @@ export function generateConflictResolutionPrompt(
   sections.push("- Do NOT abort the merge (`git merge --abort`)");
   sections.push("- Do NOT create new branches or rebase");
   sections.push("- Do NOT push to remote");
-  sections.push(`- Do NOT modify \`${config.featuresFile}\``);
+  sections.push(`- Do NOT modify \`${config.tasksFile}\``);
   sections.push("- Keep BOTH the feature's changes and the upstream changes where possible");
   sections.push("- If in doubt, prefer the feature's implementation but ensure upstream additions are not lost");
 

@@ -20,7 +20,7 @@ import {
   type Subtask,
   type FeatureStatus,
   type FeaturesFile,
-} from "../../lib/features.js";
+} from "../../lib/tasks.js";
 import { output, type OutputFormat } from "../../lib/output.js";
 
 // mermaidtui has no type declarations — import the JS module directly
@@ -115,7 +115,7 @@ function buildMermaidSource(
   data: FeaturesFile,
   opts: { status?: FeatureStatus; subtasks?: boolean }
 ): { source: string; nodeCount: number; edgeCount: number; orphanCount: number; orphans: { id: string; title: string; status: FeatureStatus }[] } {
-  let features = [...data.features];
+  let features = [...data.tasks];
 
   // Filter by status if requested
   if (opts.status) {
@@ -289,11 +289,11 @@ function printLegend(features: Feature[]): void {
  * Detect potential issues in the dependency graph and print warnings.
  */
 function printDiagnostics(data: FeaturesFile, includeSubtasks: boolean): void {
-  const allIds = collectAllIds(data.features, includeSubtasks);
+  const allIds = collectAllIds(data.tasks, includeSubtasks);
   const issues: string[] = [];
 
   // Check for dangling dependencies (pointing to non-existent IDs)
-  for (const f of data.features) {
+  for (const f of data.tasks) {
     for (const dep of f.depends_on) {
       if (!allIds.has(dep)) {
         issues.push(`${YELLOW}WARNING${RESET}: ${f.id} depends on "${dep}" which does not exist`);
@@ -305,16 +305,16 @@ function printDiagnostics(data: FeaturesFile, includeSubtasks: boolean): void {
   }
 
   // Check for circular dependencies (simple DFS)
-  const circularPaths = detectCycles(data.features, includeSubtasks);
+  const circularPaths = detectCycles(data.tasks, includeSubtasks);
   for (const cycle of circularPaths) {
     issues.push(`${RED}CYCLE${RESET}: ${cycle.join(" -> ")}`);
   }
 
   // Check for blocked features whose blockers are done
-  for (const f of data.features) {
+  for (const f of data.tasks) {
     if (f.status === "blocked") {
-      const allDepsDone = f.depends_on.every((dep) => {
-        const depFeature = data.features.find((ff) => ff.id === dep);
+      const allDepsDone = f.depends_on.every((dep: string) => {
+        const depFeature = data.tasks.find((ff: Feature) => ff.id === dep);
         return depFeature?.status === "done";
       });
       if (allDepsDone && f.depends_on.length > 0) {
@@ -494,7 +494,7 @@ export async function cmdFeaturesGraph(opts: FeaturesGraphOptions): Promise<void
   }
 
   // Print legend and diagnostics
-  printLegend(data.features);
+  printLegend(data.tasks);
   printDiagnostics(data, !!opts.subtasks);
   console.log("");
 }

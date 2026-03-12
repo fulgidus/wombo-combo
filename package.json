@@ -9,7 +9,7 @@
     },
     "files": [
         "src/**/*.ts",
-        "src/templates/.features.yml",
+        "src/templates/tasks.yml",
         "src/templates/wave-worker.md"
     ],
     "scripts": {

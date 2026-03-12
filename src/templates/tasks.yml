@@ -1,19 +1,19 @@
 # =============================================================================
-# WOMBO Tracking File - YAML v1.2
+# WOMBO Task Tracking File - YAML v1.2
 # =============================================================================
 #
 # PURPOSE:
-#   Track planned features, their progress, subtasks, and metadata for the
-#   project. This file serves as a single source of truth for what's being worked
-#   on, what's coming up next, and the history of completed work.
+#   Track planned tasks, their progress, subtasks, and metadata for the
+#   project. This file serves as a single source of truth for what's being
+#   worked on and what's coming up next.
 #
 # SCHEMA (for LLM and human consumers):
 #
-#   Each top-level item under `features` is a feature object with these fields:
+#   Each top-level item under `tasks` is a task object with these fields:
 #
-#   id          : string   - Unique kebab-case identifier for the feature.
+#   id          : string   - Unique kebab-case identifier for the task.
 #   title       : string   - Human-readable short name.
-#   description : string   - Detailed explanation of the feature's goal.
+#   description : string   - Detailed explanation of the task's goal.
 #   status      : enum     - One of: backlog, planned, in_progress, blocked,
 #                             in_review, done, cancelled.
 #   completion  : integer  - Percentage 0–100. Must be 0 when status is
@@ -21,12 +21,11 @@
 #                             actual progress otherwise.
 #   difficulty  : enum     - One of: trivial, easy, medium, hard, very_hard.
 #   priority    : enum     - One of: critical, high, medium, low, wishlist.
-#   depends_on  : list[string] - IDs of features or subtasks that must be
-#                                 completed before this item can start. Use
-#                                 an empty list [] when there are no hard
-#                                 dependencies. Soft dependencies (recommended
-#                                 ordering) should be documented in `notes`
-#                                 instead.
+#   depends_on  : list[string] - IDs of tasks that must be completed before
+#                                 this item can start. Use an empty list []
+#                                 when there are no hard dependencies. Soft
+#                                 dependencies (recommended ordering) should
+#                                 be documented in `notes` instead.
 #   effort      : string   - Estimated human effort in ISO 8601 duration
 #                             (e.g. "PT2H" = 2 hours, "P1D" = 1 day,
 #                             "P1DT4H" = 1 day 4 hours).
@@ -41,29 +40,24 @@
 #   notes       : list[string] - Free-form status updates, newest first.
 #                                 Each entry should be prefixed with an
 #                                 ISO 8601 date for chronological tracking.
-#   subtasks    : list[subtask] - Ordered breakdown of work. Subtasks use
-#                                  the same schema recursively (all fields
-#                                  apply, including nested subtasks).
+#   subtasks    : list[task]   - Ordered breakdown of work. Subtasks use
+#                                 the same schema recursively (all fields
+#                                 apply, including nested subtasks).
 #
-# TOP-LEVEL STRUCTURE:
-#   features : list[feature]  - Active features in the pipeline (backlog through
-#                                in_review). This is where work is planned and
-#                                tracked.
-#   archive  : list[feature]  - Completed or cancelled features that have
-#                                reached the end of their life-cycle (status is
-#                                done or cancelled). Move features here once
-#                                finished to keep the active list focused.
-#                                Same schema as features — full history is
-#                                preserved for reference.
+# FILE LAYOUT:
+#   tasks.yml   — Active tasks in the pipeline (backlog through in_review).
+#                 This is where work is planned and tracked.
+#   archive.yml — Completed or cancelled tasks stored separately. Same
+#                 schema — full history is preserved for reference.
 #
 # STATUS UPDATE CONVENTION:
 #   When updating progress, prepend a new entry to the `notes` list with the
 #   current ISO 8601 date and a short description of what changed. Example:
-#     - "2026-03-10: Created feature file with initial backlog items."
+#     - "2026-03-10: Created task file with initial backlog items."
 #   This allows chronological tracking while keeping the latest update first.
 #
 # COMPLETION RULES:
-#   - A parent feature's completion should reflect the weighted average of its
+#   - A parent task's completion should reflect the weighted average of its
 #     subtasks, or be set manually if subtask weights are uneven.
 #   - When all subtasks are done, the parent must also be marked done (100%).
 #   - If any subtask is blocked, consider whether the parent should be blocked.
@@ -85,12 +79,7 @@ meta:
   generator: "wombo"
   maintainer: "user"
 # =============================================================================
-# Active features in the pipeline (backlog through in_review). This is where
+# Active tasks in the pipeline (backlog through in_review). This is where
 # work is planned and tracked.
 # =============================================================================
-features:
-# =============================================================================
-# Archive - completed or cancelled features (end of life-cycle)
-# =============================================================================
-archive:
-  
+tasks:

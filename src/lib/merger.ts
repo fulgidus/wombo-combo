@@ -24,6 +24,24 @@ export interface MergeResult {
 }
 
 // ---------------------------------------------------------------------------
+// Merge Queue — serializes concurrent merge operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Promise-based mutex that ensures only one merge runs at a time.
+ * Without this, concurrent `attemptMerge` calls fight over the base branch
+ * checkout in the project root, causing phantom failures.
+ */
+let mergeQueueTail: Promise<void> = Promise.resolve();
+
+export function enqueueMerge<T>(fn: () => Promise<T>): Promise<T> {
+  const result = mergeQueueTail.then(fn, fn); // run even if previous failed
+  // Update the tail but suppress rejections on the chain itself
+  mergeQueueTail = result.then(() => {}, () => {});
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -107,8 +125,19 @@ export async function mergeBranch(
     }
   }
 
-  // Pull latest
-  await runSafe(`git pull --ff-only ${config.git.remote} "${baseBranch}"`, projectRoot);
+  // Pull latest — if --ff-only fails (diverged branches), fall back to
+  // fetch + reset so we always merge against the current remote state.
+  const pull = await runSafe(`git pull --ff-only ${config.git.remote} "${baseBranch}"`, projectRoot);
+  if (!pull.ok) {
+    // Fast-forward failed — fetch and hard-reset to remote tip instead.
+    // This is safe because the project root's base branch is a merge target,
+    // not a working tree where anyone edits files directly.
+    const fetch = await runSafe(`git fetch ${config.git.remote} "${baseBranch}"`, projectRoot);
+    if (fetch.ok) {
+      await runSafe(`git reset --hard ${config.git.remote}/${baseBranch}`, projectRoot);
+    }
+    // If fetch also fails (offline?), proceed with whatever we have locally.
+  }
 
   // Attempt the merge
   const mergeCmd = `git merge ${config.git.mergeStrategy} "${featureBranch}" -m "Merge branch '${featureBranch}' into ${baseBranch}"`;

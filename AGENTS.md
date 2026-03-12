@@ -47,14 +47,11 @@ The lockfile is committed for reproducible installs from GitHub. Always commit
 
 ### 4. Do not commit user artifacts
 
-`wombo.json` and `.features.yml` in the repo root are for **dogfooding only** —
-they configure wombo's own development. They are gitignored in user projects.
-However, in this repo they ARE committed (the `.gitignore` actually excludes them
-from the repo — check before assuming they're tracked).
+All wombo-combo user artifacts live under `.wombo-combo/` (config, tasks, archive,
+state, logs, history). This directory is gitignored.
 
-**Wait, actually:** Check `.gitignore` — these files are excluded. The template at
-`src/templates/.features.yml` is the canonical source. The root `.features.yml` is
-for local development only.
+The template at `src/templates/tasks.yml` is the canonical source for the task
+file schema. The root `.wombo-combo/` dir is for local development only.
 
 ---
 
@@ -75,10 +72,10 @@ wombo/
       merge.ts              # Merge verified branches
       retry.ts              # Retry a failed agent
       cleanup.ts            # Remove worktrees and sessions
-      features/
+      tasks/
         list.ts, add.ts, set-status.ts, check.ts, archive.ts, show.ts
     lib/
-      features.ts           # Feature file I/O, types, ensureFeaturesFile guard
+      tasks.ts              # Task file I/O, types, ensureTasksFile guard
       state.ts              # Wave state persistence
       prompt.ts             # Agent prompt generation
       launcher.ts           # Process spawning
@@ -89,7 +86,21 @@ wombo/
       ui.ts                 # Console dashboard
       tui.ts                # neo-blessed TUI
     templates/
-      .features.yml         # Template with full schema docs
+      tasks.yml             # Template with full schema docs
+```
+
+## User-facing file layout
+
+All wombo-combo files live under `.wombo-combo/`:
+
+```
+.wombo-combo/
+  config.json     # Project configuration (replaces wombo.json)
+  tasks.yml       # Active tasks (replaces .features.yml)
+  archive.yml     # Completed/cancelled tasks
+  state.json      # Wave state
+  logs/           # Agent log files
+  history/        # Wave history records
 ```
 
 ## Coding conventions
@@ -129,16 +140,16 @@ There is no test suite yet. When adding tests, use Bun's built-in test runner
 - **Bun readline + piped stdin:** `rl.question()` silently fails after readline
   emits `close`. The `Prompter` class in `src/commands/init.ts` works around
   this using `rl[Symbol.asyncIterator]()` with `process.stdout.write()`.
-- **YAML null vs empty array:** `yaml` parses `features:` (no items) as `null`,
-  not `[]`. `loadFeatures()` normalizes this: `parsed.features ?? []`.
+- **YAML null vs empty array:** `yaml` parses `tasks:` (no items) as `null`,
+  not `[]`. `loadTasks()` normalizes this: `parsed.tasks ?? parsed.features ?? null`.
 - **`import.meta.dir`:** Gives the directory of the current source file in Bun.
-  Used in `src/lib/features.ts` to resolve the template path.
+  Used in `src/lib/tasks.ts` to resolve the template path.
 
 ## Feature backlog
 
-The active backlog lives in `.features.yml` (local, gitignored). Use
+The active backlog lives in `.wombo-combo/tasks.yml` (local, gitignored). Use
 `bun dev features list` to see it. The canonical template is at
-`src/templates/.features.yml`.
+`src/templates/tasks.yml`.
 
 ## Making changes
 

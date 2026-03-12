@@ -89,18 +89,18 @@ import { cmdAbort } from "./commands/abort.js";
 import { cmdLogs } from "./commands/logs.js";
 import { cmdUpgrade } from "./commands/upgrade.js";
 import { cmdHistory } from "./commands/history.js";
-import { cmdFeaturesList } from "./commands/features/list.js";
-import { cmdFeaturesAdd } from "./commands/features/add.js";
-import { cmdFeaturesSetStatus } from "./commands/features/set-status.js";
-import { cmdFeaturesSetPriority } from "./commands/features/set-priority.js";
-import { cmdFeaturesSetDifficulty } from "./commands/features/set-difficulty.js";
-import { cmdFeaturesCheck } from "./commands/features/check.js";
-import { cmdFeaturesArchive } from "./commands/features/archive.js";
-import { cmdFeaturesShow } from "./commands/features/show.js";
-import { cmdFeaturesGraph } from "./commands/features/graph.js";
+import { cmdFeaturesList } from "./commands/tasks/list.js";
+import { cmdFeaturesAdd } from "./commands/tasks/add.js";
+import { cmdFeaturesSetStatus } from "./commands/tasks/set-status.js";
+import { cmdFeaturesSetPriority } from "./commands/tasks/set-priority.js";
+import { cmdFeaturesSetDifficulty } from "./commands/tasks/set-difficulty.js";
+import { cmdFeaturesCheck } from "./commands/tasks/check.js";
+import { cmdFeaturesArchive } from "./commands/tasks/archive.js";
+import { cmdFeaturesShow } from "./commands/tasks/show.js";
+import { cmdFeaturesGraph } from "./commands/tasks/graph.js";
 
-import { ensureFeaturesFile } from "./lib/features.js";
-import type { Priority, Difficulty, FeatureStatus } from "./lib/features.js";
+import { ensureFeaturesFile } from "./lib/tasks.js";
+import type { Priority, Difficulty, FeatureStatus } from "./lib/tasks.js";
 import { resolveOutputFormat, type OutputFormat } from "./lib/output.js";
 import { validateId, validateText, validateBranchName, validateDuration, assertValid } from "./lib/validate.js";
 import { findCommandDef, commandToSchema, allCommandSchemas } from "./lib/schema.js";
@@ -342,7 +342,7 @@ Wombo — AI Agent Orchestration System
   WOMBO COMBO! Parallel feature development with AI agents.
 
 Commands:
-  init           Generate wombo.json config in the current project
+  init           Generate .wombo-combo/config.json in the current project
   launch         Launch a wave of agents to implement features
   resume         Resume a previously stopped wave
   status         Show the status of the current wave
@@ -352,8 +352,8 @@ Commands:
   abort          Kill a single running agent (--requeue to return to queue)
   logs           Pretty-print agent logs for a feature
   cleanup        Remove all wave worktrees and multiplexer sessions
-  history        List/view past wave results (stored in .wombo-history/)
-  features       Manage .features.yml (see below)
+  history        List/view past wave results (stored in .wombo-combo/history/)
+  features       Manage tasks file (see below)
   upgrade        Check for updates and upgrade wombo
   describe       Emit JSON schema of a command (for AI agents)
   version        Print version and exit
@@ -369,7 +369,7 @@ Features Subcommands:
                             Change a feature's priority (critical/high/medium/low/wishlist)
   features set-difficulty <id> <difficulty>
                             Change a feature's difficulty (trivial/easy/medium/hard/very_hard)
-  features check           Validate .features.yml (schema, deps, duplicates, cycles)
+  features check           Validate tasks file (schema, deps, duplicates, cycles)
   features archive [id]    Move done/cancelled to archive (--dry-run)
   features show <id>       Show feature details
   features graph           Visualize dependency graph (--ascii, --mermaid, --subtasks)
@@ -624,6 +624,7 @@ async function main(): Promise<void> {
         featureId: args.featureId,
         autoPush: args.autoPush,
         dryRun: args.dryRun,
+        model: args.model,
       });
       break;
 
