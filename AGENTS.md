@@ -166,5 +166,8 @@ The active backlog lives in `.wombo-combo/tasks.yml` (local, gitignored). Use
 ## Version and release
 
 - Current version is in `package.json` → `"version"` field.
-- Git tags must match: tag `v0.0.1` ↔ `"version": "0.0.1"`.
+- Git tags must match: tag `v0.1.0` ↔ `"version": "0.1.0"`.
+- **When creating a git tag, ALWAYS update `package.json` `"version"` first,
+  commit the bump, then tag that commit.** Never tag without bumping the
+  version — they must stay in sync.
 - Release workflow (when implemented) triggers on `v*` tag push to main.
