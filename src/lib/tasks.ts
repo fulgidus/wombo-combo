@@ -408,7 +408,6 @@ export function getReadyTasks(data: TasksFile, archive?: Task[]): Task[] {
   return data.tasks.filter(
     (t) =>
       t.status === "backlog" &&
-      t.completion === 0 &&
       areDependenciesMet(t, doneIds)
   );
 }
