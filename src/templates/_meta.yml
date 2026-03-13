@@ -35,6 +35,11 @@
 #   notes       : list[string]  — Free-form updates (newest first).
 #   subtasks    : list[task]    — Always [] in folder-based storage (legacy).
 #   agent_type  : string|null   — Optional agent type from registry.
+#   agent       : string|null   — Optional local agent definition name (without
+#                                  .md extension). References a file in
+#                                  .opencode/agents/<agent>.md. When omitted,
+#                                  defaults to the config's agent.name
+#                                  (typically "generalist-agent").
 #
 # =============================================================================
 

@@ -86,6 +86,13 @@ export interface Task {
    * instead of using the default generalist agent.
    */
   agent_type?: string;
+  /**
+   * Optional local agent definition file name (without extension).
+   * References a file in `.opencode/agents/<agent>.md`.
+   * When omitted, defaults to the config's `agent.name` (typically "generalist-agent").
+   * This is independent of `agent_type` which references external registry agents.
+   */
+  agent?: string;
 }
 
 /**
