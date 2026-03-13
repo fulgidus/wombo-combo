@@ -8,15 +8,15 @@ description: >
   instead of `{"id":"cli-bugs","status":"backlog","priority":"high"}` emit `cli-bugs|BL|H`. Agents consuming woco output
   burn fewer tokens on parsing context, leaving more budget for reasoning. The format should be self-describing via
   `woco describe --output toon` which emits the key legend.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - toon-wire-commands
 effort: PT6H
 started_at: null
-ended_at: null
+ended_at: 2026-03-13T22:26:22.099Z
 constraints:
   - Must be a third output format alongside text and json (--output toon)
   - Must reduce token count by at least 60% compared to JSON output

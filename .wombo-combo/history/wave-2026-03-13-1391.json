@@ -1,0 +1,48 @@
+{
+  "wave_id": "wave-2026-03-13-1391",
+  "base_branch": "main",
+  "started_at": "2026-03-13T22:11:45.089Z",
+  "exported_at": "2026-03-13T22:24:17.437Z",
+  "model": null,
+  "max_concurrent": 8,
+  "interactive": false,
+  "summary": {
+    "total": 2,
+    "succeeded": 1,
+    "failed": 1,
+    "merged": 1,
+    "verified": 0,
+    "total_retries": 0,
+    "total_duration_ms": 884072
+  },
+  "agents": [
+    {
+      "feature_id": "toon-output",
+      "branch": "feature/toon-output",
+      "status": "failed",
+      "retries": 0,
+      "max_retries": 2,
+      "build_passed": true,
+      "started_at": "2026-03-13T22:14:55.435Z",
+      "completed_at": "2026-03-13T22:20:51.174Z",
+      "duration_ms": 355739,
+      "error": "Merge still failed after 3 conflict resolution attempt(s): Merge conflict: error: Your local changes to the following files would be overwritten by merge:\n\tsrc/index.ts\nPlease commit your changes or stash them before you merge.\nAborting\nMerge with strategy ort failed.",
+      "had_merge_conflict": true,
+      "build_output": null
+    },
+    {
+      "feature_id": "dynamic-agent-types",
+      "branch": "feature/dynamic-agent-types",
+      "status": "merged",
+      "retries": 0,
+      "max_retries": 2,
+      "build_passed": true,
+      "started_at": "2026-03-13T22:14:55.441Z",
+      "completed_at": "2026-03-13T22:23:43.774Z",
+      "duration_ms": 528333,
+      "error": null,
+      "had_merge_conflict": false,
+      "build_output": null
+    }
+  ]
+}

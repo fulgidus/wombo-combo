@@ -10,15 +10,15 @@ description: >
   Fallback behavior: If the specified agent is not found in the local cache or registry, emit a warning and fall back to
   generalist-agent.md. If the registry is unreachable (offline mode), use only locally cached agents. The cache location
   should be .wombo-combo/agents-cache/ (separate from .opencode/agents/ which is the active install dir).
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - agent-selection-per-feature
 effort: P2D
 started_at: null
-ended_at: null
+ended_at: 2026-03-13T22:23:43.845Z
 constraints:
   - Must pull agent definitions from the agency-agents GitHub repo dynamically
   - Must convert/adapt agency-agents format to woco's agent template format
