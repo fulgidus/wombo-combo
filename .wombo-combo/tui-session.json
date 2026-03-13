@@ -1,0 +1,11 @@
+{
+  "selected": [
+    "tdd-red-green-coercion",
+    "json-output-complete"
+  ],
+  "sortBy": "stream",
+  "sortOrder": "desc",
+  "maxConcurrent": 8,
+  "lastView": "browser",
+  "collapsed": []
+}

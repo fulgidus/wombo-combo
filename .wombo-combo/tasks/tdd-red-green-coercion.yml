@@ -9,7 +9,7 @@ description: >
 status: backlog
 completion: 75
 difficulty: hard
-priority: high
+priority: critical
 depends_on:
   - unit-test-suite
   - tdd-verification-step
