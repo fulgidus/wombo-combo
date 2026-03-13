@@ -539,6 +539,21 @@ async function main(): Promise<void> {
     }
   }
 
+  // Validate numeric args are not NaN
+  const numericArgs: [string, number | undefined][] = [
+    ["--top-priority", args.topPriority],
+    ["--quickest-wins", args.quickestWins],
+    ["--max-concurrent", args.maxConcurrent],
+    ["--max-retries", args.maxRetries],
+    ["--tail", args.tail],
+  ];
+  for (const [flag, value] of numericArgs) {
+    if (value !== undefined && isNaN(value)) {
+      console.error(`${flag} requires a numeric value.`);
+      process.exit(1);
+    }
+  }
+
   // Commands that don't need config loading
   if (args.command === "version" || args.command === "-v" || args.command === "-V") {
     const pkgPath = resolve(import.meta.dir, "..", "package.json");
