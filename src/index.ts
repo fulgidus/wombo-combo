@@ -165,6 +165,8 @@ export interface CLIArgs {
   // TDD verification
   skipTests?: boolean;
   strictTdd?: boolean;
+  // Agent selection (per-task override)
+  agent?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +377,11 @@ export function parseArgs(argv: string[]): CLIArgs {
         result.strictTdd = true;
         break;
 
+      // --- Agent selection ---
+      case "--agent":
+        result.agent = requireValue(arg);
+        break;
+
       // --- Positional (feature-id, title for add, etc.) ---
       default:
         if (!arg.startsWith("-")) {
@@ -451,6 +458,7 @@ Launch Options:
   --browser                Enable browser-based verification (run after build passes)
   --skip-tests             Skip running tests during TDD verification
   --strict-tdd             Strict TDD: fail verification if new files are missing tests
+  --agent <name>           Override agent definition for all launched tasks (name without .md extension)
 
 General:
   --force                  Force overwrite (e.g., for init) / skip prompts (e.g., for upgrade)
@@ -707,6 +715,7 @@ async function main(): Promise<void> {
         noTui: args.noTui,
         autoPush: args.autoPush,
         outputFmt: args.outputFmt,
+        agent: args.agent,
       });
       break;
 
