@@ -131,6 +131,9 @@ export interface LaunchCommandOptions {
   maxRetries: number;
   noTui: boolean;
   autoPush: boolean;
+  // Agent selection
+  /** CLI override: use this local agent definition for all launched tasks */
+  agent?: string;
   // Output
   outputFmt?: OutputFormat;
 }
@@ -1359,7 +1362,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   if (fmt === "text") console.log("\n--- wombo-combo: Launch ---\n");
 
   // Ensure agent definition exists — reinstall from template if missing
-  ensureAgentDefinition(projectRoot, config);
+  ensureAgentDefinition(projectRoot, config, opts.agent);
 
   // Ensure portless proxy is running (if enabled) to prevent port collisions
   if (config.portless.enabled) {
@@ -1491,6 +1494,16 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
         effort: f.effort,
       }))
     );
+  }
+
+  // Check per-task agent definitions exist
+  if (!opts.agent) {
+    const taskAgents = new Set(
+      selected.map((f) => f.agent).filter((a): a is string => !!a)
+    );
+    for (const agentName of taskAgents) {
+      ensureAgentDefinition(projectRoot, config, agentName);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1653,6 +1666,18 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     if (resolution && isSpecializedAgent(resolution)) {
       agent.agent_name = resolution.name;
       agent.agent_type = resolution.agentType;
+    }
+
+    // Per-task local agent override: CLI --agent flag takes precedence,
+    // then task-level `agent` field, then registry resolution (above).
+    // This is for local agent definitions in .opencode/agents/<name>.md.
+    const localAgent = opts.agent ?? feature.agent;
+    if (localAgent && !agent.agent_name) {
+      // Only set if not already resolved from the external registry
+      agent.agent_name = localAgent;
+    } else if (opts.agent) {
+      // CLI --agent flag overrides even registry agents
+      agent.agent_name = opts.agent;
     }
 
     state.agents.push(agent);
