@@ -184,6 +184,15 @@ export function validateTask(task: unknown): SchemaIssue[] {
     issues.push({ level: "error", taskId: id, message: "depends_on must be an array" });
   }
 
+  // agent field: must be a non-empty string (kebab-case agent definition name)
+  if (t?.agent != null && t.agent !== "") {
+    if (typeof t.agent !== "string") {
+      issues.push({ level: "error", taskId: id, message: "agent must be a string (agent definition file name without extension)" });
+    } else if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(t.agent)) {
+      issues.push({ level: "warning", taskId: id, message: `agent "${t.agent}" should be a kebab-case name (e.g. "frontend-specialist")` });
+    }
+  }
+
   return issues;
 }
 
