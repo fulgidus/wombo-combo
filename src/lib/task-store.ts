@@ -226,6 +226,9 @@ function normalizeTask(t: Task): void {
   if (t.agent_type === null || t.agent_type === "") {
     t.agent_type = undefined;
   }
+  if (t.agent === null || t.agent === "") {
+    t.agent = undefined;
+  }
   for (const s of t.subtasks) {
     normalizeTask(s);
   }
