@@ -29,13 +29,14 @@ import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
 import type { Quest } from "./quest.js";
 import { QUEST_STATUS_ORDER } from "./quest.js";
-import { loadAllQuests, saveQuest } from "./quest-store.js";
+import { loadAllQuests, saveQuest, deleteQuest } from "./quest-store.js";
 import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks.js";
 import type { WomboConfig } from "../config.js";
 import type { ErrandSpec } from "./errand-planner.js";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage.js";
 import type { UsageTotals } from "./token-usage.js";
 import { showQuestWizard } from "./tui-quest-wizard.js";
+import { showConfirm } from "./tui-progress.js";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -134,11 +135,11 @@ interface QuestSummary {
 // ---------------------------------------------------------------------------
 
 export class QuestPicker {
-  private screen: Widgets.Screen;
-  private headerBox: Widgets.BoxElement;
-  private questList: Widgets.ListElement;
-  private detailBox: Widgets.BoxElement;
-  private statusBar: Widgets.BoxElement;
+  private screen!: Widgets.Screen;
+  private headerBox!: Widgets.BoxElement;
+  private questList!: Widgets.ListElement;
+  private detailBox!: Widgets.BoxElement;
+  private statusBar!: Widgets.BoxElement;
 
   private projectRoot: string;
   private config: WomboConfig;
@@ -171,7 +172,14 @@ export class QuestPicker {
     this.onQuit = opts.onQuit;
 
     this.loadQuests();
+    this.buildUI();
+  }
 
+  // -----------------------------------------------------------------------
+  // UI Construction (used by constructor and rebuild)
+  // -----------------------------------------------------------------------
+
+  private buildUI(): void {
     // Create screen
     this.screen = blessed.screen({
       smartCSR: true,
@@ -244,6 +252,21 @@ export class QuestPicker {
     this.questList.focus();
 
     this.bindKeys();
+  }
+
+  /**
+   * Rebuild the entire picker UI from scratch. Used after dialogs that
+   * create their own blessed screen (e.g. showConfirm) destroy ours.
+   */
+  private rebuild(): void {
+    this.loadQuests();
+    this.buildUI();
+    // Clamp selection index in case the list shrank (e.g. after deletion)
+    if (this.selectedIndex >= this.items.length) {
+      this.selectedIndex = Math.max(0, this.items.length - 1);
+    }
+    this.refreshAll();
+    this.screen.render();
   }
 
   // -----------------------------------------------------------------------
@@ -384,6 +407,11 @@ export class QuestPicker {
     this.screen.key(["o"], () => {
       this.triggerOnboarding();
     });
+
+    // D -- delete quest (with confirmation)
+    this.screen.key(["d"], () => {
+      this.deleteCurrentQuest();
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -424,6 +452,28 @@ export class QuestPicker {
     this.loadQuests();
     this.refreshAll();
     this.screen.render();
+  }
+
+  private async deleteCurrentQuest(): Promise<void> {
+    const item = this.items[this.selectedIndex];
+    if (!item || item.type === "all") return;
+
+    const quest = item.summary.quest;
+
+    // Destroy the picker screen so showConfirm can take over
+    this.screen.destroy();
+
+    const confirmed = await showConfirm(
+      "Delete Quest",
+      `Delete quest "${quest.id}"? This cannot be undone.`,
+    );
+
+    if (confirmed) {
+      deleteQuest(this.projectRoot, quest.id);
+    }
+
+    // Rebuild the picker UI from scratch
+    this.rebuild();
   }
 
   private planQuest(): void {
@@ -946,21 +996,26 @@ export class QuestPicker {
         );
       } else {
         const { quest, totalTasks, doneTasks, completionPct } = item.summary;
+        const isEmpty = totalTasks === 0;
 
         // Status badge
-        const sColor = STATUS_COLORS[quest.status] ?? "white";
+        const sColor = isEmpty ? "gray" : (STATUS_COLORS[quest.status] ?? "white");
         const sAbbr = STATUS_ABBREV[quest.status] ?? quest.status.slice(0, 4).toUpperCase();
         const statusBadge = `{${sColor}-fg}${sAbbr}{/${sColor}-fg}`;
 
         // Priority
-        const pColor = PRIORITY_COLORS[quest.priority] ?? "white";
+        const pColor = isEmpty ? "gray" : (PRIORITY_COLORS[quest.priority] ?? "white");
         const priorityDot = `{${pColor}-fg}\u25CF{/${pColor}-fg}`;
 
-        // Title (truncated)
-        const maxTitleLen = 28;
-        const title = quest.title.length > maxTitleLen
+        // Title (truncated) — dimmed if empty
+        const maxTitleLen = isEmpty ? 22 : 28; // shorter to fit "(needs planning)"
+        let title = quest.title.length > maxTitleLen
           ? quest.title.slice(0, maxTitleLen - 1) + "\u2026"
           : quest.title;
+        const escapedTitle = escapeBlessedTags(title);
+        const titleDisplay = isEmpty
+          ? `{gray-fg}${escapedTitle}{/gray-fg}`
+          : escapedTitle;
 
         // Completion bar
         const barWidth = 8;
@@ -968,13 +1023,13 @@ export class QuestPicker {
         const empty = barWidth - filled;
         const bar = `{green-fg}${"#".repeat(filled)}{/green-fg}{gray-fg}${"-".repeat(empty)}{/gray-fg}`;
 
-        // Task count
-        const taskInfo = totalTasks > 0
-          ? `{gray-fg}${doneTasks}/${totalTasks}{/gray-fg}`
-          : `{gray-fg}0 tasks{/gray-fg}`;
+        // Task count / needs-planning label
+        const taskInfo = isEmpty
+          ? `{magenta-fg}(needs planning){/magenta-fg}`
+          : `{gray-fg}${doneTasks}/${totalTasks}{/gray-fg}`;
 
         listItems.push(
-          ` ${priorityDot} ${statusBadge} ${escapeBlessedTags(title)}  [${bar}] ${taskInfo}`
+          ` ${priorityDot} ${statusBadge} ${titleDisplay}  [${bar}] ${taskInfo}`
         );
       }
     }
@@ -1169,6 +1224,7 @@ export class QuestPicker {
     line1 += `  {gray-fg}P{/gray-fg} plan`;
     line1 += `  {gray-fg}G{/gray-fg} genesis`;
     line1 += `  {gray-fg}A{/gray-fg} activate/pause`;
+    line1 += `  {gray-fg}D{/gray-fg} delete`;
     line1 += `  {gray-fg}W{/gray-fg} wishlist`;
     line1 += `  {gray-fg}O{/gray-fg} onboarding`;
     line1 += `  {gray-fg}Q{/gray-fg} quit`;
@@ -1182,7 +1238,10 @@ export class QuestPicker {
       line2 += `{white-fg}${escapeBlessedTags(q.id)}{/white-fg}`;
       line2 += `  {gray-fg}|{/gray-fg}  ${item.summary.totalTasks} task${item.summary.totalTasks !== 1 ? "s" : ""}`;
       line2 += `  {gray-fg}|{/gray-fg}  ${item.summary.completionPct}% complete`;
-      if (q.status === "draft" || q.status === "planning") {
+      if (item.summary.totalTasks === 0) {
+        // Empty quest — highlight actionable keys
+        line2 += `  {gray-fg}|{/gray-fg}  {magenta-fg}P to plan{/magenta-fg}, {red-fg}D to delete{/red-fg}`;
+      } else if (q.status === "draft" || q.status === "planning") {
         line2 += `  {gray-fg}|{/gray-fg}  {magenta-fg}P to plan{/magenta-fg}`;
       }
     }

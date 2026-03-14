@@ -60,7 +60,7 @@ import type { WishlistAction } from "../lib/tui-wishlist.js";
 import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store.js";
 import type { WishlistItem } from "../lib/wishlist-store.js";
 import { runQuestWizardAsync } from "../lib/tui-quest-wizard.js";
-import { projectExists } from "../lib/project-store.js";
+import { projectExists, formatProjectContext } from "../lib/project-store.js";
 import { runOnboardingAsync } from "../lib/tui-onboarding.js";
 import { cmdLaunch } from "./launch.js";
 import type { LaunchCommandOptions } from "./launch.js";
@@ -127,6 +127,15 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     const profile = await runOnboardingAsync({ projectRoot, config });
     // Clear screen whether completed or skipped
     process.stdout.write('\x1B[2J\x1B[H');
+
+    // If onboarding completed and the user requested genesis, run it now.
+    // The onboarding wizard sets _genesisRequested on the returned profile
+    // object (not persisted) as a signal for us to trigger the genesis flow.
+    if (profile && (profile as any)._genesisRequested) {
+      const vision = formatProjectContext(profile);
+      await handleGenesisFlow(projectRoot, config, opts, vision);
+      process.stdout.write('\x1B[2J\x1B[H');
+    }
   }
 
   // Main TUI loop:
