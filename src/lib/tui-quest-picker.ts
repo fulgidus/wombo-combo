@@ -34,8 +34,6 @@ import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema.js";
 import type { Priority, Difficulty } from "./tasks.js";
 import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks.js";
 import type { WomboConfig } from "../config.js";
-import { WishlistOverlay } from "./tui-wishlist.js";
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -45,6 +43,7 @@ export type QuestPickerAction =
   | { type: "plan"; questId: string }
   | { type: "genesis" }
   | { type: "errand" }
+  | { type: "wishlist" }
   | { type: "quit" };
 
 export interface QuestPickerOptions {
@@ -54,6 +53,7 @@ export interface QuestPickerOptions {
   onPlan?: (questId: string) => void;
   onGenesis?: () => void;
   onErrand?: () => void;
+  onWishlist?: () => void;
   onQuit: () => void;
 }
 
@@ -119,14 +119,13 @@ export class QuestPicker {
   private onPlan?: (questId: string) => void;
   private onGenesis?: () => void;
   private onErrand?: () => void;
+  private onWishlist?: () => void;
   private onQuit: () => void;
 
   /** "All Tasks" + quest summaries */
   private items: Array<{ type: "all" } | { type: "quest"; summary: QuestSummary }> = [];
   private selectedIndex: number = 0;
   private totalTaskCount: number = 0;
-  /** Active wishlist overlay (null when closed) */
-  private wishlistOverlay: WishlistOverlay | null = null;
 
   constructor(opts: QuestPickerOptions) {
     this.projectRoot = opts.projectRoot;
@@ -135,6 +134,7 @@ export class QuestPicker {
     this.onPlan = opts.onPlan;
     this.onGenesis = opts.onGenesis;
     this.onErrand = opts.onErrand;
+    this.onWishlist = opts.onWishlist;
     this.onQuit = opts.onQuit;
 
     this.loadQuests();
@@ -294,11 +294,6 @@ export class QuestPicker {
       this.toggleQuestActive();
     });
 
-    // W -- toggle wishlist overlay
-    this.screen.key(["w"], () => {
-      this.toggleWishlist();
-    });
-
     // C -- create new quest
     this.screen.key(["c"], () => {
       this.showCreateQuestModal();
@@ -317,6 +312,11 @@ export class QuestPicker {
     // E -- errand (quick task generation without a quest)
     this.screen.key(["e"], () => {
       this.triggerErrand();
+    });
+
+    // W -- wishlist browser
+    this.screen.key(["w"], () => {
+      this.triggerWishlist();
     });
   }
 
@@ -393,30 +393,12 @@ export class QuestPicker {
     this.onErrand();
   }
 
-  private toggleWishlist(): void {
+  private triggerWishlist(): void {
     if (this.creatingQuest) return;
+    if (!this.onWishlist) return;
 
-    // Close if already open
-    if (this.wishlistOverlay && !this.wishlistOverlay.isDestroyed()) {
-      this.wishlistOverlay.close();
-      this.wishlistOverlay = null;
-      this.questList.focus();
-      this.screen.render();
-      return;
-    }
-
-    this.wishlistOverlay = new WishlistOverlay(
-      this.screen,
-      this.projectRoot,
-      {
-        onClose: () => {
-          this.wishlistOverlay = null;
-          this.questList.focus();
-          this.refreshStatusBar();
-          this.screen.render();
-        },
-      }
-    );
+    this.destroy();
+    this.onWishlist();
   }
 
   // -----------------------------------------------------------------------
