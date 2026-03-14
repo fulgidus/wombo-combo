@@ -34,6 +34,7 @@ import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema.js";
 import type { Priority, Difficulty } from "./tasks.js";
 import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks.js";
 import type { WomboConfig } from "../config.js";
+import type { ErrandSpec } from "./errand-planner.js";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage.js";
 import type { UsageTotals } from "./token-usage.js";
 // ---------------------------------------------------------------------------
@@ -43,8 +44,8 @@ import type { UsageTotals } from "./token-usage.js";
 export type QuestPickerAction =
   | { type: "select"; questId: string | null }
   | { type: "plan"; questId: string }
-  | { type: "genesis" }
-  | { type: "errand" }
+  | { type: "genesis"; vision: string }
+  | { type: "errand"; spec: ErrandSpec }
   | { type: "wishlist" }
   | { type: "quit" };
 
@@ -53,8 +54,8 @@ export interface QuestPickerOptions {
   config: WomboConfig;
   onSelect: (questId: string | null) => void;
   onPlan?: (questId: string) => void;
-  onGenesis?: () => void;
-  onErrand?: () => void;
+  onGenesis?: (vision: string) => void;
+  onErrand?: (spec: ErrandSpec) => void;
   onWishlist?: () => void;
   onQuit: () => void;
 }
@@ -142,8 +143,8 @@ export class QuestPicker {
   private config: WomboConfig;
   private onSelect: (questId: string | null) => void;
   private onPlan?: (questId: string) => void;
-  private onGenesis?: () => void;
-  private onErrand?: () => void;
+  private onGenesis?: (vision: string) => void;
+  private onErrand?: (spec: ErrandSpec) => void;
   private onWishlist?: () => void;
   private onQuit: () => void;
 
@@ -440,16 +441,25 @@ export class QuestPicker {
     if (this.creatingQuest) return;
     if (!this.onGenesis) return;
 
-    this.destroy();
-    this.onGenesis();
+    this.showInputModal(
+      "Genesis Planner",
+      "Describe your project vision. The genesis planner will\ndecompose it into a set of quests.",
+      "Vision",
+      (vision) => {
+        this.destroy();
+        this.onGenesis!(vision);
+      }
+    );
   }
 
   private triggerErrand(): void {
     if (this.creatingQuest) return;
     if (!this.onErrand) return;
 
-    this.destroy();
-    this.onErrand();
+    this.showErrandWizard((spec) => {
+      this.destroy();
+      this.onErrand!(spec);
+    });
   }
 
   private triggerWishlist(): void {
@@ -458,6 +468,390 @@ export class QuestPicker {
 
     this.destroy();
     this.onWishlist();
+  }
+
+  // -----------------------------------------------------------------------
+  // Errand Wizard (multi-step: description → scope → objectives → confirm)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Show a multi-step errand wizard modal.
+   * Steps:
+   *   1. Description (textbox, required) — "What needs to be done?"
+   *   2. Scope (textarea, optional)      — "What areas/files to focus on?"
+   *   3. Objectives (textarea, optional) — "Key objectives / acceptance criteria"
+   *   4. Review (summary, Enter to confirm, Esc to go back)
+   *
+   * Modelled after showCreateQuestModal — same overlay pattern, step navigation.
+   */
+  private showErrandWizard(onSubmit: (spec: ErrandSpec) => void): void {
+    if (this.creatingQuest) return;
+    this.creatingQuest = true;
+
+    const modal = blessed.box({
+      parent: this.screen,
+      top: "center",
+      left: "center",
+      width: "70%",
+      height: "70%",
+      tags: true,
+      border: { type: "line" },
+      style: {
+        border: { fg: "magenta" },
+        fg: "white",
+        bg: "black",
+      },
+      label: " {magenta-fg}New Errand{/magenta-fg} ",
+      shadow: true,
+    });
+
+    // Header / instructions area
+    const header = blessed.box({
+      parent: modal,
+      top: 0,
+      left: 1,
+      right: 1,
+      height: 3,
+      tags: true,
+      style: { fg: "white", bg: "black" },
+    });
+
+    // Single-line textbox (for description step)
+    const textbox = blessed.textbox({
+      parent: modal,
+      top: 3,
+      left: 1,
+      right: 1,
+      height: 3,
+      border: { type: "line" },
+      style: {
+        border: { fg: "cyan" },
+        fg: "white",
+        bg: "black",
+        focus: { border: { fg: "magenta" } },
+      },
+      inputOnFocus: true,
+    });
+
+    // Multi-line textarea (for scope & objectives steps)
+    const textarea = blessed.textarea({
+      parent: modal,
+      top: 3,
+      left: 1,
+      right: 1,
+      height: 10,
+      border: { type: "line" },
+      style: {
+        border: { fg: "cyan" },
+        fg: "white",
+        bg: "black",
+        focus: { border: { fg: "magenta" } },
+      },
+      inputOnFocus: true,
+      hidden: true,
+    });
+
+    // Review / summary box (for confirm step)
+    const reviewBox = blessed.box({
+      parent: modal,
+      top: 3,
+      left: 1,
+      right: 1,
+      height: "100%-6",
+      tags: true,
+      border: { type: "line" },
+      style: {
+        border: { fg: "green" },
+        fg: "white",
+        bg: "black",
+      },
+      hidden: true,
+      scrollable: true,
+      alwaysScroll: true,
+      keys: true,
+      vi: true,
+    });
+
+    // Status line at bottom
+    const statusLine = blessed.box({
+      parent: modal,
+      bottom: 0,
+      left: 1,
+      right: 1,
+      height: 1,
+      tags: true,
+      style: { fg: "gray", bg: "black" },
+    });
+
+    // Collected values
+    let description = "";
+    let scope = "";
+    let objectives = "";
+
+    type Step = "description" | "scope" | "objectives" | "review";
+    const steps: Step[] = ["description", "scope", "objectives", "review"];
+    let currentStepIdx = 0;
+
+    const cleanup = () => {
+      modal.destroy();
+      this.creatingQuest = false;
+      this.questList.focus();
+      this.screen.render();
+    };
+
+    const showStep = (step: Step) => {
+      textbox.hide();
+      textarea.hide();
+      reviewBox.hide();
+
+      const stepLabel = `Step ${currentStepIdx + 1}/${steps.length}`;
+
+      switch (step) {
+        case "description":
+          header.setContent(
+            `{bold}${stepLabel} — Description{/bold}\n` +
+            `{cyan-fg}What needs to be done? (required){/cyan-fg}\n` +
+            `{gray-fg}Esc to cancel{/gray-fg}`
+          );
+          statusLine.setContent(
+            "{gray-fg}Enter: next  |  Esc: cancel{/gray-fg}"
+          );
+          textbox.setValue(description);
+          textbox.show();
+          textbox.focus();
+          break;
+
+        case "scope":
+          header.setContent(
+            `{bold}${stepLabel} — Scope{/bold}\n` +
+            `{cyan-fg}What areas/files should this focus on? (optional — Enter to skip){/cyan-fg}\n` +
+            `{gray-fg}Esc to go back{/gray-fg}`
+          );
+          statusLine.setContent(
+            `{gray-fg}Description: ${description.slice(0, 50)}${description.length > 50 ? "…" : ""}{/gray-fg}`
+          );
+          textarea.setValue(scope);
+          textarea.show();
+          textarea.focus();
+          break;
+
+        case "objectives":
+          header.setContent(
+            `{bold}${stepLabel} — Objectives{/bold}\n` +
+            `{cyan-fg}Key objectives or acceptance criteria (optional — Enter to skip){/cyan-fg}\n` +
+            `{gray-fg}Esc to go back{/gray-fg}`
+          );
+          statusLine.setContent(
+            `{gray-fg}Description: ${description.slice(0, 50)}${description.length > 50 ? "…" : ""}{/gray-fg}`
+          );
+          textarea.setValue(objectives);
+          textarea.show();
+          textarea.focus();
+          break;
+
+        case "review": {
+          header.setContent(
+            `{bold}${stepLabel} — Review{/bold}\n` +
+            `{cyan-fg}Review your errand details below.{/cyan-fg}\n` +
+            `{gray-fg}Enter to confirm  |  Esc to go back{/gray-fg}`
+          );
+          statusLine.setContent(
+            "{gray-fg}Enter: launch errand planner  |  Esc: go back{/gray-fg}"
+          );
+          const lines: string[] = [];
+          lines.push(`{bold}{magenta-fg}Description:{/magenta-fg}{/bold}`);
+          lines.push(`  ${description}`);
+          lines.push(``);
+          if (scope) {
+            lines.push(`{bold}{cyan-fg}Scope:{/cyan-fg}{/bold}`);
+            for (const ln of scope.split("\n")) lines.push(`  ${ln}`);
+            lines.push(``);
+          } else {
+            lines.push(`{gray-fg}Scope: (none){/gray-fg}`);
+            lines.push(``);
+          }
+          if (objectives) {
+            lines.push(`{bold}{cyan-fg}Objectives:{/cyan-fg}{/bold}`);
+            for (const ln of objectives.split("\n")) lines.push(`  ${ln}`);
+          } else {
+            lines.push(`{gray-fg}Objectives: (none){/gray-fg}`);
+          }
+          reviewBox.setContent(lines.join("\n"));
+          reviewBox.show();
+          reviewBox.focus();
+          break;
+        }
+      }
+
+      this.screen.render();
+    };
+
+    const goBack = () => {
+      if (currentStepIdx <= 0) {
+        cleanup();
+        return;
+      }
+      currentStepIdx--;
+      showStep(steps[currentStepIdx]);
+    };
+
+    const advance = () => {
+      currentStepIdx++;
+      if (currentStepIdx >= steps.length) {
+        // Should not happen — review step handles confirm
+        return;
+      }
+      showStep(steps[currentStepIdx]);
+    };
+
+    // --- Textbox handlers (description step) ---
+    textbox.on("submit", (value: string) => {
+      const trimmed = (value ?? "").trim();
+      if (!trimmed) {
+        statusLine.setContent("{red-fg}Description cannot be empty{/red-fg}");
+        this.screen.render();
+        textbox.focus();
+        return;
+      }
+      description = trimmed;
+      advance();
+    });
+
+    textbox.on("cancel", () => {
+      goBack();
+    });
+
+    // --- Textarea handlers (scope & objectives steps) ---
+    textarea.key(["enter"], () => {
+      const val = (textarea.getValue() ?? "").trim();
+      const step = steps[currentStepIdx];
+      if (step === "scope") {
+        scope = val; // may be empty — that's OK
+        advance();
+      } else if (step === "objectives") {
+        objectives = val; // may be empty — that's OK
+        advance();
+      }
+    });
+
+    textarea.key(["escape"], () => {
+      goBack();
+    });
+
+    // --- Review step handlers ---
+    reviewBox.key(["enter"], () => {
+      // Confirm — build the spec and fire callback
+      const spec: ErrandSpec = { description };
+      if (scope) spec.scope = scope;
+      if (objectives) spec.objectives = objectives;
+      modal.destroy();
+      this.creatingQuest = false;
+      this.screen.render();
+      onSubmit(spec);
+    });
+
+    reviewBox.key(["escape"], () => {
+      goBack();
+    });
+
+    // Start at step 1
+    showStep("description");
+  }
+
+  // -----------------------------------------------------------------------
+  // Input Modal (reusable for genesis/errand text prompts)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Show a simple modal with a text input field. Calls `onSubmit` with the
+   * trimmed value when the user presses Enter. Pressing Escape cancels.
+   * This keeps all input inside the blessed screen — no readline needed.
+   */
+  private showInputModal(
+    title: string,
+    instructions: string,
+    placeholder: string,
+    onSubmit: (value: string) => void
+  ): void {
+    this.creatingQuest = true; // reuse flag to block other key handlers
+
+    const modal = blessed.box({
+      parent: this.screen,
+      top: "center",
+      left: "center",
+      width: "60%",
+      height: 12,
+      tags: true,
+      border: { type: "line" },
+      style: {
+        border: { fg: "magenta" },
+        fg: "white",
+        bg: "black",
+      },
+      label: ` {magenta-fg}${title}{/magenta-fg} `,
+      shadow: true,
+    });
+
+    blessed.box({
+      parent: modal,
+      top: 0,
+      left: 1,
+      right: 1,
+      height: 3,
+      tags: true,
+      content: `{cyan-fg}${instructions}{/cyan-fg}`,
+      style: { fg: "white", bg: "black" },
+    });
+
+    const textbox = blessed.textbox({
+      parent: modal,
+      top: 4,
+      left: 1,
+      right: 1,
+      height: 3,
+      border: { type: "line" },
+      style: {
+        border: { fg: "cyan" },
+        fg: "white",
+        bg: "black",
+        focus: { border: { fg: "magenta" } },
+      },
+      inputOnFocus: true,
+    });
+
+    blessed.box({
+      parent: modal,
+      bottom: 0,
+      left: 1,
+      right: 1,
+      height: 1,
+      tags: true,
+      content: "{gray-fg}Enter: submit  |  Escape: cancel{/gray-fg}",
+      style: { fg: "gray", bg: "black" },
+    });
+
+    textbox.on("submit", (value: string) => {
+      const trimmed = (value ?? "").trim();
+      if (!trimmed) {
+        // Empty input — re-focus so the user can try again
+        textbox.focus();
+        this.screen.render();
+        return;
+      }
+      modal.destroy();
+      this.creatingQuest = false;
+      this.screen.render();
+      onSubmit(trimmed);
+    });
+
+    textbox.on("cancel", () => {
+      modal.destroy();
+      this.creatingQuest = false;
+      this.screen.render();
+    });
+
+    textbox.focus();
+    this.screen.render();
   }
 
   // -----------------------------------------------------------------------

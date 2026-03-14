@@ -53,6 +53,7 @@ import { runGenesisPlanner } from "../lib/genesis-planner.js";
 import type { GenesisResult, ProposedQuest } from "../lib/genesis-planner.js";
 import { createBlankQuest } from "../lib/quest.js";
 import { runErrandPlanner, applyErrandPlan } from "../lib/errand-planner.js";
+import type { ErrandSpec } from "../lib/errand-planner.js";
 import { WishlistPicker } from "../lib/tui-wishlist.js";
 import type { WishlistAction } from "../lib/tui-wishlist.js";
 import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store.js";
@@ -88,7 +89,7 @@ export interface TUICommandOptions {
 
 type BrowserAction =
   | { type: "launch"; ids: string[] }
-  | { type: "errand" }
+  | { type: "errand"; spec: ErrandSpec }
   | { type: "back" }
   | { type: "monitor" }
   | { type: "quit" };
@@ -206,16 +207,16 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       }
 
       if (questAction.type === "genesis") {
-        // User pressed G to run genesis -- run genesis planner + review
-        await handleGenesisFlow(projectRoot, config, opts);
+        // User provided vision via blessed modal — run genesis planner + review
+        await handleGenesisFlow(projectRoot, config, opts, questAction.vision);
         // After genesis (approve or cancel), loop back to quest picker
         process.stdout.write("\x1B[2J\x1B[H");
         continue;
       }
 
       if (questAction.type === "errand") {
-        // User pressed E to create an errand (quest-less assisted task)
-        await handleErrandFlow(projectRoot, config, opts);
+        // User provided spec via blessed modal — run errand planner
+        await handleErrandFlow(projectRoot, config, opts, questAction.spec);
         // After errand (approve or cancel), loop back to quest picker
         process.stdout.write("\x1B[2J\x1B[H");
         continue;
@@ -259,8 +260,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     }
 
     if (action.type === "errand") {
-      // User pressed E in browser to create an errand
-      await handleErrandFlow(projectRoot, config, opts);
+      // User provided errand spec via blessed wizard in browser
+      await handleErrandFlow(projectRoot, config, opts, action.spec);
       process.stdout.write("\x1B[2J\x1B[H");
       continue;
     }
@@ -362,12 +363,12 @@ function showQuestPicker(
         resolve({ type: "plan", questId });
       },
 
-      onGenesis: () => {
-        resolve({ type: "genesis" });
+      onGenesis: (vision: string) => {
+        resolve({ type: "genesis", vision });
       },
 
-      onErrand: () => {
-        resolve({ type: "errand" });
+      onErrand: (spec: ErrandSpec) => {
+        resolve({ type: "errand", spec });
       },
 
       onWishlist: () => {
@@ -513,52 +514,16 @@ async function handlePlanFlow(
 // ---------------------------------------------------------------------------
 
 /**
- * Run the genesis planner: prompt user for a vision, run the genesis planner
+ * Run the genesis planner: take a vision string, run the genesis planner
  * agent, then show the genesis review TUI.
- * Handles the full flow: readline prompt → spinner → planner → review → create quests.
+ * Handles the full flow: spinner → planner → review → create quests.
  */
 async function handleGenesisFlow(
   projectRoot: string,
   config: WomboConfig,
   opts: TUICommandOptions,
-  prefill?: string
+  vision: string
 ): Promise<void> {
-  let vision: string;
-
-  if (prefill) {
-    // Pre-filled from wishlist promotion — show the pre-filled text
-    console.log();
-    console.log("  ╔══════════════════════════════════════╗");
-    console.log("  ║         GENESIS PLANNER              ║");
-    console.log("  ╚══════════════════════════════════════╝");
-    console.log();
-    console.log(`  Pre-filled from wishlist: ${prefill}`);
-    console.log();
-    vision = prefill;
-  } else {
-    // Prompt the user for a project vision via readline (no blessed screen is active)
-    const readline = await import("node:readline");
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    vision = await new Promise<string>((resolve) => {
-      console.log();
-      console.log("  ╔══════════════════════════════════════╗");
-      console.log("  ║         GENESIS PLANNER              ║");
-      console.log("  ╚══════════════════════════════════════╝");
-      console.log();
-      console.log("  Describe your project vision. The genesis planner will");
-      console.log("  decompose it into a set of quests.");
-      console.log();
-      rl.question("  Vision: ", (answer) => {
-        rl.close();
-        resolve(answer.trim());
-      });
-    });
-  }
-
   if (!vision) {
     console.log("\n  No vision provided. Returning to quest picker.\n");
     await sleep(1500);
@@ -674,9 +639,9 @@ async function handleGenesisFlow(
 // ---------------------------------------------------------------------------
 
 /**
- * Run the errand planner: prompt user for a brief description, run the quest
- * planner agent with an errand-specific prompt, then show plan review to let
- * the user accept/reject/edit the proposed tasks.
+ * Run the errand planner: take an ErrandSpec (description + optional scope/objectives),
+ * run the quest planner agent with an errand-specific prompt, then show plan review
+ * to let the user accept/reject/edit the proposed tasks.
  *
  * Created tasks go directly into the task store without any quest association.
  */
@@ -684,45 +649,9 @@ async function handleErrandFlow(
   projectRoot: string,
   config: WomboConfig,
   opts: TUICommandOptions,
-  prefill?: string
+  spec: ErrandSpec
 ): Promise<void> {
-  let description: string;
-
-  if (prefill) {
-    // Pre-filled from wishlist promotion — show the pre-filled text
-    console.log();
-    console.log("  ╔══════════════════════════════════════╗");
-    console.log("  ║           ERRAND PLANNER             ║");
-    console.log("  ╚══════════════════════════════════════╝");
-    console.log();
-    console.log(`  Pre-filled from wishlist: ${prefill}`);
-    console.log();
-    description = prefill;
-  } else {
-    // Prompt the user for a description via readline (no blessed screen is active)
-    const readline = await import("node:readline");
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    description = await new Promise<string>((resolve) => {
-      console.log();
-      console.log("  ╔══════════════════════════════════════╗");
-      console.log("  ║           ERRAND PLANNER             ║");
-      console.log("  ╚══════════════════════════════════════╝");
-      console.log();
-      console.log("  Describe the errand. The planner will explore the");
-      console.log("  codebase and generate tasks for you.");
-      console.log();
-      rl.question("  Errand: ", (answer) => {
-        rl.close();
-        resolve(answer.trim());
-      });
-    });
-  }
-
-  if (!description) {
+  if (!spec.description) {
     console.log("\n  No description provided. Returning.\n");
     await sleep(1500);
     return;
@@ -745,7 +674,7 @@ async function handleErrandFlow(
   let planResult: PlanResult;
 
   try {
-    planResult = await runErrandPlanner(description, projectRoot, config, {
+    planResult = await runErrandPlanner(spec, projectRoot, config, {
       model: opts.model,
       onProgress: (msg) => {
         lastProgress = msg;
@@ -781,10 +710,12 @@ async function handleErrandFlow(
   // Clear terminal before showing the plan review TUI
   process.stdout.write("\x1B[2J\x1B[H");
 
+  const desc = spec.description;
+
   // Reuse the plan review TUI (it works for any set of proposed tasks)
   const reviewAction = await showPlanReview(
     "(errand)",
-    description.length > 50 ? description.slice(0, 47) + "..." : description,
+    desc.length > 50 ? desc.slice(0, 47) + "..." : desc,
     planResult
   );
 
@@ -837,7 +768,7 @@ async function handleWishlistFlow(
 
   if (action.type === "promote-errand") {
     const item = action.item;
-    await handleErrandFlow(projectRoot, config, opts, item.text);
+    await handleErrandFlow(projectRoot, config, opts, { description: item.text });
     await maybeDeleteWishlistItem(projectRoot, item);
     return;
   }
@@ -1048,8 +979,8 @@ function showBrowser(
 
       // Errand is available when not in quest-filtered mode
       onErrand: !questId
-        ? () => {
-            resolve({ type: "errand" });
+        ? (spec: ErrandSpec) => {
+            resolve({ type: "errand", spec });
           }
         : undefined,
 
