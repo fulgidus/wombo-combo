@@ -156,13 +156,21 @@ export function addItem(
   text: string,
   tags: string[] = []
 ): WishlistItem {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error("Wishlist item text cannot be empty");
+  }
+
   const items = loadWishlist(projectRoot);
+
+  // Trim each tag and filter out empty tags
+  const cleanTags = tags.map((t) => t.trim()).filter(Boolean);
 
   const newItem: WishlistItem = {
     id: randomUUID(),
-    text,
+    text: trimmed,
     created_at: new Date().toISOString(),
-    tags,
+    tags: cleanTags,
   };
 
   items.push(newItem);

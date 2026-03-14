@@ -328,9 +328,9 @@ export class WishlistPicker {
         ? item.text.slice(0, maxLen - 1) + "\u2026"
         : item.text;
 
-      // Tags badge
+      // Tags badge (escape each tag to prevent blessed markup injection)
       const tagsBadge = item.tags.length > 0
-        ? ` {gray-fg}[${item.tags.join(", ")}]{/gray-fg}`
+        ? ` {gray-fg}[${item.tags.map((t) => escapeBlessedTags(t)).join(", ")}]{/gray-fg}`
         : "";
 
       // Date
@@ -355,8 +355,22 @@ export class WishlistPicker {
   private refreshDetail(): void {
     const item = this.items[this.selectedIndex];
     if (!item) {
-      this.detailBox.setContent("{gray-fg}No item selected{/gray-fg}");
-      this.detailBox.setLabel(" Details ");
+      const emptyLines: string[] = [
+        "{bold}{yellow-fg}No wishlist items{/yellow-fg}{/bold}",
+        "",
+        "  Your wishlist is empty.",
+        "",
+        "  {bold}Add ideas from the CLI:{/bold}",
+        '  {cyan-fg}woco wishlist add "your idea"{/cyan-fg}',
+        "",
+        "  {bold}Or from the Task Browser:{/bold}",
+        "  Press {yellow-fg}W{/yellow-fg} to open the wishlist overlay,",
+        "  then press {yellow-fg}A{/yellow-fg} to add an item.",
+        "",
+        "  Press {gray-fg}Esc{/gray-fg} to go back.",
+      ];
+      this.detailBox.setContent(emptyLines.join("\n"));
+      this.detailBox.setLabel(" Getting Started ");
       return;
     }
 
@@ -600,7 +614,7 @@ export class WishlistOverlay {
           : item.text;
       const tags =
         item.tags.length > 0
-          ? ` {gray-fg}[${item.tags.join(", ")}]{/gray-fg}`
+          ? ` {gray-fg}[${item.tags.map((t) => escapeBlessedTags(t)).join(", ")}]{/gray-fg}`
           : "";
 
       listItems.push(
