@@ -41,6 +41,7 @@ import type { ChildProcess } from "node:child_process";
 import { isProcessRunning } from "./launcher.js";
 import { mkdirSync, appendFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { TokenCollector, type UsageRecord } from "./token-collector.js";
 
 // ---------------------------------------------------------------------------
 // Log directory name (configurable would be overkill here)
@@ -68,6 +69,10 @@ export interface OpenCodeEvent {
       input: number;
       output: number;
       reasoning: number;
+      cache?: {
+        read: number;
+        write: number;
+      };
     };
     state?: {
       status?: string;
@@ -297,9 +302,12 @@ export function formatEventForLog(event: OpenCodeEvent): string | null {
       const reason = event.part?.reason ?? "";
       const tokens = event.part?.tokens;
       if (reason === "stop") {
-        const tokStr = tokens
-          ? ` (${tokens.input}in/${tokens.output}out)`
-          : "";
+        let tokStr = "";
+        if (tokens) {
+          const parts = [`${tokens.input}in`, `${tokens.output}out`];
+          if (tokens.cache?.read) parts.push(`${tokens.cache.read}cache`);
+          tokStr = ` (${parts.join("/")})`;
+        }
         return `-- done${tokStr}`;
       }
       return null;
@@ -333,6 +341,8 @@ export interface MonitorCallbacks {
   onActivity?: (featureId: string, activity: string) => void;
   /** Called when an agent asks a human question via HITL */
   onQuestion?: (featureId: string, questionText: string) => void;
+  /** Called when token usage data is parsed from a step_finish event */
+  onUsage?: (featureId: string, record: UsageRecord) => void;
 }
 
 interface MonitoredProcess {
@@ -356,6 +366,8 @@ export class ProcessMonitor {
   private logDir: string;
   /** Per-agent activity log for TUI preview pane */
   public activityLogs: Map<string, ActivityEntry[]> = new Map();
+  /** Token usage collector — parses and accumulates usage from step_finish events */
+  public tokenCollector: TokenCollector;
 
   constructor(projectRoot: string, callbacks: MonitorCallbacks = {}) {
     this.callbacks = callbacks;
@@ -363,6 +375,9 @@ export class ProcessMonitor {
     if (!existsSync(this.logDir)) {
       mkdirSync(this.logDir, { recursive: true });
     }
+    this.tokenCollector = new TokenCollector((record) => {
+      this.callbacks.onUsage?.(record.task_id, record);
+    });
   }
 
   private pushActivity(featureId: string, text: string): void {
@@ -437,6 +452,9 @@ export class ProcessMonitor {
           if (logLine) {
             this.pushActivity(featureId, logLine);
           }
+
+          // Extract token usage from step_finish events
+          this.tokenCollector.ingestEvent(featureId, event);
 
           if (
             event.type === "step_finish" &&
@@ -562,3 +580,10 @@ export class ProcessMonitor {
     });
   }
 }
+
+// ---------------------------------------------------------------------------
+// Re-exports from token-collector for convenience
+// ---------------------------------------------------------------------------
+
+export { TokenCollector, type UsageRecord } from "./token-collector.js";
+export type { UsageSummary, UsageCallback } from "./token-collector.js";
