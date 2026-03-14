@@ -8,8 +8,7 @@ status: backlog
 completion: 0
 difficulty: easy
 priority: high
-depends_on:
-  - wave-detach-audit
+depends_on: []
 effort: PT30M
 started_at: null
 ended_at: null

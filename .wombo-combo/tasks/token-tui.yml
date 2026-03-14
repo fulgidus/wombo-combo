@@ -9,7 +9,7 @@ completion: 0
 difficulty: medium
 priority: medium
 depends_on:
-  - token-aggregate
+  - token-core
 effort: PT1H30M
 started_at: null
 ended_at: null
