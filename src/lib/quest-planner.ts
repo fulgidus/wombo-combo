@@ -19,6 +19,7 @@ import type { Quest } from "./quest.js";
 import type { Task, Priority, Difficulty } from "./tasks.js";
 import { createBlankTask, saveTaskToStore } from "./tasks.js";
 import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store.js";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,11 +72,11 @@ export interface PlanResult {
  * Generate the prompt for the quest planner agent.
  * Includes the quest goal, constraints, and a codebase outline.
  */
-export function generatePlannerPrompt(
+export async function generatePlannerPrompt(
   quest: Quest,
   projectRoot: string,
   config: WomboConfig
-): string {
+): Promise<string> {
   const sections: string[] = [];
 
   sections.push(`# Plan Quest: ${quest.title}`);
@@ -103,14 +104,20 @@ export function generatePlannerPrompt(
     }
   }
 
-  // Codebase outline
+  // Codebase outline — use scout index for richer information
   sections.push(`\n## Codebase Outline\n`);
   sections.push(
-    "Below is the directory tree of the project. Use your tools to explore " +
+    "Below is the project structure with exported symbol counts. Use your tools to explore " +
     "specific files in depth.\n"
   );
   sections.push("```");
-  sections.push(generateDirectoryTree(projectRoot, 3));
+  try {
+    const scoutIndex = await buildScoutIndex(projectRoot);
+    sections.push(formatScoutTree(scoutIndex, { maxDepth: 4, showSymbolCounts: true, maxLines: 150 }));
+  } catch {
+    // Fall back to basic directory tree if scout fails
+    sections.push(generateDirectoryTree(projectRoot, 3));
+  }
   sections.push("```");
 
   // Existing knowledge
@@ -545,7 +552,7 @@ export async function runQuestPlanner(
 
   // Generate the prompt
   onProgress("Generating planner prompt...");
-  const prompt = generatePlannerPrompt(quest, projectRoot, config);
+  const prompt = await generatePlannerPrompt(quest, projectRoot, config);
 
   // Launch the planner agent
   onProgress("Launching quest planner agent...");
