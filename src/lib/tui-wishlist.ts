@@ -18,11 +18,12 @@
  *      │                          │ Tags: auth, ux              │
  *      │                          │ Created: 2025-01-15         │
  *      ├──────────────────────────┴────────────────────────────┤
- *      │ E:errand  G:genesis  D:delete  Esc:back  Q:quit      │
+ *      │ E:errand  P:quest  G:genesis  D:delete  Esc:back  Q:quit│
  *      └───────────────────────────────────────────────────────┘
  *
  *    Keybinds:
  *      E         — promote selected item to errand (pre-fill description)
+ *      P         — promote selected item to quest (pre-fill goal)
  *      G         — promote selected item to genesis (pre-fill vision)
  *      D / Del   — delete selected item
  *      Esc / Q   — go back to quest picker
@@ -62,6 +63,7 @@ import { loadWishlist, addItem, deleteItem } from "./wishlist-store.js";
 export type WishlistAction =
   | { type: "promote-errand"; item: WishlistItem }
   | { type: "promote-genesis"; item: WishlistItem }
+  | { type: "promote-quest"; item: WishlistItem }
   | { type: "back" }
   | { type: "quit" };
 
@@ -69,6 +71,7 @@ export interface WishlistPickerOptions {
   projectRoot: string;
   onPromoteErrand: (item: WishlistItem) => void;
   onPromoteGenesis: (item: WishlistItem) => void;
+  onPromoteQuest: (item: WishlistItem) => void;
   onBack: () => void;
   onQuit: () => void;
 }
@@ -108,6 +111,7 @@ export class WishlistPicker {
   private projectRoot: string;
   private onPromoteErrand: (item: WishlistItem) => void;
   private onPromoteGenesis: (item: WishlistItem) => void;
+  private onPromoteQuest: (item: WishlistItem) => void;
   private onBack: () => void;
   private onQuit: () => void;
 
@@ -118,6 +122,7 @@ export class WishlistPicker {
     this.projectRoot = opts.projectRoot;
     this.onPromoteErrand = opts.onPromoteErrand;
     this.onPromoteGenesis = opts.onPromoteGenesis;
+    this.onPromoteQuest = opts.onPromoteQuest;
     this.onBack = opts.onBack;
     this.onQuit = opts.onQuit;
 
@@ -264,6 +269,11 @@ export class WishlistPicker {
       this.promoteToGenesis();
     });
 
+    // P -- promote to quest (create quest with goal pre-filled)
+    this.screen.key(["p"], () => {
+      this.promoteToQuest();
+    });
+
     // D / Delete -- delete item
     this.screen.key(["d", "delete"], () => {
       this.deleteSelected();
@@ -288,6 +298,14 @@ export class WishlistPicker {
 
     this.destroy();
     this.onPromoteGenesis(item);
+  }
+
+  private promoteToQuest(): void {
+    const item = this.items[this.selectedIndex];
+    if (!item) return;
+
+    this.destroy();
+    this.onPromoteQuest(item);
   }
 
   private deleteSelected(): void {
@@ -320,7 +338,7 @@ export class WishlistPicker {
     let line1 = ` {bold}wombo-combo{/bold} {yellow-fg}Wishlist{/yellow-fg}`;
     line1 += `  {gray-fg}|{/gray-fg}  {white-fg}${count}{/white-fg} item${count !== 1 ? "s" : ""}`;
 
-    let line2 = ` {gray-fg}Promote items to errands or genesis quests{/gray-fg}`;
+    let line2 = ` {gray-fg}Promote items to errands, quests, or genesis{/gray-fg}`;
 
     this.headerBox.setContent(`${line1}\n${line2}`);
   }
@@ -420,6 +438,7 @@ export class WishlistPicker {
     // Promotion hints
     lines.push("{bold}Promote:{/bold}");
     lines.push("  {green-fg}E{/green-fg} \u2192 Create errand from this item");
+    lines.push("  {cyan-fg}P{/cyan-fg} \u2192 Create quest (goal pre-filled)");
     lines.push("  {magenta-fg}G{/magenta-fg} \u2192 Use as genesis vision");
 
     this.detailBox.setContent(lines.join("\n"));
@@ -428,8 +447,9 @@ export class WishlistPicker {
 
   private refreshStatusBar(): void {
     let line1 = ` {bold}Keys:{/bold}`;
-    line1 += `  {gray-fg}E{/gray-fg} promote to errand`;
-    line1 += `  {gray-fg}G{/gray-fg} promote to genesis`;
+    line1 += `  {gray-fg}E{/gray-fg} errand`;
+    line1 += `  {gray-fg}P{/gray-fg} quest`;
+    line1 += `  {gray-fg}G{/gray-fg} genesis`;
     line1 += `  {gray-fg}D{/gray-fg} delete`;
     line1 += `  {gray-fg}Esc{/gray-fg} back`;
     line1 += `  {gray-fg}Q{/gray-fg} quit`;

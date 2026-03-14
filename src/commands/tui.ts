@@ -59,6 +59,7 @@ import { WishlistPicker } from "../lib/tui-wishlist.js";
 import type { WishlistAction } from "../lib/tui-wishlist.js";
 import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store.js";
 import type { WishlistItem } from "../lib/wishlist-store.js";
+import { runQuestWizardAsync } from "../lib/tui-quest-wizard.js";
 import { cmdLaunch } from "./launch.js";
 import type { LaunchCommandOptions } from "./launch.js";
 import { cmdResume } from "./resume.js";
@@ -780,6 +781,29 @@ async function handleWishlistFlow(
     await maybeDeleteWishlistItem(projectRoot, item);
     return;
   }
+
+  if (action.type === "promote-quest") {
+    const item = action.item;
+
+    // Run the quest creation wizard with the wishlist text as the goal
+    const quest = await runQuestWizardAsync({
+      projectRoot,
+      baseBranch: config.baseBranch,
+      prefill: { goal: item.text },
+    });
+
+    if (!quest) {
+      // User cancelled the wizard
+      return;
+    }
+
+    // Mandatory auto-plan: run the quest planner immediately
+    await handlePlanFlow(projectRoot, config, opts, quest.id);
+
+    // Offer to delete the wishlist item
+    await maybeDeleteWishlistItem(projectRoot, item);
+    return;
+  }
 }
 
 /**
@@ -797,6 +821,10 @@ function showWishlistPicker(projectRoot: string): Promise<WishlistAction> {
 
       onPromoteGenesis: (item) => {
         resolve({ type: "promote-genesis", item });
+      },
+
+      onPromoteQuest: (item) => {
+        resolve({ type: "promote-quest", item });
       },
 
       onBack: () => {
