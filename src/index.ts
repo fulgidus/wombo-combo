@@ -174,6 +174,8 @@ export interface CLIArgs {
   // Quest-specific options
   goal?: string;
   hitlMode?: QuestHitlMode;
+  /** Quest ID to scope a launch to (--quest <id>) */
+  questId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -413,6 +415,9 @@ export function parseArgs(argv: string[]): CLIArgs {
       case "--hitl":
         result.hitlMode = requireValue(arg) as QuestHitlMode;
         break;
+      case "--quest":
+        result.questId = requireValue(arg);
+        break;
 
       // --- Positional (feature-id, title for add, etc.) ---
       default:
@@ -502,6 +507,7 @@ Launch Options:
   --skip-tests             Skip running tests during TDD verification
   --strict-tdd             Strict TDD: fail verification if new files are missing tests
   --agent <name>           Override agent definition for all launched tasks (name without .md extension)
+  --quest <id>             Scope launch to a quest (uses quest branch as base, applies quest constraints)
 
 General:
   --force                  Force overwrite (e.g., for init) / skip prompts (e.g., for upgrade)
@@ -761,6 +767,7 @@ async function main(): Promise<void> {
         autoPush: args.autoPush,
         outputFmt: args.outputFmt,
         agent: args.agent,
+        questId: args.questId,
       });
       break;
 

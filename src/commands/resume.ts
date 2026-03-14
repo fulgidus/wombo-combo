@@ -32,7 +32,7 @@ import {
   removeWorktree,
   log as wtLog,
 } from "../lib/worktree.js";
-import { generatePrompt } from "../lib/prompt.js";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
 import {
   launchInteractive,
   isProcessRunning,
@@ -66,6 +66,8 @@ import {
 } from "../lib/agent-registry.js";
 import { patchImportedAgent } from "../lib/templates.js";
 import { writeAgentToWorktree } from "../lib/agent-registry.js";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
+import { resolveQuestConfig } from "../lib/quest.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,7 +91,8 @@ export interface ResumeCommandOptions {
 // ---------------------------------------------------------------------------
 
 export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
-  const { projectRoot, config } = opts;
+  const { projectRoot } = opts;
+  let { config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
   const state = loadState(projectRoot);
@@ -100,6 +103,28 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
   if (fmt === "text") {
     console.log(`\n--- wombo-combo: Resume ${state.wave_id} ---\n`);
+  }
+
+  // Reconstruct quest context from wave state (if quest-scoped)
+  let questContext: QuestPromptContext | undefined;
+  if (state.quest_id) {
+    const quest = loadQuest(projectRoot, state.quest_id);
+    if (quest) {
+      config = resolveQuestConfig(config, quest);
+      const knowledge = loadQuestKnowledge(projectRoot, state.quest_id);
+      questContext = {
+        questId: quest.id,
+        goal: quest.goal,
+        addedConstraints: quest.constraints.add ?? [],
+        addedForbidden: quest.constraints.ban ?? [],
+        knowledge,
+      };
+      if (fmt === "text") {
+        console.log(`Quest: ${quest.title} (${quest.id})\n`);
+      }
+    } else if (fmt === "text") {
+      console.warn(`Warning: wave references quest "${state.quest_id}" but it was not found.\n`);
+    }
   }
 
   // Load feature data for prompt generation
@@ -411,7 +436,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             }
           }
 
-          const prompt = generatePrompt(feature, state.base_branch, config);
+          const prompt = generatePrompt(feature, state.base_branch, config, questContext);
           const result = launchInteractive({
             worktreePath: agent.worktree,
             featureId: feature.id,
@@ -465,10 +490,10 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
         const agent = state.agents.find((a) => a.feature_id === featureId)!;
         const feature = featureMap.get(featureId)!;
         handleBuildVerification(projectRoot, state, agent, feature, config, model, monitor)
-          .then(() => launchAllReady(projectRoot, state, featureMap, monitor, config, model))
+          .then(() => launchAllReady(projectRoot, state, featureMap, monitor, config, model, undefined, questContext))
           .catch((err) => {
             wtLog(featureId, `BUILD VERIFICATION UNHANDLED ERROR: ${err.message}`);
-            launchAllReady(projectRoot, state, featureMap, monitor, config, model);
+            launchAllReady(projectRoot, state, featureMap, monitor, config, model, undefined, questContext);
           });
       },
       onError: (featureId, error) => {
@@ -498,7 +523,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             saveState(projectRoot, state);
           }
         }
-        launchAllReady(projectRoot, state, featureMap, monitor, config, model);
+        launchAllReady(projectRoot, state, featureMap, monitor, config, model, undefined, questContext);
       },
       onActivity: (featureId, activity) => {
         updateAgent(state, featureId, {
@@ -529,7 +554,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
       toLaunchNow.map((agent) => {
         const feature = featureMap.get(agent.feature_id);
         if (!feature) return Promise.resolve();
-        return launchSingleHeadless(projectRoot, state, agent, feature, monitor, config, model, agentResolutions);
+        return launchSingleHeadless(projectRoot, state, agent, feature, monitor, config, model, agentResolutions, questContext);
       })
     );
 
@@ -608,7 +633,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
               saveState(projectRoot, state);
             }
 
-            launchAllReady(projectRoot, state, featureMap, monitor, config, model);
+            launchAllReady(projectRoot, state, featureMap, monitor, config, model, undefined, questContext);
             continue;
           }
           // Check if the agent actually made any commits
@@ -643,7 +668,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
               wtLog(agent.feature_id, `POLL VERIFY ERROR: ${err.message}`);
             }
           }
-          launchAllReady(projectRoot, state, featureMap, monitor, config, model);
+          launchAllReady(projectRoot, state, featureMap, monitor, config, model, undefined, questContext);
         }
       }
 
