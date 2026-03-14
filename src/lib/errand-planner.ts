@@ -28,6 +28,20 @@ import type { Task } from "./tasks.js";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Structured errand specification from the multi-step wizard. */
+export interface ErrandSpec {
+  /** What needs to be done (required). */
+  description: string;
+  /** What areas/files should this focus on (optional). */
+  scope?: string;
+  /** Key objectives or acceptance criteria (optional). */
+  objectives?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Prompt Generation
 // ---------------------------------------------------------------------------
 
@@ -36,7 +50,7 @@ import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
  * Lighter than a full quest prompt -- no quest context, no branches, no HITL.
  */
 async function generateErrandPrompt(
-  description: string,
+  spec: ErrandSpec,
   projectRoot: string,
   config: WomboConfig
 ): Promise<string> {
@@ -52,8 +66,31 @@ async function generateErrandPrompt(
   sections.push(``);
   sections.push(`## Request`);
   sections.push(``);
-  sections.push(description.trim());
+  sections.push(spec.description.trim());
   sections.push(``);
+
+  if (spec.scope) {
+    sections.push(`## Scope`);
+    sections.push(``);
+    sections.push(
+      `Focus the work on these areas. Do NOT modify files or systems outside ` +
+      `this scope unless strictly necessary:`
+    );
+    sections.push(``);
+    sections.push(spec.scope.trim());
+    sections.push(``);
+  }
+
+  if (spec.objectives) {
+    sections.push(`## Objectives / Acceptance Criteria`);
+    sections.push(``);
+    sections.push(
+      `The tasks you produce should collectively satisfy these objectives:`
+    );
+    sections.push(``);
+    sections.push(spec.objectives.trim());
+    sections.push(``);
+  }
 
   // Codebase outline
   sections.push(`## Codebase Outline`);
@@ -129,7 +166,7 @@ async function generateErrandPrompt(
  * specific prompt, parse its YAML output, validate, and return the result.
  */
 export async function runErrandPlanner(
-  description: string,
+  spec: ErrandSpec,
   projectRoot: string,
   config: WomboConfig,
   opts?: {
@@ -141,7 +178,7 @@ export async function runErrandPlanner(
 
   // Generate the prompt
   onProgress("Generating errand prompt...");
-  const prompt = await generateErrandPrompt(description, projectRoot, config);
+  const prompt = await generateErrandPrompt(spec, projectRoot, config);
 
   // Launch the planner agent (reuse quest-planner-agent definition)
   onProgress("Launching errand planner...");
