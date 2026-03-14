@@ -37,6 +37,8 @@ import {
   muxAttach,
   muxDisplayName,
 } from "./multiplexer.js";
+import { QuestionPopup } from "./tui-question-popup.js";
+import type { HitlQuestion } from "./hitl-channel.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +56,8 @@ export interface TUIOptions {
   config: WomboConfig;
   /** Callback to retry a failed/stuck agent from the TUI. */
   onRetry?: (featureId: string) => void;
+  /** Callback when the user answers an HITL question. */
+  onAnswer?: (agentId: string, questionId: string, answerText: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +142,7 @@ export class WomboTUI {
   private monitor: ProcessMonitor;
   private onQuit: () => void;
   private onRetry?: (featureId: string) => void;
+  private onAnswer?: (agentId: string, questionId: string, answerText: string) => void;
   private interactive: boolean;
   private projectRoot: string;
   private config: WomboConfig;
@@ -151,6 +156,11 @@ export class WomboTUI {
   private waveComplete: boolean = false;
   private waveCompleteResolve: (() => void) | null = null;
 
+  /** Pending HITL questions from agents */
+  private pendingQuestions: HitlQuestion[] = [];
+  /** Active question popup (null when closed) */
+  private questionPopup: QuestionPopup | null = null;
+
   /** Saved originals for console interception */
   private origConsoleLog: typeof console.log = console.log;
   private origConsoleError: typeof console.error = console.error;
@@ -163,6 +173,7 @@ export class WomboTUI {
     this.monitor = opts.monitor;
     this.onQuit = opts.onQuit;
     this.onRetry = opts.onRetry;
+    this.onAnswer = opts.onAnswer;
     this.interactive = opts.interactive ?? false;
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
@@ -335,9 +346,19 @@ export class WomboTUI {
       this.retrySelected();
     });
 
-    // Escape — close build log or log file overlay
+    // h — open HITL question popup
+    this.screen.key(["h"], () => {
+      this.openQuestionPopup();
+    });
+
+    // Escape — close build log, log file overlay, or question popup
     this.screen.key(["escape"], () => {
-      if (this.showingBuildLog) {
+      if (this.questionPopup && !this.questionPopup.isDestroyed()) {
+        this.questionPopup.close();
+        this.questionPopup = null;
+        this.agentList.focus();
+        this.screen.render();
+      } else if (this.showingBuildLog) {
         this.showingBuildLog = false;
         this.buildLogBox.hide();
         this.agentList.focus();
@@ -442,6 +463,67 @@ export class WomboTUI {
     return new Promise<void>((resolve) => {
       this.waveCompleteResolve = resolve;
     });
+  }
+
+  /**
+   * Update pending HITL questions. Called from the monitoring loop.
+   * If the question popup is open, it gets live-updated too.
+   */
+  setPendingQuestions(questions: HitlQuestion[]): void {
+    this.pendingQuestions = questions;
+    if (this.questionPopup && !this.questionPopup.isDestroyed()) {
+      this.questionPopup.updateQuestions(questions);
+    }
+    // Status bar will pick up the badge on next refresh cycle
+  }
+
+  /**
+   * Open the HITL question popup modal.
+   */
+  private openQuestionPopup(): void {
+    // Don't open if already open
+    if (this.questionPopup && !this.questionPopup.isDestroyed()) return;
+
+    // Don't open if there are no pending questions
+    if (this.pendingQuestions.length === 0) {
+      // Flash a message in the preview
+      const agent = this.state.agents[this.selectedIndex];
+      if (agent) {
+        const logs = this.monitor.activityLogs.get(agent.feature_id);
+        if (logs) {
+          logs.push({
+            timestamp: new Date().toISOString().slice(11, 19),
+            text: `-- No pending HITL questions`,
+          });
+        }
+        this.refreshPreview();
+        this.screen.render();
+      }
+      return;
+    }
+
+    this.questionPopup = new QuestionPopup(
+      this.screen,
+      [...this.pendingQuestions], // copy so popup can mutate internally
+      {
+        onAnswer: (agentId, questionId, answerText) => {
+          // Forward to the external callback (which calls submitAnswer)
+          if (this.onAnswer) {
+            this.onAnswer(agentId, questionId, answerText);
+          }
+          // Remove from our pending list
+          this.pendingQuestions = this.pendingQuestions.filter(
+            (q) => !(q.agentId === agentId && q.id === questionId)
+          );
+        },
+        onClose: () => {
+          this.questionPopup = null;
+          this.agentList.focus();
+          this.refreshStatusBar();
+          this.screen.render();
+        },
+      }
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -634,11 +716,17 @@ export class WomboTUI {
       ? "{gray-fg}Enter{/gray-fg} attach session"
       : "{gray-fg}Enter{/gray-fg} view log";
 
+    // HITL badge — show only when there are pending questions
+    const hitlBadge =
+      this.pendingQuestions.length > 0
+        ? `  {bold}{yellow-fg}? ${this.pendingQuestions.length} pending{/yellow-fg}{/bold}  {gray-fg}H{/gray-fg} answer`
+        : "";
+
     let line1: string;
     if (this.waveComplete) {
-      line1 = ` {bold}{green-fg}Wave complete.{/green-fg}{/bold}  ${enterHint}  {gray-fg}R{/gray-fg} retry  {gray-fg}B{/gray-fg} build log  {gray-fg}P{/gray-fg} ${scrollStatus}  {bold}{yellow-fg}Q{/yellow-fg} exit{/bold}`;
+      line1 = ` {bold}{green-fg}Wave complete.{/green-fg}{/bold}  ${enterHint}  {gray-fg}R{/gray-fg} retry  {gray-fg}B{/gray-fg} build log  {gray-fg}P{/gray-fg} ${scrollStatus}${hitlBadge}  {bold}{yellow-fg}Q{/yellow-fg} exit{/bold}`;
     } else {
-      line1 = ` {bold}Keys:{/bold} {gray-fg}↑↓{/gray-fg} navigate  ${enterHint}  {gray-fg}R{/gray-fg} retry  {gray-fg}B{/gray-fg} build log  {gray-fg}P{/gray-fg} ${scrollStatus}  {gray-fg}Q{/gray-fg} quit`;
+      line1 = ` {bold}Keys:{/bold} {gray-fg}\u2191\u2193{/gray-fg} navigate  ${enterHint}  {gray-fg}R{/gray-fg} retry  {gray-fg}B{/gray-fg} build log  {gray-fg}P{/gray-fg} ${scrollStatus}${hitlBadge}  {gray-fg}Q{/gray-fg} quit`;
     }
     const line2 = ` ${agentInfo}`;
 
@@ -921,6 +1009,7 @@ export class WomboTUI {
     this.showingBuildLog = false;
     this.showingLogFile = false;
     this.logFileBox = null;
+    this.questionPopup = null;
     this.interceptConsole();
     this.bindKeys();
     this.refresh();
