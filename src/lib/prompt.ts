@@ -14,16 +14,42 @@ import type { WomboConfig } from "../config.js";
 import { isPortlessAvailable, portlessUrl } from "./portless.js";
 
 // ---------------------------------------------------------------------------
+// Quest Context (optional — passed when launching within a quest)
+// ---------------------------------------------------------------------------
+
+/**
+ * Contextual information about the quest a task belongs to.
+ * Used to enrich the agent prompt with quest-level goals and constraints.
+ */
+export interface QuestPromptContext {
+  /** Quest ID */
+  questId: string;
+  /** Human-readable quest goal */
+  goal: string;
+  /** Extra constraints from the quest (already merged into the task) */
+  addedConstraints: string[];
+  /** Extra forbidden items from the quest (already merged into the task) */
+  addedForbidden: string[];
+  /** Quest knowledge document (shared architectural notes, API contracts, etc.) */
+  knowledge: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Prompt Generation
 // ---------------------------------------------------------------------------
 
 /**
  * Generate the full prompt for an autonomous agent working on a feature.
+ *
+ * @param quest - Optional quest context. When provided, injects a Quest Context
+ *                section and knowledge into the prompt so agents understand
+ *                the broader mission they are contributing to.
  */
 export function generatePrompt(
   feature: Feature,
   baseBranch: string,
-  config: WomboConfig
+  config: WomboConfig,
+  quest?: QuestPromptContext
 ): string {
   const sections: string[] = [];
 
@@ -92,6 +118,43 @@ export function generatePrompt(
     sections.push(`\n## Planning Notes\n`);
     for (const n of feature.notes) {
       sections.push(`- ${n}`);
+    }
+  }
+
+  // Quest context — injected when this task is part of a quest
+  if (quest) {
+    sections.push(`\n## Quest Context\n`);
+    sections.push(
+      `This task is part of **Quest \`${quest.questId}\`**.\n`
+    );
+    sections.push(`**Quest Goal:** ${quest.goal}\n`);
+    sections.push(
+      `Your work on this task contributes to the quest's overall goal. ` +
+      `Keep the quest goal in mind when making design decisions.\n`
+    );
+    if (quest.addedConstraints.length > 0) {
+      sections.push(`**Quest-level constraints** (already included in Constraints above):\n`);
+      for (const c of quest.addedConstraints) {
+        sections.push(`- ${c}`);
+      }
+      sections.push("");
+    }
+    if (quest.addedForbidden.length > 0) {
+      sections.push(`**Quest-level forbidden items** (already included in Forbidden above):\n`);
+      for (const f of quest.addedForbidden) {
+        sections.push(`- ${f}`);
+      }
+      sections.push("");
+    }
+    if (quest.knowledge) {
+      sections.push(`### Shared Knowledge\n`);
+      sections.push(
+        `The following knowledge document contains architectural decisions, ` +
+        `API contracts, and shared context for this quest:\n`
+      );
+      sections.push("---");
+      sections.push(quest.knowledge.trim());
+      sections.push("---\n");
     }
   }
 
@@ -244,12 +307,16 @@ export function generatePrompt(
  *
  * The agent is launched in the feature worktree AFTER `git merge <baseBranch>`
  * has been run there, leaving conflict markers in the working tree.
+ *
+ * @param quest - Optional quest context. When provided, adds quest information
+ *                to help the conflict resolver understand the broader mission.
  */
 export function generateConflictResolutionPrompt(
   feature: Feature,
   baseBranch: string,
   mergeError: string,
-  config: WomboConfig
+  config: WomboConfig,
+  quest?: QuestPromptContext
 ): string {
   const sections: string[] = [];
 
@@ -272,6 +339,18 @@ export function generateConflictResolutionPrompt(
 
   sections.push(`\n## Feature Description\n`);
   sections.push(feature.description.trim());
+
+  // Quest context (if task is part of a quest)
+  if (quest) {
+    sections.push(`\n## Quest Context\n`);
+    sections.push(
+      `This task is part of **Quest \`${quest.questId}\`** with goal: ${quest.goal}\n`
+    );
+    sections.push(
+      `Keep the quest goal in mind when resolving conflicts — prefer resolutions ` +
+      `that align with the quest's intent.`
+    );
+  }
 
   sections.push(`\n## Your Task\n`);
   sections.push("1. Find all files with conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)");

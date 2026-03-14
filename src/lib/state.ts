@@ -75,6 +75,8 @@ export interface WaveState {
   agents: AgentState[];
   /** Dependency-aware scheduling plan (null if no dependencies exist) */
   schedule_plan: SerializedSchedulePlan | null;
+  /** Quest ID this wave belongs to (null if not quest-scoped) */
+  quest_id: string | null;
 }
 
 /**
@@ -166,6 +168,7 @@ export function createWaveState(opts: {
   maxConcurrent: number;
   model: string | null;
   interactive: boolean;
+  questId?: string | null;
 }): WaveState {
   return {
     wave_id: generateWaveId(),
@@ -177,6 +180,7 @@ export function createWaveState(opts: {
     interactive: opts.interactive,
     agents: [],
     schedule_plan: null,
+    quest_id: opts.questId ?? null,
   };
 }
 

@@ -49,7 +49,7 @@ import {
   removeWorktree,
   log as wtLog,
 } from "../lib/worktree.js";
-import { generatePrompt, generateConflictResolutionPrompt } from "../lib/prompt.js";
+import { generatePrompt, generateConflictResolutionPrompt, type QuestPromptContext } from "../lib/prompt.js";
 import {
   launchHeadless,
   retryHeadless,
@@ -98,10 +98,37 @@ import {
   tuiPreflightConfirm,
   consolePreflightConfirm,
 } from "../lib/preflight.js";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
+import { resolveQuestConfig, applyQuestConstraintsToTask } from "../lib/quest.js";
+import { questBranchExists, createQuestBranch } from "../lib/worktree.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+/**
+ * Build a QuestPromptContext from a wave's quest_id.
+ * Returns undefined if the wave is not quest-scoped.
+ * Used by internal functions that can't receive questContext from their caller.
+ */
+function buildQuestContext(
+  projectRoot: string,
+  questId: string | null
+): QuestPromptContext | undefined {
+  if (!questId) return undefined;
+
+  const quest = loadQuest(projectRoot, questId);
+  if (!quest) return undefined;
+
+  const knowledge = loadQuestKnowledge(projectRoot, questId);
+  return {
+    questId: quest.id,
+    goal: quest.goal,
+    addedConstraints: quest.constraints.add ?? [],
+    addedForbidden: quest.constraints.ban ?? [],
+    knowledge,
+  };
+}
 
 /**
  * Delay (ms) between sequential agent launches to avoid SQLite race conditions.
@@ -136,6 +163,9 @@ export interface LaunchCommandOptions {
   // Agent selection
   /** CLI override: use this local agent definition for all launched tasks */
   agent?: string;
+  // Quest scoping
+  /** Quest ID to scope this launch to (uses quest branch as base) */
+  questId?: string;
   // Output
   outputFmt?: OutputFormat;
 }
@@ -209,7 +239,8 @@ export async function launchSingleHeadless(
   monitor: ProcessMonitor,
   config: WomboConfig,
   model?: string,
-  agentResolutions?: Map<string, AgentResolution>
+  agentResolutions?: Map<string, AgentResolution>,
+  questContext?: QuestPromptContext
 ): Promise<void> {
   updateAgent(state, agent.feature_id, {
     status: "installing",
@@ -256,7 +287,7 @@ export async function launchSingleHeadless(
     }
 
     // Generate prompt
-    const prompt = generatePrompt(feature, state.base_branch, config);
+    const prompt = generatePrompt(feature, state.base_branch, config, questContext);
 
     // Write specialized agent to worktree if applicable
     const resolution = agentResolutions?.get(feature.id);
@@ -645,7 +676,8 @@ async function launchResolverAndRetryMerge(
       feature,
       state.base_branch,
       mergeError,
-      config
+      config,
+      buildQuestContext(projectRoot, state.quest_id)
     );
 
     const attemptLabel = maxResolverAttempts > 1
@@ -815,7 +847,8 @@ export async function launchNextQueued(
   monitor: ProcessMonitor,
   config: WomboConfig,
   model?: string,
-  agentResolutions?: Map<string, AgentResolution>
+  agentResolutions?: Map<string, AgentResolution>,
+  questContext?: QuestPromptContext
 ): Promise<void> {
   const active = activeAgents(state);
   const ready = readyToLaunchAgents(state);
@@ -824,7 +857,7 @@ export async function launchNextQueued(
     const next = ready[0];
     const feature = featureMap.get(next.feature_id);
     if (feature) {
-      await launchSingleHeadless(projectRoot, state, next, feature, monitor, config, model, agentResolutions);
+      await launchSingleHeadless(projectRoot, state, next, feature, monitor, config, model, agentResolutions, questContext);
     }
   }
 }
@@ -845,7 +878,8 @@ export async function launchAllReady(
   monitor: ProcessMonitor,
   config: WomboConfig,
   model?: string,
-  agentResolutions?: Map<string, AgentResolution>
+  agentResolutions?: Map<string, AgentResolution>,
+  questContext?: QuestPromptContext
 ): Promise<void> {
   const active = activeAgents(state);
   const ready = readyToLaunchAgents(state);
@@ -872,7 +906,7 @@ export async function launchAllReady(
       }
     }
 
-    await launchSingleHeadless(projectRoot, state, next, feature, monitor, config, model, agentResolutions);
+    await launchSingleHeadless(projectRoot, state, next, feature, monitor, config, model, agentResolutions, questContext);
     // Stagger between launches to avoid SQLite race conditions
     if (i < toLaunch.length - 1) {
       await new Promise((r) => setTimeout(r, LAUNCH_STAGGER_MS));
@@ -946,7 +980,8 @@ async function launchWaveHeadless(
   state: WaveState,
   features: Feature[],
   opts: LaunchCommandOptions,
-  agentResolutions?: Map<string, AgentResolution>
+  agentResolutions?: Map<string, AgentResolution>,
+  questContext?: QuestPromptContext
 ): Promise<void> {
   const { config, model } = opts;
   const fmt = opts.outputFmt ?? "text";
@@ -970,12 +1005,12 @@ async function launchWaveHeadless(
         .then(() => {
           // After verification/merge, try to launch dependency-ready agents
           // Multiple queued agents may now be unblocked
-          launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions)
+          launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions, questContext)
             .catch((err) => wtLog(featureId, `LAUNCH ERROR: ${err.message}`));
         })
         .catch((err) => {
           wtLog(featureId, `BUILD VERIFICATION UNHANDLED ERROR: ${err.message}`);
-          launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions)
+          launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions, questContext)
             .catch((err2) => wtLog(featureId, `LAUNCH ERROR: ${err2.message}`));
         });
     },
@@ -1008,7 +1043,7 @@ async function launchWaveHeadless(
       }
 
       // Try to launch dependency-ready agents
-      launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions)
+      launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions, questContext)
         .catch((err) => wtLog(featureId, `LAUNCH ERROR: ${err.message}`));
     },
     onOutput: (_featureId, _data) => {
@@ -1097,7 +1132,8 @@ async function launchWaveHeadless(
       monitor,
       config,
       model,
-      agentResolutions
+      agentResolutions,
+      questContext
     );
     // Brief delay between spawns so each agent's DB migration settles
     if (i < tolaunch.length - 1) {
@@ -1169,7 +1205,7 @@ async function launchWaveHeadless(
             wtLog(agent.feature_id, `POLL VERIFY ERROR: ${err.message}`);
           }
         }
-        await launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions);
+        await launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions, questContext);
       }
     }
 
@@ -1211,7 +1247,7 @@ async function launchWaveHeadless(
     }
 
     // After recovering stuck agents, try launching any that are now ready
-    await launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions);
+    await launchAllReady(projectRoot, state, featureMap, monitor, config, model, agentResolutions, questContext);
 
     // Persist state periodically
     saveState(projectRoot, state);
@@ -1285,7 +1321,8 @@ async function launchWaveInteractive(
   state: WaveState,
   features: Feature[],
   opts: LaunchCommandOptions,
-  agentResolutions?: Map<string, AgentResolution>
+  agentResolutions?: Map<string, AgentResolution>,
+  questContext?: QuestPromptContext
 ): Promise<void> {
   const { config, model } = opts;
   const fmt = opts.outputFmt ?? "text";
@@ -1319,7 +1356,8 @@ async function launchWaveInteractive(
         const prompt = generatePrompt(
           featureMap.get(agent.feature_id)!,
           state.base_branch,
-          config
+          config,
+          questContext
         );
 
         // Write specialized agent to worktree if applicable
@@ -1387,13 +1425,70 @@ async function launchWaveInteractive(
 // ---------------------------------------------------------------------------
 
 export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
-  const { projectRoot, config } = opts;
+  const { projectRoot } = opts;
+  let { config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
   if (fmt === "text") console.log("\n--- wombo-combo: Launch ---\n");
 
   // Ensure agent definition exists — reinstall from template if missing
   ensureAgentDefinition(projectRoot, config, opts.agent);
+
+  // -------------------------------------------------------------------------
+  // Quest resolution — if --quest was specified, scope the wave to that quest
+  // -------------------------------------------------------------------------
+  let questContext: QuestPromptContext | undefined;
+  let questId: string | null = opts.questId ?? null;
+
+  if (questId) {
+    const quest = loadQuest(projectRoot, questId);
+    if (!quest) {
+      outputError(fmt, `Quest "${questId}" not found. Use 'woco quest list' to see available quests.`);
+      return; // unreachable
+    }
+
+    if (quest.status !== "active") {
+      outputError(fmt, `Quest "${questId}" is in status "${quest.status}" — only active quests can be launched. Use 'woco quest activate ${questId}' first.`);
+      return; // unreachable
+    }
+
+    // Ensure the quest branch exists (create from baseBranch if needed)
+    if (!questBranchExists(projectRoot, questId)) {
+      if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
+      createQuestBranch(projectRoot, questId, quest.baseBranch);
+    }
+
+    // Override baseBranch — task branches will fork from the quest branch
+    opts.baseBranch = quest.branch;
+    if (fmt === "text") {
+      console.log(`Quest: ${quest.title} (${questId})`);
+      console.log(`  Base branch overridden to: ${quest.branch}`);
+    }
+
+    // Apply quest config overrides (layered on top of project config)
+    config = resolveQuestConfig(config, quest);
+
+    // Build quest prompt context for agent prompts
+    const knowledge = loadQuestKnowledge(projectRoot, questId);
+    questContext = {
+      questId: quest.id,
+      goal: quest.goal,
+      addedConstraints: quest.constraints.add ?? [],
+      addedForbidden: quest.constraints.ban ?? [],
+      knowledge,
+    };
+
+    if (fmt === "text") {
+      const constraintCount = questContext.addedConstraints.length + questContext.addedForbidden.length;
+      if (constraintCount > 0) {
+        console.log(`  Quest constraints: ${questContext.addedConstraints.length} added, ${questContext.addedForbidden.length} banned`);
+      }
+      if (knowledge) {
+        console.log(`  Quest knowledge: loaded (${knowledge.length} bytes)`);
+      }
+      console.log("");
+    }
+  }
 
   // Ensure portless proxy is running (if enabled) to prevent port collisions
   if (config.portless.enabled) {
@@ -1490,7 +1585,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   if (opts.allReady) selOpts.allReady = true;
 
   // Select features
-  const selected = selectFeatures(data, selOpts);
+  let selected = selectFeatures(data, selOpts);
 
   if (selected.length === 0) {
     // Build a context-aware message based on which flags were passed
@@ -1512,6 +1607,12 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     }
 
     outputError(fmt, msg);
+  }
+
+  // Apply quest constraints to selected tasks (add/ban layered on each task)
+  if (questId && questContext) {
+    const quest = loadQuest(projectRoot, questId)!;
+    selected = selected.map((f) => applyQuestConstraintsToTask(f, quest));
   }
 
   // Show selection
@@ -1639,6 +1740,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     maxConcurrent: opts.maxConcurrent,
     model: opts.model ?? null,
     interactive: opts.interactive,
+    questId,
   });
 
   // Store serialized schedule plan in wave state
@@ -1721,8 +1823,8 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
   // Launch agents up to max_concurrent
   if (opts.interactive) {
-    await launchWaveInteractive(projectRoot, state, selected, opts, agentResolutions);
+    await launchWaveInteractive(projectRoot, state, selected, opts, agentResolutions, questContext);
   } else {
-    await launchWaveHeadless(projectRoot, state, selected, opts, agentResolutions);
+    await launchWaveHeadless(projectRoot, state, selected, opts, agentResolutions, questContext);
   }
 }

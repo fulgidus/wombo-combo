@@ -15,7 +15,7 @@ import {
   updateAgent,
 } from "../lib/state.js";
 import { worktreeReady } from "../lib/worktree.js";
-import { generatePrompt } from "../lib/prompt.js";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
 import { launchInteractive, getMultiplexerName } from "../lib/launcher.js";
 import { ProcessMonitor } from "../lib/monitor.js";
 import { launchSingleHeadless } from "./launch.js";
@@ -28,6 +28,8 @@ import {
   type AgentResolution,
 } from "../lib/agent-registry.js";
 import { patchImportedAgent } from "../lib/templates.js";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
+import { resolveQuestConfig } from "../lib/quest.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,25 +136,43 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     }
   }
 
+  // Reconstruct quest context from wave state (if quest-scoped)
+  let questContext: QuestPromptContext | undefined;
+  let effectiveConfig = config;
+  if (state.quest_id) {
+    const quest = loadQuest(projectRoot, state.quest_id);
+    if (quest) {
+      effectiveConfig = resolveQuestConfig(config, quest);
+      const knowledge = loadQuestKnowledge(projectRoot, state.quest_id);
+      questContext = {
+        questId: quest.id,
+        goal: quest.goal,
+        addedConstraints: quest.constraints.add ?? [],
+        addedForbidden: quest.constraints.ban ?? [],
+        knowledge,
+      };
+    }
+  }
+
   if (opts.interactive) {
     // Write specialized agent to worktree if applicable
     if (agentResolution && isSpecializedAgent(agentResolution)) {
       try {
-        const patchedContent = patchImportedAgent(agentResolution.rawContent, config, projectRoot);
+        const patchedContent = patchImportedAgent(agentResolution.rawContent, effectiveConfig, projectRoot);
         writeAgentToWorktree(agent.worktree, agentResolution.name, patchedContent);
       } catch {
         // Non-fatal — agent will fall back to default
       }
     }
 
-    const prompt = generatePrompt(feature, state.base_branch, config);
+    const prompt = generatePrompt(feature, state.base_branch, effectiveConfig, questContext);
     launchInteractive({
       worktreePath: agent.worktree,
       featureId: feature.id,
       prompt,
       model: opts.model,
       interactive: true,
-      config,
+      config: effectiveConfig,
       agentName,
     });
 
@@ -161,21 +181,21 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       started_at: new Date().toISOString(),
     });
     saveState(projectRoot, state);
-    const muxName = getMultiplexerName(config);
+    const muxName = getMultiplexerName(effectiveConfig);
 
     output(fmt, {
       feature_id: opts.featureId,
       mode: "interactive",
       status: "running",
-      mux_session: `${config.agent.tmuxPrefix}-${opts.featureId}`,
+      mux_session: `${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`,
     }, () => {
-      console.log(`Retrying ${opts.featureId} in ${muxName} session ${config.agent.tmuxPrefix}-${opts.featureId}`);
+      console.log(`Retrying ${opts.featureId} in ${muxName} session ${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`);
     }, () => {
       console.log(renderRetry({
         feature_id: opts.featureId,
         mode: "interactive",
         status: "running",
-        mux_session: `${config.agent.tmuxPrefix}-${opts.featureId}`,
+        mux_session: `${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`,
       }));
     });
   } else {
@@ -186,7 +206,7 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     }
 
     const monitor = new ProcessMonitor(projectRoot);
-    await launchSingleHeadless(projectRoot, state, agent, feature, monitor, config, opts.model, agentResolutions);
+    await launchSingleHeadless(projectRoot, state, agent, feature, monitor, effectiveConfig, opts.model, agentResolutions, questContext);
 
     // Re-read agent after launch to get PID
     const updatedAgent = state.agents.find((a) => a.feature_id === opts.featureId);
