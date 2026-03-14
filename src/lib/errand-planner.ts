@@ -2,13 +2,12 @@
  * errand-planner.ts -- Lightweight task generation for quest-less "errands".
  *
  * Takes a brief natural-language description from the user and runs the
- * quest-planner agent with a simplified prompt to generate 1-N tasks that
+ * errand-planner agent with a simplified prompt to generate 1-N tasks that
  * are not associated with any quest.
  *
- * Reuses the quest-planner agent definition, YAML parsing, and validation
- * pipeline from quest-planner.ts.  The difference is the prompt: instead of
- * a quest goal + constraints + branching context, the errand prompt just
- * describes a quick job.
+ * Uses a dedicated errand-planner-agent definition (tuned for standalone
+ * errands rather than quest decomposition), but reuses the YAML parsing and
+ * validation pipeline from quest-planner.ts.
  *
  * Created tasks go directly into the task store (no quest association).
  */
@@ -151,7 +150,7 @@ async function generateErrandPrompt(
     "`agent` field accordingly. Otherwise, omit it (the generalist agent will " +
     "be used).\n\n" +
     "Output a single YAML fenced code block as your final output, using the " +
-    "same format as the quest planner."
+    "schema specified in your agent definition."
   );
 
   return sections.join("\n");
@@ -180,10 +179,10 @@ export async function runErrandPlanner(
   onProgress("Generating errand prompt...");
   const prompt = await generateErrandPrompt(spec, projectRoot, config);
 
-  // Launch the planner agent (reuse quest-planner-agent definition)
+  // Launch the errand planner agent
   onProgress("Launching errand planner...");
   const agentBin = resolveAgentBin(config);
-  const agentName = "quest-planner-agent";
+  const agentName = "errand-planner-agent";
 
   // Verify the agent binary exists before spawning
   if (!existsSync(agentBin)) {
