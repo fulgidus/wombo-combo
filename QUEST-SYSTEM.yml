@@ -348,7 +348,7 @@ phases:
   # ─────────────────────────────────────────────────────────────────────────
   - id: phase-4
     title: "Merge resolution agent"
-    status: pending
+    status: done
     tasks:
 
       - id: p4-merge-resolver-agent
@@ -358,7 +358,7 @@ phases:
           the task description, and quest constraints. Resolves conflicts
           and commits. Runs as a single-shot agent with minimal context.
           Triggered automatically when programmatic merge fails.
-        status: pending
+        status: done
         effort: PT6H
         files:
           - src/templates/merge-resolver-agent.md (new)
@@ -372,12 +372,13 @@ phases:
           3. If real conflict: spawn merge-resolver agent
           4. If merge agent fails: mark task as needs_manual_merge, notify user
           Integrate with quest branch merge flow.
-        status: pending
+        status: done
         effort: PT8H
         depends_on: [p4-merge-resolver-agent]
         files:
           - src/lib/merger.ts
-          - src/commands/merge.ts
+          - src/commands/launch.ts
+          - src/lib/launcher.ts
 
   # ─────────────────────────────────────────────────────────────────────────
   - id: phase-5
