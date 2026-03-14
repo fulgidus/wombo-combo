@@ -1,9 +1,9 @@
 id: token-tracking
 title: Token consumption tracking and reporting
 description: "Integration and polish for the token tracking system. After all prerequisite tasks (parse, store,
-  aggregate, CLI, TUI), this task covers: 1) End-to-end test — launch a wave, verify usage records are written,
-  run woco usage and confirm output. 2) Add harness extensibility notes for future claude/gemini support. 3)
-  Document the usage command in README or help text."
+  aggregate, CLI, TUI), this task covers: 1) End-to-end test — launch a wave, verify usage records are written, run woco
+  usage and confirm output. 2) Add harness extensibility notes for future claude/gemini support. 3) Document the usage
+  command in README or help text."
 status: backlog
 completion: 0
 difficulty: easy

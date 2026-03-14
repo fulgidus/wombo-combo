@@ -8,6 +8,7 @@ completion: 0
 difficulty: easy
 priority: medium
 depends_on:
+  - wishlist-tui
   - wishlist-promote
 effort: PT30M
 started_at: null

@@ -9,6 +9,8 @@ completion: 0
 difficulty: easy
 priority: high
 depends_on:
+  - wave-detach-audit
+  - wave-state-integrity
   - wave-reconnect
 effort: PT30M
 started_at: null

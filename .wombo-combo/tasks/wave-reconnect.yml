@@ -8,8 +8,7 @@ status: backlog
 completion: 0
 difficulty: medium
 priority: high
-depends_on:
-  - wave-state-integrity
+depends_on: []
 effort: PT1H30M
 started_at: null
 ended_at: null

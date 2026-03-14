@@ -1,0 +1,20 @@
+id: token-core
+title: Token usage collection and aggregation engine
+description: "Core token tracking infrastructure — one module (lib/token-usage.ts) that covers: 1) UsageRecord type:
+  task_id, quest_id?, model, provider, harness, input_tokens, output_tokens, cache_read, cache_write, timestamp. 2)
+  Parse token data from agent step_finish JSON events (opencode format). 3) Persist to .wombo-combo/usage.jsonl
+  (append-only, one JSON object per line). 4) Load and aggregate: groupBy(field), filterByDateRange(since, until),
+  totalUsage(). 5) Wire collection into ProcessMonitor so records are written as agents emit events."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

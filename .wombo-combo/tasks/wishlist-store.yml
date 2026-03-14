@@ -4,13 +4,13 @@ description: "Create lib/wishlist-store.ts with: 1) WishlistItem type (id, text,
   .wombo-combo/wishlist.yml. 3) CRUD functions: loadWishlist(), addItem(text), deleteItem(id), listItems(). Keep it
   simple — flat YAML array."
 status: backlog
-completion: 0
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT45M
 started_at: null
-ended_at: null
+ended_at: 2026-03-14T09:50:18.192Z
 constraints: []
 forbidden: []
 references: []

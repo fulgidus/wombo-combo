@@ -5,13 +5,13 @@ description: "Investigate whether agents spawned via child_process.spawn survive
   ProcessMonitor.stop() kill child processes? 3) Document findings and identify what needs changing. Key files:
   lib/launcher.ts, lib/monitor.ts, lib/tui.ts."
 status: backlog
-completion: 0
+completion: 100
 difficulty: easy
 priority: high
 depends_on: []
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-03-14T09:53:06.635Z
 constraints: []
 forbidden: []
 references: []

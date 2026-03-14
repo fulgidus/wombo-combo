@@ -9,7 +9,7 @@ completion: 0
 difficulty: easy
 priority: medium
 depends_on:
-  - token-aggregate
+  - token-core
 effort: PT45M
 started_at: null
 ended_at: null

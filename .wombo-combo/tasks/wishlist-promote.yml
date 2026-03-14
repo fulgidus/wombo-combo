@@ -8,7 +8,7 @@ completion: 0
 difficulty: medium
 priority: medium
 depends_on:
-  - wishlist-tui
+  - wishlist-store
 effort: PT1H
 started_at: null
 ended_at: null
