@@ -1,0 +1,21 @@
+id: tui-background-wave
+title: Wave monitor quit should not stop running agents
+description: "When the user presses B or Q from the wave monitor (WomboTUI), running agents should continue in the
+  background. Currently the TUI loop already checks hasRunningWave and can resume, but verify that: 1) Agents spawned
+  via child_process.spawn survive monitor teardown. 2) The wave state file is not corrupted on monitor exit. 3)
+  Re-entering the monitor (via resume or automatic detection) reconnects to running agent processes and resumes log
+  tailing. 4) If agents finish while monitor is closed, their results are captured in state when the user next opens the
+  monitor or browser. Fix any gaps found."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
