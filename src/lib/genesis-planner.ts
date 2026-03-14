@@ -21,6 +21,7 @@ import type { WomboConfig } from "../config.js";
 import { resolveAgentBin } from "../config.js";
 import type { Priority, Difficulty } from "./tasks.js";
 import type { QuestHitlMode } from "./quest.js";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,7 +74,7 @@ export interface GenesisResult {
  * Generate the prompt for the genesis planner agent.
  * Includes the project vision, goals, tech stack, and codebase outline.
  */
-export function generateGenesisPrompt(
+export async function generateGenesisPrompt(
   vision: string,
   projectRoot: string,
   config: WomboConfig,
@@ -82,7 +83,7 @@ export function generateGenesisPrompt(
     constraints?: string[];
     existingQuestIds?: string[];
   }
-): string {
+): Promise<string> {
   const sections: string[] = [];
 
   sections.push(`# Genesis: Project Decomposition`);
@@ -102,14 +103,20 @@ export function generateGenesisPrompt(
     }
   }
 
-  // Codebase outline
+  // Codebase outline — use scout index for richer information
   sections.push(`\n## Codebase Outline\n`);
   sections.push(
-    "Below is the directory tree of the project. Use your tools to explore " +
+    "Below is the project structure with exported symbol counts. Use your tools to explore " +
     "specific files in depth.\n"
   );
   sections.push("```");
-  sections.push(generateDirectoryTree(projectRoot, 3));
+  try {
+    const scoutIndex = await buildScoutIndex(projectRoot);
+    sections.push(formatScoutTree(scoutIndex, { maxDepth: 4, showSymbolCounts: true, maxLines: 150 }));
+  } catch {
+    // Fall back to basic directory tree if scout fails
+    sections.push(generateDirectoryTree(projectRoot, 3));
+  }
   sections.push("```");
 
   // Existing quests (if re-running genesis)
@@ -461,7 +468,7 @@ export async function runGenesisPlanner(
 
   // Generate the prompt
   onProgress("Generating genesis prompt...");
-  const prompt = generateGenesisPrompt(vision, projectRoot, config, {
+  const prompt = await generateGenesisPrompt(vision, projectRoot, config, {
     techStack: opts?.techStack,
     constraints: opts?.constraints,
     existingQuestIds: opts?.existingQuestIds,
