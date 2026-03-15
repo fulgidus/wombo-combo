@@ -1,0 +1,23 @@
+id: onboarding-typecheck
+title: Typecheck and build verification for onboarding
+description: "Run bun run typecheck and bun run build to verify all onboarding changes compile cleanly. Fix any type
+  errors introduced by the new files and modifications. Known pre-existing LSP errors to IGNORE (do NOT fix these): (1)
+  src/commands/tui.ts detachOnQuit not on ResumeCommandOptions. (2) src/lib/tui.ts tokenCollector property errors. (3)
+  src/commands/launch.ts flushState not exported. (4) src/commands/tui.ts ErrandSpec type mismatch. Only fix errors in
+  files touched by this quest: tui-onboarding.ts, tui-quest-picker.ts, commands/tui.ts, genesis-planner.ts,
+  quest-planner.ts, errand-planner.ts, prompt.ts."
+status: done
+completion: 100
+difficulty: easy
+priority: critical
+depends_on:
+  - wire-tui-onboarding
+  - inject-project-context
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T17:55:51.486Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,6 +1,10 @@
 node_modules/
 dist/
-# wombo-combo user artifacts (generated per-project)
-.wombo-combo/
+# wombo-combo runtime artifacts (ephemeral, not project definition)
+.wombo-combo/state.json
+.wombo-combo/logs/
+.wombo-combo/history/
+.wombo-combo/tui-session.json
+.wombo-combo/usage.jsonl
 *.tmp
 *.bak

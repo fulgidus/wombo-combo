@@ -1,0 +1,28 @@
+id: tui-onboarding-review
+title: "Onboarding wizard: section-by-section review flow"
+description: "In src/lib/tui-onboarding.ts, add a function reviewSections(profile: ProjectProfile, screen?:
+  Widgets.Screen): Promise<{ approved: ProjectProfile | null }> that walks the user through a sequential
+  section-by-section review of the synthesized profile. Uses blessed widgets (NOT console.log). Creates a full-screen
+  blessed view (or reuses provided screen via ownsScreen pattern) with: (1) A content box showing the current section's
+  data, nicely formatted with blessed tags. (2) A status bar showing 'Section N/6 — SectionName' and keybinds. (3)
+  Keybinds: A = approve section and advance, R = revise (opens textarea pre-populated with current section content for
+  editing), B = go back to previous section, Q = cancel entire review. The 6 sections to review are: Identity (name,
+  type, description), Vision, Objectives (formatted list with priorities), Tech Stack (runtime, language, frameworks,
+  tools), Conventions (commits, branches, testing, coding_style, naming), Rules (formatted with scope, rigidity,
+  consequences). When user presses R, show a textarea with the section content serialized as readable text. On submit,
+  parse the edited text back into the profile structure. Track approval state per section — all 6 must be approved to
+  proceed. Return the approved profile or null if cancelled."
+status: done
+completion: 100
+difficulty: hard
+priority: critical
+depends_on:
+  - tui-onboarding-llm
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T14:02:42.430Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

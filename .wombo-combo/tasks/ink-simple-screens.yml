@@ -1,0 +1,21 @@
+id: ink-simple-screens
+title: Migrate progress spinner, usage overlay, and question popup to Ink
+description: "Migrate three small focused TUI modules to Ink components: (1) tui-progress.ts (328 lines) — animated
+  braille spinner with title/status/result, showConfirm() helper. (2) tui-usage-overlay.ts (392 lines) — modal overlay
+  showing token usage stats grouped by task/quest/model/provider. (3) tui-question-popup.ts (372 lines) — HITL question
+  modal with queue navigation (Tab/S-Tab) and text input for answers. All three are modal overlays — good candidates for
+  an Ink Modal wrapper component. Must preserve all keybinds and display formatting."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - ink-input-system
+effort: PT6H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

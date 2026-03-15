@@ -1,0 +1,355 @@
+name: wombo-combo
+type: brownfield
+description: AI agent orchestration system for parallel feature development — spawns coding agents into isolated git
+  worktrees, coordinates their work through quests and dependency-aware task graphs, and verifies results before merge.
+vision: "A dual-interface orchestration layer — CLI for LLM agents, TUI for humans — that turns high-level project goals
+  into dependency-aware task graphs executed in parallel by autonomous coding agents. The CLI surface must be compact,
+  machine-parseable (--output json), and context-efficient so agents can invoke wombo without blowing their context
+  window. The TUI surface must guide human operators through multi-layered planning: from a rough vision, through quest
+  decomposition and genesis planning, down to atomic, constraint-scoped tasks that agents can execute independently in
+  isolated worktrees. The long-term aim is a self-improving development loop where agents plan, implement, verify, and
+  merge features with minimal human intervention, while the human retains full oversight through HITL modes, real-time
+  dashboards, and structured review gates."
+objectives:
+  - id: obj-1
+    text: Stabilize TUI onboarding wizard — fix input bugs, Ctrl+S submit, arrow key navigation, snoozable skip
+    priority: high
+    status: pending
+    quest_ids: []
+  - id: obj-2
+    text: Complete onboarding typecheck/build verification gate (last backlog task)
+    priority: high
+    status: pending
+    quest_ids: []
+  - id: obj-3
+    text: Fix blessed textarea/textbox UX — cursor navigation, proper Enter handling in patched widgets
+    priority: high
+    status: pending
+    quest_ids: []
+  - id: obj-4
+    text: Wire project profile into agent prompts via formatProjectContext()
+    priority: medium
+    status: pending
+    quest_ids: []
+  - id: obj-5
+    text: Multi-harness support — Claude Code, Gemini CLI, Aider adapter integration with token tracking
+    priority: high
+    status: pending
+    quest_ids: []
+  - id: obj-6
+    text: Quest planner + Genesis planner agents — AI-driven task decomposition from high-level goals
+    priority: high
+    status: pending
+    quest_ids: []
+  - id: obj-7
+    text: HITL modes — yolo/cautious/supervised human-in-the-loop for agent oversight
+    priority: medium
+    status: pending
+    quest_ids: []
+  - id: obj-8
+    text: Merge conflict resolver agent — automated conflict resolution in worktrees
+    priority: medium
+    status: pending
+    quest_ids: []
+  - id: obj-9
+    text: Chain-aware orchestration hardening — rescue, deferred merge, branch continuity
+    priority: medium
+    status: pending
+    quest_ids: []
+  - id: obj-10
+    text: TDD verification pipeline — red/green coercion, test detection, agent prompt integration
+    priority: medium
+    status: pending
+    quest_ids: []
+  - id: obj-11
+    text: Support for other coding agent CLIs beyond OpenCode (Claude Code, Gemini CLI, Aider, etc.)
+    priority: low
+    status: pending
+    quest_ids: []
+  - id: obj-12
+    text: Real-time dashboard with graphs and status visualization
+    priority: low
+    status: pending
+    quest_ids: []
+  - id: obj-13
+    text: Self-upgrade mechanism — version check, prompt, and install
+    priority: low
+    status: pending
+    quest_ids: []
+  - id: obj-14
+    text: Wave reconnect — reattach to orphaned agent processes
+    priority: low
+    status: pending
+    quest_ids: []
+  - id: obj-15
+    text: Release changelog generation
+    priority: low
+    status: pending
+    quest_ids: []
+  - id: obj-16
+    text: Agent registry client — discover and install community agent templates
+    priority: low
+    status: pending
+    quest_ids: []
+tech_stack:
+  runtime: Bun (>=1.0.0)
+  language: TypeScript (strict mode, ESM only, target ES2022, bundler module resolution)
+  frameworks:
+    - Citty (CLI arg parsing + subcommands — migration target)
+    - Ink (React-based terminal UI — migration target)
+    - neo-blessed (current TUI framework
+    - being migrated away from)
+  tools:
+    - yaml v2 (YAML parse/stringify)
+    - git worktrees (agent isolation)
+    - mermaidtui (Mermaid diagram rendering in TUI)
+    - tmux / dmux (terminal multiplexer for agent sessions)
+    - tsc (typecheck --noEmit)
+    - bun build (single-file bundle to dist/)
+    - bun test (built-in test runner)
+  notes: ""
+conventions:
+  commits: "Conventional commits (feat/fix/refactor/chore/docs), scope in parens when applicable, reference feature ID
+    (e.g. feat(tui): fix input handling [tui-onboarding-fixes]). Never skip hooks (--no-verify). Never force push main.
+    Always typecheck + build before committing."
+  branches: feature/<task-id> for agent work, main is the trunk, develop is the default base branch for worktrees. Branch
+    prefix configurable via config.git.branchPrefix (default "feature/").
+  testing: bun test (built-in runner), tests/ directory at project root, no external test framework. Test files use
+    *.test.ts naming. TDD pipeline available via config.tdd when enabled.
+  coding_style: 'ESM only ("type": "module" in package.json). Use .js extensions in import paths (Bun resolves to .ts at
+    runtime). Prefer Bun APIs (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib equivalents. Minimal dependencies
+    — justify any new addition. Hand-rolled arg parsing is legacy; new commands go in separate files under
+    src/commands/. Keep modules focused and under ~500 lines where practical.'
+  naming: "kebab-case for files and task IDs (pattern: ^[a-z0-9]+(-[a-z0-9]+)*$). camelCase for functions and variables.
+    PascalCase for types, classes, and interfaces. Prefix bug tasks with bug-. Prefix TUI modules with tui-. Template
+    files use descriptive kebab-case."
+rules:
+  - id: rule-1
+    text: Always use `bun dev` to test, never the global `woco` binary — it runs stale snapshot code from the last release,
+      not the current working tree
+    scope: runtime
+    rigidity: hard
+    consequences: Testing against old code; bugs appear fixed or broken when they aren't; wasted debugging time
+    tags:
+      - development
+      - testing
+      - dogfooding
+  - id: rule-2
+    text: Always publish to npm — suggest distribution via `bun add -g wombo-combo`
+    scope: distribution
+    rigidity: soft
+    consequences: Users cannot install via npm; reduces discoverability
+    tags:
+      - distribution
+      - npm
+  - id: rule-3
+    text: Keep bun.lock committed for reproducible installs
+    scope: dependencies
+    rigidity: hard
+    consequences: Non-deterministic dependency resolution; different machines get different versions; CI breaks
+    tags:
+      - dependencies
+      - reproducibility
+      - ci
+  - id: rule-4
+    text: Always commit .wombo-combo/ contents — we need to keep track of the dogfooded development state
+    scope: development
+    rigidity: soft
+    consequences: Loss of task history, project profile, and wave state used during dogfooded development
+    tags:
+      - dogfooding
+      - state
+      - tracking
+  - id: rule-5
+    text: Always typecheck (bun run typecheck) and build (bun run build) before committing
+    scope: quality
+    rigidity: hard
+    consequences: Broken commits on main; agents pick up uncompilable code; cascading failures across worktrees
+    tags:
+      - ci
+      - quality
+      - pre-commit
+    hooks:
+      trigger: pre-commit
+      pre:
+        - bun run typecheck
+        - bun run build
+      post: []
+  - id: rule-6
+    text: Never force push to main
+    scope: git
+    rigidity: hard
+    consequences: Rewritten history breaks all active worktrees and agent branches; potential data loss
+    tags:
+      - git
+      - safety
+      - main
+  - id: rule-7
+    text: Always bump package.json version before creating a git tag — they must stay in sync
+    scope: release
+    rigidity: hard
+    consequences: Version mismatch between tag and runtime; users install wrong version; upgrade detection breaks
+    tags:
+      - release
+      - versioning
+  - id: rule-8
+    text: screen.destroy() handles terminal cleanup — never manually call removeAllListeners or setRawMode(false) on stdin
+    scope: tui
+    rigidity: hard
+    consequences: Terminal left in raw mode after exit; stdin listeners leak; subsequent CLI commands misbehave
+    tags:
+      - tui
+      - blessed
+      - cleanup
+  - id: rule-9
+    text: Use element-level key bindings (widget.key()) not screen-level (scr.key()) during blessed input mode — grabKeys
+      blocks screen handlers
+    scope: tui
+    rigidity: hard
+    consequences: Key bindings silently stop working when a textarea or textbox has focus; users cannot navigate or submit
+    tags:
+      - tui
+      - blessed
+      - input
+      - keybindings
+  - id: rule-10
+    text: No new dependencies without justification — if you want to use an external framework or library, get user
+      permission first by explaining how it helps achieve project goals faster or better
+    scope: dependencies
+    rigidity: soft
+    consequences: Dependency bloat; supply chain risk; harder to audit; conflicts with minimal-dependency philosophy
+    tags:
+      - dependencies
+      - architecture
+      - approval
+codebase_summary: |-
+  schemas/ (3 files)
+    config.schema.json
+    meta.schema.json
+    task.schema.json
+  src/ (93 files)
+    commands/ (26 files)
+      tasks/ (9 files)
+        add.ts [2]
+        archive.ts [2]
+        check.ts [2]
+        graph.ts [2]
+        list.ts [2]
+        set-difficulty.ts [2]
+        set-priority.ts [2]
+        set-status.ts [2]
+        show.ts [2]
+      abort.ts [2]
+      cleanup.ts [2]
+      completion.ts [1]
+      genesis.ts [2]
+      history.ts [2]
+      init.ts [2]
+      launch.ts [11]
+      logs.ts [2]
+      merge.ts [2]
+      quest.ts [2]
+      resume.ts [2]
+      retry.ts [2]
+      status.ts [2]
+      tui.ts [2]
+      upgrade.ts [2]
+      usage.ts [4]
+      verify.ts [2]
+    lib/ (55 files)
+      subagents/ (1 files)
+        scout.ts [10]
+      agent-registry.ts [14]
+      blessed-textarea-patch.ts [1]
+      browser-verifier.ts [5]
+      browser.ts [5]
+      dependency-graph.ts [11]
+      errand-planner.ts [3]
+      format-converter.ts [7]
+      genesis-planner.ts [9]
+      history.ts [7]
+      hitl-ask.ts
+      hitl-channel.ts [13]
+      launcher.ts [19]
+      merger.ts [14]
+      monitor.ts [8]
+      multiplexer.ts [17]
+      output.ts [8]
+      portless.ts [9]
+      preflight.ts [3]
+      project-store.ts [27]
+      prompt-compress.ts [7]
+      prompt.ts [3]
+      quest-planner.ts [10]
+      quest-store.ts [9]
+      quest.ts [17]
+      schema.ts [7]
+      state.ts [20]
+      task-schema.ts [13]
+      task-store.ts [15]
+      tasks.ts [40]
+      tdd-verifier.ts [6]
+      templates.ts [9]
+      test-detection.ts [17]
+      test-runner.ts [5]
+      token-collector.ts [6]
+      token-usage.ts [8]
+      toon-spec.ts [19]
+      toon.ts [16]
+      tui-browser.ts [2]
+      tui-genesis-review.ts [3]
+      tui-onboarding.ts [12]
+      tui-plan-review.ts [3]
+      tui-progress.ts [2]
+      tui-quest-picker.ts [3]
+      tui-quest-wizard.ts [4]
+      tui-question-popup.ts [2]
+      tui-session.ts [5]
+      tui-usage-overlay.ts [2]
+      tui-wishlist.ts [5]
+      tui.ts [2]
+      ui.ts [6]
+      validate.ts [7]
+      verifier.ts [6]
+      wishlist-store.ts [5]
+      worktree.ts [21]
+    templates/ (9 files)
+      _meta.yml
+      generalist-agent.md
+      genesis-planner-agent.md
+      merge-resolver-agent.md
+      quest-planner-agent.md
+      quest.yml
+      wc-patch.body.end.md
+      wc-patch.body.start.md
+      wc-patch.description.end.md
+    config.ts [12]
+    index.ts [6]
+    neo-blessed.d.ts
+  tests/ (15 files)
+    arg-parsing.test.ts
+    config.test.ts
+    features.test.ts
+    output.test.ts
+    prompt.test.ts
+    state-deps.test.ts
+    state.test.ts
+    task-schema.test.ts
+    tdd-verifier.test.ts
+    test-detection.test.ts
+    test-runner.test.ts
+    token-tracking.test.ts
+    validate.test.ts
+    worktree-filtering.test.ts
+    worktree.test.ts
+  .wombo-state.json
+  AGENTS.md
+  CONTEXT.md
+  package.json
+  PROCESS-LIFECYCLE.md
+  QUEST-SYSTEM.yml
+  README.md
+  tsconfig.json
+created_at: 2026-03-14T17:45:36.844Z
+updated_at: 2026-03-14T17:54:39.566Z
+genesis_count: 0
