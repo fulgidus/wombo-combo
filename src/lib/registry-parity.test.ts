@@ -1,16 +1,13 @@
 /**
- * registry-parity.test.ts — Verify BRIDGE_REGISTRY matches COMMAND_REGISTRY
- * for all consumer-facing functions.
+ * registry-parity.test.ts — Verify COMMAND_REGISTRY (from schema.ts) is
+ * backed by BRIDGE_REGISTRY (from citty-registry.ts).
  *
- * Known acceptable differences (improvements, not regressions):
- *   - launch: bridge has --agent, --quest (new citty flags)
- *   - merge: bridge has --model (new citty flag)
- *   - retry: bridge has --dev (new citty flag)
- *   - logs --tail: bridge has alias "-n" (citty correct), old has undefined
- *
- * These are documented and intentional. The tests below verify everything
- * from the old registry is present in the bridge, plus explicitly test
- * the known improvements.
+ * After the citty-schema-bridge swap, COMMAND_REGISTRY is a lazy proxy
+ * over BRIDGE_REGISTRY. These tests verify:
+ *   1. Both expose the same commands in the same order.
+ *   2. Consumer-facing helpers (buildAliasMap, getCommandFlags, findCommandDef)
+ *      work correctly through the proxy.
+ *   3. The bridge-generated registry has the expected shape.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -57,175 +54,94 @@ function positionalShape(p: { name: string; description: string; required?: bool
 }
 
 // ---------------------------------------------------------------------------
-// Known acceptable differences — new flags added during citty migration
-// ---------------------------------------------------------------------------
-
-/** Flags in bridge but NOT in old registry (new additions, not regressions) */
-const KNOWN_NEW_FLAGS: Record<string, string[]> = {
-  launch: ["--agent", "--quest"],
-  merge: ["--model"],
-  retry: ["--dev"],
-};
-
-/** Flag alias improvements: bridge has alias where old had undefined */
-const KNOWN_ALIAS_IMPROVEMENTS: Record<string, Record<string, string>> = {
-  logs: { "--tail": "-n" },
-};
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("BRIDGE_REGISTRY parity with COMMAND_REGISTRY", () => {
+describe("COMMAND_REGISTRY is backed by BRIDGE_REGISTRY", () => {
   test("same number of top-level commands", () => {
-    expect(BRIDGE_REGISTRY.length).toBe(COMMAND_REGISTRY.length);
+    expect(COMMAND_REGISTRY.length).toBe(BRIDGE_REGISTRY.length);
   });
 
   test("same top-level command names in same order", () => {
+    const registryNames = COMMAND_REGISTRY.map((c) => c.name);
     const bridgeNames = BRIDGE_REGISTRY.map((c) => c.name);
-    const oldNames = COMMAND_REGISTRY.map((c) => c.name);
-    expect(bridgeNames).toEqual(oldNames);
+    expect(registryNames).toEqual(bridgeNames);
   });
 
-  // Per-command parity
-  for (const oldCmd of COMMAND_REGISTRY) {
-    describe(`command: ${oldCmd.name}`, () => {
-      const bridgeCmd = BRIDGE_REGISTRY.find((c) => c.name === oldCmd.name);
+  test("each entry is the same object", () => {
+    for (let i = 0; i < BRIDGE_REGISTRY.length; i++) {
+      expect(COMMAND_REGISTRY[i]).toBe(BRIDGE_REGISTRY[i]);
+    }
+  });
 
-      test("exists in bridge registry", () => {
-        expect(bridgeCmd).toBeDefined();
+  // Per-command shape validation
+  for (const cmd of BRIDGE_REGISTRY) {
+    describe(`command: ${cmd.name}`, () => {
+      test("has summary", () => {
+        expect(cmd.summary).toBeTruthy();
       });
 
-      test("same summary", () => {
-        expect(bridgeCmd!.summary).toBe(oldCmd.summary);
+      test("has mutating flag", () => {
+        expect(typeof cmd.mutating).toBe("boolean");
       });
 
-      test("same aliases", () => {
-        expect(bridgeCmd!.aliases ?? []).toEqual(oldCmd.aliases ?? []);
+      test("has supportsDryRun flag", () => {
+        expect(typeof cmd.supportsDryRun).toBe("boolean");
       });
 
-      test("same mutating flag", () => {
-        expect(bridgeCmd!.mutating).toBe(oldCmd.mutating);
-      });
-
-      test("same supportsDryRun flag", () => {
-        expect(bridgeCmd!.supportsDryRun).toBe(oldCmd.supportsDryRun);
-      });
-
-      test("same completionSummary", () => {
-        expect(bridgeCmd!.completionSummary).toBe(oldCmd.completionSummary);
-      });
-
-      test("same description", () => {
-        expect(bridgeCmd!.description).toBe(oldCmd.description);
-      });
-
-      test("same positionals", () => {
-        const oldPos = oldCmd.positionals.map(positionalShape);
-        const bridgePos = bridgeCmd!.positionals.map(positionalShape);
-        expect(bridgePos).toEqual(oldPos);
-      });
-
-      test("bridge has all old flags (superset check)", () => {
-        const bridgeFlagNames = new Set(bridgeCmd!.flags.map((f) => f.name));
-        for (const oldFlag of oldCmd.flags) {
-          expect(bridgeFlagNames.has(oldFlag.name)).toBe(true);
+      test("positionals are well-formed", () => {
+        for (const p of cmd.positionals) {
+          expect(p.name).toBeTruthy();
+          expect(p.description).toBeTruthy();
         }
       });
 
-      test("bridge-only flags are known new additions", () => {
-        const oldFlagNames = new Set(oldCmd.flags.map((f) => f.name));
-        const newFlags = bridgeCmd!.flags
-          .filter((f) => !oldFlagNames.has(f.name))
-          .map((f) => f.name);
-        const expectedNew = KNOWN_NEW_FLAGS[oldCmd.name] ?? [];
-        expect(newFlags.sort()).toEqual(expectedNew.sort());
-      });
-
-      test("shared flags have same details (allowing alias improvements)", () => {
-        const oldFlagMap = new Map(oldCmd.flags.map((f) => [f.name, f]));
-        const aliasImprovements = KNOWN_ALIAS_IMPROVEMENTS[oldCmd.name] ?? {};
-
-        for (const bridgeFlag of bridgeCmd!.flags) {
-          const oldFlag = oldFlagMap.get(bridgeFlag.name);
-          if (!oldFlag) continue; // new flag, already tested above
-
-          expect(bridgeFlag.type).toBe(oldFlag.type);
-          expect(bridgeFlag.description).toBe(oldFlag.description);
-          expect(bridgeFlag.default).toEqual(oldFlag.default);
-          expect(bridgeFlag.enum ? [...bridgeFlag.enum] : undefined).toEqual(
-            oldFlag.enum ? [...oldFlag.enum] : undefined
-          );
-          expect(bridgeFlag.required).toBe(oldFlag.required);
-
-          // Alias: allow known improvements
-          if (aliasImprovements[bridgeFlag.name]) {
-            expect(bridgeFlag.alias).toBe(aliasImprovements[bridgeFlag.name]);
-          } else {
-            expect(bridgeFlag.alias).toBe(oldFlag.alias);
-          }
+      test("flags are well-formed", () => {
+        for (const f of cmd.flags) {
+          expect(f.name).toMatch(/^--/);
+          expect(f.description).toBeTruthy();
+          expect(["string", "number", "boolean", "string[]"]).toContain(f.type);
         }
       });
 
-      // Subcommand parity
-      if (oldCmd.subcommands?.length) {
-        test("same number of subcommands", () => {
-          expect(bridgeCmd!.subcommands?.length).toBe(oldCmd.subcommands!.length);
+      // Subcommand shape validation
+      if (cmd.subcommands?.length) {
+        test("has subcommands", () => {
+          expect(cmd.subcommands!.length).toBeGreaterThan(0);
         });
 
-        test("same subcommand names", () => {
-          const oldSubNames = oldCmd.subcommands!.map((sc) => sc.name);
-          const bridgeSubNames = bridgeCmd!.subcommands!.map((sc) => sc.name);
-          expect(bridgeSubNames).toEqual(oldSubNames);
-        });
-
-        for (const oldSub of oldCmd.subcommands!) {
-          describe(`subcommand: ${oldSub.name}`, () => {
-            const bridgeSub = bridgeCmd!.subcommands!.find((sc) => sc.name === oldSub.name);
-
-            test("exists", () => {
-              expect(bridgeSub).toBeDefined();
+        for (const sub of cmd.subcommands!) {
+          describe(`subcommand: ${sub.name}`, () => {
+            test("has summary", () => {
+              expect(sub.summary).toBeTruthy();
             });
 
-            test("same summary", () => {
-              expect(bridgeSub!.summary).toBe(oldSub.summary);
+            test("has compound name", () => {
+              expect(sub.name).toContain(" ");
             });
 
-            test("same aliases", () => {
-              expect(bridgeSub!.aliases ?? []).toEqual(oldSub.aliases ?? []);
+            test("positionals are well-formed", () => {
+              for (const p of sub.positionals) {
+                expect(p.name).toBeTruthy();
+                expect(p.description).toBeTruthy();
+              }
             });
 
-            test("same mutating", () => {
-              expect(bridgeSub!.mutating).toBe(oldSub.mutating);
-            });
-
-            test("same supportsDryRun", () => {
-              expect(bridgeSub!.supportsDryRun).toBe(oldSub.supportsDryRun);
-            });
-
-            test("same positionals", () => {
-              const oldPos = oldSub.positionals.map(positionalShape);
-              const bridgePos = bridgeSub!.positionals.map(positionalShape);
-              expect(bridgePos).toEqual(oldPos);
-            });
-
-            test("same flags", () => {
-              const oldFlags = sortFlags(oldSub.flags).map(flagShape);
-              const bridgeFlags = sortFlags(bridgeSub!.flags).map(flagShape);
-              expect(bridgeFlags).toEqual(oldFlags);
+            test("flags are well-formed", () => {
+              for (const f of sub.flags) {
+                expect(f.name).toMatch(/^--/);
+                expect(f.description).toBeTruthy();
+                expect(["string", "number", "boolean", "string[]"]).toContain(f.type);
+              }
             });
           });
         }
-      } else {
-        test("no subcommands in bridge either", () => {
-          expect(bridgeCmd!.subcommands?.length ?? 0).toBe(0);
-        });
       }
     });
   }
 
-  // Verify known improvements are actually present
-  describe("known improvements", () => {
+  // Verify notable flags are present (formerly "known improvements")
+  describe("citty-migrated flags present", () => {
     test("launch has --agent and --quest flags", () => {
       const cmd = BRIDGE_REGISTRY.find((c) => c.name === "launch")!;
       const names = cmd.flags.map((f) => f.name);
@@ -251,68 +167,60 @@ describe("BRIDGE_REGISTRY parity with COMMAND_REGISTRY", () => {
   });
 
   // Helper function parity
-  describe("buildAliasMap parity", () => {
+  describe("buildAliasMap works through COMMAND_REGISTRY proxy", () => {
     test("top-level aliases match", () => {
-      const oldAliases = buildAliasMap(COMMAND_REGISTRY);
+      const registryAliases = buildAliasMap(COMMAND_REGISTRY);
       const bridgeAliases = buildAliasMap(BRIDGE_REGISTRY);
-      expect(bridgeAliases).toEqual(oldAliases);
+      expect(registryAliases).toEqual(bridgeAliases);
     });
 
     test("tasks subcommand aliases match", () => {
-      const oldTasks = COMMAND_REGISTRY.find((c) => c.name === "tasks")!;
+      const registryTasks = COMMAND_REGISTRY.find((c: CommandDef) => c.name === "tasks")!;
       const bridgeTasks = BRIDGE_REGISTRY.find((c) => c.name === "tasks")!;
-      const oldAliases = buildAliasMap(oldTasks.subcommands ?? []);
+      const registryAliases = buildAliasMap(registryTasks.subcommands ?? []);
       const bridgeAliases = buildAliasMap(bridgeTasks.subcommands ?? []);
-      expect(bridgeAliases).toEqual(oldAliases);
+      expect(registryAliases).toEqual(bridgeAliases);
     });
 
     test("quest subcommand aliases match", () => {
-      const oldQuest = COMMAND_REGISTRY.find((c) => c.name === "quest")!;
+      const registryQuest = COMMAND_REGISTRY.find((c: CommandDef) => c.name === "quest")!;
       const bridgeQuest = BRIDGE_REGISTRY.find((c) => c.name === "quest")!;
-      const oldAliases = buildAliasMap(oldQuest.subcommands ?? []);
+      const registryAliases = buildAliasMap(registryQuest.subcommands ?? []);
       const bridgeAliases = buildAliasMap(bridgeQuest.subcommands ?? []);
-      expect(bridgeAliases).toEqual(oldAliases);
+      expect(registryAliases).toEqual(bridgeAliases);
     });
 
     test("wishlist subcommand aliases match", () => {
-      const oldWish = COMMAND_REGISTRY.find((c) => c.name === "wishlist")!;
+      const registryWish = COMMAND_REGISTRY.find((c: CommandDef) => c.name === "wishlist")!;
       const bridgeWish = BRIDGE_REGISTRY.find((c) => c.name === "wishlist")!;
-      const oldAliases = buildAliasMap(oldWish.subcommands ?? []);
+      const registryAliases = buildAliasMap(registryWish.subcommands ?? []);
       const bridgeAliases = buildAliasMap(bridgeWish.subcommands ?? []);
-      expect(bridgeAliases).toEqual(oldAliases);
+      expect(registryAliases).toEqual(bridgeAliases);
     });
   });
 
-  describe("getCommandFlags parity (superset check)", () => {
-    for (const oldCmd of COMMAND_REGISTRY) {
-      test(`${oldCmd.name}: bridge has all old merged flags`, () => {
-        const bridgeCmd = BRIDGE_REGISTRY.find((c) => c.name === oldCmd.name)!;
-        const oldMerged = getCommandFlags(oldCmd);
-        const bridgeMerged = getCommandFlags(bridgeCmd);
-        const bridgeMergedNames = new Set(bridgeMerged.map((f) => f.name));
-        for (const oldFlag of oldMerged) {
-          expect(bridgeMergedNames.has(oldFlag.name)).toBe(true);
+  describe("getCommandFlags works through COMMAND_REGISTRY proxy", () => {
+    for (const cmd of BRIDGE_REGISTRY) {
+      test(`${cmd.name}: merged flags include globals`, () => {
+        const registryCmd = COMMAND_REGISTRY.find((c: CommandDef) => c.name === cmd.name)!;
+        const merged = getCommandFlags(registryCmd);
+        const mergedNames = new Set(merged.map((f) => f.name));
+        // Should have all command-specific flags
+        for (const f of cmd.flags) {
+          expect(mergedNames.has(f.name)).toBe(true);
+        }
+        // Should have global flags (unless overridden by command)
+        const cmdFlagNames = new Set(cmd.flags.map((f) => f.name));
+        for (const gf of GLOBAL_FLAGS) {
+          if (!cmdFlagNames.has(gf.name)) {
+            expect(mergedNames.has(gf.name)).toBe(true);
+          }
         }
       });
-
-      if (oldCmd.subcommands) {
-        for (const oldSub of oldCmd.subcommands) {
-          test(`${oldSub.name}: bridge has all old merged flags`, () => {
-            const bridgeCmd = BRIDGE_REGISTRY.find((c) => c.name === oldCmd.name)!;
-            const bridgeSub = bridgeCmd.subcommands!.find((sc) => sc.name === oldSub.name)!;
-            const oldMerged = getCommandFlags(oldSub);
-            const bridgeMerged = getCommandFlags(bridgeSub);
-            const bridgeMergedNames = new Set(bridgeMerged.map((f) => f.name));
-            for (const oldFlag of oldMerged) {
-              expect(bridgeMergedNames.has(oldFlag.name)).toBe(true);
-            }
-          });
-        }
-      }
     }
   });
 
-  describe("findCommandDef parity", () => {
+  describe("findCommandDef delegates to findBridgeCommandDef", () => {
     const testNames = [
       "init", "launch", "resume", "status", "verify", "merge", "retry",
       "cleanup", "history", "usage", "abort", "upgrade", "logs", "tasks",
@@ -327,14 +235,14 @@ describe("BRIDGE_REGISTRY parity with COMMAND_REGISTRY", () => {
 
     for (const name of testNames) {
       test(`"${name}": same result`, () => {
-        const oldResult = findCommandDef(name);
+        const registryResult = findCommandDef(name);
         const bridgeResult = findBridgeCommandDef(name);
-        if (!oldResult) {
+        if (!registryResult) {
           expect(bridgeResult).toBeUndefined();
         } else {
           expect(bridgeResult).toBeDefined();
-          expect(bridgeResult!.name).toBe(oldResult.name);
-          expect(bridgeResult!.summary).toBe(oldResult.summary);
+          expect(bridgeResult!.name).toBe(registryResult.name);
+          expect(bridgeResult!.summary).toBe(registryResult.summary);
         }
       });
     }

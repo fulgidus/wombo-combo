@@ -12,7 +12,7 @@ import {
   cittyCommandToCommandDef,
   type BridgeCommandMeta,
 } from "./citty-bridge.js";
-import type { FlagDef, PositionalDef, CommandDef } from "./schema.js";
+import type { FlagDef, PositionalDef, CommandDef } from "./schema-types.js";
 
 // ---------------------------------------------------------------------------
 // cittyArgToFlagDef — convert a single citty arg to FlagDef

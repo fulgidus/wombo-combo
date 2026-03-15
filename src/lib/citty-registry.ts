@@ -15,7 +15,7 @@
 
 import type { CommandDef as CittyCommandDef } from "citty";
 import { cittyCommandToCommandDef, type BridgeCommandMeta } from "./citty-bridge.js";
-import type { CommandDef } from "./schema.js";
+import type { CommandDef } from "./schema-types.js";
 import { VALID_STATUSES, VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema.js";
 
 // ---------------------------------------------------------------------------

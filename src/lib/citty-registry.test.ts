@@ -10,7 +10,7 @@ import {
   BRIDGE_REGISTRY,
   findBridgeCommandDef,
 } from "./citty-registry.js";
-import type { CommandDef } from "./schema.js";
+import type { CommandDef } from "./schema-types.js";
 
 // ---------------------------------------------------------------------------
 // Registry completeness
