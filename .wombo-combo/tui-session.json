@@ -6,6 +6,6 @@
   "sortBy": "priority",
   "sortOrder": "desc",
   "maxConcurrent": 10,
-  "lastView": "monitor",
+  "lastView": "browser",
   "collapsed": []
 }
