@@ -237,13 +237,27 @@ export function parseArgs(argv: string[]): CLIArgs {
 
   // Pre-scan for global flags that can appear before the command.
   // Strip them from the args array so args[0] is always the command.
-  const globalFlags: { dev?: boolean; help?: boolean } = {};
+  // Global flags: --dev, --force, --output/-o <value>, -h/--help
+  const globalFlags: { dev?: boolean; help?: boolean; force?: boolean; output?: string } = {};
   const filtered: string[] = [];
-  for (const a of args) {
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
     if (a === "--dev") {
       globalFlags.dev = true;
     } else if (a === "-h" || a === "--help") {
       globalFlags.help = true;
+    } else if (a === "--force") {
+      globalFlags.force = true;
+    } else if (a === "--output" || a === "-o") {
+      // Only consume as a global flag if followed by a value (not another flag)
+      const next = args[i + 1];
+      if (next && !next.startsWith("-")) {
+        globalFlags.output = next;
+        i++; // skip the value
+      } else {
+        // No value follows — pass through for command-level parsing
+        filtered.push(a);
+      }
     } else {
       filtered.push(a);
     }
@@ -256,9 +270,9 @@ export function parseArgs(argv: string[]): CLIArgs {
     noTui: false,
     autoPush: false,
     requeue: false,
-    force: false,
+    force: globalFlags.force ?? false,
     checkOnly: false,
-    outputFmt: resolveOutputFormat(undefined), // auto-detect until --output overrides
+    outputFmt: resolveOutputFormat(globalFlags.output), // use global --output if provided
     dev: globalFlags.dev,
     help: globalFlags.help,
   };
@@ -607,7 +621,21 @@ async function main(): Promise<void> {
     const parentCmdsWithSubs = new Set(["tasks", "quest", "wishlist"]);
     let effectiveSubcommand = args.subcommand;
     if (parentCmdsWithSubs.has(args.command)) {
-      const rawArgs = process.argv.slice(2).filter((a) => a !== "--dev" && a !== "-h" && a !== "--help");
+      // Filter out all global flags (and their values) from raw args to detect
+      // if an explicit subcommand was typed.
+      const rawArgsFull = process.argv.slice(2);
+      const rawArgs: string[] = [];
+      for (let ri = 0; ri < rawArgsFull.length; ri++) {
+        const ra = rawArgsFull[ri];
+        if (ra === "--dev" || ra === "--force" || ra === "-h" || ra === "--help") {
+          continue; // skip boolean global flags
+        }
+        if (ra === "--output" || ra === "-o") {
+          ri++; // skip the value too
+          continue;
+        }
+        rawArgs.push(ra);
+      }
       const explicitSub = rawArgs[1] && !rawArgs[1].startsWith("-") ? rawArgs[1] : undefined;
       // If no explicit subcommand was typed, show parent help.
       // Otherwise, use the resolved subcommand (alias-expanded by parseArgs).
