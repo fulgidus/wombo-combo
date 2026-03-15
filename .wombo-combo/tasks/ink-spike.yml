@@ -4,14 +4,14 @@ description: "Install ink and react. Create a minimal Ink app shell that renders
   and exits cleanly. Verify: Ink render lifecycle works in Bun, stdin/stdout handling is correct, process.exit cleanup
   works, and the app shell can mount/unmount child components. This spike proves Ink works in our Bun runtime before
   migrating any real screens."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: high
 depends_on: []
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-03-15T16:51:15.978Z
 constraints: []
 forbidden: []
 references: []

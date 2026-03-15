@@ -4,14 +4,14 @@ description: "Install citty and unjs/citty. Convert 3 simple commands (help, ver
   Verify: alias resolution works, --output flag works, help text matches current output. This spike proves the
   integration pattern before migrating complex commands. Must keep backward-compat: 'woco -v', 'woco help', 'woco
   describe' all work identically."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: high
 depends_on: []
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-03-15T16:51:15.337Z
 constraints: []
 forbidden: []
 references: []
