@@ -1323,7 +1323,7 @@ async function launchWaveHeadless(
   // Stagger launches to avoid SQLite race conditions in agent processes:
   // each agent spawns its own DB, and simultaneous CREATE TABLE calls collide.
   const ready = readyToLaunchAgents(state);
-  const tolaunch = ready.slice(0, opts.maxConcurrent);
+  const tolaunch = ready.slice(0, opts.maxConcurrent || undefined);
   if (fmt === "text") console.log(`Setting up ${tolaunch.length} agent(s) (staggered)...\n`);
 
   for (let i = 0; i < tolaunch.length; i++) {
@@ -1577,7 +1577,7 @@ async function launchWaveInteractive(
   if (fmt === "text") printDashboard(state);
 
   // Launch initial batch — parallelize setup
-  const tolaunch = queuedAgents(state).slice(0, opts.maxConcurrent);
+  const tolaunch = queuedAgents(state).slice(0, opts.maxConcurrent || undefined);
   if (fmt === "text") console.log(`Setting up ${tolaunch.length} agent(s) in parallel...\n`);
 
   await Promise.all(

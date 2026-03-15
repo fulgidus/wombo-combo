@@ -232,9 +232,15 @@ describe("validateConfig", () => {
     expect(() => validateConfig(config)).toThrow("worktreePrefix");
   });
 
-  test("throws on maxConcurrent < 1", () => {
+  test("allows maxConcurrent = 0 (unlimited)", () => {
     const config = validConfig();
     config.defaults.maxConcurrent = 0;
+    expect(() => validateConfig(config)).not.toThrow();
+  });
+
+  test("throws on negative maxConcurrent", () => {
+    const config = validConfig();
+    config.defaults.maxConcurrent = -1;
     expect(() => validateConfig(config)).toThrow("maxConcurrent");
   });
 

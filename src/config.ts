@@ -327,8 +327,8 @@ export function validateConfig(config: WomboConfig): void {
   if (!config.git.branchPrefix) {
     throw new Error("config.git.branchPrefix must be a non-empty string");
   }
-  if (config.defaults.maxConcurrent < 1) {
-    throw new Error("config.defaults.maxConcurrent must be >= 1");
+  if (config.defaults.maxConcurrent < 0) {
+    throw new Error("config.defaults.maxConcurrent must be >= 0 (0 = unlimited)");
   }
   if (config.defaults.maxRetries < 0) {
     throw new Error("config.defaults.maxRetries must be >= 0");

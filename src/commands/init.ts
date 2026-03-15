@@ -409,7 +409,7 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
 
     // -- Defaults ---------------------------------------------------------
     section("Runtime Defaults");
-    cfg.defaults.maxConcurrent = await p.number("Max concurrent agents", cfg.defaults.maxConcurrent);
+    cfg.defaults.maxConcurrent = await p.number("Max concurrent agents (0 = unlimited)", cfg.defaults.maxConcurrent);
     cfg.defaults.maxRetries = await p.number("Max retries per agent", cfg.defaults.maxRetries);
 
     // -- Write all operative files -----------------------------------------

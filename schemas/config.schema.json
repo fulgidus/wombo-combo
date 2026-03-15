@@ -174,8 +174,8 @@
         "maxConcurrent": {
           "type": "integer",
           "default": 10,
-          "minimum": 1,
-          "description": "Max concurrent agents"
+          "minimum": 0,
+          "description": "Max concurrent agents (0 = unlimited)"
         },
         "maxRetries": {
           "type": "integer",
