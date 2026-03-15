@@ -220,7 +220,7 @@ describe("cittyCommandToCommandDef", () => {
     expect(dryRunFlag!.default).toBe(false);
   });
 
-  test("filters out global-equivalent flags (output, dev, force)", () => {
+  test("filters out global-equivalent flags (output only)", () => {
     const cmd = defineCommand({
       meta: {
         name: "test-cmd",
@@ -258,8 +258,9 @@ describe("cittyCommandToCommandDef", () => {
     };
 
     const result = cittyCommandToCommandDef(cmd, meta);
-    expect(result.flags.length).toBe(1);
-    expect(result.flags[0].name).toBe("--real-flag");
+    // output is filtered (global), but dev and force pass through
+    expect(result.flags.length).toBe(3);
+    expect(result.flags.map((f: any) => f.name).sort()).toEqual(["--dev", "--force", "--real-flag"]);
   });
 
   test("includes description from meta if provided", () => {

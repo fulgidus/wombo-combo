@@ -76,6 +76,12 @@ export interface BridgeCommandMeta {
   flagOverrides?: Record<string, FlagOverride>;
   /** Per-positional overrides keyed by citty arg name (camelCase) */
   positionalOverrides?: Record<string, Partial<PositionalDef>>;
+  /**
+   * Extra flags not present in the citty arg spec.
+   * Used for flags that exist in the schema but haven't been added
+   * to the citty command yet (e.g. --dry-run on init, --features alias).
+   */
+  extraFlags?: FlagDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -85,9 +91,14 @@ export interface BridgeCommandMeta {
 /**
  * Citty arg names (camelCase) that correspond to global flags.
  * These are handled by GLOBAL_FLAGS in schema.ts and should not
- * appear in per-command flag lists.
+ * appear in per-command flag lists unless the command redefines them.
+ *
+ * Only `output` is truly global — it's added by GLOBAL_FLAGS to every
+ * command and no command provides a custom version of it. `force` and
+ * `dev` are NOT filtered here because some commands define them with
+ * command-specific semantics.
  */
-const GLOBAL_FLAG_NAMES = new Set(["output", "dev", "force"]);
+const GLOBAL_FLAG_NAMES = new Set(["output"]);
 
 // ---------------------------------------------------------------------------
 // camelCase → kebab-case conversion
@@ -208,6 +219,11 @@ export function cittyCommandToCommandDef(
 
     const flag = cittyArgToFlagDef(argName, spec, meta.flagOverrides?.[argName]);
     if (flag) flags.push(flag);
+  }
+
+  // Append extra flags not in citty
+  if (meta.extraFlags?.length) {
+    flags.push(...meta.extraFlags);
   }
 
   const result: CommandDef = {

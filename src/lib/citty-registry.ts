@@ -91,6 +91,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: initCommand,
     meta: {
+      summary: "Generate .wombo-combo/config.json in the current project",
       aliases: ["i"],
       mutating: true,
       supportsDryRun: true,
@@ -99,8 +100,11 @@ const ENTRIES: RegistryEntry[] = [
         "Interactive guided setup that walks through every config section. " +
         "Creates .wombo-combo/config.json and .wombo-combo/tasks.yml from template.",
       flagOverrides: {
-        force: { default: false },
+        force: { description: "Overwrite existing config files", default: false },
       },
+      extraFlags: [
+        { name: "--dry-run", description: "Show what would be created without writing files", type: "boolean", default: false },
+      ],
     },
   },
 
@@ -108,6 +112,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: launchCommand,
     meta: {
+      summary: "Launch a wave of agents to implement features",
       aliases: ["l"],
       mutating: true,
       supportsDryRun: true,
@@ -116,21 +121,30 @@ const ENTRIES: RegistryEntry[] = [
         "Select features from the tasks file, create worktrees, and spawn agents. " +
         "Supports multiple selection strategies.",
       flagOverrides: {
-        topPriority: { type: "number" },
-        quickestWins: { type: "number" },
-        priority: { enum: VALID_PRIORITIES },
-        difficulty: { enum: VALID_DIFFICULTIES },
+        topPriority: { type: "number", description: "Select top N features by priority" },
+        quickestWins: { type: "number", description: "Select N features with lowest effort" },
+        priority: { description: "Filter by priority level", enum: VALID_PRIORITIES },
+        difficulty: { description: "Filter by difficulty level", enum: VALID_DIFFICULTIES },
         tasks: { name: "--tasks", description: "Select specific tasks by comma-separated IDs" },
-        allReady: { default: false },
-        maxConcurrent: { type: "number" },
-        interactive: { default: false },
-        dryRun: { default: false },
-        noTui: { default: false },
-        autoPush: { default: false },
-        browser: { default: false },
-        skipTests: { default: false },
-        strictTdd: { default: false },
+        allReady: { description: "Select all features whose dependencies are met", default: false },
+        maxConcurrent: { type: "number", description: "Max agents running in parallel" },
+        model: { description: "Model to use (e.g., anthropic/claude-sonnet-4-20250514)" },
+        interactive: { description: "Use multiplexer (dmux/tmux) TUI mode instead of headless", default: false },
+        dryRun: { description: "Show what would be launched without launching", default: false },
+        noTui: { description: "Headless mode without neo-blessed TUI", default: false },
+        autoPush: { description: "Push base branch to remote after all merges", default: false },
+        baseBranch: { description: "Base branch (default: from config)" },
+        maxRetries: { type: "number", description: "Max retries per agent" },
+        browser: { description: "Enable browser-based verification after build passes", default: false },
+        skipTests: { description: "Skip running tests during TDD verification", default: false },
+        strictTdd: { description: "Strict TDD mode: fail verification if new files are missing tests", default: false },
+        dev: { description: "Enable developer mode (hidden TUI features like fake task seeding)", default: false },
       },
+      extraFlags: [
+        { name: "--features", description: "Select specific features by comma-separated IDs (alias for --tasks)", type: "string" },
+        { name: "--skip-tests", description: "Skip running tests during TDD verification", type: "boolean", default: false },
+        { name: "--strict-tdd", description: "Strict TDD mode: fail verification if new files are missing tests", type: "boolean", default: false },
+      ],
     },
   },
 
@@ -138,16 +152,20 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: resumeCommand,
     meta: {
+      summary: "Resume a previously stopped wave",
       aliases: ["r"],
       mutating: true,
       supportsDryRun: false,
       completionSummary: "Resume wave",
       flagOverrides: {
-        maxConcurrent: { type: "number" },
-        interactive: { default: false },
-        noTui: { default: false },
-        autoPush: { default: false },
-        maxRetries: { type: "number" },
+        maxConcurrent: { type: "number", description: "Max agents running in parallel" },
+        model: { description: "Model to use" },
+        interactive: { description: "Use multiplexer (dmux/tmux) TUI mode", default: false },
+        noTui: { description: "Headless mode without neo-blessed TUI", default: false },
+        autoPush: { description: "Push base branch to remote after merges", default: false },
+        baseBranch: { description: "Base branch override" },
+        maxRetries: { type: "number", description: "Max retries per agent" },
+        dev: { description: "Enable developer mode (hidden TUI features)", default: false },
       },
     },
   },
@@ -156,6 +174,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: statusCommand,
     meta: {
+      summary: "Show the status of the current wave",
       aliases: ["s"],
       mutating: false,
       supportsDryRun: false,
@@ -167,15 +186,20 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: verifyCommand,
     meta: {
+      summary: "Run build verification on completed agents",
       aliases: ["v"],
       mutating: true,
       supportsDryRun: false,
       completionSummary: "Build verification",
+      positionalOverrides: {
+        featureId: { description: "Specific feature to verify (optional)" },
+      },
       flagOverrides: {
-        maxRetries: { type: "number" },
-        browser: { default: false },
-        skipTests: { default: false },
-        strictTdd: { default: false },
+        model: { description: "Model to use for verification" },
+        maxRetries: { type: "number", description: "Max retries" },
+        browser: { description: "Enable browser-based verification after build passes", default: false },
+        skipTests: { description: "Skip running tests during TDD verification", default: false },
+        strictTdd: { description: "Strict TDD mode: fail verification if new files are missing tests", default: false },
       },
     },
   },
@@ -184,13 +208,17 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: mergeCommand,
     meta: {
+      summary: "Merge verified branches into the base branch",
       aliases: ["m"],
       mutating: true,
       supportsDryRun: true,
       completionSummary: "Merge branches",
+      positionalOverrides: {
+        featureId: { description: "Specific feature to merge (optional)" },
+      },
       flagOverrides: {
-        autoPush: { default: false },
-        dryRun: { default: false },
+        autoPush: { description: "Push base branch to remote after merge", default: false },
+        dryRun: { description: "Show what would be merged without merging", default: false },
       },
     },
   },
@@ -199,12 +227,17 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: retryCommand,
     meta: {
+      summary: "Retry a failed agent",
       aliases: ["re"],
       mutating: true,
       supportsDryRun: true,
+      positionalOverrides: {
+        featureId: { description: "Feature ID of the failed agent", required: true },
+      },
       flagOverrides: {
-        interactive: { default: false },
-        dryRun: { default: false },
+        model: { description: "Model to use" },
+        interactive: { description: "Use multiplexer (dmux/tmux) TUI mode", default: false },
+        dryRun: { description: "Show what would be retried without retrying", default: false },
       },
     },
   },
@@ -213,13 +246,14 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: cleanupCommand,
     meta: {
+      summary: "Remove all wave worktrees and multiplexer sessions",
       aliases: ["c"],
       mutating: true,
       supportsDryRun: true,
       completionSummary: "Remove worktrees",
       description: "Kills multiplexer sessions, removes worktrees, removes state and log files.",
       flagOverrides: {
-        dryRun: { default: false },
+        dryRun: { description: "Show what would be cleaned up without removing", default: false },
       },
     },
   },
@@ -228,6 +262,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: historyCommand,
     meta: {
+      summary: "List/view past wave results from .wombo-combo/history/",
       aliases: ["h"],
       mutating: false,
       supportsDryRun: false,
@@ -237,7 +272,7 @@ const ENTRIES: RegistryEntry[] = [
         "separately from .wombo-combo/state.json and survive cleanup. Use without arguments " +
         "to list all waves, or pass a wave ID to see detailed results.",
       positionalOverrides: {
-        waveId: { name: "wave-id" },
+        waveId: { name: "wave-id", description: "Specific wave ID to show details for (optional)" },
       },
     },
   },
@@ -246,6 +281,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: usageCommand,
     meta: {
+      summary: "Show token usage statistics from .wombo-combo/usage.jsonl",
       aliases: ["us"],
       mutating: false,
       supportsDryRun: false,
@@ -255,8 +291,10 @@ const ENTRIES: RegistryEntry[] = [
         "Can show totals or group by task, quest, model, provider, or harness. " +
         "Supports date range filtering and table or JSON output.",
       flagOverrides: {
-        by: { enum: ["task", "quest", "model", "provider", "harness"] },
-        format: { default: "table", enum: ["table", "json"] },
+        by: { description: "Group usage by field (default: total — no grouping)", enum: ["task", "quest", "model", "provider", "harness"] },
+        since: { description: "Filter records from this date (ISO 8601, inclusive)" },
+        until: { description: "Filter records until this date (ISO 8601, inclusive)" },
+        format: { description: "Output format for usage data: table (default) or json", default: "table", enum: ["table", "json"] },
       },
     },
   },
@@ -265,6 +303,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: abortCommand,
     meta: {
+      summary: "Kill a single running agent without affecting the rest of the wave",
       aliases: ["a"],
       mutating: true,
       supportsDryRun: false,
@@ -273,8 +312,11 @@ const ENTRIES: RegistryEntry[] = [
         "Kills the multiplexer session and agent process for a specific feature, then " +
         "marks the agent as failed. Use --requeue to return the feature to the " +
         "queue instead of marking it failed.",
+      positionalOverrides: {
+        featureId: { description: "Feature ID of the agent to abort" },
+      },
       flagOverrides: {
-        requeue: { default: false },
+        requeue: { description: "Return the feature to queued instead of marking it failed", default: false },
       },
     },
   },
@@ -283,14 +325,15 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: upgradeCommand,
     meta: {
+      summary: "Check for updates and upgrade wombo",
       aliases: ["u"],
       mutating: true,
       supportsDryRun: false,
       completionSummary: "Check for updates",
       flagOverrides: {
-        check: { default: false },
-        tag: { alias: "--release" },
-        force: { default: false },
+        check: { description: "Only check for updates, don't install", default: false },
+        tag: { alias: "--release", description: "Install a specific version (e.g., v0.1.0)" },
+        force: { description: "Force reinstall even if up to date", default: false },
       },
     },
   },
@@ -299,6 +342,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: logsCommand,
     meta: {
+      summary: "Pretty-print agent logs from .wombo-combo/logs/<feature-id>.log",
       aliases: ["lo"],
       mutating: false,
       supportsDryRun: false,
@@ -307,8 +351,8 @@ const ENTRIES: RegistryEntry[] = [
         "Reads log files written by agents during headless runs and displays " +
         "them with colorized output. Supports tailing and following.",
       flagOverrides: {
-        tail: { type: "number" },
-        follow: { default: false },
+        tail: { type: "number", description: "Show only the last N lines" },
+        follow: { description: "Stream new output as it arrives (like tail -f)", default: false },
       },
     },
   },
@@ -317,6 +361,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: tasksCommand,
     meta: {
+      summary: "Manage tasks file",
       aliases: ["t", "features"],
       mutating: false,
       supportsDryRun: false,
@@ -327,16 +372,18 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "list",
         parentName: "tasks",
         meta: {
+          summary: "List tasks with optional filtering",
           aliases: ["ls"],
           mutating: false,
           supportsDryRun: false,
           completionSummary: "List tasks",
           flagOverrides: {
-            status: { enum: VALID_STATUSES },
-            priority: { enum: VALID_PRIORITIES },
-            difficulty: { enum: VALID_DIFFICULTIES },
-            ready: { default: false },
-            includeArchive: { default: false, name: "--include-archive" },
+            status: { description: "Filter by status", enum: VALID_STATUSES },
+            priority: { description: "Filter by priority", enum: VALID_PRIORITIES },
+            difficulty: { description: "Filter by difficulty", enum: VALID_DIFFICULTIES },
+            ready: { description: "Show only ready tasks (backlog + deps met)", default: false },
+            includeArchive: { description: "Include archived tasks", default: false, name: "--include-archive" },
+            fields: { description: "Comma-separated list of fields to include in output" },
           },
         },
       },
@@ -344,16 +391,17 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "add",
         parentName: "tasks",
         meta: {
+          summary: "Add a new task",
           aliases: ["a"],
           mutating: true,
           supportsDryRun: true,
           flagOverrides: {
-            description: { alias: "--desc" },
-            priority: { default: "medium", enum: VALID_PRIORITIES },
-            difficulty: { default: "medium", enum: VALID_DIFFICULTIES },
-            effort: { default: "PT1H" },
-            dependsOn: { name: "--depends-on" },
-            dryRun: { default: false },
+            description: { alias: "--desc", description: "Task description" },
+            priority: { description: "Priority level", default: "medium", enum: VALID_PRIORITIES },
+            difficulty: { description: "Difficulty level", default: "medium", enum: VALID_DIFFICULTIES },
+            effort: { description: "Effort estimate (ISO 8601 duration, e.g. PT2H)", default: "PT1H" },
+            dependsOn: { name: "--depends-on", description: "Comma-separated dependency IDs" },
+            dryRun: { description: "Show what would be added without writing", default: false },
           },
         },
       },
@@ -361,14 +409,16 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "set-status",
         parentName: "tasks",
         meta: {
+          summary: "Change a task's status",
           aliases: ["ss"],
           mutating: true,
           supportsDryRun: true,
           positionalOverrides: {
-            taskId: { name: "task-id" },
+            taskId: { name: "task-id", description: "Task ID to update" },
+            status: { description: "New status value" },
           },
           flagOverrides: {
-            dryRun: { default: false },
+            dryRun: { description: "Show what would change without writing", default: false },
           },
         },
       },
@@ -376,14 +426,16 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "set-priority",
         parentName: "tasks",
         meta: {
+          summary: "Change a task's priority",
           aliases: ["sp"],
           mutating: true,
           supportsDryRun: true,
           positionalOverrides: {
-            taskId: { name: "task-id" },
+            taskId: { name: "task-id", description: "Task ID to update" },
+            priority: { description: "New priority value" },
           },
           flagOverrides: {
-            dryRun: { default: false },
+            dryRun: { description: "Show what would change without writing", default: false },
           },
         },
       },
@@ -391,14 +443,16 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "set-difficulty",
         parentName: "tasks",
         meta: {
+          summary: "Change a task's difficulty",
           aliases: ["sd"],
           mutating: true,
           supportsDryRun: true,
           positionalOverrides: {
-            taskId: { name: "task-id" },
+            taskId: { name: "task-id", description: "Task ID to update" },
+            difficulty: { description: "New difficulty value" },
           },
           flagOverrides: {
-            dryRun: { default: false },
+            dryRun: { description: "Show what would change without writing", default: false },
           },
         },
       },
@@ -406,27 +460,31 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "check",
         parentName: "tasks",
         meta: {
+          summary: "Validate tasks file (schema, deps, duplicates, cycles)",
           aliases: ["ch", "validate"],
           mutating: false,
           supportsDryRun: false,
           completionSummary: "Validate tasks",
-          // Note: check has its own --output flag that overrides the global one
-          // but for schema purposes we treat it as filtered (global handles it)
+          // check's --output is a command-specific flag, not global
+          extraFlags: [
+            { name: "--output", description: "Output format: text (default), json, or toon", type: "string", default: "text" },
+          ],
         },
       },
       {
         subKey: "archive",
         parentName: "tasks",
         meta: {
+          summary: "Move done/cancelled tasks to archive section",
           aliases: ["ar"],
           mutating: true,
           supportsDryRun: true,
           completionSummary: "Archive done tasks",
           positionalOverrides: {
-            taskId: { name: "task-id" },
+            taskId: { name: "task-id", description: "Specific task to archive (optional)" },
           },
           flagOverrides: {
-            dryRun: { default: false },
+            dryRun: { description: "Show what would be archived without moving", default: false },
           },
         },
       },
@@ -434,12 +492,16 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "show",
         parentName: "tasks",
         meta: {
+          summary: "Show detailed information about a specific task",
           aliases: ["sh"],
           mutating: false,
           supportsDryRun: false,
           completionSummary: "Show task details",
           positionalOverrides: {
-            taskId: { name: "task-id" },
+            taskId: { name: "task-id", description: "Task ID to display" },
+          },
+          flagOverrides: {
+            fields: { description: "Comma-separated list of fields to include in output" },
           },
         },
       },
@@ -447,6 +509,7 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "graph",
         parentName: "tasks",
         meta: {
+          summary: "Visualize the task dependency graph as a terminal diagram",
           aliases: ["g"],
           mutating: false,
           supportsDryRun: false,
@@ -456,10 +519,10 @@ const ENTRIES: RegistryEntry[] = [
             "it as a Unicode box diagram. Shows dependency edges, status badges, orphan " +
             "detection, dangling dependency warnings, and cycle detection.",
           flagOverrides: {
-            status: { enum: VALID_STATUSES },
-            ascii: { default: false },
-            mermaid: { default: false },
-            subtasks: { default: false },
+            status: { description: "Filter graph to tasks with this status", enum: VALID_STATUSES },
+            ascii: { description: "Use ASCII-only rendering (no Unicode box chars)", default: false },
+            mermaid: { description: "Emit raw Mermaid source instead of rendered graph", default: false },
+            subtasks: { description: "Include subtask-level nodes in the graph", default: false },
           },
         },
       },
@@ -472,7 +535,6 @@ const ENTRIES: RegistryEntry[] = [
     meta: {
       mutating: false,
       supportsDryRun: false,
-      // help has a plain meta object, but we provide explicit values for consistency
       summary: "Show help text",
     },
   },
@@ -481,7 +543,6 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: versionCommand,
     meta: {
-      // versionCommand uses async meta — can't be resolved at import time
       name: "version",
       summary: "Print version and exit (also: -v, -V)",
       mutating: false,
@@ -493,6 +554,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: describeCommand,
     meta: {
+      summary: "Emit JSON schema of a command's arguments and flags",
       aliases: ["d"],
       mutating: false,
       supportsDryRun: false,
@@ -500,6 +562,9 @@ const ENTRIES: RegistryEntry[] = [
       description:
         "Machine-readable introspection for AI agents. Outputs the accepted " +
         "positionals, flags, types, defaults, and constraints for a command.",
+      positionalOverrides: {
+        command: { description: "Command to describe (e.g. 'launch', 'features add')" },
+      },
     },
   },
 
@@ -507,6 +572,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: questCommand,
     meta: {
+      summary: "Manage quests (scoped missions with their own task sets)",
       aliases: ["q"],
       mutating: false,
       supportsDryRun: false,
@@ -517,15 +583,17 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "create",
         parentName: "quest",
         meta: {
+          summary: "Create a new quest",
           aliases: ["c"],
           mutating: true,
           supportsDryRun: true,
           flagOverrides: {
-            goal: { required: true },
-            priority: { default: "medium", enum: VALID_PRIORITIES },
-            difficulty: { default: "medium", enum: VALID_DIFFICULTIES },
-            hitl: { default: "yolo", enum: ["yolo", "cautious", "supervised"] },
-            dryRun: { default: false },
+            goal: { description: "Quest goal (required)", required: true },
+            priority: { description: "Priority level", default: "medium", enum: VALID_PRIORITIES },
+            difficulty: { description: "Difficulty level", default: "medium", enum: VALID_DIFFICULTIES },
+            hitl: { description: "HITL mode (yolo/cautious/supervised)", default: "yolo", enum: ["yolo", "cautious", "supervised"] },
+            agent: { description: "Agent definition override for all tasks" },
+            dryRun: { description: "Show what would happen without creating", default: false },
           },
         },
       },
@@ -533,20 +601,28 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "list",
         parentName: "quest",
         meta: {
+          summary: "List all quests",
           aliases: ["ls"],
           mutating: false,
           supportsDryRun: false,
+          flagOverrides: {
+            status: { description: "Filter by status" },
+          },
         },
       },
       {
         subKey: "show",
         parentName: "quest",
         meta: {
+          summary: "Show full quest details",
           aliases: ["sh"],
           mutating: false,
           supportsDryRun: false,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to display" },
+          },
+          flagOverrides: {
+            fields: { description: "Comma-separated list of fields to include" },
           },
         },
       },
@@ -554,14 +630,16 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "plan",
         parentName: "quest",
         meta: {
+          summary: "Run planner agent to decompose quest into tasks",
           aliases: ["pl"],
           mutating: true,
           supportsDryRun: true,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to plan" },
           },
           flagOverrides: {
-            dryRun: { default: false },
+            model: { description: "Model to use for planner agent" },
+            dryRun: { description: "Show proposed tasks without writing", default: false },
           },
         },
       },
@@ -569,11 +647,12 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "activate",
         parentName: "quest",
         meta: {
+          summary: "Activate a quest (creates branch, sets status to active)",
           aliases: ["a"],
           mutating: true,
           supportsDryRun: false,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to activate" },
           },
         },
       },
@@ -581,11 +660,12 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "pause",
         parentName: "quest",
         meta: {
+          summary: "Pause an active quest",
           aliases: ["p"],
           mutating: true,
           supportsDryRun: false,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to pause" },
           },
         },
       },
@@ -593,14 +673,15 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "complete",
         parentName: "quest",
         meta: {
+          summary: "Complete quest (merges branch into base)",
           aliases: ["co"],
           mutating: true,
           supportsDryRun: false,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to complete" },
           },
           flagOverrides: {
-            force: { default: false },
+            force: { description: "Skip merge, just mark as complete", default: false },
           },
         },
       },
@@ -608,14 +689,15 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "abandon",
         parentName: "quest",
         meta: {
+          summary: "Abandon quest without merging",
           aliases: ["ab"],
           mutating: true,
           supportsDryRun: false,
           positionalOverrides: {
-            questId: { name: "quest-id" },
+            questId: { name: "quest-id", description: "Quest ID to abandon" },
           },
           flagOverrides: {
-            force: { default: false },
+            force: { description: "Delete branch when abandoning", default: false },
           },
         },
       },
@@ -626,6 +708,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: wishlistCommand,
     meta: {
+      summary: "Quick-capture ideas for later",
       aliases: ["w", "wl"],
       mutating: false,
       supportsDryRun: false,
@@ -636,15 +719,20 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "add",
         parentName: "wishlist",
         meta: {
+          summary: "Add a wishlist item",
           aliases: ["a"],
           mutating: true,
           supportsDryRun: false,
+          flagOverrides: {
+            tag: { description: "Categorization tag (can be repeated)" },
+          },
         },
       },
       {
         subKey: "list",
         parentName: "wishlist",
         meta: {
+          summary: "List all wishlist items",
           aliases: ["ls"],
           mutating: false,
           supportsDryRun: false,
@@ -654,6 +742,7 @@ const ENTRIES: RegistryEntry[] = [
         subKey: "delete",
         parentName: "wishlist",
         meta: {
+          summary: "Delete a wishlist item",
           aliases: ["rm", "del", "d"],
           mutating: true,
           supportsDryRun: false,
@@ -666,6 +755,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: completionCommand,
     meta: {
+      summary: "Shell completions (install, uninstall, or emit script)",
       aliases: ["comp"],
       mutating: true,
       supportsDryRun: false,
@@ -674,7 +764,7 @@ const ENTRIES: RegistryEntry[] = [
         "Manage shell completion scripts. Use 'install' to auto-configure your " +
         "shell, 'uninstall' to remove, or pass a shell name to emit the raw script.",
       positionalOverrides: {
-        shell: { name: "action" },
+        shell: { name: "action", description: "Action: install, uninstall, bash, zsh, or fish" },
       },
     },
   },
