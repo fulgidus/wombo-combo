@@ -38,7 +38,7 @@ import {
   writeAgentToWorktree,
   type AgentResolution,
 } from "../lib/agent-registry.js";
-import { patchImportedAgent } from "../lib/templates.js";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
 import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
 import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
 
@@ -171,10 +171,17 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     // Write specialized agent to worktree if applicable
     if (agentResolution && isSpecializedAgent(agentResolution)) {
       try {
-        const patchedContent = patchImportedAgent(agentResolution.rawContent, effectiveConfig, projectRoot);
+        const patchedContent = patchImportedAgent(agentResolution.rawContent, effectiveConfig, projectRoot, hitlMode as QuestHitlMode | undefined);
         writeAgentToWorktree(agent.worktree, agentResolution.name, patchedContent);
       } catch {
         // Non-fatal — agent will fall back to default
+      }
+    } else if (hitlMode && hitlMode !== "yolo") {
+      try {
+        const hitlAwareContent = renderGeneralistAgent(effectiveConfig, projectRoot, hitlMode as QuestHitlMode);
+        writeAgentToWorktree(agent.worktree, effectiveConfig.agent.name, hitlAwareContent);
+      } catch {
+        // Non-fatal — agent will use default
       }
     }
 

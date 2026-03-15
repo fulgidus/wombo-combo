@@ -206,69 +206,28 @@ export interface CLIArgs {
 }
 
 // ---------------------------------------------------------------------------
-// Command & Subcommand Aliases
+// Command & Subcommand Aliases (derived from COMMAND_REGISTRY)
 // ---------------------------------------------------------------------------
 
+import { COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
+
 /** Map of short aliases → canonical top-level command names. */
-export const COMMAND_ALIASES: Record<string, string> = {
-  i: "init",
-  l: "launch",
-  r: "resume",
-  s: "status",
-  v: "verify",
-  m: "merge",
-  re: "retry",
-  a: "abort",
-  c: "cleanup",
-  h: "history",
-  lo: "logs",
-  t: "tasks",
-  features: "tasks", // backward-compat full-word alias
-  q: "quest",
-  g: "genesis",
-  u: "upgrade",
-  d: "describe",
-  comp: "completion",
-  tui: "tui",
-  w: "wishlist",
-  wl: "wishlist",
-  us: "usage",
-};
+export const COMMAND_ALIASES: Record<string, string> = buildAliasMap(COMMAND_REGISTRY);
 
 /** Map of short aliases → canonical tasks subcommand names. */
-export const SUBCOMMAND_ALIASES: Record<string, string> = {
-  ls: "list",
-  a: "add",
-  ss: "set-status",
-  sp: "set-priority",
-  sd: "set-difficulty",
-  ch: "check",
-  validate: "check", // backward-compat full-word alias
-  ar: "archive",
-  sh: "show",
-  g: "graph",
-};
+export const SUBCOMMAND_ALIASES: Record<string, string> = buildAliasMap(
+  COMMAND_REGISTRY.find((c) => c.name === "tasks")?.subcommands ?? [],
+);
 
 /** Map of short aliases → canonical quest subcommand names. */
-export const QUEST_SUBCOMMAND_ALIASES: Record<string, string> = {
-  c: "create",
-  ls: "list",
-  sh: "show",
-  pl: "plan",
-  a: "activate",
-  p: "pause",
-  co: "complete",
-  ab: "abandon",
-};
+export const QUEST_SUBCOMMAND_ALIASES: Record<string, string> = buildAliasMap(
+  COMMAND_REGISTRY.find((c) => c.name === "quest")?.subcommands ?? [],
+);
 
 /** Map of short aliases → canonical wishlist subcommand names. */
-export const WISHLIST_SUBCOMMAND_ALIASES: Record<string, string> = {
-  a: "add",
-  ls: "list",
-  rm: "delete",
-  del: "delete",
-  d: "delete",
-};
+export const WISHLIST_SUBCOMMAND_ALIASES: Record<string, string> = buildAliasMap(
+  COMMAND_REGISTRY.find((c) => c.name === "wishlist")?.subcommands ?? [],
+);
 
 // ---------------------------------------------------------------------------
 // Arg Parsing

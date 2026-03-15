@@ -58,5 +58,11 @@
         "mode": "auto",
         "source": "msitarzewski/agency-agents",
         "cacheDir": "agents-cache"
+    },
+    "tdd": {
+        "enabled": true,
+        "testCommand": "bun test",
+        "strictTdd": true,
+        "testTimeout": 120000
     }
 }

@@ -20,6 +20,7 @@ import YAML from "yaml";
 import type { WomboConfig } from "../config.js";
 import { isPortlessAvailable } from "./portless.js";
 import { normalizeAgentFormat } from "./format-converter.js";
+import type { QuestHitlMode } from "./quest.js";
 
 // ---------------------------------------------------------------------------
 // Template Directory & Paths
@@ -127,6 +128,63 @@ function buildTddBlock(config: WomboConfig): string {
 }
 
 // ---------------------------------------------------------------------------
+// HITL (Human-in-the-Loop) Awareness
+// ---------------------------------------------------------------------------
+
+/**
+ * HITL-aware replacement for the "never ask" rules in agent templates.
+ *
+ * When HITL mode is not "yolo", the agent template's hardcoded "never ask
+ * questions" rules contradict the HITL instructions injected into the task
+ * prompt. This function rewrites those rules to be HITL-compatible, and
+ * injects a HITL awareness block into the agent definition itself.
+ *
+ * This works on the rendered template content (after all other blocks like
+ * portless and TDD have been injected).
+ */
+function applyHitlAwareness(content: string, hitlMode: QuestHitlMode): string {
+  if (!hitlMode || hitlMode === "yolo") return content;
+
+  let result = content;
+
+  // -- Replace "never ask" rules in Operational Rules section --
+  // These exact lines appear in generalist-agent.md and wc-patch.body.start.md
+  result = result.replace(
+    /- NEVER ask questions or request clarification\. Make reasonable decisions from context and code conventions\./g,
+    "- Use the HITL channel (`bun $WOMBO_HITL_ASK \"question\"`) when you need human input (see HITL section below)."
+  );
+  result = result.replace(
+    /- NEVER wait for confirmation\. Act decisively\./g,
+    hitlMode === "supervised"
+      ? "- Check in with the human before major decisions (see HITL section below)."
+      : "- Act decisively, but consult the human when genuinely uncertain (see HITL section below)."
+  );
+
+  // -- Replace "Never ask" in "What You Must Never Do" sections --
+  result = result.replace(
+    /- Never ask for human input or confirmation\n/g,
+    ""
+  );
+
+  // -- Replace in frontmatter description --
+  result = result.replace(
+    /Operates headlessly with\s+zero human interaction/g,
+    hitlMode === "supervised"
+      ? "Operates with supervised human-in-the-loop interaction"
+      : "Operates with cautious human-in-the-loop interaction"
+  );
+  // Also handle single-line occurrences outside frontmatter
+  result = result.replace(
+    /zero human interaction/g,
+    hitlMode === "supervised"
+      ? "supervised human-in-the-loop interaction"
+      : "cautious human-in-the-loop interaction"
+  );
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Placeholder Substitution
 // ---------------------------------------------------------------------------
 
@@ -193,10 +251,15 @@ function joinFrontmatter(yaml: string, body: string): string {
  * This is the default agent definition for projects that don't import a
  * specialized agent from an external registry. Portless instructions are
  * injected deterministically based on config.
+ *
+ * When `hitlMode` is "cautious" or "supervised", the "never ask" rules
+ * are replaced with HITL-compatible language so the agent definition
+ * doesn't contradict the HITL instructions in the task prompt.
  */
 export function renderGeneralistAgent(
   config: WomboConfig,
-  projectRoot: string
+  projectRoot: string,
+  hitlMode?: QuestHitlMode
 ): string {
   let raw = readFileSync(GENERALIST_TEMPLATE_PATH, "utf-8");
 
@@ -224,6 +287,11 @@ export function renderGeneralistAgent(
     }
   }
 
+  // Deterministic HITL awareness — replace "never ask" rules when HITL is active
+  if (hitlMode && hitlMode !== "yolo") {
+    raw = applyHitlAwareness(raw, hitlMode);
+  }
+
   return applyPlaceholders(raw, config, projectRoot);
 }
 
@@ -246,11 +314,14 @@ export function renderGeneralistAgent(
  * @param rawAgentMd  — raw markdown content of the imported agent file
  * @param config      — wombo-combo project config
  * @param projectRoot — absolute path to the project root
+ * @param hitlMode    — optional HITL mode; when "cautious" or "supervised",
+ *                      rewrites "never ask" rules for HITL compatibility
  */
 export function patchImportedAgent(
   rawAgentMd: string,
   config: WomboConfig,
-  projectRoot: string
+  projectRoot: string,
+  hitlMode?: QuestHitlMode
 ): string {
   // Normalize agency-agents format to woco-compatible format before patching.
   // If the content is already in woco format, this is a no-op.
@@ -317,7 +388,13 @@ export function patchImportedAgent(
   }
 
   // --- Reassemble & substitute placeholders ---
-  const composed = joinFrontmatter(patchedYaml, patchedBody);
+  let composed = joinFrontmatter(patchedYaml, patchedBody);
+
+  // Deterministic HITL awareness — replace "never ask" rules when HITL is active
+  if (hitlMode && hitlMode !== "yolo") {
+    composed = applyHitlAwareness(composed, hitlMode);
+  }
+
   return applyPlaceholders(composed, config, projectRoot);
 }
 
@@ -335,7 +412,8 @@ export function patchImportedAgent(
 export function renderAgentTemplate(
   config: WomboConfig,
   projectRoot: string,
-  agentName?: string
+  agentName?: string,
+  hitlMode?: QuestHitlMode
 ): string {
   // If a specific agent is requested and it's not the default generalist,
   // try to read it from the local agents directory.
@@ -350,7 +428,7 @@ export function renderAgentTemplate(
       `\x1b[33m[WARNING]\x1b[0m Local agent definition not found: .opencode/agents/${agentName}.md — falling back to ${config.agent.name}`
     );
   }
-  return renderGeneralistAgent(config, projectRoot);
+  return renderGeneralistAgent(config, projectRoot, hitlMode);
 }
 
 // ---------------------------------------------------------------------------
