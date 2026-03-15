@@ -44,9 +44,11 @@
  */
 
 import { resolve } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { loadConfig, validateConfig } from "./config.js";
 import { loadState, saveState } from "./lib/state.js";
+import { checkShellCompletions } from "./commands/upgrade.js";
 
 // ---------------------------------------------------------------------------
 // Dev-mode guard: warn if running the global binary inside the wombo-combo repo
@@ -82,6 +84,45 @@ function checkDevModeGuard(): void {
       "  Use \x1b[1mbun dev <command>\x1b[0m instead to run from local source.\n" +
       "  See AGENTS.md for details.\n"
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// First-run-after-upgrade check: detect version change, show completion hint
+// ---------------------------------------------------------------------------
+
+const GLOBAL_STATE_DIR = resolve(homedir(), ".config", "woco");
+const GLOBAL_STATE_FILE = resolve(GLOBAL_STATE_DIR, "state.json");
+
+/**
+ * Compare the current package version against the last-seen version stored in
+ * ~/.config/woco/state.json. If the version changed (i.e. user just upgraded),
+ * show shell completion hints and update the stored version.
+ */
+function checkFirstRunAfterUpgrade(currentVersion: string): void {
+  try {
+    let lastVersion: string | undefined;
+
+    if (existsSync(GLOBAL_STATE_FILE)) {
+      const raw = readFileSync(GLOBAL_STATE_FILE, "utf-8");
+      const state = JSON.parse(raw);
+      lastVersion = state.lastSeenVersion;
+    }
+
+    if (lastVersion === currentVersion) return; // No change
+
+    // Version changed (or first run ever) — show completion hint
+    checkShellCompletions();
+
+    // Persist the new version
+    mkdirSync(GLOBAL_STATE_DIR, { recursive: true });
+    const state = existsSync(GLOBAL_STATE_FILE)
+      ? JSON.parse(readFileSync(GLOBAL_STATE_FILE, "utf-8"))
+      : {};
+    state.lastSeenVersion = currentVersion;
+    writeFileSync(GLOBAL_STATE_FILE, JSON.stringify(state, null, 2) + "\n", "utf-8");
+  } catch {
+    // Non-critical — never block CLI startup
   }
 }
 
@@ -771,6 +812,17 @@ async function main(): Promise<void> {
   if (args.command === "help" || args.command === "--help" || args.command === "-h") {
     cmdHelp();
     return;
+  }
+
+  // First-run-after-upgrade: show shell completion hint if version changed
+  {
+    const pkgPath = resolve(import.meta.dir, "..", "package.json");
+    try {
+      const pkg = await Bun.file(pkgPath).json();
+      if (pkg.version) checkFirstRunAfterUpgrade(pkg.version);
+    } catch {
+      // Non-critical
+    }
   }
 
   if (args.command === "describe") {
