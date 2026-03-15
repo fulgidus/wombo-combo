@@ -100,11 +100,20 @@ export function buildAliasMap(commands: CommandDef[]): Record<string, string> {
   return map;
 }
 
+/**
+ * Get all flags for a command: command-specific flags merged with global
+ * flags, deduplicating by flag name (command-specific takes priority).
+ */
+export function getCommandFlags(cmd: CommandDef): FlagDef[] {
+  const seen = new Set(cmd.flags.map((f) => f.name));
+  return [...cmd.flags, ...GLOBAL_FLAGS.filter((f) => !seen.has(f.name))];
+}
+
 // ---------------------------------------------------------------------------
 // Global flags (available on every command)
 // ---------------------------------------------------------------------------
 
-const GLOBAL_FLAGS: FlagDef[] = [
+export const GLOBAL_FLAGS: FlagDef[] = [
   {
     name: "--output",
     alias: "-o",
