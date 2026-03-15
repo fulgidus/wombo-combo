@@ -1063,7 +1063,7 @@ export class TaskBrowser {
   }
 
   private cycleConcurrency(): void {
-    const levels = [1, 2, 3, 5, 8, 10, 15, 20];
+    const levels = [0, 1, 2, 3, 5, 8, 10, 15, 20];
     const idx = levels.indexOf(this.session.maxConcurrent);
     this.session.maxConcurrent = levels[(idx + 1) % levels.length];
     this.refreshStatusBar();
@@ -1194,7 +1194,7 @@ export class TaskBrowser {
     let line2 = ` {green-fg}${doneCount}{/green-fg} done`;
     line2 += `  {cyan-fg}${readyCount}{/cyan-fg} ready`;
     line2 += `  {gray-fg}|{/gray-fg}  Sort: {yellow-fg}${this.session.sortBy}{/yellow-fg}`;
-    line2 += `  {gray-fg}|{/gray-fg}  Concurrency: {yellow-fg}${this.session.maxConcurrent}{/yellow-fg}`;
+    line2 += `  {gray-fg}|{/gray-fg}  Concurrency: {yellow-fg}${this.session.maxConcurrent === 0 ? "∞" : this.session.maxConcurrent}{/yellow-fg}`;
 
     this.headerBox.setContent(`${line1}\n${line2}`);
   }

@@ -386,7 +386,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
   // Re-launch agents
   const maxConcurrent = opts.maxConcurrent ?? state.max_concurrent;
-  const toLaunchNow = toRelaunch.slice(0, maxConcurrent);
+  const toLaunchNow = toRelaunch.slice(0, maxConcurrent || undefined);
   if (toLaunchNow.length === 0 && stillAlive.length === 0) {
     outputMessage(fmt, "No agents need (re)launching.", {
       wave_id: state.wave_id,
