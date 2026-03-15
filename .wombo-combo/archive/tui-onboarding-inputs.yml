@@ -1,0 +1,30 @@
+id: tui-onboarding-inputs
+title: "Onboarding wizard: input collection (steps 1-9)"
+description: "Create src/lib/tui-onboarding.ts with a collectInputs() function that implements a 9-step blessed wizard
+  following the exact same pattern as tui-quest-wizard.ts (modal box, content area, textbox/textarea/selectList widgets,
+  Step type union, showStep(), goBack(), advanceOrFinish()). Steps: (1) Welcome screen explaining what onboarding does —
+  press Enter to continue. (2) Project type — selectList with greenfield/brownfield options. (3) Name — textbox for
+  project name. (4) Description — textbox for short description. (5) Vision — textarea for long-term vision. (6)
+  Objectives — textarea, one objective per line, each optionally prefixed with [high]/[medium]/[low]. (7) Tech stack —
+  textarea, free-form (runtime, language, frameworks, tools). (8) Conventions — textarea, free-form (commits, branches,
+  testing, coding style, naming). (9) Rules/constraints — textarea, free-form text that will later be structured into
+  rule objects. The function returns Promise<RawInputs | null> where RawInputs is { type: ProjectType, name: string,
+  description: string, vision: string, objectivesRaw: string, techStackRaw: string, conventionsRaw: string, rulesRaw:
+  string }. null means user cancelled. Must support ownsScreen pattern (accept optional blessed screen, create own if
+  not provided). Must clean up stdin on destroy (removeAllListeners keypress/data, setRawMode false). Import types from
+  project-store.ts. Reference tui-quest-wizard.ts for the EXACT widget setup and event handling patterns —
+  textbox.on('submit')/textbox.on('cancel'), textarea.key(['enter']) to submit, textarea.key(['escape']) to go back,
+  selectList.key(['enter','space']) with (selectList as any).selected index. Status bar at bottom shows progress."
+status: done
+completion: 100
+difficulty: medium
+priority: critical
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T13:45:58.832Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

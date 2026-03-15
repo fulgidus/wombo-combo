@@ -1,0 +1,24 @@
+id: tui-onboarding-scout
+title: "Onboarding wizard: brownfield auto-scout integration"
+description: "In src/lib/tui-onboarding.ts, add a function runBrownfieldScout(projectRoot: string): Promise<string> that
+  calls buildScoutIndex(projectRoot) from src/lib/subagents/scout.ts and returns formatScoutTree(index, { maxDepth: 4,
+  showSymbolCounts: true, maxLines: 150 }). This is called during the wizard flow AFTER the user selects 'brownfield' as
+  project type. The scout result is stored as codebase_summary in the profile. If scouting fails, return an empty string
+  (graceful fallback). Import buildScoutIndex and formatScoutTree from './subagents/scout.js'. Also integrate this into
+  the wizard flow: after the type selection step, if type is 'brownfield', show a ProgressScreen spinner saying
+  'Scanning codebase...' while the scout runs, then display a brief summary of what was found (N files, N symbols)
+  before continuing to the name step. The scout result gets threaded through to the final profile."
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on:
+  - tui-onboarding-inputs
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T13:54:49.264Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

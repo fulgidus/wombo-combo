@@ -1,0 +1,19 @@
+id: citty-spike
+title: Citty proof-of-concept with 3 simple commands
+description: "Install citty and unjs/citty. Convert 3 simple commands (help, version, describe) to citty definitions.
+  Verify: alias resolution works, --output flag works, help text matches current output. This spike proves the
+  integration pattern before migrating complex commands. Must keep backward-compat: 'woco -v', 'woco help', 'woco
+  describe' all work identically."
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

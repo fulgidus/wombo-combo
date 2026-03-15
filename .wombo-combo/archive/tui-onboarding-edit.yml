@@ -1,0 +1,26 @@
+id: tui-onboarding-edit
+title: "Onboarding wizard: edit mode (section menu)"
+description: "In src/lib/tui-onboarding.ts, add a function showSectionMenu(profile: ProjectProfile, screen?:
+  Widgets.Screen): Promise<{ action: 'edit', section: ProfileSection } | { action: 'resynthesize' } | { action: 'back'
+  }> that shows a blessed selectList of the 6 profile sections (from PROFILE_SECTIONS in project-store.ts) plus a
+  'Re-run LLM synthesis' option. Each item shows the section name and a one-line summary of current content (e.g.
+  'Identity: wombo-combo (brownfield)', 'Tech Stack: Bun, TypeScript, neo-blessed', 'Rules: 5 rules'). Uses the
+  ownsScreen pattern. Also add editSingleSection(profile: ProjectProfile, section: ProfileSection, screen?:
+  Widgets.Screen): Promise<ProjectProfile> that opens a textarea pre-populated with the section's current content
+  formatted as editable text, lets the user edit, parses the result back into the profile, and returns the updated
+  profile. The edit mode orchestrator is part of runOnboardingAsync — when project.yml already exists, it loads the
+  profile and shows the section menu instead of the full wizard."
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - tui-onboarding-review
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T14:05:41.304Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

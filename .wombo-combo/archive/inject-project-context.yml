@@ -1,0 +1,27 @@
+id: inject-project-context
+title: Inject formatProjectContext() into all agent prompts
+description: "Modify 4 files to inject project context from project.yml into agent prompts. All changes follow the same
+  pattern: import { loadProject, formatProjectContext } from project-store.ts, load the profile, and if it exists,
+  prepend the formatted context to the prompt. (1) src/lib/genesis-planner.ts — In generateGenesisPrompt(), after the '#
+  Genesis: Project Decomposition' header (line ~89), add: const profile = loadProject(projectRoot); if (profile) {
+  sections.push(formatProjectContext(profile)); }. This gives the genesis planner full project context. The existing
+  vision/techStack/constraints params can still override for one-off runs. (2) src/lib/quest-planner.ts — In
+  generatePlannerPrompt(), add the same profile loading and injection after the quest goal section. The project context
+  gives the planner awareness of conventions, rules, and tech stack. (3) src/lib/errand-planner.ts — In
+  generateErrandPrompt(), add project context after the request description. Errands benefit from knowing project
+  conventions and rules. (4) src/lib/prompt.ts — In generatePrompt(), add a '## Project Context' section near the top of
+  the agent prompt (after the task description). This ensures every task agent knows the project's rules, conventions,
+  and tech stack. All imports use the .js extension per ESM convention."
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T13:47:36.352Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

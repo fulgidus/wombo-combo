@@ -1,0 +1,21 @@
+id: citty-launch-resume
+title: Migrate launch and resume to Citty
+description: "Convert the two heaviest-flag commands (launch, resume, retry) to citty. These have ~15 flags each
+  including --max-concurrent, --model, --interactive, --quest, --base-branch, etc. Break the monolithic CLIArgs into
+  per-command option types. Preserve: --dev as global pre-command flag, all launch selection flags (--all-ready,
+  --top-priority, --quickest-wins), dry-run behavior. Tests: flag parsing matches current behavior, overloaded flags
+  (--tag) route to correct command context."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - citty-spike
+effort: PT6H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

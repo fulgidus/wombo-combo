@@ -1,0 +1,20 @@
+id: ink-input-system
+title: Ink text input component with full cursor navigation
+description: "Build a reusable TextInput Ink component that replaces blessed-textarea-patch.ts. Must support: arrow key
+  cursor navigation (left/right/up/down), Home/End, insert/delete at cursor position, Ctrl+S submit (not Enter — Enter
+  inserts newline in multiline mode), Ctrl+E to open $EDITOR, single-line and multi-line modes. This is the foundation
+  for every form in the TUI. Test with a standalone harness before integrating."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - ink-spike
+effort: PT6H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

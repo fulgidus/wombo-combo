@@ -117,7 +117,7 @@ import type { Priority, Difficulty, FeatureStatus } from "./lib/tasks.js";
 import type { QuestHitlMode } from "./lib/quest.js";
 import { resolveOutputFormat, output, outputError, type OutputFormat } from "./lib/output.js";
 import { validateId, validateText, validateBranchName, validateDuration, assertValid } from "./lib/validate.js";
-import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp } from "./lib/schema.js";
+import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp, COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
 import { buildToonSpec, renderToonLegend } from "./lib/toon-spec.js";
 import { addItem as addWishlistItem, deleteItem as deleteWishlistItem, listItems as listWishlistItems } from "./lib/wishlist-store.js";
 
@@ -208,8 +208,6 @@ export interface CLIArgs {
 // ---------------------------------------------------------------------------
 // Command & Subcommand Aliases (derived from COMMAND_REGISTRY)
 // ---------------------------------------------------------------------------
-
-import { COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
 
 /** Map of short aliases → canonical top-level command names. */
 export const COMMAND_ALIASES: Record<string, string> = buildAliasMap(COMMAND_REGISTRY);

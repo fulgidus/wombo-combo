@@ -1,0 +1,26 @@
+id: tui-onboarding-structure
+title: "Onboarding wizard: structureRawInputs() parser"
+description: "In src/lib/tui-onboarding.ts, add a pure function structureRawInputs(raw: RawInputs): ProjectProfile that
+  converts the raw text inputs from the wizard into a full ProjectProfile object. Logic: (1) Parse objectives from raw
+  lines — each line is one objective, optionally prefixed with [high]/[medium]/[low] for priority, default medium.
+  Generate sequential IDs (obj-1, obj-2, ...). (2) Parse tech stack from free-form text — look for patterns like
+  'runtime: X', 'language: X', 'frameworks: X, Y, Z', 'tools: X, Y'. Anything not matching goes into notes. (3) Parse
+  conventions — look for 'commits:', 'branches:', 'testing:', 'coding_style:', 'naming:' prefixes. Unmatched text goes
+  into coding_style. (4) Parse rules from free-form text — each non-empty line becomes a ProjectRule with auto-generated
+  ID (rule-1, rule-2, ...), rigidity defaults to 'soft', scope defaults to 'general'. (5) Set created_at/updated_at to
+  now, genesis_count to 0. Import createBlankProfile and all types from project-store.ts. This is a pure function with
+  no side effects — easy to test."
+status: done
+completion: 100
+difficulty: easy
+priority: critical
+depends_on:
+  - tui-onboarding-inputs
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T13:50:49.854Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

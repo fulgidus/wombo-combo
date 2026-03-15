@@ -45,13 +45,24 @@ Do not add `publishConfig`, do not run `npm publish`, do not add `.npmrc`.
 The lockfile is committed for reproducible installs from GitHub. Always commit
 `bun.lock` after adding/removing/updating dependencies.
 
-### 4. Do not commit user artifacts
+### 4. Commit project artifacts, ignore runtime artifacts
 
-All wombo-combo user artifacts live under `.wombo-combo/` (config, tasks, archive,
-state, logs, history). This directory is gitignored.
+Wombo-combo is dogfooded — we develop it using itself. Project definition files
+under `.wombo-combo/` **are tracked in git**:
 
-The template at `src/templates/tasks.yml` is the canonical source for the task
-file schema. The root `.wombo-combo/` dir is for local development only.
+- `config.json`, `project.yml` — project configuration and profile
+- `tasks/`, `tasks.yml` — active tasks
+- `archive/`, `archive.yml` — completed/cancelled tasks
+- `quests/` — quest definitions
+- `wishlist.yml` — wishlist items
+
+**Runtime artifacts are gitignored** (ephemeral, regenerated each run):
+
+- `state.json` — wave state
+- `logs/` — agent log files
+- `history/` — wave history records
+- `tui-session.json` — TUI session state
+- `usage.jsonl` — token usage data
 
 ---
 

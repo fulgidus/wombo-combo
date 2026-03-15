@@ -1,0 +1,19 @@
+id: ink-spike
+title: Ink proof-of-concept with base app shell
+description: "Install ink and react. Create a minimal Ink app shell that renders to the terminal, handles input events,
+  and exits cleanly. Verify: Ink render lifecycle works in Bun, stdin/stdout handling is correct, process.exit cleanup
+  works, and the app shell can mount/unmount child components. This spike proves Ink works in our Bun runtime before
+  migrating any real screens."
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

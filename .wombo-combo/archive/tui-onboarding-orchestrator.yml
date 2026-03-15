@@ -1,0 +1,27 @@
+id: tui-onboarding-orchestrator
+title: "Onboarding wizard: main orchestrator runOnboardingAsync()"
+description: "In src/lib/tui-onboarding.ts, add the main exported function runOnboardingAsync(opts: { projectRoot:
+  string, config: WomboConfig, screen?: Widgets.Screen }): Promise<ProjectProfile | null> that orchestrates the full
+  onboarding flow. Logic: (1) Check if project.yml exists via projectExists(projectRoot). (2) If it exists (edit mode):
+  load profile, show section menu, let user pick sections to edit or re-run LLM synthesis, save after each edit. Loop
+  until user presses back. Return updated profile. (3) If it does not exist (create mode): run collectInputs() to get
+  raw inputs. If cancelled, return null. Run structureRawInputs() to create initial profile. If brownfield, run scout
+  and set codebase_summary. Show ProgressScreen and offer LLM synthesis (use showConfirm from tui-progress.ts: 'Enhance
+  profile with AI?'). If yes, run LLM synthesis with ProgressScreen spinner. Run reviewSections() for section-by-section
+  approval. If approved, save via saveProject(), show success message, offer to run genesis via showConfirm(). Return
+  the profile. (4) Clean up stdin on exit. This function is what gets called from commands/tui.ts."
+status: done
+completion: 100
+difficulty: medium
+priority: critical
+depends_on:
+  - tui-onboarding-edit
+  - tui-onboarding-scout
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T14:09:38.999Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

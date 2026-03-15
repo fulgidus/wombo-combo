@@ -1,0 +1,28 @@
+id: tui-onboarding-llm
+title: "Onboarding wizard: LLM synthesis step"
+description: "In src/lib/tui-onboarding.ts, add a function runLlmSynthesis(profile: ProjectProfile, config: WomboConfig,
+  projectRoot: string, onProgress: (msg: string) => void): Promise<ProjectProfile> that spawns an LLM agent to enhance
+  the raw profile. Follow the EXACT same agent-spawning pattern as genesis-planner.ts: (1) resolveAgentBin(config) to
+  get the binary path. (2) Check existsSync(agentBin), return original profile if not found. (3) Build a prompt that
+  includes ALL raw profile data formatted as markdown + the codebase_summary if present. Ask the agent to produce an
+  enhanced YAML profile with: better-structured objectives, inferred tech stack details, expanded rules with
+  scope/rigidity/consequences, improved vision statement, etc. (4) spawn(agentBin, ['run', '--format', 'json',
+  '--agent', 'genesis-planner-agent', '--dir', projectRoot, '--title', 'woco: onboarding synthesis', prompt]). (5)
+  Capture stdout, extract text from JSON events (same extractTextFromJsonEvents pattern), find YAML in fenced code
+  blocks, parse with parseYaml. (6) Normalize the parsed result with the normalize functions from project-store.ts. (7)
+  Return the enhanced profile, falling back to the original on any error. Set a 5-minute timeout. Use onProgress
+  callback to report status to the ProgressScreen."
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - tui-onboarding-structure
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T13:59:04.548Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,0 +1,26 @@
+id: wire-tui-onboarding
+title: Wire onboarding into TUI main loop
+description: "In src/commands/tui.ts, add first-run detection and onboarding trigger. Changes: (1) Add imports: import {
+  projectExists } from '../lib/project-store.js' and import { runOnboardingAsync } from '../lib/tui-onboarding.js'. (2)
+  After line ~114 (session loading, before the while(true) loop at line ~133), add a first-run check: if
+  (!projectExists(projectRoot)) { const profile = await runOnboardingAsync({ projectRoot, config }); if (!profile) {
+  process.exit(0); } process.stdout.write('\\x1B[2J\\x1B[H'); }. This ensures the onboarding wizard runs ONCE before the
+  main loop if no project.yml exists. (3) In the QuestPickerAction handling section (around line ~200), add a new action
+  type 'onboarding' that calls runOnboardingAsync in edit mode when the user presses O in the quest picker. (4) Add the
+  'onboarding' action type to QuestPickerAction union in tui-quest-picker.ts: { type: 'onboarding' }. (5) In QuestPicker
+  class, add an 'o' keybind (after the existing w/e/g/p keybinds) that resolves with { type: 'onboarding' }. Add O to
+  the status bar. The quest picker status bar currently shows keys like Q/L/P/G/E/W — add O for 'O Onboarding'."
+status: done
+completion: 100
+difficulty: easy
+priority: critical
+depends_on:
+  - tui-onboarding-orchestrator
+effort: PT1H
+started_at: null
+ended_at: 2026-03-14T16:04:55.843Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

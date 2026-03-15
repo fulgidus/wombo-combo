@@ -1,0 +1,24 @@
+id: citty-cleanup
+title: Remove hand-rolled parser and dead code
+description: "Delete the hand-rolled parseArgs() function, CLIArgs interface, all 4 alias maps, handleTasksSubcommand(),
+  handleWishlistSubcommand(), and the main() routing switch. Delete COMMAND_REGISTRY if fully replaced by
+  citty-schema-bridge. Update AGENTS.md rule about 'no external CLI frameworks' to reflect citty adoption. Final
+  verification: bun run typecheck, bun run build, bun dev help, all commands work. Tests: full CLI regression suite
+  passes, no dead code remains."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - citty-subcommands
+  - citty-schema-bridge
+  - citty-global-flags
+  - citty-launch-resume
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

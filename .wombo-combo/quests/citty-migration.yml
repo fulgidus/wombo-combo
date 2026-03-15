@@ -1,0 +1,30 @@
+id: citty-migration
+title: Migrate CLI to Citty
+goal: Replace hand-rolled arg parsing in index.ts with citty framework. Citty provides declarative command/subcommand
+  definitions, typed args, auto-generated usage, and built-in completion support. The migration should preserve all
+  existing commands, aliases, flags, output formats, and the schema introspection layer (describe/TOON). Must not break
+  any existing CLI behavior.
+status: draft
+priority: high
+difficulty: hard
+depends_on: []
+branch: quest/citty-migration
+baseBranch: main
+hitlMode: cautious
+constraints:
+  add: []
+  ban: []
+  override: {}
+taskIds:
+  - citty-spike
+  - citty-core-commands
+  - citty-launch-resume
+  - citty-subcommands
+  - citty-global-flags
+  - citty-schema-bridge
+  - citty-cleanup
+created_at: 2026-03-15T13:15:26.473Z
+updated_at: 2026-03-15T13:15:26.473Z
+started_at: null
+ended_at: null
+notes: []
