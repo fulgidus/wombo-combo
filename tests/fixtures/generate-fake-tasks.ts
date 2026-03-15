@@ -20,6 +20,7 @@
  *   --count, -n <number>  Number of tasks for stress preset (default: 20)
  *   --seed, -s <number>   Random seed for stress preset (default: 42)
  *   --sleep <ms>          Base sleep duration in ms (default: 1000)
+ *   --store <dir>         Write individual task .yml files to <dir> (task-store format)
  *   --help, -h            Show this help message
  *
  * Examples:
@@ -29,7 +30,8 @@
  */
 
 import { stringify as stringifyYaml } from "yaml";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Types (standalone — no imports from src/ to keep this self-contained)
@@ -49,6 +51,7 @@ interface FakeTask {
   priority: Priority;
   depends_on: string[];
   effort: string;
+  agent: string;
   started_at: null;
   ended_at: null;
   constraints: string[];
@@ -151,6 +154,7 @@ function makeTask(
     priority: opts.priority ?? "medium",
     depends_on: opts.dependsOn ?? [],
     effort: opts.effort ?? "PT10M",
+    agent: "fake-agent",
     started_at: null,
     ended_at: null,
     constraints: [],
@@ -610,6 +614,7 @@ Options:
   --count, -n <number>  Number of tasks for stress preset (default: 20)
   --seed, -s <number>   Random seed for stress preset (default: 42)
   --sleep <ms>          Base sleep duration in ms (default: 1000)
+  --store <dir>         Write individual task .yml files to <dir> (task-store format)
   --help, -h            Show this help message
   --all                 Generate all presets (one file each, requires -o dir)
 
@@ -626,6 +631,7 @@ function parseArgs(
 ): {
   preset: Preset | null;
   output: string | null;
+  store: string | null;
   count: number;
   seed: number;
   sleepMs: number;
@@ -635,6 +641,7 @@ function parseArgs(
   const result = {
     preset: null as Preset | null,
     output: null as string | null,
+    store: null as string | null,
     count: 20,
     seed: 42,
     sleepMs: 1000,
@@ -654,6 +661,9 @@ function parseArgs(
       i++;
     } else if (arg === "--output" || arg === "-o") {
       result.output = argv[++i] ?? null;
+      i++;
+    } else if (arg === "--store") {
+      result.store = argv[++i] ?? null;
       i++;
     } else if (arg === "--count" || arg === "-n") {
       result.count = parseInt(argv[++i] ?? "20", 10);
@@ -692,6 +702,49 @@ if (import.meta.main) {
     process.exit(0);
   }
 
+  // --store: write individual <id>.yml files (task-store format)
+  if (parsed.store) {
+    const storeDir = parsed.store;
+    if (!existsSync(storeDir)) {
+      mkdirSync(storeDir, { recursive: true });
+    }
+
+    const presets = parsed.all
+      ? ALL_PRESETS
+      : parsed.preset
+        ? [parsed.preset]
+        : null;
+
+    if (!presets) {
+      console.error("Error: --store requires a preset or --all.");
+      process.exit(1);
+    }
+
+    let total = 0;
+    for (const preset of presets) {
+      const data = generateFakeTasks({
+        preset,
+        sleepMs: parsed.sleepMs,
+        count: parsed.count,
+        seed: parsed.seed,
+      });
+
+      for (const task of data.tasks) {
+        const taskYaml = stringifyYaml(task, {
+          lineWidth: 120,
+          defaultKeyType: "PLAIN",
+          defaultStringType: "QUOTE_DOUBLE",
+        });
+        const filePath = join(storeDir, `${task.id}.yml`);
+        writeFileSync(filePath, taskYaml);
+        total++;
+      }
+    }
+
+    console.log(`Written ${total} task files to ${storeDir}`);
+    process.exit(0);
+  }
+
   if (parsed.all) {
     // Generate all presets
     for (const preset of ALL_PRESETS) {
@@ -705,7 +758,7 @@ if (import.meta.main) {
       if (parsed.output) {
         const outPath = `${parsed.output.replace(/\/$/, "")}/${preset}.yml`;
         writeFileSync(outPath, yaml);
-        console.log(`  ✓ ${preset} → ${outPath}`);
+        console.log(`  ${preset} -> ${outPath}`);
       } else {
         console.log(`\n--- ${preset} ---`);
         console.log(yaml);

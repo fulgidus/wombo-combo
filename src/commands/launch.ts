@@ -446,6 +446,7 @@ export async function handleBuildVerification(
             config,
             hitlMode,
             projectRoot,
+            agentName: agent.agent_name ?? undefined,
           });
 
           updateAgent(state, agent.feature_id, {
@@ -973,6 +974,7 @@ export function handleRetry(
     config,
     hitlMode,
     projectRoot,
+    agentName: agent.agent_name ?? undefined,
   });
 
   updateAgent(state, agent.feature_id, {
