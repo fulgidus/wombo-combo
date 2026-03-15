@@ -1718,7 +1718,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     // Ensure the quest branch exists (create from baseBranch if needed)
     if (!questBranchExists(projectRoot, questId)) {
       if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
-      createQuestBranch(projectRoot, questId, quest.baseBranch);
+      await createQuestBranch(projectRoot, questId, quest.baseBranch);
     }
 
     // Override baseBranch — task branches will fork from the quest branch
