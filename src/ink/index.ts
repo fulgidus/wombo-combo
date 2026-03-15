@@ -76,6 +76,10 @@ export {
 export { writeInitFiles, type InitWriterConfig, type InitWriterResult } from "./init-writer";
 
 // Onboarding wizard components
+// Note: ConfirmDialog, ProgressView, and ProgressResult are intentionally
+// omitted here to avoid collisions with the general-purpose versions from
+// ./confirm and ./progress. Import from "./onboarding" directly if you
+// need the onboarding-specific variants.
 export {
   OnboardingWizard,
   type OnboardingWizardProps,
@@ -87,11 +91,6 @@ export {
   type FieldEditorProps,
   ProfileReview,
   type ProfileReviewProps,
-  ConfirmDialog,
-  type ConfirmDialogProps,
-  ProgressView,
-  type ProgressViewProps,
-  type ProgressResult,
   OnboardingApp,
   type OnboardingAppProps,
   runOnboardingInk,
