@@ -18,6 +18,20 @@ export {
   getEditorCommand,
   type OpenEditorOptions,
 } from "./open-editor";
+export {
+  SelectInput,
+  type SelectInputItem,
+  type SelectInputProps,
+} from "./select-input";
+export {
+  QuestWizard,
+  type QuestWizardProps,
+  type QuestWizardPrefill,
+} from "./quest-wizard";
+export {
+  runQuestWizardInk,
+  type RunQuestWizardOptions,
+} from "./run-quest-wizard";
 
 // Onboarding wizard components
 export {
