@@ -163,7 +163,11 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   console.log(`Latest version:  ${latestTag}`);
 
   const cmp = compareSemver(localVersion, latestVersion);
-  if (cmp >= 0) {
+  if (cmp > 0) {
+    console.log(`Local version is ahead of latest release (v${localVersion} > ${latestTag}).`);
+    return;
+  }
+  if (cmp === 0) {
     console.log("You are already up to date.");
     return;
   }
