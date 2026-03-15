@@ -185,7 +185,7 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       }
     }
 
-    const prompt = generatePrompt(feature, state.base_branch, effectiveConfig, questContext, hitlMode as QuestHitlMode | undefined);
+    const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, effectiveConfig, questContext, hitlMode as QuestHitlMode | undefined);
     launchInteractive({
       worktreePath: agent.worktree,
       featureId: feature.id,

@@ -1,4 +1,5 @@
 id: ink-spike
+quest: ink-migration
 title: Ink proof-of-concept with base app shell
 description: "Install ink and react. Create a minimal Ink app shell that renders to the terminal, handles input events,
   and exits cleanly. Verify: Ink render lifecycle works in Bun, stdin/stdout handling is correct, process.exit cleanup

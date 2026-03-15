@@ -36,6 +36,7 @@
 
 import type { WomboConfig } from "../config.js";
 import { ensureTasksFile } from "../lib/tasks.js";
+import { loadTasksFromStore } from "../lib/task-store.js";
 import { loadState } from "../lib/state.js";
 import { loadTUISession, saveTUISession } from "../lib/tui-session.js";
 import type { TUISession } from "../lib/tui-session.js";
@@ -51,7 +52,7 @@ import { GenesisReview } from "../lib/tui-genesis-review.js";
 import type { GenesisReviewAction } from "../lib/tui-genesis-review.js";
 import { runGenesisPlanner } from "../lib/genesis-planner.js";
 import type { GenesisResult, ProposedQuest } from "../lib/genesis-planner.js";
-import { createBlankQuest } from "../lib/quest.js";
+import { createBlankQuest, getQuestTaskIds } from "../lib/quest.js";
 import { runErrandPlanner, applyErrandPlan } from "../lib/errand-planner.js";
 import type { ErrandSpec } from "../lib/errand-planner.js";
 import { ProgressScreen, showConfirm } from "../lib/tui-progress.js";
@@ -1023,7 +1024,7 @@ function showBrowser(
     const quest = loadQuest(projectRoot, questId);
     if (quest) {
       questTitle = quest.title;
-      questTaskIds = quest.taskIds;
+      questTaskIds = getQuestTaskIds(questId, loadTasksFromStore(projectRoot, config).tasks);
     }
   }
 

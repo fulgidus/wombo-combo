@@ -92,6 +92,15 @@ export interface Task {
    * This is independent of `agent_type` which references external registry agents.
    */
   agent?: string;
+  /**
+   * Optional quest ID this task belongs to.
+   * When set, the task is part of the named quest and will automatically
+   * fork from / merge into the quest branch during launch.
+   * The quest's `depends_on` array creates transitive dependencies:
+   * all tasks in a dependent quest implicitly depend on all tasks in the
+   * prerequisite quest.
+   */
+  quest?: string;
 }
 
 /**

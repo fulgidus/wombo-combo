@@ -1,4 +1,5 @@
 id: ink-integration
+quest: ink-migration
 title: Integrate Ink TUI shell, routing, and remove neo-blessed
 description: Final integration task. (1) Migrate src/commands/tui.ts (1088 lines) — the TUI orchestrator that manages
   view transitions (Quest Picker -> Task Browser -> Wave Monitor -> Plan Review -> Genesis Review), stdin cleanup, and

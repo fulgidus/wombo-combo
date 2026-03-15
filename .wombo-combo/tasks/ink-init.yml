@@ -1,4 +1,5 @@
 id: ink-init
+quest: ink-migration
 title: Revamp woco init as Ink confirmation screen
 description: "Replace the 20+ prompt interactive wizard with a minimal Ink form. Auto-detect project name from folder,
   base branch from git, build/install commands from package.json. Show all defaults in a confirmation screen with only

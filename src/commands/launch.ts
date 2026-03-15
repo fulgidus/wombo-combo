@@ -62,7 +62,7 @@ import {
 } from "../lib/launcher.js";
 import { ProcessMonitor } from "../lib/monitor.js";
 import { runBuild, runFullVerification, type FullVerificationOptions } from "../lib/verifier.js";
-import { mergeBranch, mergeBaseIntoFeature, pushBaseBranch, canMerge, enqueueMerge, tieredMergeBaseIntoFeature } from "../lib/merger.js";
+import { mergeBranch, mergeBaseIntoFeature, pushBaseBranch, canMerge, enqueueMerge, tieredMergeBaseIntoFeature, syncQuestBranch } from "../lib/merger.js";
 import {
   printDashboard,
   printFeatureSelection,
@@ -283,14 +283,14 @@ export async function launchSingleHeadless(
       } catch (branchErr: any) {
         wtLog(agent.feature_id, `branch switch failed: ${branchErr.message}`);
         // Fall through to normal worktree creation
-        await createWorktree(projectRoot, feature.id, state.base_branch, config);
+        await createWorktree(projectRoot, feature.id, agent.base_branch ?? state.base_branch, config);
       }
     } else if (worktreeReady(agent.worktree)) {
       // Skip worktree setup if already ready (resume case)
       wtLog(agent.feature_id, "worktree already exists, skipping setup");
     } else {
       // Create worktree (async — doesn't block other agents)
-      await createWorktree(projectRoot, feature.id, state.base_branch, config);
+      await createWorktree(projectRoot, feature.id, agent.base_branch ?? state.base_branch, config);
 
       // Install dependencies (async)
       updateAgent(state, agent.feature_id, { activity: "installing deps..." });
@@ -298,7 +298,7 @@ export async function launchSingleHeadless(
     }
 
     // Generate prompt
-    const prompt = generatePrompt(feature, state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
+    const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
 
     // Write specialized agent to worktree if applicable
     const resolution = agentResolutions?.get(feature.id);
@@ -538,7 +538,7 @@ export async function attemptMerge(
     try {
       // Pre-flight check: detect conflicts before attempting the real merge.
       // This avoids the expensive merge-then-abort dance for known conflicts.
-      const preCheck = await canMerge(projectRoot, agent.branch, state.base_branch);
+      const preCheck = await canMerge(projectRoot, agent.branch, agent.base_branch ?? state.base_branch);
       if (!preCheck.canMerge) {
         printAgentUpdate(agent, `conflict detected (pre-flight) — attempting resolution...`);
         await handleMergeConflict(
@@ -548,7 +548,7 @@ export async function attemptMerge(
         return;
       }
 
-      const mergeResult = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+      const mergeResult = await mergeBranch(projectRoot, agent.branch, agent.base_branch ?? state.base_branch, config);
 
       if (mergeResult.success) {
         handleMergeSuccess(projectRoot, state, agent, config, mergeResult.commitHash);
@@ -592,7 +592,7 @@ function handleMergeSuccess(
   saveState(projectRoot, state);
   printAgentUpdate(agent, `${label} (${commitHash?.slice(0, 7)})`);
 
-  markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
+  markFeatureDone(projectRoot, agent.feature_id, config, agent.base_branch ?? state.base_branch);
 
   // Walk back the chain and mark all deferred predecessors as merged.
   // Their work was carried forward through branch continuity and is now
@@ -605,7 +605,7 @@ function handleMergeSuccess(
         completed_at: new Date().toISOString(),
       });
       printAgentUpdate(predAgent, `MERGED (via chain terminal ${agent.feature_id})`);
-      markFeatureDone(projectRoot, predAgent.feature_id, config, state.base_branch);
+      markFeatureDone(projectRoot, predAgent.feature_id, config, predAgent.base_branch ?? state.base_branch);
 
       // Clean up predecessor branch — its commits are now reachable via
       // the terminal branch's merge into base.
@@ -716,14 +716,14 @@ async function handleMergeConflict(
     // Tiered merge: attempts tier 1 (clean merge) and tier 2 (trivial auto-resolve)
     const tieredResult = await tieredMergeBaseIntoFeature(
       agent.worktree,
-      state.base_branch,
+      agent.base_branch ?? state.base_branch,
       config
     );
 
     if (tieredResult.success && tieredResult.tier === 1) {
       // Clean merge of base into feature — retry merge into base
       printAgentUpdate(agent, "base merged cleanly into feature — retrying merge...");
-      const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+      const retryMerge = await mergeBranch(projectRoot, agent.branch, agent.base_branch ?? state.base_branch, config);
       if (retryMerge.success) {
         handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after rebase");
         return;
@@ -734,7 +734,7 @@ async function handleMergeConflict(
       printAgentUpdate(agent, `retry merge still failed — launching resolver agent...`);
       const secondConflict = await mergeBaseIntoFeature(
         agent.worktree,
-        state.base_branch,
+        agent.base_branch ?? state.base_branch,
         config
       );
 
@@ -752,7 +752,7 @@ async function handleMergeConflict(
     if (tieredResult.success && tieredResult.tier === 2) {
       // Trivial conflicts auto-resolved — retry merge into base
       printAgentUpdate(agent, "trivial conflicts auto-resolved (whitespace only) — retrying merge...");
-      const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+      const retryMerge = await mergeBranch(projectRoot, agent.branch, agent.base_branch ?? state.base_branch, config);
       if (retryMerge.success) {
         handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after trivial auto-resolve");
         return;
@@ -762,7 +762,7 @@ async function handleMergeConflict(
       printAgentUpdate(agent, `merge still failed after auto-resolve — launching resolver agent...`);
       const postAutoConflict = await mergeBaseIntoFeature(
         agent.worktree,
-        state.base_branch,
+        agent.base_branch ?? state.base_branch,
         config
       );
       const conflictFiles = postAutoConflict.conflicting
@@ -829,7 +829,7 @@ async function launchResolverAndRetryMerge(
   for (let attempt = 1; attempt <= maxResolverAttempts; attempt++) {
     const conflictPrompt = generateConflictResolutionPrompt(
       feature,
-      state.base_branch,
+      agent.base_branch ?? state.base_branch,
       mergeError,
       config,
       buildQuestContext(projectRoot, state.quest_id)
@@ -899,7 +899,7 @@ async function launchResolverAndRetryMerge(
     const retryMerge = await mergeBranch(
       projectRoot,
       agent.branch,
-      state.base_branch,
+      agent.base_branch ?? state.base_branch,
       config
     );
 
@@ -917,7 +917,7 @@ async function launchResolverAndRetryMerge(
       printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED${attemptLabel} — retrying resolver...`);
       const refreshConflict = await mergeBaseIntoFeature(
         agent.worktree,
-        state.base_branch,
+        agent.base_branch ?? state.base_branch,
         config
       );
       conflictFiles = refreshConflict.conflicting
@@ -1388,7 +1388,7 @@ async function launchWaveHeadless(
         }
         // Process exited but we didn't get a callback
         // Check if the agent actually made any commits
-        if (!branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+        if (!branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           // Agent died without producing any code — mark as failed, not completed
           updateAgent(state, agent.feature_id, {
             status: "failed",
@@ -1602,14 +1602,14 @@ async function launchWaveInteractive(
         if (worktreeReady(agent.worktree)) {
           wtLog(agent.feature_id, "worktree already exists, skipping setup");
         } else {
-          await createWorktree(projectRoot, agent.feature_id, state.base_branch, config);
+          await createWorktree(projectRoot, agent.feature_id, agent.base_branch ?? state.base_branch, config);
           updateAgent(state, agent.feature_id, { activity: "installing deps..." });
           await installDeps(agent.worktree, agent.feature_id, config);
         }
 
         const prompt = generatePrompt(
           featureMap.get(agent.feature_id)!,
-          state.base_branch,
+          agent.base_branch ?? state.base_branch,
           config,
           questContext,
           hitlMode as QuestHitlMode | undefined
@@ -1719,6 +1719,22 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     if (!questBranchExists(projectRoot, questId)) {
       if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
       await createQuestBranch(projectRoot, questId, quest.baseBranch);
+    } else {
+      // Sync quest branch with baseBranch (merge main → quest branch)
+      // This ensures task statuses and code changes are up-to-date
+      if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+      const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
+      if (syncResult.conflicting) {
+        outputError(fmt, syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+        return;
+      }
+      if (syncResult.error) {
+        outputError(fmt, `Failed to sync quest branch: ${syncResult.error}`);
+        return;
+      }
+      if (syncResult.synced && fmt === "text") {
+        console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+      }
     }
 
     // Override baseBranch — task branches will fork from the quest branch
@@ -1754,7 +1770,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   }
 
   // Extract HITL mode from quest (defaults to undefined / yolo for non-quest waves)
-  const hitlMode = questId ? loadQuest(projectRoot, questId)?.hitlMode : undefined;
+  let hitlMode = questId ? loadQuest(projectRoot, questId)?.hitlMode : undefined;
 
   // Ensure portless proxy is running (if enabled) to prevent port collisions
   if (config.portless.enabled) {
@@ -1884,6 +1900,70 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     // Throw instead of outputError so TUI callers can catch gracefully.
     // CLI callers catch this in the command handler (index.ts).
     throw new Error(msg);
+  }
+
+  // -------------------------------------------------------------------------
+  // Auto-detect quest from selected tasks' quest field (if --quest not given)
+  // -------------------------------------------------------------------------
+  if (!questId) {
+    const taskQuests = new Set(selected.map((f) => f.quest).filter(Boolean));
+    if (taskQuests.size === 1) {
+      const autoQuestId = [...taskQuests][0]!;
+      const quest = loadQuest(projectRoot, autoQuestId);
+      if (quest && quest.status === "active") {
+        questId = autoQuestId;
+
+        // Ensure the quest branch exists
+        if (!questBranchExists(projectRoot, autoQuestId)) {
+          if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
+          await createQuestBranch(projectRoot, autoQuestId, quest.baseBranch);
+        } else {
+          // Sync quest branch with baseBranch
+          if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+          const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
+          if (syncResult.conflicting) {
+            outputError(fmt, syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+            return;
+          }
+          if (syncResult.error) {
+            outputError(fmt, `Failed to sync quest branch: ${syncResult.error}`);
+            return;
+          }
+          if (syncResult.synced && fmt === "text") {
+            console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+          }
+        }
+
+        // Override baseBranch — task branches will fork from the quest branch
+        opts.baseBranch = quest.branch;
+        if (fmt === "text") {
+          console.log(`Auto-detected quest: ${quest.title} (${autoQuestId})`);
+          console.log(`  Base branch overridden to: ${quest.branch}`);
+        }
+
+        // Apply quest config overrides
+        config = resolveQuestConfig(config, quest);
+
+        // Build quest prompt context
+        const knowledge = loadQuestKnowledge(projectRoot, autoQuestId);
+        questContext = {
+          questId: quest.id,
+          goal: quest.goal,
+          addedConstraints: quest.constraints.add ?? [],
+          addedForbidden: quest.constraints.ban ?? [],
+          knowledge,
+        };
+
+        hitlMode = quest.hitlMode;
+      }
+    } else if (taskQuests.size > 1) {
+      outputError(
+        fmt,
+        `Selected tasks belong to multiple quests: ${[...taskQuests].join(", ")}. ` +
+        `Launch tasks from a single quest at a time, or use --quest to scope the wave.`
+      );
+      return;
+    }
   }
 
   // Apply quest constraints to selected tasks (add/ban layered on each task)
@@ -2054,7 +2134,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     const branch = featureBranchName(feature.id, config);
     // Use shared worktree path for chain members, or individual path otherwise
     const wtPath = chainWorktreeMap.get(feature.id) ?? worktreePath(projectRoot, feature.id, config);
-    const agent = createAgentState(feature.id, branch, wtPath, opts.maxRetries);
+    const agent = createAgentState(feature.id, branch, wtPath, opts.baseBranch, opts.maxRetries);
 
     // Set effort estimate from feature spec
     const effortMinutes = parseDurationMinutes(feature.effort);

@@ -1,4 +1,5 @@
 id: ink-input-system
+quest: ink-migration
 title: Ink text input component with full cursor navigation
 description: "Build a reusable TextInput Ink component that replaces blessed-textarea-patch.ts. Must support: arrow key
   cursor navigation (left/right/up/down), Home/End, insert/delete at cursor position, Ctrl+S submit (not Enter — Enter

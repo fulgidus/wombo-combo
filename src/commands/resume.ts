@@ -179,7 +179,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
           // Process is dead — check if worktree exists with meaningful changes.
           // Use worktreeExists (not worktreeReady) because node_modules may be
           // missing — the worktree still has code that should be verified.
-          if (worktreeExists(agent.worktree) && branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+          if (worktreeExists(agent.worktree) && branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
             // Worktree exists AND branch has commits — try build verification
             if (fmt === "text") console.log(`  ${agent.feature_id}: process dead, worktree has changes — will verify build`);
             toVerify.push(agent);
@@ -219,7 +219,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
       case "merged":
         if (fmt === "text") console.log(`  ${agent.feature_id}: merged — marking feature as done`);
-        markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch, fmt);
+        markFeatureDone(projectRoot, agent.feature_id, config, agent.base_branch ?? state.base_branch, fmt);
         try {
           removeWorktree(projectRoot, agent.worktree, true);
           if (fmt === "text") console.log(`  ${agent.feature_id}: worktree and branch removed`);
@@ -233,7 +233,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
         // attempt build verification rather than discarding the work.
         if (agent.retries < agent.max_retries &&
             worktreeExists(agent.worktree) &&
-            branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+            branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           if (fmt === "text") console.log(`  ${agent.feature_id}: failed but has work (retry ${agent.retries}/${agent.max_retries}) — will verify build`);
           // Clear stale error and mark as completed so handleBuildVerification
           // processes it correctly (it expects a non-failed agent)
@@ -453,7 +453,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
         try {
           if (!worktreeReady(agent.worktree)) {
-            await createWorktree(projectRoot, agent.feature_id, state.base_branch, config);
+            await createWorktree(projectRoot, agent.feature_id, agent.base_branch ?? state.base_branch, config);
             await installDeps(agent.worktree, agent.feature_id, config);
           }
 
@@ -478,7 +478,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             }
           }
 
-          const prompt = generatePrompt(feature, state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
+          const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
           const result = launchInteractive({
             worktreePath: agent.worktree,
             featureId: feature.id,
@@ -725,7 +725,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             continue;
           }
           // Check if the agent actually made any commits
-          if (!branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+          if (!branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
             // Agent died without producing any code — mark as failed
             updateAgent(state, agent.feature_id, {
               status: "failed",

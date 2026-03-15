@@ -1,4 +1,5 @@
 id: citty-schema-bridge
+quest: citty-migration
 title: Bridge describe/TOON to Citty metadata
 description: "Replace COMMAND_REGISTRY in schema.ts with a bridge that reads from citty's own command metadata. The
   'woco describe' command and TOON spec must continue to work, but their source of truth is now citty definitions, not a

@@ -229,6 +229,9 @@ function normalizeTask(t: Task): void {
   if (t.agent === null || t.agent === "") {
     t.agent = undefined;
   }
+  if (t.quest === null || t.quest === "") {
+    t.quest = undefined;
+  }
   for (const s of t.subtasks) {
     normalizeTask(s);
   }

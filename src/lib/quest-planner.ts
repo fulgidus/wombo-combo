@@ -16,8 +16,10 @@ import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config.js";
 import { resolveAgentBin } from "../config.js";
 import type { Quest } from "./quest.js";
+import { getQuestTaskIds } from "./quest.js";
 import type { Task, Priority, Difficulty } from "./tasks.js";
 import { createBlankTask, saveTaskToStore } from "./tasks.js";
+import { loadTasksFromStore } from "./task-store.js";
 import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store.js";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
 
@@ -131,13 +133,14 @@ export async function generatePlannerPrompt(
   }
 
   // Existing task IDs (if re-planning)
-  if (quest.taskIds.length > 0) {
+  const existingTaskIds = getQuestTaskIds(quest.id, loadTasksFromStore(projectRoot, config).tasks);
+  if (existingTaskIds.length > 0) {
     sections.push(`\n## Existing Tasks\n`);
     sections.push(
       "This quest already has tasks. Your plan should either replace them " +
       "entirely or extend them. Existing task IDs:\n"
     );
-    for (const tid of quest.taskIds) {
+    for (const tid of existingTaskIds) {
       sections.push(`- \`${tid}\``);
     }
   }
@@ -773,6 +776,7 @@ export function applyPlanToQuest(
     task.forbidden = proposed.forbidden;
     task.references = proposed.references;
     task.notes = proposed.notes;
+    task.quest = quest.id;
     if (proposed.agent) {
       task.agent = proposed.agent;
     }
@@ -783,7 +787,6 @@ export function applyPlanToQuest(
   }
 
   // Update quest
-  quest.taskIds = plan.tasks.map((t) => t.id);
   quest.status = "active";
   if (!quest.started_at) {
     quest.started_at = new Date().toISOString();

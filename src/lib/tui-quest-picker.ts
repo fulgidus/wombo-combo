@@ -29,7 +29,7 @@ import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
 import { join } from "node:path";
 import type { Quest } from "./quest.js";
-import { QUEST_STATUS_ORDER } from "./quest.js";
+import { QUEST_STATUS_ORDER, getQuestTaskIds } from "./quest.js";
 import { loadAllQuests, saveQuest, deleteQuest } from "./quest-store.js";
 import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks.js";
 import type { WomboConfig } from "../config.js";
@@ -319,8 +319,9 @@ export class QuestPicker {
     // Build items list
     this.items = [{ type: "all" as const }];
     for (const quest of sorted) {
-      const totalTasks = quest.taskIds.length;
-      const doneTasks = quest.taskIds.filter((id) => doneIds.has(id)).length;
+      const questTids = getQuestTaskIds(quest.id, tasksData.tasks);
+      const totalTasks = questTids.length;
+      const doneTasks = questTids.filter((id) => doneIds.has(id)).length;
       const completionPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
       this.items.push({

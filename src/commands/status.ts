@@ -137,7 +137,7 @@ export async function cmdStatus(opts: StatusOptions): Promise<void> {
     if (agent.status === "running" && agent.pid) {
       if (!isProcessRunning(agent.pid)) {
         // Check if the agent actually made any commits before marking completed
-        if (branchHasChanges(opts.projectRoot, agent.branch, state.base_branch)) {
+        if (branchHasChanges(opts.projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           updateAgent(state, agent.feature_id, {
             status: "completed",
             completed_at: new Date().toISOString(),
@@ -159,7 +159,7 @@ export async function cmdStatus(opts: StatusOptions): Promise<void> {
   // that didn't check branchHasChanges.
   for (const agent of state.agents) {
     if (agent.status === "completed" && agent.build_passed === null) {
-      if (!branchHasChanges(opts.projectRoot, agent.branch, state.base_branch)) {
+      if (!branchHasChanges(opts.projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
         updateAgent(state, agent.feature_id, {
           status: "failed",
           error: "Agent process exited without making any commits",

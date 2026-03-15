@@ -12,11 +12,12 @@
  */
 
 import type { WomboConfig } from "../config.js";
-import type { Priority, Difficulty } from "../lib/tasks.js";
+import type { Priority, Difficulty, Task } from "../lib/tasks.js";
 import type { OutputFormat } from "../lib/output.js";
 import type { QuestStatus, QuestHitlMode, Quest } from "../lib/quest.js";
 import {
   createBlankQuest,
+  getQuestTaskIds,
   VALID_QUEST_STATUSES,
   VALID_HITL_MODES,
   QUEST_STATUS_ORDER,
@@ -43,6 +44,7 @@ import {
   type PlanResult,
 } from "../lib/quest-planner.js";
 import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema.js";
+import { loadTasksFromStore } from "../lib/task-store.js";
 import { output, outputError, outputMessage } from "../lib/output.js";
 import { validateEnum } from "../lib/validate.js";
 
@@ -185,10 +187,11 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function questList(opts: QuestCommandOptions): Promise<void> {
-  const { projectRoot } = opts;
+  const { projectRoot, config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
   const quests = loadAllQuests(projectRoot);
+  const allTasks = loadTasksFromStore(projectRoot, config).tasks;
 
   if (quests.length === 0) {
     output(fmt, { quests: [], total: 0 }, () => {
@@ -230,7 +233,7 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
     difficulty: q.difficulty,
     hitlMode: q.hitlMode,
     branch: q.branch,
-    tasks: q.taskIds.length,
+    tasks: getQuestTaskIds(q.id, allTasks).length,
     depends_on: q.depends_on,
   }));
 
@@ -260,7 +263,8 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
         console.log(`  ${color}${BOLD}${status.toUpperCase()}${RESET} (${group.length})`);
 
         for (const q of group) {
-          const tasks = q.taskIds.length > 0 ? ` ${DIM}(${q.taskIds.length} tasks)${RESET}` : "";
+          const taskCount = getQuestTaskIds(q.id, allTasks).length;
+          const tasks = taskCount > 0 ? ` ${DIM}(${taskCount} tasks)${RESET}` : "";
           const deps = q.depends_on.length > 0 ? ` ${DIM}deps: ${q.depends_on.join(", ")}${RESET}` : "";
           console.log(
             `    ${color}${q.id}${RESET} — ${q.title} [${q.priority}/${q.difficulty}] ${DIM}hitl:${q.hitlMode}${RESET}${tasks}${deps}`
@@ -277,7 +281,7 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function questShow(opts: QuestCommandOptions): Promise<void> {
-  const { projectRoot } = opts;
+  const { projectRoot, config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
@@ -322,9 +326,10 @@ async function questShow(opts: QuestCommandOptions): Promise<void> {
         console.log(`    ${line}`);
       }
 
-      if (quest.taskIds.length > 0) {
-        console.log(`\n  ${BOLD}Tasks (${quest.taskIds.length}):${RESET}`);
-        for (const tid of quest.taskIds) {
+      const questTaskIds = getQuestTaskIds(quest.id, loadTasksFromStore(projectRoot, config).tasks);
+      if (questTaskIds.length > 0) {
+        console.log(`\n  ${BOLD}Tasks (${questTaskIds.length}):${RESET}`);
+        for (const tid of questTaskIds) {
           console.log(`    - ${tid}`);
         }
       }

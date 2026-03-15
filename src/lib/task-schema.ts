@@ -193,6 +193,18 @@ export function validateTask(task: unknown): SchemaIssue[] {
     }
   }
 
+  // quest field: must be a valid kebab-case quest ID if present
+  if (t?.quest != null && t.quest !== "") {
+    if (typeof t.quest !== "string") {
+      issues.push({ level: "error", taskId: id, message: "quest must be a string (quest ID)" });
+    } else {
+      const questResult: ValidationResult = validateId(t.quest, "Quest ID");
+      if (!questResult.valid) {
+        issues.push({ level: "error", taskId: id, message: questResult.error! });
+      }
+    }
+  }
+
   return issues;
 }
 

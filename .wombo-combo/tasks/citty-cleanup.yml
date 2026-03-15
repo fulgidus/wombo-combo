@@ -1,4 +1,5 @@
 id: citty-cleanup
+quest: citty-migration
 title: Remove hand-rolled parser and dead code
 description: "Delete the hand-rolled parseArgs() function, CLIArgs interface, all 4 alias maps, handleTasksSubcommand(),
   handleWishlistSubcommand(), and the main() routing switch. Delete COMMAND_REGISTRY if fully replaced by

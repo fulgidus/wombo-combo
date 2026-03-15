@@ -1,4 +1,5 @@
 id: citty-spike
+quest: citty-migration
 title: Citty proof-of-concept with 3 simple commands
 description: "Install citty and unjs/citty. Convert 3 simple commands (help, version, describe) to citty definitions.
   Verify: alias resolution works, --output flag works, help text matches current output. This spike proves the

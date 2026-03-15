@@ -1,4 +1,5 @@
 id: ink-quest-wizard
+quest: ink-migration
 title: Migrate quest creation wizard to Ink
 description: "Migrate tui-quest-wizard.ts (546 lines) to an Ink component. 6-step wizard: ID, Title, Goal, Priority,
   Difficulty, HITL mode. Supports two render modes: overlay (renders on existing screen) and standalone

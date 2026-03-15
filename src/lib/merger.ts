@@ -342,6 +342,78 @@ export async function mergeBaseIntoFeature(
 }
 
 /**
+ * Sync a quest branch with its base branch by merging baseBranch into the
+ * quest branch. This ensures task statuses and code changes from the base
+ * branch are available on the quest branch before launching new agents.
+ *
+ * Uses a temporary worktree to perform the merge without disturbing the
+ * current checkout. If the quest branch is already up-to-date with the
+ * base branch, this is a no-op.
+ *
+ * Returns { synced, conflicting, error }:
+ *   - synced: true if a merge was performed (or was already up-to-date)
+ *   - conflicting: true if the merge had conflicts (merge is aborted)
+ *   - error: error message if something went wrong
+ */
+export async function syncQuestBranch(
+  projectRoot: string,
+  questBranch: string,
+  baseBranch: string
+): Promise<{ synced: boolean; conflicting: boolean; error?: string }> {
+  // Check if baseBranch is already an ancestor of questBranch (no merge needed)
+  const ancestorCheck = await runSafe(
+    `git merge-base --is-ancestor "${baseBranch}" "${questBranch}"`,
+    projectRoot
+  );
+  if (ancestorCheck.ok) {
+    // Already up-to-date
+    return { synced: true, conflicting: false };
+  }
+
+  // Need to merge. Use a temporary worktree for the quest branch.
+  const tmpDir = `${projectRoot}/.wombo-combo/.tmp-quest-sync`;
+  const addResult = await runSafe(
+    `git worktree add "${tmpDir}" "${questBranch}"`,
+    projectRoot
+  );
+  if (!addResult.ok) {
+    return { synced: false, conflicting: false, error: `Failed to create temp worktree: ${addResult.output}` };
+  }
+
+  try {
+    // Merge baseBranch into the quest branch
+    const mergeResult = await runSafe(
+      `git merge "${baseBranch}" -m "Sync ${baseBranch} into ${questBranch}"`,
+      tmpDir
+    );
+
+    if (mergeResult.ok) {
+      return { synced: true, conflicting: false };
+    }
+
+    // Check for merge conflicts
+    const statusResult = await runSafe("git diff --name-only --diff-filter=U", tmpDir);
+    if (statusResult.ok && statusResult.output.trim()) {
+      // Abort the merge — user needs to resolve manually
+      await runSafe("git merge --abort", tmpDir);
+      return {
+        synced: false,
+        conflicting: true,
+        error: `Merge conflicts between ${baseBranch} and ${questBranch}. ` +
+          `Resolve manually:\n  git checkout ${questBranch}\n  git merge ${baseBranch}\n  # resolve conflicts, then commit`,
+      };
+    }
+
+    // Some other merge error
+    await runSafe("git merge --abort", tmpDir);
+    return { synced: false, conflicting: false, error: mergeResult.output };
+  } finally {
+    // Always clean up the temporary worktree
+    await runSafe(`git worktree remove "${tmpDir}" --force`, projectRoot);
+  }
+}
+
+/**
  * Push the base branch to its remote.
  */
 export async function pushBaseBranch(

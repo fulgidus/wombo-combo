@@ -72,15 +72,21 @@ interface QuestInfo {
 }
 
 /**
- * Build a map from taskId → QuestInfo by scanning all quests' taskIds.
+ * Build a map from taskId → QuestInfo using each task's `quest` field.
+ * Loads quest metadata to populate title/status.
  */
-function buildTaskQuestMap(projectRoot: string): Map<string, QuestInfo> {
+function buildTaskQuestMap(projectRoot: string, tasks: Feature[]): Map<string, QuestInfo> {
   const quests = loadAllQuests(projectRoot);
+  const questById = new Map<string, Quest>();
+  for (const q of quests) questById.set(q.id, q);
+
   const map = new Map<string, QuestInfo>();
-  for (const q of quests) {
-    const info: QuestInfo = { id: q.id, title: q.title, status: q.status };
-    for (const tid of q.taskIds) {
-      map.set(tid, info);
+  for (const task of tasks) {
+    if (task.quest) {
+      const q = questById.get(task.quest);
+      if (q) {
+        map.set(task.id, { id: q.id, title: q.title, status: q.status });
+      }
     }
   }
   return map;
@@ -178,7 +184,7 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
   }
 
   // Build quest reverse-map: taskId → QuestInfo
-  const taskQuestMap = buildTaskQuestMap(projectRoot);
+  const taskQuestMap = buildTaskQuestMap(projectRoot, features);
 
   // Display
   const totalEffort = features.reduce(

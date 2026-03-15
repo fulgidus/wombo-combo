@@ -194,14 +194,51 @@ export function deleteQuestBranch(
 }
 
 /**
+ * Resolve the canonical (main) project root, even when called from inside
+ * a worktree. Without this, `worktreesDir()` would use the worktree's
+ * basename and create nested worktree directories.
+ *
+ * Uses `git rev-parse --git-common-dir` to find the main .git directory,
+ * then derives the project root from that. Falls back to the given
+ * projectRoot if not inside a git repo.
+ */
+export function resolveCanonicalProjectRoot(projectRoot: string): string {
+  try {
+    // --git-common-dir returns the .git dir of the MAIN repo, even inside worktrees.
+    // --git-dir returns the worktree-specific .git (or .git/worktrees/<name>).
+    // If they differ, we're inside a worktree.
+    const commonDir = runSync("git rev-parse --git-common-dir", {
+      cwd: projectRoot,
+      silent: true,
+    }).trim();
+
+    // commonDir is either ".git" (relative, main repo) or an absolute path
+    // pointing to the main repo's .git directory.
+    const absoluteCommonDir = resolve(projectRoot, commonDir);
+
+    // The main project root is the parent of the .git directory
+    const canonicalRoot = dirname(absoluteCommonDir);
+
+    return canonicalRoot;
+  } catch {
+    // Not a git repo or git not available — fall back to given path
+    return projectRoot;
+  }
+}
+
+/**
  * Return the path to the worktrees directory: a sibling directory to
- * the project root named `<project-basename>-worktrees/`.
+ * the **canonical** project root named `<project-basename>-worktrees/`.
+ *
+ * Uses resolveCanonicalProjectRoot() to avoid nesting worktrees when
+ * called from inside an existing worktree.
  *
  * Example: /home/user/my-project → /home/user/my-project-worktrees/
  */
 export function worktreesDir(projectRoot: string): string {
-  const parentDir = dirname(projectRoot);
-  const projectName = basename(projectRoot);
+  const canonical = resolveCanonicalProjectRoot(projectRoot);
+  const parentDir = dirname(canonical);
+  const projectName = basename(canonical);
   return resolve(parentDir, `${projectName}-worktrees`);
 }
 
