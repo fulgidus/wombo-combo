@@ -6,9 +6,9 @@
  */
 
 import { defineCommand } from "citty";
-import { loadConfig, validateConfig, isProjectInitialized } from "../../config.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { cmdMerge } from "../merge.js";
+import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
+import { resolveOutputFormat } from "../../lib/output";
+import { cmdMerge } from "../merge";
 
 export const mergeCommand = defineCommand({
   meta: {

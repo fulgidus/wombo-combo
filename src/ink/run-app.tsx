@@ -5,14 +5,14 @@
  * optional children and returns an Ink Instance for lifecycle control.
  *
  * Usage:
- *   import { runApp } from "./run-app.js";
+ *   import { runApp } from "./run-app";
  *   const instance = runApp();
  *   await instance.waitUntilExit();
  */
 
 import React, { type ReactNode } from "react";
 import { render, type Instance, type RenderOptions } from "ink";
-import { Shell } from "./shell.js";
+import { Shell } from "./shell";
 
 export interface RunAppOptions extends RenderOptions {
   /** Optional children to render inside the Shell. */

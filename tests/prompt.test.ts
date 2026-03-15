@@ -13,9 +13,9 @@ import { describe, test, expect } from "bun:test";
 import {
   generatePrompt,
   generateConflictResolutionPrompt,
-} from "../src/lib/prompt.js";
-import type { Feature } from "../src/lib/tasks.js";
-import type { WomboConfig } from "../src/config.js";
+} from "../src/lib/prompt";
+import type { Feature } from "../src/lib/tasks";
+import type { WomboConfig } from "../src/config";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -17,11 +17,11 @@ import { spawn } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { WomboConfig } from "../config.js";
-import { resolveAgentBin } from "../config.js";
-import type { Priority, Difficulty } from "./tasks.js";
-import type { QuestHitlMode } from "./quest.js";
-import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
+import type { WomboConfig } from "../config";
+import { resolveAgentBin } from "../config";
+import type { Priority, Difficulty } from "./tasks";
+import type { QuestHitlMode } from "./quest";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
 
 // ---------------------------------------------------------------------------
 // Types

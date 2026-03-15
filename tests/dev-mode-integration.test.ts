@@ -12,8 +12,8 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { extractGlobalFlags } from "../src/commands/citty/global-flags.js";
-import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router.js";
+import { extractGlobalFlags } from "../src/commands/citty/global-flags";
+import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router";
 
 // ---------------------------------------------------------------------------
 // Cross-layer consistency: extractGlobalFlags ↔ resolveGlobalFlagsAndCommand

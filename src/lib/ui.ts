@@ -8,9 +8,9 @@
  *   - Summary statistics
  */
 
-import type { WaveState, AgentState, AgentStatus } from "./state.js";
-import { agentCounts, areAgentDepsReady } from "./state.js";
-import { formatDuration, parseDurationMinutes } from "./tasks.js";
+import type { WaveState, AgentState, AgentStatus } from "./state";
+import { agentCounts, areAgentDepsReady } from "./state";
+import { formatDuration, parseDurationMinutes } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // ANSI Color Helpers

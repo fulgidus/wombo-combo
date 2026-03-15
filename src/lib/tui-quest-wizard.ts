@@ -21,11 +21,11 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { Quest, QuestHitlMode } from "./quest.js";
-import { createBlankQuest, VALID_HITL_MODES } from "./quest.js";
-import { saveQuest, loadQuest } from "./quest-store.js";
-import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema.js";
-import type { Priority, Difficulty } from "./tasks.js";
+import type { Quest, QuestHitlMode } from "./quest";
+import { createBlankQuest, VALID_HITL_MODES } from "./quest";
+import { saveQuest, loadQuest } from "./quest-store";
+import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema";
+import type { Priority, Difficulty } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // Helpers

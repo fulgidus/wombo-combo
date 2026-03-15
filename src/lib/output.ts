@@ -6,14 +6,14 @@
  * is specified, or as compact TOON notation when --output toon is used.
  *
  * Usage in commands:
- *   import { output, OutputFormat } from "../lib/output.js";
+ *   import { output, OutputFormat } from "../lib/output";
  *
  *   // At the end of a command:
  *   output(format, data, textRenderer, toonRenderer);  // emits JSON, text, or TOON
  *   outputError(format, message);                      // emits error in the right format
  */
 
-import { renderGeneric } from "./toon.js";
+import { renderGeneric } from "./toon";
 
 // ---------------------------------------------------------------------------
 // Types

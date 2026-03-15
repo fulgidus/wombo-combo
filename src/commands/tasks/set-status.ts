@@ -7,15 +7,15 @@
  * Valid statuses: backlog, planned, in_progress, blocked, in_review, done, cancelled
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   saveFeatures,
   findFeatureById,
   type FeatureStatus,
-} from "../../lib/tasks.js";
-import { VALID_STATUSES } from "../../lib/task-schema.js";
-import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
+} from "../../lib/tasks";
+import { VALID_STATUSES } from "../../lib/task-schema";
+import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

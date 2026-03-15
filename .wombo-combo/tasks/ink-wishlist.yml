@@ -1,4 +1,5 @@
 id: ink-wishlist
+quest: ink-migration
 title: Migrate wishlist picker and overlay to Ink
 description: "Migrate tui-wishlist.ts (760 lines) to Ink components. Two components: (1) WishlistPicker — full-screen
   standalone view for browsing/promoting wishlist items to errands (E), quests (P), genesis (G), with delete (D). (2)

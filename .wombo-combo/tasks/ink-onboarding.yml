@@ -1,4 +1,5 @@
 id: ink-onboarding
+quest: ink-migration
 title: Migrate onboarding wizard to Ink
 description: "Migrate tui-onboarding.ts (2871 lines) — the largest TUI file. Multi-step blessed wizard collecting
   project profile: type, name, description, objectives, tech stack, conventions, rules. Includes brownfield auto-scout

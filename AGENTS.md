@@ -32,13 +32,20 @@ bun dev launch --dry-run --all-ready
 bun dev init --force
 ```
 
-### 2. Never publish to npm
+### 2. Never publish manually — use the release workflow
 
-Distribution is GitHub-only. Users install via:
+Publishing is handled by the GitHub Actions release workflow, which triggers on
+git tag pushes. **Never run `npm publish` manually** — always let the workflow
+handle it.
+
+To release: bump `package.json` version, commit, tag (`v<version>`), push with
+`--tags`. The workflow takes care of the rest.
+
+Users install via:
+
 ```sh
-bun install -g github:fulgidus/wombo
+bun a -g wombo-combo
 ```
-Do not add `publishConfig`, do not run `npm publish`, do not add `.npmrc`.
 
 ### 3. Keep bun.lock committed
 
@@ -132,8 +139,11 @@ All wombo-combo files live under `.wombo-combo/`:
   `Bun.spawn()`, etc.), fall back to Node stdlib when Bun doesn't have a
   direct equivalent.
 - **Language:** TypeScript, strict mode. Run `bun run typecheck` to verify.
-- **Modules:** ESM only (`"type": "module"` in package.json). Use `.js`
-  extensions in import paths (TypeScript resolves them to `.ts` at runtime in Bun).
+- **Modules:** ESM only (`"type": "module"` in package.json). Use **no file
+  extensions** in relative import paths (`import { foo } from "./foo"`, not
+  `"./foo.js"`). The tsconfig uses `"moduleResolution": "bundler"` which
+  resolves extensionless imports to `.ts` files automatically. The `.js`
+  extension convention is legacy and should not be used.
 - **CLI framework:** [citty](https://github.com/unjs/citty). All command
   definitions live in `src/commands/citty/`. The router in
   `src/commands/citty/router.ts` maps command names and aliases to citty
@@ -150,13 +160,16 @@ bun run typecheck
 # Build (outputs to dist/)
 bun run build
 
+# Run tests
+bun test
+
 # Run any command via dev
 bun dev help
 bun dev tasks check
 ```
 
-There is no test suite yet. When adding tests, use Bun's built-in test runner
-(`bun test`).
+Tests use Bun's built-in test runner (`bun test`). Test files live in `tests/`
+and use `*.test.ts` naming.
 
 ## Known quirks
 
@@ -170,7 +183,7 @@ There is no test suite yet. When adding tests, use Bun's built-in test runner
 
 ## Feature backlog
 
-The active backlog lives in `.wombo-combo/tasks.yml` (local, gitignored). Use
+The active backlog lives in `.wombo-combo/tasks.yml`. Use
 `bun dev tasks list` to see it. The canonical template is at
 `src/templates/tasks.yml`.
 
@@ -194,3 +207,5 @@ The active backlog lives in `.wombo-combo/tasks.yml` (local, gitignored). Use
   commit the bump, then tag that commit.** Never tag without bumping the
   version — they must stay in sync.
 - Release workflow (when implemented) triggers on `v*` tag push to main.
+- **Never run `npm publish` manually** — always let the GitHub Actions workflow
+  handle publishing. Just bump, commit, tag, push.

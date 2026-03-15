@@ -18,7 +18,7 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { WomboConfig } from "../src/config.js";
+import type { WomboConfig } from "../src/config";
 import {
   loadFeatures,
   parseDurationMinutes,
@@ -33,14 +33,14 @@ import {
   featureSummary,
   PRIORITY_ORDER,
   DIFFICULTY_ORDER,
-} from "../src/lib/tasks.js";
+} from "../src/lib/tasks";
 import type {
   Feature,
   FeaturesFile,
   Subtask,
   Priority,
   Difficulty,
-} from "../src/lib/tasks.js";
+} from "../src/lib/tasks";
 
 // ---------------------------------------------------------------------------
 // Helpers

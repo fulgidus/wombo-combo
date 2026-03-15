@@ -27,9 +27,9 @@ import {
 } from "node:fs";
 import { resolve, join, basename } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { WOMBO_DIR } from "../config.js";
-import type { Quest } from "./quest.js";
-import { normalizeQuest, validateQuest } from "./quest.js";
+import { WOMBO_DIR } from "../config";
+import type { Quest } from "./quest";
+import { normalizeQuest, validateQuest } from "./quest";
 
 // ---------------------------------------------------------------------------
 // Constants

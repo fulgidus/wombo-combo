@@ -12,14 +12,14 @@
  * full verification pipeline, after the build passes.
  */
 
-import type { WomboConfig } from "../config.js";
-import { runTests, type TestRunResult } from "./test-runner.js";
+import type { WomboConfig } from "../config";
+import { runTests, type TestRunResult } from "./test-runner";
 import {
   detectTests,
   renderTestDetectionReport,
   isNonTestableFile,
   type TestDetectionReport,
-} from "./test-detection.js";
+} from "./test-detection";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -14,17 +14,17 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import type { WomboConfig } from "../config.js";
-import { resolveAgentBin } from "../config.js";
-import type { ProposedTask, PlanResult } from "./quest-planner.js";
+import type { WomboConfig } from "../config";
+import { resolveAgentBin } from "../config";
+import type { ProposedTask, PlanResult } from "./quest-planner";
 import {
   extractPlanYaml,
   parsePlanYaml,
   validatePlan,
-} from "./quest-planner.js";
-import { createBlankTask, saveTaskToStore, loadTasks } from "./tasks.js";
-import type { Task } from "./tasks.js";
-import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
+} from "./quest-planner";
+import { createBlankTask, saveTaskToStore, loadTasks } from "./tasks";
+import type { Task } from "./tasks";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
 
 // ---------------------------------------------------------------------------
 // Types

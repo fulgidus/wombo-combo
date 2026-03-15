@@ -18,11 +18,11 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import type { Priority, Difficulty } from "../../lib/tasks.js";
-import type { QuestHitlMode } from "../../lib/quest.js";
-import { handleQuestSubcommand } from "../quest.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { resolveOutputFormat } from "../../lib/output";
+import type { Priority, Difficulty } from "../../lib/tasks";
+import type { QuestHitlMode } from "../../lib/quest";
+import { handleQuestSubcommand } from "../quest";
 
 // ---------------------------------------------------------------------------
 // Shared: load config, validate

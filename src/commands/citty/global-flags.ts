@@ -13,7 +13,7 @@
  *   -h / --help   Help request (boolean)
  */
 
-import type { OutputFormat } from "../../lib/output.js";
+import type { OutputFormat } from "../../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

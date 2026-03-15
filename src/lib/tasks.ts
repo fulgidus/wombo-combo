@@ -13,8 +13,8 @@
 
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
-import type { WomboConfig } from "../config.js";
-import { WOMBO_DIR, isProjectInitialized } from "../config.js";
+import type { WomboConfig } from "../config";
+import { WOMBO_DIR, isProjectInitialized } from "../config";
 import {
   loadTasksFromStore,
   loadArchiveFromStore,
@@ -30,7 +30,7 @@ import {
   getArchiveDir,
   saveTaskFile,
   deleteTaskFile,
-} from "./task-store.js";
+} from "./task-store";
 
 // ---------------------------------------------------------------------------
 // Template path (resolved relative to this source file)
@@ -92,6 +92,15 @@ export interface Task {
    * This is independent of `agent_type` which references external registry agents.
    */
   agent?: string;
+  /**
+   * Optional quest ID this task belongs to.
+   * When set, the task is part of the named quest and will automatically
+   * fork from / merge into the quest branch during launch.
+   * The quest's `depends_on` array creates transitive dependencies:
+   * all tasks in a dependent quest implicitly depend on all tasks in the
+   * prerequisite quest.
+   */
+  quest?: string;
 }
 
 /**
@@ -121,7 +130,7 @@ export type FeatureStatus = TaskStatus;
 export type FeaturesFile = TasksFile & { archive: Task[] };
 
 // Re-export ordering maps from the canonical source (task-schema.ts)
-import { PRIORITY_ORDER, DIFFICULTY_ORDER } from "./task-schema.js";
+import { PRIORITY_ORDER, DIFFICULTY_ORDER } from "./task-schema";
 export { PRIORITY_ORDER, DIFFICULTY_ORDER };
 
 // ---------------------------------------------------------------------------
@@ -652,4 +661,4 @@ export {
   removeTaskFromStore,
   getTasksDir,
   getArchiveDir,
-} from "./task-store.js";
+} from "./task-store";

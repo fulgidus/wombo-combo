@@ -24,8 +24,8 @@ import {
   readdirSync,
   statSync,
 } from "node:fs";
-import { WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config.js";
-import type { Task } from "./tasks.js";
+import { WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config";
+import type { Task } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // Types

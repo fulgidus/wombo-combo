@@ -1,4 +1,5 @@
 id: citty-core-commands
+quest: citty-migration
 title: Migrate simple commands to Citty
 description: "Convert simple standalone commands to citty: init, status, verify, merge, abort, cleanup, history, logs,
   usage, upgrade, completion. Each command gets its own citty defineCommand() with typed args. Preserve all flags,

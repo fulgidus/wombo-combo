@@ -5,7 +5,7 @@
  *
  * This is the primary entry point for starting a new wave. It selects features
  * from the features file, creates a wave state, sets up worktrees, and launches
- * agent processes (either headless or interactive via dmux/tmux).
+ * agent processes (either headless or interactive via tmux).
  *
  * IMPORTANT: This file also exports shared helper functions that are reused
  * by resume.ts and other commands:
@@ -18,9 +18,9 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
-import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks.js";
-import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
+import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/tasks";
 import {
   loadState,
   saveState,
@@ -37,7 +37,7 @@ import {
   type WaveState,
   type AgentState,
   type SerializedSchedulePlan,
-} from "../lib/state.js";
+} from "../lib/state";
 import {
   createWorktree,
   installDeps,
@@ -49,8 +49,8 @@ import {
   branchExists,
   removeWorktree,
   log as wtLog,
-} from "../lib/worktree.js";
-import { generatePrompt, generateConflictResolutionPrompt, type QuestPromptContext } from "../lib/prompt.js";
+} from "../lib/worktree";
+import { generatePrompt, generateConflictResolutionPrompt, generateTier4RerunPrompt, generateRebaseCommitPrompt, type QuestPromptContext, type ConflictResolutionContext } from "../lib/prompt";
 import {
   launchHeadless,
   retryHeadless,
@@ -58,18 +58,34 @@ import {
   retryInteractive,
   launchConflictResolver,
   isProcessRunning,
-  getMultiplexerName,
-} from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { runBuild, runFullVerification, type FullVerificationOptions } from "../lib/verifier.js";
-import { mergeBranch, mergeBaseIntoFeature, pushBaseBranch, canMerge, enqueueMerge, tieredMergeBaseIntoFeature } from "../lib/merger.js";
+} from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { runBuild, runFullVerification, type FullVerificationOptions } from "../lib/verifier";
+import {
+  mergeBranch,
+  mergeBaseIntoFeature,
+  pushBaseBranch,
+  canMerge,
+  enqueueMerge,
+  tieredMergeBaseIntoFeature,
+  syncQuestBranch,
+  startRebaseStrategy,
+  beginRebase,
+  getRebaseConflicts,
+  continueRebase,
+  abortRebase,
+  cleanupRebaseBranch,
+  finalizeRebase,
+} from "../lib/merger";
+import type { Tier25Result } from "../lib/conflict-hunks";
+import type { MaxEscalationTier } from "../config";
 import {
   printDashboard,
   printFeatureSelection,
   printAgentUpdate,
-} from "../lib/ui.js";
-import { WomboTUI } from "../lib/tui.js";
-import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates.js";
+} from "../lib/ui";
+import { WomboTUI } from "../lib/tui";
+import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates";
 import {
   buildDepGraph,
   validateDepGraph,
@@ -78,30 +94,27 @@ import {
   getStreamForFeature,
   type DepGraph,
   type SchedulePlan,
-} from "../lib/dependency-graph.js";
-import { ensureProxyRunning, isPortlessAvailable, portlessUrl } from "../lib/portless.js";
-import { output, outputError, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderLaunchDryRun } from "../lib/toon.js";
-import {
-  detectMultiplexer,
-  muxAttachCommand,
-  muxListCommand,
-} from "../lib/multiplexer.js";
-import { exportWaveHistory } from "../lib/history.js";
+} from "../lib/dependency-graph";
+import { ensureProxyRunning, isPortlessAvailable, portlessUrl } from "../lib/portless";
+import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { renderLaunchDryRun } from "../lib/toon";
+import { ensureTmux, tmuxAttach } from "../lib/tmux";
+import { InteractiveMonitor, type InteractiveAgent } from "../lib/interactive-monitor";
+import { exportWaveHistory } from "../lib/history";
 import {
   prepareAgentDefinitions,
   isSpecializedAgent,
   writeAgentToWorktree,
   type AgentResolution,
-} from "../lib/agent-registry.js";
+} from "../lib/agent-registry";
 import {
   tuiPreflightConfirm,
   consolePreflightConfirm,
-} from "../lib/preflight.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, applyQuestConstraintsToTask, type QuestHitlMode } from "../lib/quest.js";
-import { questBranchExists, createQuestBranch } from "../lib/worktree.js";
-import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel.js";
+} from "../lib/preflight";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, applyQuestConstraintsToTask, type QuestHitlMode } from "../lib/quest";
+import { questBranchExists, createQuestBranch } from "../lib/worktree";
+import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -283,14 +296,14 @@ export async function launchSingleHeadless(
       } catch (branchErr: any) {
         wtLog(agent.feature_id, `branch switch failed: ${branchErr.message}`);
         // Fall through to normal worktree creation
-        await createWorktree(projectRoot, feature.id, state.base_branch, config);
+        await createWorktree(projectRoot, feature.id, agent.base_branch ?? state.base_branch, config);
       }
     } else if (worktreeReady(agent.worktree)) {
       // Skip worktree setup if already ready (resume case)
       wtLog(agent.feature_id, "worktree already exists, skipping setup");
     } else {
       // Create worktree (async — doesn't block other agents)
-      await createWorktree(projectRoot, feature.id, state.base_branch, config);
+      await createWorktree(projectRoot, feature.id, agent.base_branch ?? state.base_branch, config);
 
       // Install dependencies (async)
       updateAgent(state, agent.feature_id, { activity: "installing deps..." });
@@ -298,7 +311,7 @@ export async function launchSingleHeadless(
     }
 
     // Generate prompt
-    const prompt = generatePrompt(feature, state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
+    const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
 
     // Write specialized agent to worktree if applicable
     const resolution = agentResolutions?.get(feature.id);
@@ -538,7 +551,7 @@ export async function attemptMerge(
     try {
       // Pre-flight check: detect conflicts before attempting the real merge.
       // This avoids the expensive merge-then-abort dance for known conflicts.
-      const preCheck = await canMerge(projectRoot, agent.branch, state.base_branch);
+      const preCheck = await canMerge(projectRoot, agent.branch, agent.base_branch ?? state.base_branch);
       if (!preCheck.canMerge) {
         printAgentUpdate(agent, `conflict detected (pre-flight) — attempting resolution...`);
         await handleMergeConflict(
@@ -548,7 +561,7 @@ export async function attemptMerge(
         return;
       }
 
-      const mergeResult = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+      const mergeResult = await mergeBranch(projectRoot, agent.branch, agent.base_branch ?? state.base_branch, config);
 
       if (mergeResult.success) {
         handleMergeSuccess(projectRoot, state, agent, config, mergeResult.commitHash);
@@ -592,7 +605,7 @@ function handleMergeSuccess(
   saveState(projectRoot, state);
   printAgentUpdate(agent, `${label} (${commitHash?.slice(0, 7)})`);
 
-  markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch);
+  markFeatureDone(projectRoot, agent.feature_id, config, agent.base_branch ?? state.base_branch);
 
   // Walk back the chain and mark all deferred predecessors as merged.
   // Their work was carried forward through branch continuity and is now
@@ -605,7 +618,7 @@ function handleMergeSuccess(
         completed_at: new Date().toISOString(),
       });
       printAgentUpdate(predAgent, `MERGED (via chain terminal ${agent.feature_id})`);
-      markFeatureDone(projectRoot, predAgent.feature_id, config, state.base_branch);
+      markFeatureDone(projectRoot, predAgent.feature_id, config, predAgent.base_branch ?? state.base_branch);
 
       // Clean up predecessor branch — its commits are now reachable via
       // the terminal branch's merge into base.
@@ -713,65 +726,48 @@ async function handleMergeConflict(
   mergeError: string,
 ): Promise<void> {
   try {
-    // Tiered merge: attempts tier 1 (clean merge) and tier 2 (trivial auto-resolve)
+    // Tiered merge: attempts tier 1 (clean merge), tier 2 (trivial auto-resolve),
+    // and tier 2.5 (surgical per-hunk resolution)
     const tieredResult = await tieredMergeBaseIntoFeature(
       agent.worktree,
-      state.base_branch,
+      agent.base_branch ?? state.base_branch,
       config
     );
 
-    if (tieredResult.success && tieredResult.tier === 1) {
-      // Clean merge of base into feature — retry merge into base
-      printAgentUpdate(agent, "base merged cleanly into feature — retrying merge...");
-      const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
+    if (tieredResult.success && (tieredResult.tier === 1 || tieredResult.tier === 2 || tieredResult.tier === 2.5)) {
+      // Tier 1, 2, or 2.5 resolved the conflicts — retry merge into base
+      const tierLabel = tieredResult.tier === 1
+        ? "base merged cleanly into feature"
+        : tieredResult.tier === 2
+        ? "trivial conflicts auto-resolved (whitespace only)"
+        : `tier 2.5 surgical resolution (${tieredResult.tier25Result?.resolvedHunkCount ?? 0}/${tieredResult.tier25Result?.totalHunks ?? 0} hunks)`;
+
+      printAgentUpdate(agent, `${tierLabel} — retrying merge...`);
+      const retryMerge = await mergeBranch(projectRoot, agent.branch, agent.base_branch ?? state.base_branch, config);
       if (retryMerge.success) {
-        handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after rebase");
+        const successLabel = tieredResult.tier === 1
+          ? "MERGED after rebase"
+          : tieredResult.tier === 2
+          ? "MERGED after trivial auto-resolve"
+          : "MERGED after tier 2.5 surgical resolution";
+        handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, successLabel);
         return;
       }
 
-      // Retry still failed — need conflict resolution. Re-merge base into
-      // feature to get conflict files for the resolver.
-      printAgentUpdate(agent, `retry merge still failed — launching resolver agent...`);
-      const secondConflict = await mergeBaseIntoFeature(
+      // Retry still failed — escalate to tier 3+
+      printAgentUpdate(agent, `retry merge still failed after tier ${tieredResult.tier} — escalating...`);
+      mergeError = retryMerge.error ?? mergeError;
+      // Re-merge base into feature to get fresh conflict state for escalation
+      const freshConflict = await mergeBaseIntoFeature(
         agent.worktree,
-        state.base_branch,
+        agent.base_branch ?? state.base_branch,
         config
       );
+      const conflictFiles = freshConflict.conflicting ? freshConflict.files : [];
 
-      const conflictFiles = secondConflict.conflicting
-        ? secondConflict.files
-        : ["(unknown — merge direction mismatch)"];
-
-      await launchResolverAndRetryMerge(
+      await escalatingConflictResolution(
         projectRoot, state, agent, feature, config, model,
-        retryMerge.error ?? mergeError, conflictFiles
-      );
-      return;
-    }
-
-    if (tieredResult.success && tieredResult.tier === 2) {
-      // Trivial conflicts auto-resolved — retry merge into base
-      printAgentUpdate(agent, "trivial conflicts auto-resolved (whitespace only) — retrying merge...");
-      const retryMerge = await mergeBranch(projectRoot, agent.branch, state.base_branch, config);
-      if (retryMerge.success) {
-        handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after trivial auto-resolve");
-        return;
-      }
-
-      // Still failed after auto-resolve — fall through to agent resolver
-      printAgentUpdate(agent, `merge still failed after auto-resolve — launching resolver agent...`);
-      const postAutoConflict = await mergeBaseIntoFeature(
-        agent.worktree,
-        state.base_branch,
-        config
-      );
-      const conflictFiles = postAutoConflict.conflicting
-        ? postAutoConflict.files
-        : ["(unknown — merge direction mismatch)"];
-
-      await launchResolverAndRetryMerge(
-        projectRoot, state, agent, feature, config, model,
-        retryMerge.error ?? mergeError, conflictFiles
+        mergeError, conflictFiles, tieredResult.tier25Result ?? null
       );
       return;
     }
@@ -786,15 +782,16 @@ async function handleMergeConflict(
       return;
     }
 
-    // Tier 3: Real conflicts remain — launch resolver agent
+    // Tier 3+: Real conflicts remain after tiers 1, 2, 2.5
+    // The tieredResult has structured hunk data from tier 2.5
     printAgentUpdate(
       agent,
       `${tieredResult.conflictFiles.length} non-trivial conflict(s): ${tieredResult.conflictFiles.join(", ")}`
     );
 
-    await launchResolverAndRetryMerge(
+    await escalatingConflictResolution(
       projectRoot, state, agent, feature, config, model,
-      mergeError, tieredResult.conflictFiles
+      mergeError, tieredResult.conflictFiles, tieredResult.tier25Result ?? null
     );
   } catch (conflictErr: any) {
     // Unexpected error during conflict handling — stay "verified" with error
@@ -806,15 +803,70 @@ async function handleMergeConflict(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Escalating Conflict Resolution Pipeline (Tiers 3 → 3.5 → 4)
+// ---------------------------------------------------------------------------
+
 /**
- * Launch a conflict resolver agent, wait for it to finish, re-verify build,
- * and retry the merge. Supports configurable retry attempts (defaults to 1,
- * up to config.defaults.maxRetries + 1).
- *
- * The resolver is re-launched with updated conflict state on each attempt,
- * so it sees the current conflict markers, not stale ones.
+ * Check if a given tier is allowed by the maxEscalation config.
  */
-async function launchResolverAndRetryMerge(
+function isTierAllowed(tier: "tier3" | "tier3.5" | "tier4", maxEscalation: MaxEscalationTier): boolean {
+  const tierOrder: MaxEscalationTier[] = ["tier3", "tier3.5", "tier4"];
+  return tierOrder.indexOf(tier) <= tierOrder.indexOf(maxEscalation);
+}
+
+/**
+ * Get git diffs for enriched conflict resolution context.
+ */
+async function getConflictDiffs(
+  worktreePath: string,
+  baseBranch: string,
+  remote: string
+): Promise<{ featureDiff: string; upstreamDiff: string }> {
+  const mergeBaseResult = await runSafeCmd(`git merge-base HEAD "${remote}/${baseBranch}"`, worktreePath);
+  const mergeBase = mergeBaseResult.ok ? mergeBaseResult.output.trim() : "";
+
+  let featureDiff = "";
+  let upstreamDiff = "";
+
+  if (mergeBase) {
+    const fdResult = await runSafeCmd(`git diff "${mergeBase}...HEAD" --stat -p`, worktreePath);
+    featureDiff = fdResult.ok ? fdResult.output : "";
+
+    const udResult = await runSafeCmd(`git diff "${mergeBase}...${remote}/${baseBranch}" --stat -p`, worktreePath);
+    upstreamDiff = udResult.ok ? udResult.output : "";
+  }
+
+  return { featureDiff, upstreamDiff };
+}
+
+/**
+ * Thin wrapper around exec for simple git commands in the escalation pipeline.
+ */
+function runSafeCmd(cmd: string, cwd: string): Promise<{ ok: boolean; output: string }> {
+  return new Promise((resolve) => {
+    const { exec: execFn } = require("node:child_process");
+    execFn(cmd, { cwd, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 }, (error: any, stdout: string, stderr: string) => {
+      if (error) {
+        resolve({ ok: false, output: stderr?.trim() || stdout?.trim() || error.message });
+      } else {
+        resolve({ ok: true, output: (stdout ?? "").trim() });
+      }
+    });
+  });
+}
+
+/**
+ * Escalating conflict resolution pipeline.
+ *
+ * Runs through tiers 3 → 3.5 → 4, stopping at the first success or when
+ * the configured maxEscalation is reached.
+ *
+ * Tier 3:   Enriched single-shot LLM resolve (1 LLM call, structured hunks + diffs)
+ * Tier 3.5: Rebase strategy with per-commit LLM resolution (1+ LLM calls)
+ * Tier 4:   Nuclear re-run (new worktree, re-implement from scratch)
+ */
+async function escalatingConflictResolution(
   projectRoot: string,
   state: WaveState,
   agent: AgentState,
@@ -822,123 +874,401 @@ async function launchResolverAndRetryMerge(
   config: WomboConfig,
   model: string | undefined,
   mergeError: string,
-  conflictFiles: string[]
+  conflictFiles: string[],
+  tier25Result: Tier25Result | null
 ): Promise<void> {
-  const maxResolverAttempts = Math.max(1, (config.defaults.maxRetries ?? 0) + 1);
+  const maxEscalation = config.merge.maxEscalation;
+  const baseBranch = agent.base_branch ?? state.base_branch;
 
-  for (let attempt = 1; attempt <= maxResolverAttempts; attempt++) {
-    const conflictPrompt = generateConflictResolutionPrompt(
-      feature,
-      state.base_branch,
-      mergeError,
-      config,
-      buildQuestContext(projectRoot, state.quest_id)
+  // ── Tier 3: Enriched single-shot LLM resolve ──────────────────────────
+
+  if (isTierAllowed("tier3", maxEscalation)) {
+    printAgentUpdate(agent, `tier 3: launching enriched LLM conflict resolver...`);
+
+    const tier3Result = await runTier3(
+      projectRoot, state, agent, feature, config, model,
+      mergeError, conflictFiles, tier25Result
     );
 
-    const attemptLabel = maxResolverAttempts > 1
-      ? ` (attempt ${attempt}/${maxResolverAttempts})`
-      : "";
+    if (tier3Result === "merged") return;
+    if (tier3Result === "build-failed" || tier3Result === "merge-failed") {
+      printAgentUpdate(agent, `tier 3 failed (${tier3Result}) — checking escalation options...`);
+    }
+  }
+
+  // ── Tier 3.5: Rebase strategy ─────────────────────────────────────────
+
+  if (isTierAllowed("tier3.5", maxEscalation)) {
+    printAgentUpdate(agent, `tier 3.5: attempting rebase strategy...`);
+
+    // First, abort any in-progress merge to start fresh for rebase
+    await runSafeCmd("git merge --abort", agent.worktree);
+
+    const tier35Result = await runTier35(
+      projectRoot, state, agent, feature, config, model
+    );
+
+    if (tier35Result === "merged") return;
+    if (tier35Result === "failed") {
+      printAgentUpdate(agent, `tier 3.5 rebase strategy failed — checking escalation options...`);
+    }
+  }
+
+  // ── Tier 4: Nuclear re-run ────────────────────────────────────────────
+
+  if (isTierAllowed("tier4", maxEscalation)) {
+    printAgentUpdate(agent, `tier 4: nuclear re-run — re-implementing feature from scratch...`);
+
+    const tier4Result = await runTier4(
+      projectRoot, state, agent, feature, config, model
+    );
+
+    if (tier4Result === "merged") return;
+    printAgentUpdate(agent, `tier 4 nuclear re-run failed`);
+  }
+
+  // ── All tiers exhausted ───────────────────────────────────────────────
+
+  printAgentUpdate(agent, `ALL conflict resolution tiers exhausted (max: ${maxEscalation}) — marking failed`);
+  updateAgent(state, agent.feature_id, {
+    status: "failed",
+    error: `All conflict resolution tiers exhausted (max escalation: ${maxEscalation})`,
+    completed_at: new Date().toISOString(),
+  });
+  saveState(projectRoot, state);
+  cancelDownstream(state, agent.feature_id);
+  saveState(projectRoot, state);
+}
+
+/**
+ * Tier 3: Enriched single-shot LLM resolve.
+ *
+ * ONE attempt with structured hunks, contextual diffs, and feature description.
+ */
+async function runTier3(
+  projectRoot: string,
+  state: WaveState,
+  agent: AgentState,
+  feature: Feature,
+  config: WomboConfig,
+  model: string | undefined,
+  mergeError: string,
+  conflictFiles: string[],
+  tier25Result: Tier25Result | null
+): Promise<"merged" | "build-failed" | "merge-failed"> {
+  const baseBranch = agent.base_branch ?? state.base_branch;
+
+  // Gather contextual diffs
+  const diffs = await getConflictDiffs(agent.worktree, baseBranch, config.git.remote);
+
+  const conflictContext: ConflictResolutionContext = {
+    tier25Result: tier25Result ?? undefined,
+    featureDiff: diffs.featureDiff || undefined,
+    upstreamDiff: diffs.upstreamDiff || undefined,
+  };
+
+  const conflictPrompt = generateConflictResolutionPrompt(
+    feature, baseBranch, mergeError, config,
+    buildQuestContext(projectRoot, state.quest_id),
+    conflictContext
+  );
+
+  updateAgent(state, agent.feature_id, {
+    status: "resolving_conflict",
+    activity: `tier 3: resolving ${conflictFiles.length} conflict(s)...`,
+  });
+  saveState(projectRoot, state);
+
+  const resolverResult = launchConflictResolver({
+    worktreePath: agent.worktree,
+    featureId: agent.feature_id,
+    prompt: conflictPrompt,
+    model,
+    config,
+  });
+
+  updateAgent(state, agent.feature_id, { pid: resolverResult.pid });
+  saveState(projectRoot, state);
+
+  // Wait for resolver to complete
+  const resolverExitCode = await new Promise<number | null>((resolve) => {
+    resolverResult.process.on("exit", (code) => resolve(code));
+    resolverResult.process.on("error", () => resolve(null));
+  });
+
+  printAgentUpdate(agent, `tier 3 resolver exited (code ${resolverExitCode}) — re-verifying build...`);
+
+  // Re-verify build
+  const rebuildResult = await runBuild(agent.worktree, config);
+  if (!rebuildResult.passed) {
+    printAgentUpdate(agent, `tier 3 POST-CONFLICT BUILD FAILED`);
+    return "build-failed";
+  }
+
+  // Retry merge into base
+  printAgentUpdate(agent, "tier 3 build passed — retrying merge...");
+  const retryMerge = await mergeBranch(projectRoot, agent.branch, baseBranch, config);
+  if (retryMerge.success) {
+    handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after tier 3 enriched resolution");
+    return "merged";
+  }
+
+  printAgentUpdate(agent, `tier 3 POST-CONFLICT MERGE FAILED: ${retryMerge.error?.slice(0, 100)}`);
+  return "merge-failed";
+}
+
+/**
+ * Tier 3.5: Rebase strategy — replay commits one-at-a-time on a throwaway branch.
+ */
+async function runTier35(
+  projectRoot: string,
+  state: WaveState,
+  agent: AgentState,
+  feature: Feature,
+  config: WomboConfig,
+  model: string | undefined
+): Promise<"merged" | "failed"> {
+  const baseBranch = agent.base_branch ?? state.base_branch;
+  const featureBranch = agent.branch;
+
+  // Start the rebase on a throwaway branch
+  const rebaseSetup = await startRebaseStrategy(
+    agent.worktree, featureBranch, baseBranch, agent.feature_id, config
+  );
+
+  if (rebaseSetup.error) {
+    printAgentUpdate(agent, `tier 3.5 setup failed: ${rebaseSetup.error.slice(0, 100)}`);
+    return "failed";
+  }
+
+  const { tempBranch, commitsToReplay } = rebaseSetup;
+  printAgentUpdate(agent, `tier 3.5: rebasing ${commitsToReplay.length} commit(s) on ${tempBranch}...`);
+
+  updateAgent(state, agent.feature_id, {
+    activity: `tier 3.5: rebasing ${commitsToReplay.length} commit(s)...`,
+  });
+  saveState(projectRoot, state);
+
+  // Start the rebase
+  const rebaseResult = await beginRebase(agent.worktree, baseBranch, config);
+
+  if (rebaseResult.clean) {
+    // Rebase completed cleanly — finalize
+    printAgentUpdate(agent, `tier 3.5: rebase completed cleanly!`);
+    const finalizeResult = await finalizeRebase(agent.worktree, tempBranch, featureBranch);
+    if (!finalizeResult.success) {
+      printAgentUpdate(agent, `tier 3.5 finalize failed: ${finalizeResult.error?.slice(0, 100)}`);
+      await cleanupRebaseBranch(agent.worktree, tempBranch, featureBranch);
+      return "failed";
+    }
+
+    // Retry merge into base
+    const retryMerge = await mergeBranch(projectRoot, featureBranch, baseBranch, config);
+    if (retryMerge.success) {
+      handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
+      return "merged";
+    }
+    printAgentUpdate(agent, `tier 3.5 merge after rebase failed: ${retryMerge.error?.slice(0, 100)}`);
+    return "failed";
+  }
+
+  if (rebaseResult.error) {
+    printAgentUpdate(agent, `tier 3.5 rebase error: ${rebaseResult.error.slice(0, 100)}`);
+    await abortRebase(agent.worktree);
+    await cleanupRebaseBranch(agent.worktree, tempBranch, featureBranch);
+    return "failed";
+  }
+
+  // Rebase paused at a conflict — handle per-commit resolution
+  let commitIndex = 0;
+  let maxCommits = commitsToReplay.length;
+
+  while (true) {
+    const conflicts = await getRebaseConflicts(agent.worktree);
+    if (conflicts.length === 0) break; // No more conflicts
+
+    commitIndex++;
+    const currentCommit = commitsToReplay[Math.min(commitIndex - 1, maxCommits - 1)];
+    printAgentUpdate(agent, `tier 3.5: resolving conflict in commit ${commitIndex}/${maxCommits}: ${currentCommit?.message?.slice(0, 50) ?? "unknown"}...`);
 
     updateAgent(state, agent.feature_id, {
-      status: "resolving_conflict",
-      activity: `resolving ${conflictFiles.length} conflict(s)${attemptLabel}...`,
+      activity: `tier 3.5: resolving commit ${commitIndex}/${maxCommits}...`,
     });
     saveState(projectRoot, state);
+
+    // Launch a per-commit resolver
+    const commitPrompt = generateRebaseCommitPrompt(
+      feature,
+      currentCommit?.message ?? "unknown",
+      currentCommit?.hash ?? "unknown",
+      conflicts,
+      maxCommits,
+      commitIndex,
+      config
+    );
 
     const resolverResult = launchConflictResolver({
       worktreePath: agent.worktree,
       featureId: agent.feature_id,
-      prompt: conflictPrompt,
+      prompt: commitPrompt,
       model,
       config,
     });
 
-    updateAgent(state, agent.feature_id, {
-      pid: resolverResult.pid,
-    });
+    updateAgent(state, agent.feature_id, { pid: resolverResult.pid });
     saveState(projectRoot, state);
 
-    // Wait for the resolver process to complete, then re-verify and retry merge.
-    // We intentionally do NOT add the resolver to the ProcessMonitor because
-    // the monitor's onComplete callback would trigger handleBuildVerification
-    // again, causing infinite recursion. Instead we await the process directly.
-    const resolverExitCode = await new Promise<number | null>((resolve) => {
+    // Wait for resolver
+    const exitCode = await new Promise<number | null>((resolve) => {
       resolverResult.process.on("exit", (code) => resolve(code));
       resolverResult.process.on("error", () => resolve(null));
     });
 
-    printAgentUpdate(
-      agent,
-      `conflict resolver exited (code ${resolverExitCode})${attemptLabel} — re-verifying build...`
-    );
+    printAgentUpdate(agent, `tier 3.5 commit resolver exited (code ${exitCode})`);
 
-    // Re-verify build after conflict resolution
-    const rebuildResult = await runBuild(agent.worktree, config);
-
-    if (!rebuildResult.passed) {
-      if (attempt < maxResolverAttempts) {
-        printAgentUpdate(agent, `POST-CONFLICT BUILD FAILED${attemptLabel} — retrying resolver...`);
-        continue; // Try again with a fresh resolver
-      }
-      printAgentUpdate(agent, `POST-CONFLICT BUILD FAILED (all ${maxResolverAttempts} attempts exhausted)`);
-      updateAgent(state, agent.feature_id, {
-        status: "failed",
-        build_passed: false,
-        build_output: rebuildResult.errorSummary,
-        error: "Build failed after conflict resolution",
-        completed_at: new Date().toISOString(),
-      });
-      saveState(projectRoot, state);
-      cancelDownstream(state, agent.feature_id);
-      saveState(projectRoot, state);
-      return;
+    // Check if conflicts are resolved (files should be staged by the resolver)
+    const remainingConflicts = await getRebaseConflicts(agent.worktree);
+    if (remainingConflicts.length > 0) {
+      // Resolver didn't fully resolve — abort the whole rebase
+      printAgentUpdate(agent, `tier 3.5: resolver failed to resolve commit ${commitIndex} — aborting rebase`);
+      await abortRebase(agent.worktree);
+      await cleanupRebaseBranch(agent.worktree, tempBranch, featureBranch);
+      return "failed";
     }
 
-    printAgentUpdate(agent, "post-conflict build passed — retrying merge...");
-
-    const retryMerge = await mergeBranch(
-      projectRoot,
-      agent.branch,
-      state.base_branch,
-      config
-    );
-
-    if (retryMerge.success) {
-      handleMergeSuccess(
-        projectRoot, state, agent, config,
-        retryMerge.commitHash, "MERGED after conflict resolution"
-      );
-      return;
+    // Continue the rebase
+    const continueResult = await continueRebase(agent.worktree);
+    if (continueResult.done) {
+      break; // Rebase complete
     }
-
-    // Merge still failed after resolver. If we have attempts left, re-merge
-    // base into feature to refresh conflict markers and try again.
-    if (attempt < maxResolverAttempts) {
-      printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED${attemptLabel} — retrying resolver...`);
-      const refreshConflict = await mergeBaseIntoFeature(
-        agent.worktree,
-        state.base_branch,
-        config
-      );
-      conflictFiles = refreshConflict.conflicting
-        ? refreshConflict.files
-        : conflictFiles;
-      mergeError = retryMerge.error ?? mergeError;
-      continue;
+    if (continueResult.error) {
+      printAgentUpdate(agent, `tier 3.5 continue error: ${continueResult.error.slice(0, 100)}`);
+      await abortRebase(agent.worktree);
+      await cleanupRebaseBranch(agent.worktree, tempBranch, featureBranch);
+      return "failed";
     }
-
-    // All attempts exhausted
-    printAgentUpdate(agent, `POST-CONFLICT MERGE FAILED (all ${maxResolverAttempts} attempts exhausted): ${retryMerge.error}`);
-    updateAgent(state, agent.feature_id, {
-      status: "failed",
-      error: `Merge still failed after ${maxResolverAttempts} conflict resolution attempt(s): ${retryMerge.error}`,
-      completed_at: new Date().toISOString(),
-    });
-    saveState(projectRoot, state);
-    cancelDownstream(state, agent.feature_id);
-    saveState(projectRoot, state);
-    return;
+    // If not clean, loop back to handle the next conflict
   }
+
+  // Rebase completed — finalize
+  printAgentUpdate(agent, `tier 3.5: rebase completed after resolving ${commitIndex} conflict(s)`);
+
+  const finalizeResult = await finalizeRebase(agent.worktree, tempBranch, featureBranch);
+  if (!finalizeResult.success) {
+    printAgentUpdate(agent, `tier 3.5 finalize failed: ${finalizeResult.error?.slice(0, 100)}`);
+    await cleanupRebaseBranch(agent.worktree, tempBranch, featureBranch);
+    return "failed";
+  }
+
+  // Verify build after rebase
+  const rebuildResult = await runBuild(agent.worktree, config);
+  if (!rebuildResult.passed) {
+    printAgentUpdate(agent, `tier 3.5 POST-REBASE BUILD FAILED`);
+    return "failed";
+  }
+
+  // Retry merge into base
+  const retryMerge = await mergeBranch(projectRoot, featureBranch, baseBranch, config);
+  if (retryMerge.success) {
+    handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
+    return "merged";
+  }
+
+  printAgentUpdate(agent, `tier 3.5 merge after rebase failed: ${retryMerge.error?.slice(0, 100)}`);
+  return "failed";
+}
+
+/**
+ * Tier 4: Nuclear re-run — re-implement the feature from scratch.
+ *
+ * Creates a new worktree from the current base branch, generates a prompt
+ * with the original feature's diff as reference, and launches the agent.
+ */
+async function runTier4(
+  projectRoot: string,
+  state: WaveState,
+  agent: AgentState,
+  feature: Feature,
+  config: WomboConfig,
+  model: string | undefined
+): Promise<"merged" | "failed"> {
+  const baseBranch = agent.base_branch ?? state.base_branch;
+
+  // Get the feature's diff (what it changed vs the merge base)
+  const diffResult = await runSafeCmd(
+    `git log --format="" -p "${config.git.remote}/${baseBranch}..${agent.branch}"`,
+    agent.worktree
+  );
+  const featureDiff = diffResult.ok ? diffResult.output : "(diff unavailable)";
+
+  // Abort any in-progress merge/rebase
+  await runSafeCmd("git merge --abort", agent.worktree);
+  await runSafeCmd("git rebase --abort", agent.worktree);
+
+  // Reset the worktree to a clean state on the base branch
+  // We re-use the existing worktree by resetting it to the base
+  await runSafeCmd(`git fetch ${config.git.remote} "${baseBranch}"`, agent.worktree);
+  const resetResult = await runSafeCmd(`git reset --hard "${config.git.remote}/${baseBranch}"`, agent.worktree);
+  if (!resetResult.ok) {
+    printAgentUpdate(agent, `tier 4: failed to reset worktree to base: ${resetResult.output.slice(0, 100)}`);
+    return "failed";
+  }
+
+  updateAgent(state, agent.feature_id, {
+    activity: `tier 4: re-implementing feature from scratch...`,
+  });
+  saveState(projectRoot, state);
+
+  // Generate the tier 4 prompt
+  const rerunPrompt = generateTier4RerunPrompt(
+    feature, baseBranch, featureDiff, config,
+    buildQuestContext(projectRoot, state.quest_id)
+  );
+
+  // Launch the agent
+  const resolverResult = launchConflictResolver({
+    worktreePath: agent.worktree,
+    featureId: agent.feature_id,
+    prompt: rerunPrompt,
+    model,
+    config,
+  });
+
+  updateAgent(state, agent.feature_id, { pid: resolverResult.pid });
+  saveState(projectRoot, state);
+
+  // Wait for completion
+  const exitCode = await new Promise<number | null>((resolve) => {
+    resolverResult.process.on("exit", (code) => resolve(code));
+    resolverResult.process.on("error", () => resolve(null));
+  });
+
+  printAgentUpdate(agent, `tier 4 agent exited (code ${exitCode}) — verifying build...`);
+
+  // Verify build
+  const rebuildResult = await runBuild(agent.worktree, config);
+  if (!rebuildResult.passed) {
+    printAgentUpdate(agent, `tier 4 BUILD FAILED`);
+    return "failed";
+  }
+
+  // Commit if the agent didn't already
+  await runSafeCmd("git add -A", agent.worktree);
+  await runSafeCmd(
+    `git diff --cached --quiet || git commit -m "feat(${agent.feature_id}): re-implement ${feature.title} (tier 4)"`,
+    agent.worktree
+  );
+
+  // Merge into base
+  printAgentUpdate(agent, "tier 4 build passed — merging into base...");
+  const retryMerge = await mergeBranch(projectRoot, agent.branch, baseBranch, config);
+  if (retryMerge.success) {
+    handleMergeSuccess(projectRoot, state, agent, config, retryMerge.commitHash, "MERGED after tier 4 nuclear re-run");
+    return "merged";
+  }
+
+  printAgentUpdate(agent, `tier 4 MERGE FAILED: ${retryMerge.error?.slice(0, 100)}`);
+  return "failed";
 }
 
 /**
@@ -1388,7 +1718,7 @@ async function launchWaveHeadless(
         }
         // Process exited but we didn't get a callback
         // Check if the agent actually made any commits
-        if (!branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+        if (!branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           // Agent died without producing any code — mark as failed, not completed
           updateAgent(state, agent.feature_id, {
             status: "failed",
@@ -1562,7 +1892,7 @@ async function launchWaveHeadless(
 // ---------------------------------------------------------------------------
 // Interactive Wave Launch
 //
-// Audit (wave-detach-audit): Interactive agents run inside dmux/tmux sessions.
+// Audit (wave-detach-audit): Interactive agents run inside tmux sessions.
 // Unlike headless agents, they are NOT child processes of the wombo parent —
 // they survive parent death, SIGINT, and crashes naturally. No explicit
 // cleanup is needed when the parent exits. The `launchInteractive()` function
@@ -1585,6 +1915,62 @@ async function launchWaveInteractive(
   // Show dashboard immediately
   if (fmt === "text") printDashboard(state);
 
+  // Ensure tmux is available
+  ensureTmux();
+
+  // ── Interactive Monitor ──────────────────────────────────────────────
+  // Detects when agents finish (PID exit or TUI idle) and cleans up
+  // their tmux sessions automatically.
+
+  const imon = new InteractiveMonitor({
+    onComplete: (featureId) => {
+      updateAgent(state, featureId, {
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        activity: "done (session cleaned up)",
+      });
+      saveState(projectRoot, state);
+      if (fmt === "text") {
+        console.log(`\n  [completed] ${featureId} — session cleaned up`);
+      }
+
+      // Run build verification (fire-and-forget, no ProcessMonitor needed)
+      const agent = state.agents.find((a) => a.feature_id === featureId)!;
+      const feature = featureMap.get(featureId);
+      if (feature) {
+        handleBuildVerification(projectRoot, state, agent, feature, config, model, undefined, undefined, hitlMode)
+          .catch((err) => wtLog(featureId, `BUILD VERIFICATION ERROR: ${err.message}`));
+      }
+    },
+    onError: (featureId, reason) => {
+      updateAgent(state, featureId, {
+        status: "failed",
+        error: reason,
+        completed_at: new Date().toISOString(),
+        activity: null,
+      });
+      saveState(projectRoot, state);
+      if (fmt === "text") {
+        console.log(`\n  [failed] ${featureId} — ${reason}`);
+      }
+
+      // Cascade failure to downstream agents
+      const cancelled = cancelDownstream(state, featureId);
+      if (cancelled.length > 0) {
+        wtLog(featureId, `downstream cancelled: ${cancelled.join(", ")}`);
+        saveState(projectRoot, state);
+      }
+    },
+    onActivity: (featureId, activity) => {
+      updateAgent(state, featureId, {
+        activity: `tmux: ${activity}`,
+        activity_updated_at: new Date().toISOString(),
+      });
+    },
+  });
+
+  // ── Launch agents ────────────────────────────────────────────────────
+
   // Launch initial batch — parallelize setup
   const tolaunch = queuedAgents(state).slice(0, opts.maxConcurrent || undefined);
   if (fmt === "text") console.log(`Setting up ${tolaunch.length} agent(s) in parallel...\n`);
@@ -1602,14 +1988,14 @@ async function launchWaveInteractive(
         if (worktreeReady(agent.worktree)) {
           wtLog(agent.feature_id, "worktree already exists, skipping setup");
         } else {
-          await createWorktree(projectRoot, agent.feature_id, state.base_branch, config);
+          await createWorktree(projectRoot, agent.feature_id, agent.base_branch ?? state.base_branch, config);
           updateAgent(state, agent.feature_id, { activity: "installing deps..." });
           await installDeps(agent.worktree, agent.feature_id, config);
         }
 
         const prompt = generatePrompt(
           featureMap.get(agent.feature_id)!,
-          state.base_branch,
+          agent.base_branch ?? state.base_branch,
           config,
           questContext,
           hitlMode as QuestHitlMode | undefined
@@ -1647,14 +2033,26 @@ async function launchWaveInteractive(
           agentName,
         });
 
-        const muxName = getMultiplexerName(config);
+        const baseBranch = agent.base_branch ?? state.base_branch;
+
         updateAgent(state, agent.feature_id, {
           status: "running",
           pid: result.pid,
-          activity: `${muxName} session active`,
+          activity: `tmux session active`,
         });
         saveState(projectRoot, state);
-        wtLog(agent.feature_id, `${muxName} session: ${config.agent.tmuxPrefix}-${agent.feature_id}`);
+        wtLog(agent.feature_id, `tmux session: ${config.agent.tmuxPrefix}-${agent.feature_id}`);
+
+        // Register with the interactive monitor for completion detection
+        const iAgent: InteractiveAgent = {
+          featureId: agent.feature_id,
+          pid: result.pid,
+          sessionName: `${config.agent.tmuxPrefix}-${agent.feature_id}`,
+          worktree: agent.worktree,
+          branch: agent.branch,
+          baseBranch,
+        };
+        imon.addAgent(iAgent);
       } catch (err: any) {
         updateAgent(state, agent.feature_id, {
           status: "failed",
@@ -1668,18 +2066,89 @@ async function launchWaveInteractive(
     })
   );
 
-  const mux = detectMultiplexer(config.agent.multiplexer);
-  const muxName = getMultiplexerName(config);
   if (fmt === "text") {
     console.log("\nInteractive sessions launched. Use these commands:");
-    console.log(`  ${muxAttachCommand(mux, `${config.agent.tmuxPrefix}-<feature-id>`)}   # attach to a session`);
-    console.log(`  ${muxListCommand(mux)}${" ".repeat(Math.max(1, 54 - muxListCommand(mux).length))}# list sessions`);
+    console.log(`  tmux attach-session -t ${config.agent.tmuxPrefix}-<feature-id>   # attach to a session`);
+    console.log(`  tmux list-sessions                                      # list sessions`);
     console.log("  woco status                                             # check status");
-    console.log("  woco verify                                             # verify builds");
-    console.log("  woco merge                                              # merge verified");
-    console.log("  woco cleanup                                            # remove worktrees");
-
+    console.log("  Ctrl+C                                                  # detach (agents keep running)");
+    console.log("");
+    console.log("Monitoring for completion (sessions auto-cleanup when agents finish)...\n");
     printDashboard(state);
+  }
+
+  // ── Monitoring loop ──────────────────────────────────────────────────
+  // Block and wait for all agents to finish, similar to the headless flow.
+  // The InteractiveMonitor handles PID polling + pane-stability detection
+  // and fires callbacks on completion/error. This loop provides periodic
+  // status updates and handles graceful shutdown on Ctrl+C.
+
+  imon.start();
+
+  const POLL_INTERVAL = 10_000;
+  let dashboardCounter = 0;
+
+  // Handle Ctrl+C gracefully — detach monitoring but leave sessions alive
+  let detached = false;
+  const sigHandler = () => {
+    if (detached) {
+      // Second Ctrl+C — hard exit
+      process.exit(1);
+    }
+    detached = true;
+    imon.stop();
+    if (fmt === "text") {
+      console.log("\n\nDetached from monitoring. Agent sessions continue running.");
+      console.log("Run 'woco status' to check progress, 'woco cleanup' to kill sessions.\n");
+    }
+  };
+  process.on("SIGINT", sigHandler);
+
+  try {
+    while (!isWaveComplete(state) && !detached) {
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+      if (detached) break;
+
+      // Periodic dashboard update
+      dashboardCounter++;
+      if (dashboardCounter % 3 === 0 && fmt === "text") {
+        printDashboard(state);
+      }
+
+      // Persist state periodically
+      saveState(projectRoot, state);
+    }
+  } finally {
+    process.removeListener("SIGINT", sigHandler);
+    imon.stop();
+  }
+
+  if (detached) {
+    flushState(projectRoot, state);
+    return;
+  }
+
+  // ── Post-wave ────────────────────────────────────────────────────────
+
+  if (fmt === "text") {
+    console.log("\nAll agents finished.\n");
+    printDashboard(state);
+  }
+
+  // Dump logs for failed agents
+  dumpFailedAgentLogs(projectRoot, state, fmt);
+
+  // Export wave history
+  try {
+    const historyPath = exportWaveHistory(projectRoot, state);
+    if (fmt === "text") console.log(`Wave history exported to ${historyPath}`);
+  } catch (err: any) {
+    if (fmt === "text") console.error(`Warning: failed to export wave history: ${err.message}`);
+  }
+
+  // Auto-push base branch if requested
+  if (opts.autoPush) {
+    await pushBaseBranch(projectRoot, state.base_branch, config);
   }
 }
 
@@ -1719,6 +2188,22 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     if (!questBranchExists(projectRoot, questId)) {
       if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
       await createQuestBranch(projectRoot, questId, quest.baseBranch);
+    } else {
+      // Sync quest branch with baseBranch (merge main → quest branch)
+      // This ensures task statuses and code changes are up-to-date
+      if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+      const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
+      if (syncResult.conflicting) {
+        outputError(fmt, syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+        return;
+      }
+      if (syncResult.error) {
+        outputError(fmt, `Failed to sync quest branch: ${syncResult.error}`);
+        return;
+      }
+      if (syncResult.synced && fmt === "text") {
+        console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+      }
     }
 
     // Override baseBranch — task branches will fork from the quest branch
@@ -1754,7 +2239,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   }
 
   // Extract HITL mode from quest (defaults to undefined / yolo for non-quest waves)
-  const hitlMode = questId ? loadQuest(projectRoot, questId)?.hitlMode : undefined;
+  let hitlMode = questId ? loadQuest(projectRoot, questId)?.hitlMode : undefined;
 
   // Ensure portless proxy is running (if enabled) to prevent port collisions
   if (config.portless.enabled) {
@@ -1884,6 +2369,70 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     // Throw instead of outputError so TUI callers can catch gracefully.
     // CLI callers catch this in the command handler (index.ts).
     throw new Error(msg);
+  }
+
+  // -------------------------------------------------------------------------
+  // Auto-detect quest from selected tasks' quest field (if --quest not given)
+  // -------------------------------------------------------------------------
+  if (!questId) {
+    const taskQuests = new Set(selected.map((f) => f.quest).filter(Boolean));
+    if (taskQuests.size === 1) {
+      const autoQuestId = [...taskQuests][0]!;
+      const quest = loadQuest(projectRoot, autoQuestId);
+      if (quest && quest.status === "active") {
+        questId = autoQuestId;
+
+        // Ensure the quest branch exists
+        if (!questBranchExists(projectRoot, autoQuestId)) {
+          if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
+          await createQuestBranch(projectRoot, autoQuestId, quest.baseBranch);
+        } else {
+          // Sync quest branch with baseBranch
+          if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+          const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
+          if (syncResult.conflicting) {
+            outputError(fmt, syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+            return;
+          }
+          if (syncResult.error) {
+            outputError(fmt, `Failed to sync quest branch: ${syncResult.error}`);
+            return;
+          }
+          if (syncResult.synced && fmt === "text") {
+            console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+          }
+        }
+
+        // Override baseBranch — task branches will fork from the quest branch
+        opts.baseBranch = quest.branch;
+        if (fmt === "text") {
+          console.log(`Auto-detected quest: ${quest.title} (${autoQuestId})`);
+          console.log(`  Base branch overridden to: ${quest.branch}`);
+        }
+
+        // Apply quest config overrides
+        config = resolveQuestConfig(config, quest);
+
+        // Build quest prompt context
+        const knowledge = loadQuestKnowledge(projectRoot, autoQuestId);
+        questContext = {
+          questId: quest.id,
+          goal: quest.goal,
+          addedConstraints: quest.constraints.add ?? [],
+          addedForbidden: quest.constraints.ban ?? [],
+          knowledge,
+        };
+
+        hitlMode = quest.hitlMode;
+      }
+    } else if (taskQuests.size > 1) {
+      outputError(
+        fmt,
+        `Selected tasks belong to multiple quests: ${[...taskQuests].join(", ")}. ` +
+        `Launch tasks from a single quest at a time, or use --quest to scope the wave.`
+      );
+      return;
+    }
   }
 
   // Apply quest constraints to selected tasks (add/ban layered on each task)
@@ -2054,7 +2603,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     const branch = featureBranchName(feature.id, config);
     // Use shared worktree path for chain members, or individual path otherwise
     const wtPath = chainWorktreeMap.get(feature.id) ?? worktreePath(projectRoot, feature.id, config);
-    const agent = createAgentState(feature.id, branch, wtPath, opts.maxRetries);
+    const agent = createAgentState(feature.id, branch, wtPath, opts.baseBranch, opts.maxRetries);
 
     // Set effort estimate from feature spec
     const effortMinutes = parseDurationMinutes(feature.effort);

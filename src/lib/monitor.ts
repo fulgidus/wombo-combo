@@ -38,11 +38,11 @@
  */
 
 import type { ChildProcess } from "node:child_process";
-import { isProcessRunning } from "./launcher.js";
+import { isProcessRunning } from "./launcher";
 import { mkdirSync, appendFileSync, existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { TokenCollector, type UsageRecord } from "./token-collector.js";
-import { UsageStore } from "./token-usage.js";
+import { TokenCollector, type UsageRecord } from "./token-collector";
+import { UsageStore } from "./token-usage";
 
 // ---------------------------------------------------------------------------
 // Log directory name (configurable would be overkill here)
@@ -715,12 +715,12 @@ export class ProcessMonitor {
 // Re-exports from token-collector for convenience
 // ---------------------------------------------------------------------------
 
-export { TokenCollector, type UsageRecord } from "./token-collector.js";
-export type { UsageSummary, UsageCallback } from "./token-collector.js";
+export { TokenCollector, type UsageRecord } from "./token-collector";
+export type { UsageSummary, UsageCallback } from "./token-collector";
 
 // ---------------------------------------------------------------------------
 // Re-exports from token-usage for convenience
 // ---------------------------------------------------------------------------
 
-export { UsageStore, appendUsageRecord, loadUsageRecords, totalUsage, filterByDateRange, groupBy } from "./token-usage.js";
-export type { UsageTotals, GroupableField } from "./token-usage.js";
+export { UsageStore, appendUsageRecord, loadUsageRecords, totalUsage, filterByDateRange, groupBy } from "./token-usage";
+export type { UsageTotals, GroupableField } from "./token-usage";

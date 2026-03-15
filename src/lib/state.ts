@@ -10,7 +10,7 @@
 
 import { readFileSync, writeFileSync, existsSync, renameSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { WOMBO_DIR } from "../config.js";
+import { WOMBO_DIR } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +30,13 @@ export type AgentStatus =
 export interface AgentState {
   feature_id: string;
   branch: string;
+  /**
+   * The branch this agent's worktree was forked from.
+   * For quest tasks this is the quest branch (e.g. "quest/citty-migration").
+   * For standalone tasks this is the project's base branch (e.g. "main").
+   * Used by merger to know where to merge back to.
+   */
+  base_branch: string;
   worktree: string;
   session_id: string | null;
   pid: number | null;
@@ -253,11 +260,13 @@ export function createAgentState(
   featureId: string,
   branch: string,
   worktreePath: string,
+  baseBranch: string,
   maxRetries: number = 2
 ): AgentState {
   return {
     feature_id: featureId,
     branch,
+    base_branch: baseBranch,
     worktree: worktreePath,
     session_id: null,
     pid: null,

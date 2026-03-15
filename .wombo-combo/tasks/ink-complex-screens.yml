@@ -1,4 +1,5 @@
 id: ink-complex-screens
+quest: ink-migration
 title: Migrate quest picker, task browser, and wave monitor to Ink
 description: "Migrate the three largest interactive views to Ink: (1) tui-quest-picker.ts (1315 lines) — quest list with
   create (C), activate/pause (A), navigate to browser on Enter. Contains modals for quest creation/editing. (2)

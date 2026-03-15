@@ -27,9 +27,9 @@
  * itself is destroyed (e.g., by `woco cleanup`).
  */
 
-import type { WomboConfig } from "../config.js";
-import type { Feature } from "../lib/tasks.js";
-import { loadFeatures } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import type { Feature } from "../lib/tasks";
+import { loadFeatures } from "../lib/tasks";
 import {
   loadState,
   saveState,
@@ -41,7 +41,7 @@ import {
   isWaveComplete,
   type WaveState,
   type AgentState,
-} from "../lib/state.js";
+} from "../lib/state";
 import {
   createWorktree,
   installDeps,
@@ -50,18 +50,17 @@ import {
   branchHasChanges,
   removeWorktree,
   log as wtLog,
-} from "../lib/worktree.js";
-import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
+} from "../lib/worktree";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt";
 import {
   launchInteractive,
   isProcessRunning,
-  getMultiplexerName,
-} from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { pushBaseBranch } from "../lib/merger.js";
-import { runBuild } from "../lib/verifier.js";
-import { printDashboard, printAgentUpdate } from "../lib/ui.js";
-import { WomboTUI } from "../lib/tui.js";
+} from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { pushBaseBranch } from "../lib/merger";
+import { runBuild } from "../lib/verifier";
+import { printDashboard, printAgentUpdate } from "../lib/ui";
+import { WomboTUI } from "../lib/tui";
 import {
   launchSingleHeadless,
   handleBuildVerification,
@@ -72,23 +71,19 @@ import {
   attemptMerge,
   rescueChainPredecessors,
   dumpFailedAgentLogs,
-} from "./launch.js";
-import {
-  detectMultiplexer,
-  muxAttachCommand,
-} from "../lib/multiplexer.js";
-import { exportWaveHistory } from "../lib/history.js";
-import { outputError, outputMessage, type OutputFormat } from "../lib/output.js";
+} from "./launch";
+import { exportWaveHistory } from "../lib/history";
+import { outputError, outputMessage, type OutputFormat } from "../lib/output";
 import {
   prepareAgentDefinitions,
   isSpecializedAgent,
   type AgentResolution,
-} from "../lib/agent-registry.js";
-import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
-import { writeAgentToWorktree } from "../lib/agent-registry.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
-import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel.js";
+} from "../lib/agent-registry";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates";
+import { writeAgentToWorktree } from "../lib/agent-registry";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest";
+import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -179,7 +174,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
           // Process is dead — check if worktree exists with meaningful changes.
           // Use worktreeExists (not worktreeReady) because node_modules may be
           // missing — the worktree still has code that should be verified.
-          if (worktreeExists(agent.worktree) && branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+          if (worktreeExists(agent.worktree) && branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
             // Worktree exists AND branch has commits — try build verification
             if (fmt === "text") console.log(`  ${agent.feature_id}: process dead, worktree has changes — will verify build`);
             toVerify.push(agent);
@@ -219,7 +214,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
       case "merged":
         if (fmt === "text") console.log(`  ${agent.feature_id}: merged — marking feature as done`);
-        markFeatureDone(projectRoot, agent.feature_id, config, state.base_branch, fmt);
+        markFeatureDone(projectRoot, agent.feature_id, config, agent.base_branch ?? state.base_branch, fmt);
         try {
           removeWorktree(projectRoot, agent.worktree, true);
           if (fmt === "text") console.log(`  ${agent.feature_id}: worktree and branch removed`);
@@ -233,7 +228,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
         // attempt build verification rather than discarding the work.
         if (agent.retries < agent.max_retries &&
             worktreeExists(agent.worktree) &&
-            branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+            branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           if (fmt === "text") console.log(`  ${agent.feature_id}: failed but has work (retry ${agent.retries}/${agent.max_retries}) — will verify build`);
           // Clear stale error and mark as completed so handleBuildVerification
           // processes it correctly (it expects a non-failed agent)
@@ -453,7 +448,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
         try {
           if (!worktreeReady(agent.worktree)) {
-            await createWorktree(projectRoot, agent.feature_id, state.base_branch, config);
+            await createWorktree(projectRoot, agent.feature_id, agent.base_branch ?? state.base_branch, config);
             await installDeps(agent.worktree, agent.feature_id, config);
           }
 
@@ -478,7 +473,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             }
           }
 
-          const prompt = generatePrompt(feature, state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
+          const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, config, questContext, hitlMode as QuestHitlMode | undefined);
           const result = launchInteractive({
             worktreePath: agent.worktree,
             featureId: feature.id,
@@ -489,11 +484,10 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             agentName,
           });
 
-          const muxName = getMultiplexerName(config);
           updateAgent(state, agent.feature_id, {
             status: "running",
             pid: result.pid,
-            activity: `${muxName} session active`,
+            activity: `tmux session active`,
           });
           saveState(projectRoot, state);
         } catch (err: any) {
@@ -510,8 +504,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
     if (fmt === "text") {
       printDashboard(state);
-      const mux = detectMultiplexer(config.agent.multiplexer);
-      console.log(`\nResume complete. Use '${muxAttachCommand(mux, `${config.agent.tmuxPrefix}-<id>`)}' to check sessions.`);
+      console.log(`\nResume complete. Use 'tmux attach-session -t ${config.agent.tmuxPrefix}-<id>' to check sessions.`);
     }
   } else {
     // Headless resume — re-enter monitoring loop
@@ -725,7 +718,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
             continue;
           }
           // Check if the agent actually made any commits
-          if (!branchHasChanges(projectRoot, agent.branch, state.base_branch)) {
+          if (!branchHasChanges(projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
             // Agent died without producing any code — mark as failed
             updateAgent(state, agent.feature_id, {
               status: "failed",

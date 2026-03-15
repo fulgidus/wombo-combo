@@ -14,7 +14,7 @@
  *   - Effort strings are parseable ISO 8601 durations
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   allFeatureIds,
@@ -22,14 +22,14 @@ import {
   type Feature,
   type Subtask,
   type FeaturesFile,
-} from "../../lib/tasks.js";
+} from "../../lib/tasks";
 import {
   VALID_STATUSES,
   VALID_PRIORITIES,
   VALID_DIFFICULTIES,
-} from "../../lib/task-schema.js";
-import { output, type OutputFormat } from "../../lib/output.js";
-import { renderTasksCheck } from "../../lib/toon.js";
+} from "../../lib/task-schema";
+import { output, type OutputFormat } from "../../lib/output";
+import { renderTasksCheck } from "../../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

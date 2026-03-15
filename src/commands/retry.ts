@@ -4,7 +4,7 @@
  * Usage: woco retry <feature-id> [--interactive] [--model <model>] [--output json]
  *
  * Resets the agent's retry count and re-launches it. Can launch in either
- * headless mode (default) or interactive (dmux/tmux) mode.
+ * headless mode (default) or interactive (tmux) mode.
  *
  * ## Process Lifecycle (audit: wave-detach-audit)
  *
@@ -14,33 +14,33 @@
  * the retry command exits. Since retry runs a one-shot launch (no monitoring
  * loop), the agent must complete within the process lifetime.
  *
- * When `--interactive` IS set, the agent runs in a multiplexer session
- * (dmux/tmux) that survives after the retry command exits.
+ * When `--interactive` IS set, the agent runs in a tmux session
+ * that survives after the retry command exits.
  */
 
-import type { WomboConfig } from "../config.js";
-import { loadFeatures, type Feature } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import { loadFeatures, type Feature } from "../lib/tasks";
 import {
   loadState,
   saveState,
   updateAgent,
-} from "../lib/state.js";
-import { worktreeReady } from "../lib/worktree.js";
-import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
-import { launchInteractive, getMultiplexerName } from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { launchSingleHeadless } from "./launch.js";
-import { output, outputError, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderRetry } from "../lib/toon.js";
+} from "../lib/state";
+import { worktreeReady } from "../lib/worktree";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt";
+import { launchInteractive } from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { launchSingleHeadless } from "./launch";
+import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { renderRetry } from "../lib/toon";
 import {
   resolveAgentForTask,
   isSpecializedAgent,
   writeAgentToWorktree,
   type AgentResolution,
-} from "../lib/agent-registry.js";
-import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
+} from "../lib/agent-registry";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,7 +185,7 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       }
     }
 
-    const prompt = generatePrompt(feature, state.base_branch, effectiveConfig, questContext, hitlMode as QuestHitlMode | undefined);
+    const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, effectiveConfig, questContext, hitlMode as QuestHitlMode | undefined);
     launchInteractive({
       worktreePath: agent.worktree,
       featureId: feature.id,
@@ -201,7 +201,6 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       started_at: new Date().toISOString(),
     });
     saveState(projectRoot, state);
-    const muxName = getMultiplexerName(effectiveConfig);
 
     output(fmt, {
       feature_id: opts.featureId,
@@ -209,7 +208,7 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       status: "running",
       mux_session: `${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`,
     }, () => {
-      console.log(`Retrying ${opts.featureId} in ${muxName} session ${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`);
+      console.log(`Retrying ${opts.featureId} in tmux session ${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`);
     }, () => {
       console.log(renderRetry({
         feature_id: opts.featureId,

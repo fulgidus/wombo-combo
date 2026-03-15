@@ -25,7 +25,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
-import { TextBuffer } from "./text-buffer.js";
+import { TextBuffer } from "./text-buffer";
 
 export interface TextInputProps {
   /** Current value of the text input. */

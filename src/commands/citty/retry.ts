@@ -13,10 +13,10 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { ensureTasksFile } from "../../lib/tasks.js";
-import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output.js";
-import { cmdRetry, type RetryCommandOptions } from "../retry.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { ensureTasksFile } from "../../lib/tasks";
+import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output";
+import { cmdRetry, type RetryCommandOptions } from "../retry";
 
 // ---------------------------------------------------------------------------
 // Parsed retry args (intermediate representation before config merge)

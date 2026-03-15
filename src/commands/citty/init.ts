@@ -6,7 +6,7 @@
  */
 
 import { defineCommand } from "citty";
-import { cmdInit } from "../init.js";
+import { cmdInit } from "../init";
 
 export const initCommand = defineCommand({
   meta: {

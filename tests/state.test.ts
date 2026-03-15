@@ -30,8 +30,8 @@ import {
   queuedAgents,
   isWaveComplete,
   generateWaveId,
-} from "../src/lib/state.js";
-import type { WaveState, AgentState, AgentStatus } from "../src/lib/state.js";
+} from "../src/lib/state";
+import type { WaveState, AgentState, AgentStatus } from "../src/lib/state";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -58,6 +58,7 @@ function makeWaveState(overrides?: Partial<WaveState>): WaveState {
     interactive: false,
     agents: [],
     schedule_plan: null,
+    quest_id: null,
     ...overrides,
   };
 }
@@ -66,6 +67,7 @@ function makeAgentState(overrides?: Partial<AgentState>): AgentState {
   return {
     feature_id: "test-feature",
     branch: "feature/test-feature",
+    base_branch: "main",
     worktree: "/tmp/wombo-test-feature",
     session_id: null,
     pid: null,
@@ -165,10 +167,11 @@ describe("createWaveState", () => {
 
 describe("createAgentState", () => {
   test("creates agent with default max retries", () => {
-    const agent = createAgentState("my-feat", "feature/my-feat", "/tmp/wt");
+    const agent = createAgentState("my-feat", "feature/my-feat", "/tmp/wt", "main");
     expect(agent.feature_id).toBe("my-feat");
     expect(agent.branch).toBe("feature/my-feat");
     expect(agent.worktree).toBe("/tmp/wt");
+    expect(agent.base_branch).toBe("main");
     expect(agent.status).toBe("queued");
     expect(agent.max_retries).toBe(2);
     expect(agent.retries).toBe(0);
@@ -178,7 +181,7 @@ describe("createAgentState", () => {
   });
 
   test("creates agent with custom max retries", () => {
-    const agent = createAgentState("my-feat", "feature/my-feat", "/tmp/wt", 5);
+    const agent = createAgentState("my-feat", "feature/my-feat", "/tmp/wt", "main", 5);
     expect(agent.max_retries).toBe(5);
   });
 });

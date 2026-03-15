@@ -12,7 +12,7 @@ import {
   resolveOutputFormat,
   filterFields,
   filterFieldsArray,
-} from "../src/lib/output.js";
+} from "../src/lib/output";
 
 // ---------------------------------------------------------------------------
 // resolveOutputFormat

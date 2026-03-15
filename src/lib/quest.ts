@@ -16,8 +16,8 @@
  *   - override: deep-merge fields that replace project config values
  */
 
-import type { WomboConfig } from "../config.js";
-import type { Priority, Difficulty, Task } from "./tasks.js";
+import type { WomboConfig } from "../config";
+import type { Priority, Difficulty, Task } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // Quest Status
@@ -106,9 +106,6 @@ export interface Quest {
   /** Layered constraints applied to all tasks in this quest */
   constraints: QuestConstraints;
 
-  /** Task IDs that belong to this quest (references into the task store) */
-  taskIds: string[];
-
   /** ISO 8601 timestamps */
   created_at: string;
   updated_at: string;
@@ -166,7 +163,6 @@ export const QUEST_REQUIRED_FIELDS = ["id", "title", "goal", "status"] as const;
 /** Fields that must be arrays; YAML may parse absent values as null */
 export const QUEST_ARRAY_FIELDS = [
   "depends_on",
-  "taskIds",
   "notes",
 ] as const;
 
@@ -222,7 +218,6 @@ export function createBlankQuest(
     baseBranch,
     hitlMode: opts?.hitlMode ?? "yolo",
     constraints: emptyConstraints(),
-    taskIds: [],
     created_at: now,
     updated_at: now,
     started_at: null,
@@ -243,7 +238,6 @@ export function createBlankQuest(
  */
 export function normalizeQuest(q: Quest): void {
   q.depends_on = q.depends_on ?? [];
-  q.taskIds = q.taskIds ?? [];
   q.notes = q.notes ?? [];
   q.constraints = q.constraints ?? emptyConstraints();
   q.constraints.add = q.constraints.add ?? [];
@@ -262,6 +256,23 @@ export function normalizeQuest(q: Quest): void {
   if (q.agent === null || q.agent === "") {
     q.agent = undefined;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Derived Task Membership
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the list of task IDs belonging to a quest by scanning all tasks.
+ *
+ * This replaces the old `quest.taskIds` array. Task membership is now
+ * declared on the task side via `task.quest`, making quests the derived
+ * view rather than the source of truth.
+ */
+export function getQuestTaskIds(questId: string, tasks: Task[]): string[] {
+  return tasks
+    .filter((t) => t.quest === questId)
+    .map((t) => t.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -310,11 +321,6 @@ export function validateQuest(quest: unknown): QuestSchemaIssue[] {
   // depends_on structural check
   if (q?.depends_on != null && !Array.isArray(q.depends_on)) {
     issues.push({ level: "error", questId: id, message: "depends_on must be an array" });
-  }
-
-  // taskIds structural check
-  if (q?.taskIds != null && !Array.isArray(q.taskIds)) {
-    issues.push({ level: "error", questId: id, message: "taskIds must be an array" });
   }
 
   // constraints structural check

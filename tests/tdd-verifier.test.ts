@@ -20,8 +20,8 @@ import {
   isNonTestableChangeOnly,
   type TddVerificationResult,
   type TddVerificationOptions,
-} from "../src/lib/tdd-verifier.js";
-import type { WomboConfig } from "../src/config.js";
+} from "../src/lib/tdd-verifier";
+import type { WomboConfig } from "../src/config";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -21,8 +21,8 @@ import {
   CONFIG_FILE,
   WOMBO_DIR,
   generateDefaultConfig,
-} from "../src/config.js";
-import type { WomboConfig } from "../src/config.js";
+} from "../src/config";
+import type { WomboConfig } from "../src/config";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -55,7 +55,7 @@
 
 import { resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { loadState, saveState } from "./lib/state.js";
+import { loadState, saveState } from "./lib/state";
 
 // ---------------------------------------------------------------------------
 // Dev-mode guard: warn if running the global binary inside the wombo-combo repo
@@ -98,8 +98,8 @@ import {
   isCittyCommand,
   runCittyCommand,
   resolveGlobalFlagsAndCommand,
-} from "./commands/citty/router.js";
-import { renderGlobalHelp, renderCommandHelp } from "./lib/schema.js";
+} from "./commands/citty/router";
+import { renderGlobalHelp, renderCommandHelp } from "./lib/schema";
 
 // ---------------------------------------------------------------------------
 // Main

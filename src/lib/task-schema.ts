@@ -6,9 +6,9 @@
  * import from here. No more duplicated VALID_* arrays.
  */
 
-import type { TaskStatus, Priority, Difficulty, Task } from "./tasks.js";
-import { parseDurationMinutes } from "./tasks.js";
-import { validateId, type ValidationResult } from "./validate.js";
+import type { TaskStatus, Priority, Difficulty, Task } from "./tasks";
+import { parseDurationMinutes } from "./tasks";
+import { validateId, type ValidationResult } from "./validate";
 
 // ---------------------------------------------------------------------------
 // Canonical enum arrays (order matters: used for display and sorting)
@@ -190,6 +190,18 @@ export function validateTask(task: unknown): SchemaIssue[] {
       issues.push({ level: "error", taskId: id, message: "agent must be a string (agent definition file name without extension)" });
     } else if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(t.agent)) {
       issues.push({ level: "warning", taskId: id, message: `agent "${t.agent}" should be a kebab-case name (e.g. "frontend-specialist")` });
+    }
+  }
+
+  // quest field: must be a valid kebab-case quest ID if present
+  if (t?.quest != null && t.quest !== "") {
+    if (typeof t.quest !== "string") {
+      issues.push({ level: "error", taskId: id, message: "quest must be a string (quest ID)" });
+    } else {
+      const questResult: ValidationResult = validateId(t.quest, "Quest ID");
+      if (!questResult.valid) {
+        issues.push({ level: "error", taskId: id, message: questResult.error! });
+      }
     }
   }
 

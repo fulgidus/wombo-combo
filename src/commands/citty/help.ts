@@ -7,7 +7,7 @@
  */
 
 import { defineCommand } from "citty";
-import { renderGlobalHelp } from "../../lib/schema.js";
+import { renderGlobalHelp } from "../../lib/schema";
 
 export const helpCommand = defineCommand({
   meta: {

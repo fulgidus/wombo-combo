@@ -10,15 +10,15 @@
  * Works on both top-level tasks and subtasks.
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   saveFeatures,
   findFeatureById,
   type Difficulty,
-} from "../../lib/tasks.js";
-import { VALID_DIFFICULTIES } from "../../lib/task-schema.js";
-import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
+} from "../../lib/tasks";
+import { VALID_DIFFICULTIES } from "../../lib/task-schema";
+import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

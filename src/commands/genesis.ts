@@ -20,18 +20,18 @@
  *   5. Saves genesis knowledge if provided
  */
 
-import type { WomboConfig } from "../config.js";
-import type { OutputFormat } from "../lib/output.js";
-import type { ProposedQuest, GenesisResult } from "../lib/genesis-planner.js";
-import { runGenesisPlanner } from "../lib/genesis-planner.js";
-import { createBlankQuest } from "../lib/quest.js";
+import type { WomboConfig } from "../config";
+import type { OutputFormat } from "../lib/output";
+import type { ProposedQuest, GenesisResult } from "../lib/genesis-planner";
+import { runGenesisPlanner } from "../lib/genesis-planner";
+import { createBlankQuest } from "../lib/quest";
 import {
   saveQuest,
   saveQuestKnowledge,
   listQuestIds,
-} from "../lib/quest-store.js";
-import { GenesisReview } from "../lib/tui-genesis-review.js";
-import { output, outputError, outputMessage } from "../lib/output.js";
+} from "../lib/quest-store";
+import { GenesisReview } from "../lib/tui-genesis-review";
+import { output, outputError, outputMessage } from "../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

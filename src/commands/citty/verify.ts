@@ -6,9 +6,9 @@
  */
 
 import { defineCommand } from "citty";
-import { loadConfig, validateConfig, isProjectInitialized } from "../../config.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { cmdVerify } from "../verify.js";
+import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
+import { resolveOutputFormat } from "../../lib/output";
+import { cmdVerify } from "../verify";
 
 export const verifyCommand = defineCommand({
   meta: {

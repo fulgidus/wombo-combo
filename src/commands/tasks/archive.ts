@@ -7,13 +7,13 @@
  *   woco tasks archive --dry-run    # show what would be archived
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   saveFeatures,
   type Feature,
-} from "../../lib/tasks.js";
-import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
+} from "../../lib/tasks";
+import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

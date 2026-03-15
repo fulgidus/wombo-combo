@@ -10,14 +10,14 @@
  * and summary statistics.
  */
 
-import type { WomboConfig } from "../config.js";
-import { loadState, saveState, updateAgent, agentCounts, isWaveComplete } from "../lib/state.js";
-import type { WaveState, AgentState, AgentStatus } from "../lib/state.js";
-import { isProcessRunning } from "../lib/launcher.js";
-import { branchHasChanges } from "../lib/worktree.js";
-import { printDashboard } from "../lib/ui.js";
-import { output, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderStatus } from "../lib/toon.js";
+import type { WomboConfig } from "../config";
+import { loadState, saveState, updateAgent, agentCounts, isWaveComplete } from "../lib/state";
+import type { WaveState, AgentState, AgentStatus } from "../lib/state";
+import { isProcessRunning } from "../lib/launcher";
+import { branchHasChanges } from "../lib/worktree";
+import { printDashboard } from "../lib/ui";
+import { output, outputMessage, type OutputFormat } from "../lib/output";
+import { renderStatus } from "../lib/toon";
 
 export interface StatusOptions {
   projectRoot: string;
@@ -137,7 +137,7 @@ export async function cmdStatus(opts: StatusOptions): Promise<void> {
     if (agent.status === "running" && agent.pid) {
       if (!isProcessRunning(agent.pid)) {
         // Check if the agent actually made any commits before marking completed
-        if (branchHasChanges(opts.projectRoot, agent.branch, state.base_branch)) {
+        if (branchHasChanges(opts.projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
           updateAgent(state, agent.feature_id, {
             status: "completed",
             completed_at: new Date().toISOString(),
@@ -159,7 +159,7 @@ export async function cmdStatus(opts: StatusOptions): Promise<void> {
   // that didn't check branchHasChanges.
   for (const agent of state.agents) {
     if (agent.status === "completed" && agent.build_passed === null) {
-      if (!branchHasChanges(opts.projectRoot, agent.branch, state.base_branch)) {
+      if (!branchHasChanges(opts.projectRoot, agent.branch, agent.base_branch ?? state.base_branch)) {
         updateAgent(state, agent.feature_id, {
           status: "failed",
           error: "Agent process exited without making any commits",

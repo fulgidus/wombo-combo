@@ -12,10 +12,10 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { ensureTasksFile } from "../../lib/tasks.js";
-import { resolveOutputFormat, type OutputFormat } from "../../lib/output.js";
-import { cmdResume, type ResumeCommandOptions } from "../resume.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { ensureTasksFile } from "../../lib/tasks";
+import { resolveOutputFormat, type OutputFormat } from "../../lib/output";
+import { cmdResume, type ResumeCommandOptions } from "../resume";
 
 // ---------------------------------------------------------------------------
 // Parsed resume args (intermediate representation before config merge)

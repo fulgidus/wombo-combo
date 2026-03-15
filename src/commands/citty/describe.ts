@@ -15,8 +15,8 @@ import {
   findCommandDef,
   commandToSchema,
   allCommandSchemas,
-} from "../../lib/schema.js";
-import { buildToonSpec, renderToonLegend } from "../../lib/toon-spec.js";
+} from "../../lib/schema";
+import { buildToonSpec, renderToonLegend } from "../../lib/toon-spec";
 
 /**
  * Read the version string from package.json.

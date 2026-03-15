@@ -12,7 +12,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render, renderToString, Text } from "ink";
-import { Shell } from "./shell.js";
+import { Shell } from "./shell";
 import { PassThrough } from "node:stream";
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 id: citty-subcommands
+quest: citty-migration
 title: Migrate nested subcommand groups to Citty
 description: "Convert the three subcommand groups (tasks/9 subs, quest/8 subs, wishlist/3 subs) to citty nested command
   definitions. Each subcommand gets its own defineCommand() with typed args. Dissolve the 4 alias maps (COMMAND_ALIASES,
@@ -6,15 +7,15 @@ description: "Convert the three subcommand groups (tasks/9 subs, quest/8 subs, w
   subcommand behavior (bare 'woco tasks' -> 'tasks list'), backward-compat aliases (features -> tasks, validate ->
   check). Remove handleTasksSubcommand() and handleWishlistSubcommand() routing functions. Tests: all 38 routable
   endpoints work, all aliases resolve correctly."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - citty-core-commands
 effort: PT10H
 started_at: null
-ended_at: null
+ended_at: 2026-03-15T17:53:14.345Z
 constraints: []
 forbidden: []
 references: []

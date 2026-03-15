@@ -15,8 +15,8 @@
 
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { WOMBO_DIR } from "../config.js";
-import type { UsageRecord } from "./token-collector.js";
+import { WOMBO_DIR } from "../config";
+import type { UsageRecord } from "./token-collector";
 
 // ---------------------------------------------------------------------------
 // Constants

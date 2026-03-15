@@ -10,7 +10,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { Text } from "ink";
-import { runApp, type RunAppOptions } from "./run-app.js";
+import { runApp, type RunAppOptions } from "./run-app";
 import { PassThrough } from "node:stream";
 
 // ---------------------------------------------------------------------------

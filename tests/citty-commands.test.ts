@@ -26,20 +26,20 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty version command", () => {
   test("versionCommand is a valid citty CommandDef", async () => {
-    const { versionCommand } = await import("../src/commands/citty/version.js");
+    const { versionCommand } = await import("../src/commands/citty/version");
     expect(versionCommand).toBeDefined();
     expect(versionCommand.meta).toBeDefined();
     expect(versionCommand.run).toBeDefined();
   });
 
   test("versionCommand has correct meta name", async () => {
-    const { versionCommand } = await import("../src/commands/citty/version.js");
+    const { versionCommand } = await import("../src/commands/citty/version");
     const meta = await resolveValue(versionCommand.meta!);
     expect(meta.name).toBe("version");
   });
 
   test("versionCommand meta includes version from package.json", async () => {
-    const { versionCommand } = await import("../src/commands/citty/version.js");
+    const { versionCommand } = await import("../src/commands/citty/version");
     const meta = await resolveValue(versionCommand.meta!);
     // The meta.version should be set from package.json
     expect(meta.version).toBeDefined();
@@ -47,7 +47,7 @@ describe("citty version command", () => {
   });
 
   test("versionCommand run outputs version string", async () => {
-    const { versionCommand } = await import("../src/commands/citty/version.js");
+    const { versionCommand } = await import("../src/commands/citty/version");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -69,20 +69,20 @@ describe("citty version command", () => {
 
 describe("citty help command", () => {
   test("helpCommand is a valid citty CommandDef", async () => {
-    const { helpCommand } = await import("../src/commands/citty/help.js");
+    const { helpCommand } = await import("../src/commands/citty/help");
     expect(helpCommand).toBeDefined();
     expect(helpCommand.meta).toBeDefined();
     expect(helpCommand.run).toBeDefined();
   });
 
   test("helpCommand has correct meta name", async () => {
-    const { helpCommand } = await import("../src/commands/citty/help.js");
+    const { helpCommand } = await import("../src/commands/citty/help");
     const meta = await resolveValue(helpCommand.meta!);
     expect(meta.name).toBe("help");
   });
 
   test("helpCommand run outputs global help text", async () => {
-    const { helpCommand } = await import("../src/commands/citty/help.js");
+    const { helpCommand } = await import("../src/commands/citty/help");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -106,20 +106,20 @@ describe("citty help command", () => {
 
 describe("citty describe command", () => {
   test("describeCommand is a valid citty CommandDef", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     expect(describeCommand).toBeDefined();
     expect(describeCommand.meta).toBeDefined();
     expect(describeCommand.run).toBeDefined();
   });
 
   test("describeCommand has correct meta name", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const meta = await resolveValue(describeCommand.meta!);
     expect(meta.name).toBe("describe");
   });
 
   test("describeCommand has command positional arg defined", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const args = await resolveValue(describeCommand.args!);
     expect(args).toBeDefined();
     expect(args.command).toBeDefined();
@@ -127,7 +127,7 @@ describe("citty describe command", () => {
   });
 
   test("describeCommand has output flag defined", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const args = await resolveValue(describeCommand.args!);
     expect(args).toBeDefined();
     expect(args.output).toBeDefined();
@@ -135,7 +135,7 @@ describe("citty describe command", () => {
   });
 
   test("describeCommand run with no command lists all commands", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -159,7 +159,7 @@ describe("citty describe command", () => {
   });
 
   test("describeCommand run with specific command returns that command schema", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -181,7 +181,7 @@ describe("citty describe command", () => {
   });
 
   test("describeCommand with --output toon emits TOON format", async () => {
-    const { describeCommand } = await import("../src/commands/citty/describe.js");
+    const { describeCommand } = await import("../src/commands/citty/describe");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -208,7 +208,7 @@ describe("citty describe command", () => {
 
 describe("citty router", () => {
   test("isCittyCommand identifies citty-handled commands", async () => {
-    const { isCittyCommand } = await import("../src/commands/citty/router.js");
+    const { isCittyCommand } = await import("../src/commands/citty/router");
     expect(isCittyCommand("version")).toBe(true);
     expect(isCittyCommand("-v")).toBe(true);
     expect(isCittyCommand("-V")).toBe(true);
@@ -226,13 +226,13 @@ describe("citty router", () => {
   });
 
   test("isCittyCommand returns false for non-citty commands", async () => {
-    const { isCittyCommand } = await import("../src/commands/citty/router.js");
+    const { isCittyCommand } = await import("../src/commands/citty/router");
     expect(isCittyCommand("nonexistent")).toBe(false);
     expect(isCittyCommand("foobar")).toBe(false);
   });
 
   test("isCittyCommand returns true for all commands (fully migrated)", async () => {
-    const { isCittyCommand } = await import("../src/commands/citty/router.js");
+    const { isCittyCommand } = await import("../src/commands/citty/router");
     expect(isCittyCommand("tasks")).toBe(true);
     expect(isCittyCommand("tui")).toBe(true);
     expect(isCittyCommand("quest")).toBe(true);
@@ -241,13 +241,13 @@ describe("citty router", () => {
   });
 
   test("isCittyCommand returns true for migrated core commands", async () => {
-    const { isCittyCommand } = await import("../src/commands/citty/router.js");
+    const { isCittyCommand } = await import("../src/commands/citty/router");
     expect(isCittyCommand("init")).toBe(true);
     expect(isCittyCommand("status")).toBe(true);
   });
 
   test("runCittyCommand routes version correctly", async () => {
-    const { runCittyCommand } = await import("../src/commands/citty/router.js");
+    const { runCittyCommand } = await import("../src/commands/citty/router");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -263,7 +263,7 @@ describe("citty router", () => {
   });
 
   test("runCittyCommand routes -v correctly", async () => {
-    const { runCittyCommand } = await import("../src/commands/citty/router.js");
+    const { runCittyCommand } = await import("../src/commands/citty/router");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -279,7 +279,7 @@ describe("citty router", () => {
   });
 
   test("runCittyCommand routes help correctly", async () => {
-    const { runCittyCommand } = await import("../src/commands/citty/router.js");
+    const { runCittyCommand } = await import("../src/commands/citty/router");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -296,7 +296,7 @@ describe("citty router", () => {
   });
 
   test("runCittyCommand routes describe correctly", async () => {
-    const { runCittyCommand } = await import("../src/commands/citty/router.js");
+    const { runCittyCommand } = await import("../src/commands/citty/router");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));
@@ -313,7 +313,7 @@ describe("citty router", () => {
   });
 
   test("runCittyCommand passes raw args to describe", async () => {
-    const { runCittyCommand } = await import("../src/commands/citty/router.js");
+    const { runCittyCommand } = await import("../src/commands/citty/router");
     const logs: string[] = [];
     const spy = spyOn(console, "log").mockImplementation((...args: any[]) => {
       logs.push(args.join(" "));

@@ -32,11 +32,11 @@ import { existsSync } from "node:fs";
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
 import { parse as parseYaml } from "yaml";
-import type { WomboConfig } from "../config.js";
-import { resolveAgentBin } from "../config.js";
-import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
-import type { ScoutIndex } from "./subagents/scout.js";
-import { ProgressScreen, showConfirm } from "./tui-progress.js";
+import type { WomboConfig } from "../config";
+import { resolveAgentBin } from "../config";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
+import type { ScoutIndex } from "./subagents/scout";
+import { ProgressScreen, showConfirm } from "./tui-progress";
 import {
   createBlankProfile,
   loadProject,
@@ -52,8 +52,8 @@ import {
   type RuleRigidity,
   type TechStack,
   type ProjectConventions,
-} from "./project-store.js";
-import { patchTextarea } from "./blessed-textarea-patch.js";
+} from "./project-store";
+import { patchTextarea } from "./blessed-textarea-patch";
 
 // ---------------------------------------------------------------------------
 // runBrownfieldScout — standalone scout function

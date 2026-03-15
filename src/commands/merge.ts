@@ -8,17 +8,17 @@
  * automatic conflict resolution, and configurable retry attempts.
  */
 
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   loadState,
-} from "../lib/state.js";
-import { pushBaseBranch } from "../lib/merger.js";
-import type { Feature } from "../lib/tasks.js";
-import { loadFeatures } from "../lib/tasks.js";
-import { printDashboard, printAgentUpdate } from "../lib/ui.js";
-import { attemptMerge } from "./launch.js";
-import { output, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderMerge } from "../lib/toon.js";
+} from "../lib/state";
+import { pushBaseBranch } from "../lib/merger";
+import type { Feature } from "../lib/tasks";
+import { loadFeatures } from "../lib/tasks";
+import { printDashboard, printAgentUpdate } from "../lib/ui";
+import { attemptMerge } from "./launch";
+import { output, outputMessage, type OutputFormat } from "../lib/output";
+import { renderMerge } from "../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

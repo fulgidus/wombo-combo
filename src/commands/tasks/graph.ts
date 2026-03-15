@@ -13,16 +13,16 @@
  * it as a Unicode box diagram in the terminal using mermaidtui.
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   type Feature,
   type Subtask,
   type FeatureStatus,
   type FeaturesFile,
-} from "../../lib/tasks.js";
-import { output, type OutputFormat } from "../../lib/output.js";
-import { renderGraph } from "../../lib/toon.js";
+} from "../../lib/tasks";
+import { output, type OutputFormat } from "../../lib/output";
+import { renderGraph } from "../../lib/toon";
 
 // mermaidtui has no type declarations — import the JS module directly
 // @ts-ignore — no .d.ts published

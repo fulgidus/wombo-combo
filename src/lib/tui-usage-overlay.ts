@@ -28,8 +28,8 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import { loadUsageRecords, totalUsage, groupBy } from "./token-usage.js";
-import type { UsageTotals, GroupableField } from "./token-usage.js";
+import { loadUsageRecords, totalUsage, groupBy } from "./token-usage";
+import type { UsageTotals, GroupableField } from "./token-usage";
 
 // ---------------------------------------------------------------------------
 // Types

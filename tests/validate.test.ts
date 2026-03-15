@@ -18,7 +18,7 @@ import {
   validateBranchName,
   validateDuration,
   validateEnum,
-} from "../src/lib/validate.js";
+} from "../src/lib/validate";
 
 // ---------------------------------------------------------------------------
 // validateId
