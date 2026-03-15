@@ -27,6 +27,7 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
+import { join } from "node:path";
 import type { Quest } from "./quest.js";
 import { QUEST_STATUS_ORDER } from "./quest.js";
 import { loadAllQuests, saveQuest, deleteQuest } from "./quest-store.js";
@@ -37,6 +38,8 @@ import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-u
 import type { UsageTotals } from "./token-usage.js";
 import { showQuestWizard } from "./tui-quest-wizard.js";
 import { showConfirm } from "./tui-progress.js";
+import { saveTaskToStore } from "./task-store.js";
+import type { Task } from "./tasks.js";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -412,6 +415,13 @@ export class QuestPicker {
     this.screen.key(["d"], () => {
       this.deleteCurrentQuest();
     });
+
+    // F -- seed fake tasks (devMode only, hidden in production)
+    if (this.config.devMode) {
+      this.screen.key(["f"], () => {
+        this.seedFakeTasks();
+      });
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -473,6 +483,57 @@ export class QuestPicker {
     }
 
     // Rebuild the picker UI from scratch
+    this.rebuild();
+  }
+
+  /**
+   * Seed fake tasks into the task store (devMode only).
+   * Uses a dynamic import to load the generator from tests/fixtures/
+   * (avoids rootDir constraint since that file is outside src/).
+   */
+  private async seedFakeTasks(): Promise<void> {
+    // Destroy picker screen so showConfirm can take over
+    this.screen.destroy();
+
+    const confirmed = await showConfirm(
+      "Seed Fake Tasks",
+      "Generate ~50 fake tasks with interconnected dependencies?\n(stress preset, agent: fake-agent, sleep: 500ms)",
+    );
+
+    if (confirmed) {
+      try {
+        // Dynamic import to bypass rootDir restriction.
+        // Path is constructed at runtime so tsc doesn't try to resolve it.
+        const fixturePath = join(import.meta.dir, "..", "..", "tests", "fixtures", "generate-fake-tasks.ts");
+        const { generateFakeTasks } = await import(fixturePath);
+
+        const data = generateFakeTasks({
+          preset: "stress",
+          sleepMs: 500,
+          count: 50,
+          seed: Date.now(),
+        });
+
+        let seeded = 0;
+        for (const fakeTask of data.tasks) {
+          // Map FakeTask to Task (compatible shapes, status "planned" is valid)
+          const task: Task = {
+            ...fakeTask,
+            subtasks: [],
+          };
+          saveTaskToStore(this.projectRoot, this.config, task);
+          seeded++;
+        }
+
+        process.stderr.write(`\x1b[32mSeeded ${seeded} fake tasks.\x1b[0m\n`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`\x1b[31mFailed to seed fake tasks: ${msg}\x1b[0m\n`);
+      }
+    }
+
+    // Reload quests and rebuild UI
+    this.loadQuests();
     this.rebuild();
   }
 
@@ -1227,6 +1288,9 @@ export class QuestPicker {
     line1 += `  {gray-fg}D{/gray-fg} delete`;
     line1 += `  {gray-fg}W{/gray-fg} wishlist`;
     line1 += `  {gray-fg}O{/gray-fg} onboarding`;
+    if (this.config.devMode) {
+      line1 += `  {gray-fg}F{/gray-fg} seed-fake`;
+    }
     line1 += `  {gray-fg}Q{/gray-fg} quit`;
 
     const item = this.items[this.selectedIndex];

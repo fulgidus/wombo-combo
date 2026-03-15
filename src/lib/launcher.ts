@@ -63,7 +63,29 @@ import {
 } from "./multiplexer.js";
 import { portlessEnv } from "./portless.js";
 import { hitlDir } from "./hitl-channel.js";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
+
+// ---------------------------------------------------------------------------
+// Fake Agent
+// ---------------------------------------------------------------------------
+
+/**
+ * Sentinel agent name that triggers the built-in fake-agent-runner instead of
+ * the real agent binary. Tasks with `agent: "fake-agent"` are executed by
+ * `src/lib/fake-agent-runner.ts` — zero LLM calls, deterministic commits,
+ * configurable sleep duration via FAKE_SLEEP_MS in the prompt.
+ */
+export const FAKE_AGENT_SENTINEL = "fake-agent";
+
+/**
+ * Resolve the fake-agent-runner script path relative to this module.
+ * Both files live in `src/lib/`, so we use `import.meta.dir` to get a
+ * stable path regardless of how wombo-combo was installed.
+ */
+function resolveFakeAgentBin(): string {
+  // import.meta.dir gives the directory of the current source file in Bun
+  return join(import.meta.dir, "fake-agent-runner.ts");
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,6 +124,8 @@ export interface RetryOptions {
   hitlMode?: string;
   /** Project root (for HITL directory path) */
   projectRoot?: string;
+  /** Agent name (used to detect fake-agent sentinel) */
+  agentName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,15 +198,23 @@ function agentEnv(
  * See module-level documentation for the full lifecycle analysis.
  */
 export function launchHeadless(opts: LaunchOptions): LaunchResult {
-  const agentBin = resolveAgentBin(opts.config);
+  const isFake = opts.agentName === FAKE_AGENT_SENTINEL;
+  const agentBin = isFake ? "bun" : resolveAgentBin(opts.config);
 
-  const args = [
+  const args: string[] = [];
+
+  // When using fake-agent, the binary is `bun` and first arg is the script path
+  if (isFake) {
+    args.push(resolveFakeAgentBin());
+  }
+
+  args.push(
     "run",
     "--format", "json",
     "--agent", opts.agentName ?? opts.config.agent.name,
     "--dir", opts.worktreePath,
     "--title", `woco: ${opts.featureId}`,
-  ];
+  );
 
   if (opts.model) {
     args.push("--model", opts.model);
@@ -212,17 +244,24 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
  * piped stdio, no `unref()`. The child is tied to the parent process.
  */
 export function retryHeadless(opts: RetryOptions): LaunchResult {
-  const agentBin = resolveAgentBin(opts.config);
+  const isFake = opts.agentName === FAKE_AGENT_SENTINEL;
+  const agentBin = isFake ? "bun" : resolveAgentBin(opts.config);
 
   const retryMessage = `The build failed. Please fix the following errors and run \`${opts.config.build.command}\` again:\n\n\`\`\`\n${opts.buildErrors}\n\`\`\`\n\nFix all errors, then verify the build passes.`;
 
-  const args = [
+  const args: string[] = [];
+
+  if (isFake) {
+    args.push(resolveFakeAgentBin());
+  }
+
+  args.push(
     "run",
     "--format", "json",
     "--session", opts.sessionId,
     "--continue",
     "--dir", opts.worktreePath,
-  ];
+  );
 
   if (opts.model) {
     args.push("--model", opts.model);

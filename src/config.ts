@@ -101,6 +101,8 @@ export interface WomboConfig {
   agentRegistry: AgentRegistryConfig;
   /** Test-Driven Development configuration */
   tdd: TddConfig;
+  /** Developer mode: enables hidden features like fake task seeding in TUI */
+  devMode: boolean;
 }
 
 /** Configuration for browser-based verification and testing */
@@ -219,6 +221,7 @@ export const DEFAULT_CONFIG: WomboConfig = {
     strictTdd: false,
     testTimeout: 120_000,
   },
+  devMode: false,
 };
 
 // ---------------------------------------------------------------------------

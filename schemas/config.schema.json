@@ -256,6 +256,37 @@
           "description": "Local cache directory for downloaded agents"
         }
       }
+    },
+    "tdd": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable TDD verification in the build pipeline"
+        },
+        "testCommand": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Test command to run (e.g. 'bun test', 'npm test')"
+        },
+        "testTimeout": {
+          "type": "integer",
+          "default": 120000,
+          "description": "Timeout for test execution in milliseconds"
+        },
+        "strictMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, any test failure blocks verification"
+        }
+      }
+    },
+    "devMode": {
+      "type": "boolean",
+      "default": false,
+      "description": "Developer mode: enables hidden features like fake task seeding (F key) in TUI. Can also be enabled via --dev CLI flag."
     }
   }
 }

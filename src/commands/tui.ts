@@ -211,14 +211,14 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     skipAutoResume = false;
 
     // -----------------------------------------------------------------------
-    // Quest Picker (skip if no quests exist)
+    // Quest Picker (skip if no quests exist, unless devMode for seed-fake)
     // -----------------------------------------------------------------------
     const quests = loadAllQuests(projectRoot);
     const hasQuests = quests.length > 0;
 
     let selectedQuestId: string | null = null;
 
-    if (hasQuests) {
+    if (hasQuests || config.devMode) {
       const questAction = await showQuestPicker(projectRoot, config, opts);
 
       if (questAction.type === "quit") {

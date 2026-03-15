@@ -199,6 +199,8 @@ export interface CLIArgs {
   usageUntil?: string;
   /** Usage command: output format (--format table|json) */
   usageFormat?: "table" | "json";
+  /** Developer mode: enables hidden TUI features like fake task seeding */
+  dev?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,8 +274,21 @@ export const WISHLIST_SUBCOMMAND_ALIASES: Record<string, string> = {
 
 export function parseArgs(argv: string[]): CLIArgs {
   const args = argv.slice(2); // skip 'bun' and script path
+
+  // Pre-scan for global flags that can appear before the command.
+  // Strip them from the args array so args[0] is always the command.
+  const globalFlags: { dev?: boolean } = {};
+  const filtered: string[] = [];
+  for (const a of args) {
+    if (a === "--dev") {
+      globalFlags.dev = true;
+    } else {
+      filtered.push(a);
+    }
+  }
+
   const result: CLIArgs = {
-    command: args[0] || "tui",
+    command: filtered[0] || "tui",
     interactive: false,
     dryRun: false,
     noTui: false,
@@ -282,6 +297,7 @@ export function parseArgs(argv: string[]): CLIArgs {
     force: false,
     checkOnly: false,
     outputFmt: resolveOutputFormat(undefined), // auto-detect until --output overrides
+    dev: globalFlags.dev,
   };
 
   // Resolve top-level command alias (e.g., "i" → "init", "t" → "tasks")
@@ -290,31 +306,31 @@ export function parseArgs(argv: string[]): CLIArgs {
   // If the command is "tasks", treat the second positional as the subcommand
   let startIdx = 1;
   if (result.command === "tasks") {
-    result.subcommand = args[1] || "list";
+    result.subcommand = filtered[1] || "list";
     // Resolve subcommand alias (e.g., "ls" → "list", "ss" → "set-status")
     result.subcommand = SUBCOMMAND_ALIASES[result.subcommand] ?? result.subcommand;
     startIdx = 2;
   } else if (result.command === "quest") {
-    result.subcommand = args[1] || "list";
+    result.subcommand = filtered[1] || "list";
     // Resolve quest subcommand alias (e.g., "c" → "create", "sh" → "show")
     result.subcommand = QUEST_SUBCOMMAND_ALIASES[result.subcommand] ?? result.subcommand;
     startIdx = 2;
   } else if (result.command === "wishlist") {
-    result.subcommand = args[1] || "list";
+    result.subcommand = filtered[1] || "list";
     // Resolve wishlist subcommand alias (e.g., "a" → "add", "ls" → "list")
     result.subcommand = WISHLIST_SUBCOMMAND_ALIASES[result.subcommand] ?? result.subcommand;
     startIdx = 2;
   }
 
-  for (let i = startIdx; i < args.length; i++) {
-    const arg = args[i];
+  for (let i = startIdx; i < filtered.length; i++) {
+    const arg = filtered[i];
 
     // Helper: consume the next argument, or exit with a clear error
     function requireValue(flag: string): string {
-      if (i + 1 >= args.length) {
+      if (i + 1 >= filtered.length) {
         outputError(result.outputFmt, `Flag ${flag} requires a value.`);
       }
-      return args[++i];
+      return filtered[++i];
     }
 
     switch (arg) {
@@ -602,6 +618,7 @@ General:
   -o <fmt>                 Alias for --output
   --dry-run                Show what would happen without performing the action
   --fields <list>          Comma-separated fields to include (e.g., id,status,priority)
+  --dev                    Enable developer mode (hidden TUI features like fake task seeding)
 
 Upgrade Options:
   --check                  Only check for updates, don't install
@@ -842,6 +859,11 @@ async function main(): Promise<void> {
   // Everything else requires config
   const config = loadConfig(PROJECT_ROOT);
   validateConfig(config);
+
+  // Apply --dev flag (CLI override for devMode, merges with config.devMode)
+  if (args.dev) {
+    config.devMode = true;
+  }
 
   // Commands that operate on the tasks file — ensure it exists first
   const needsTasksFile = new Set(["launch", "resume", "verify", "retry", "tasks", "tui"]);
