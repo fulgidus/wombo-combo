@@ -2,8 +2,10 @@
  * upgrade.ts — Self-upgrade wombo-combo.
  *
  * Supports both npm and GitHub installs. Detects the current install source
- * and uses the same channel for upgrades. Checks npm registry first (primary),
- * falls back to GitHub tags.
+ * and checks that channel first. Never silently switches channels — if an
+ * update is only available on the other channel (e.g. npm hasn't propagated
+ * yet but GitHub has the tag), the user is warned and prompted to confirm
+ * before switching.
  *
  * Usage:
  *   woco upgrade              # Check for updates and prompt to install
@@ -194,25 +196,26 @@ async function confirm(message: string): Promise<boolean> {
   });
 }
 
-/**
- * Resolve the latest available version.
- * Checks npm first, falls back to GitHub tags.
- * Returns { version, source } where version includes 'v' prefix.
- */
-async function resolveLatestVersion(): Promise<{ version: string; source: "npm" | "github" } | null> {
-  // Try npm first
-  const npmVersion = await fetchNpmLatest();
-  if (npmVersion) {
-    return { version: `v${npmVersion}`, source: "npm" };
-  }
+interface ChannelResult {
+  version: string; // includes 'v' prefix
+  source: "npm" | "github";
+}
 
-  // Fall back to GitHub tags
+/** Check the npm channel for the latest version. */
+async function checkNpmLatest(): Promise<ChannelResult | null> {
+  const v = await fetchNpmLatest();
+  return v ? { version: `v${v}`, source: "npm" } : null;
+}
+
+/** Check the GitHub channel for the latest version. */
+async function checkGithubLatest(): Promise<ChannelResult | null> {
   const tags = await fetchRemoteTags();
-  if (tags.length > 0) {
-    return { version: tags[0], source: "github" };
-  }
+  return tags.length > 0 ? { version: tags[0], source: "github" } : null;
+}
 
-  return null;
+/** Human-readable channel label. */
+function channelLabel(source: InstallSource): string {
+  return source === "github" ? "GitHub" : source === "local" ? "local dev" : "npm";
 }
 
 // ---------------------------------------------------------------------------
@@ -287,9 +290,8 @@ async function installVersion(version: string, source: InstallSource): Promise<v
 export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   const localVersion = getLocalVersion();
   const source = detectInstallSource();
-  const sourceLabel = source === "github" ? " (GitHub)" : source === "local" ? " (local dev)" : " (npm)";
 
-  console.log(`Current version: v${localVersion}${sourceLabel}`);
+  console.log(`Current version: v${localVersion} (${channelLabel(source)})`);
 
   if (source === "local") {
     console.log("You are running from a local checkout. Use 'git pull' to update.");
@@ -297,7 +299,13 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
     console.log("--force: continuing anyway...");
   }
 
-  // If a specific version is requested, skip the check
+  // The effective channel for checking/installing: local upgrades default to npm
+  const ownChannel: "npm" | "github" = source === "github" ? "github" : "npm";
+  const otherChannel: "npm" | "github" = ownChannel === "npm" ? "github" : "npm";
+
+  // -----------------------------------------------------------------------
+  // --tag: install a specific version
+  // -----------------------------------------------------------------------
   if (opts.tag) {
     const targetTag = opts.tag.startsWith("v") ? opts.tag : `v${opts.tag}`;
     console.log(`Requested version: ${targetTag}`);
@@ -307,20 +315,66 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
       return;
     }
 
-    // Determine install source for the specific version:
-    // prefer npm if available, otherwise github
-    let targetSource: InstallSource = source === "github" ? "github" : "npm";
-    if (targetSource === "npm") {
+    // Check if the requested version exists on the user's current channel
+    let targetSource: InstallSource = ownChannel;
+
+    if (ownChannel === "npm") {
       const exists = await npmVersionExists(targetTag);
       if (!exists) {
-        // Not on npm — try github
-        console.log(`Version ${targetTag} not found on npm, trying GitHub...`);
-        targetSource = "github";
+        // Not on npm — check GitHub before giving up
+        const ghTags = await fetchRemoteTags();
+        const onGithub = ghTags.some((t) => compareSemver(t, targetTag) === 0);
+
+        if (onGithub) {
+          console.log(`\nVersion ${targetTag} is not available on npm (your current channel).`);
+          console.log(`It was found on GitHub. This may mean npm hasn't propagated yet,`);
+          console.log(`or the release is GitHub-only.`);
+
+          if (!opts.force) {
+            const ok = await confirm(`Switch to GitHub and install ${targetTag}?`);
+            if (!ok) {
+              console.log("Upgrade cancelled.");
+              return;
+            }
+          }
+          targetSource = "github";
+        } else {
+          console.error(`Version ${targetTag} not found on npm or GitHub.`);
+          process.exit(1);
+          return;
+        }
+      }
+    } else {
+      // Current channel is GitHub — check if the tag exists
+      const ghTags = await fetchRemoteTags();
+      const onGithub = ghTags.some((t) => compareSemver(t, targetTag) === 0);
+
+      if (!onGithub) {
+        // Not on GitHub — check npm
+        const onNpm = await npmVersionExists(targetTag);
+
+        if (onNpm) {
+          console.log(`\nVersion ${targetTag} is not available on GitHub (your current channel).`);
+          console.log(`It was found on npm.`);
+
+          if (!opts.force) {
+            const ok = await confirm(`Switch to npm and install ${targetTag}?`);
+            if (!ok) {
+              console.log("Upgrade cancelled.");
+              return;
+            }
+          }
+          targetSource = "npm";
+        } else {
+          console.error(`Version ${targetTag} not found on GitHub or npm.`);
+          process.exit(1);
+          return;
+        }
       }
     }
 
     if (!opts.force) {
-      const ok = await confirm(`Install ${targetTag}?`);
+      const ok = await confirm(`Install ${targetTag} from ${channelLabel(targetSource)}?`);
       if (!ok) {
         console.log("Upgrade cancelled.");
         return;
@@ -331,54 +385,107 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
     return;
   }
 
-  // Fetch latest version
-  console.log(`Checking for updates...`);
+  // -----------------------------------------------------------------------
+  // Default: check for latest version on the user's channel
+  // -----------------------------------------------------------------------
+  console.log(`Checking for updates on ${channelLabel(ownChannel)}...`);
 
-  const latest = await resolveLatestVersion();
+  // Check both channels in parallel for responsiveness
+  const [npmResult, ghResult] = await Promise.all([
+    checkNpmLatest(),
+    checkGithubLatest(),
+  ]);
 
-  if (!latest) {
+  const ownResult = ownChannel === "npm" ? npmResult : ghResult;
+  const otherResult = ownChannel === "npm" ? ghResult : npmResult;
+
+  // -- Case 1: own channel has an update ------------------------------------
+  if (ownResult) {
+    const ownVersion = ownResult.version.replace(/^v/, "");
+    const cmp = compareSemver(localVersion, ownVersion);
+
+    if (cmp > 0) {
+      console.log(`Local version is ahead of latest ${channelLabel(ownChannel)} release (v${localVersion} > v${ownVersion}).`);
+      return;
+    }
+    if (cmp === 0) {
+      // Up to date on own channel — but maybe the other channel is ahead
+      if (otherResult && compareSemver(localVersion, otherResult.version) < 0) {
+        const otherV = otherResult.version.replace(/^v/, "");
+        console.log(`You are up to date on ${channelLabel(ownChannel)}.`);
+        console.log(`Note: v${otherV} is available on ${channelLabel(otherChannel)}.`);
+
+        if (opts.checkOnly) {
+          console.log(`Run 'woco upgrade --tag v${otherV}' to switch channels.`);
+          return;
+        }
+
+        const ok = await confirm(`Switch to ${channelLabel(otherChannel)} and install v${otherV}?`);
+        if (!ok) {
+          console.log("No changes made.");
+          return;
+        }
+
+        await installVersion(otherResult.version, otherChannel);
+        return;
+      }
+
+      console.log("You are already up to date.");
+      return;
+    }
+
+    // There is a newer version on the own channel
+    console.log(`Latest version:  v${ownVersion} (${channelLabel(ownChannel)})`);
+
+    if (opts.checkOnly) {
+      console.log(`\nUpdate available: v${localVersion} -> v${ownVersion}`);
+      console.log(`Run 'woco upgrade' to install.`);
+      return;
+    }
+
+    console.log(`\nUpdate available: v${localVersion} -> v${ownVersion}`);
+
+    if (!opts.force) {
+      const ok = await confirm(`Upgrade to v${ownVersion}?`);
+      if (!ok) {
+        console.log("Upgrade cancelled.");
+        return;
+      }
+    }
+
+    await installVersion(ownResult.version, ownChannel);
+    return;
+  }
+
+  // -- Case 2: own channel returned nothing, check the other ----------------
+  if (otherResult && compareSemver(localVersion, otherResult.version) < 0) {
+    const otherV = otherResult.version.replace(/^v/, "");
+    console.log(`Could not reach ${channelLabel(ownChannel)}.`);
+    console.log(`However, v${otherV} is available on ${channelLabel(otherChannel)}.`);
+
+    if (opts.checkOnly) {
+      console.log(`\nUpdate available: v${localVersion} -> v${otherV} (${channelLabel(otherChannel)})`);
+      console.log(`Run 'woco upgrade --tag v${otherV}' to switch channels, or try again later.`);
+      return;
+    }
+
+    const ok = await confirm(`Switch to ${channelLabel(otherChannel)} and install v${otherV}?`);
+    if (!ok) {
+      console.log("Upgrade cancelled. Try again later when your channel is reachable.");
+      return;
+    }
+
+    await installVersion(otherResult.version, otherChannel);
+    return;
+  }
+
+  // -- Case 3: neither channel had anything useful --------------------------
+  if (!ownResult && !otherResult) {
     console.error("Failed to check for updates (neither npm nor GitHub responded).");
     process.exit(1);
     return;
   }
 
-  const latestVersion = latest.version.replace(/^v/, "");
-  const latestLabel = latest.source === "npm" ? "(npm)" : "(GitHub)";
-  console.log(`Latest version:  v${latestVersion} ${latestLabel}`);
-
-  const cmp = compareSemver(localVersion, latestVersion);
-  if (cmp > 0) {
-    console.log(`Local version is ahead of latest release (v${localVersion} > v${latestVersion}).`);
-    return;
-  }
-  if (cmp === 0) {
-    console.log("You are already up to date.");
-    return;
-  }
-
-  if (opts.checkOnly) {
-    console.log(`\nUpdate available: v${localVersion} -> v${latestVersion}`);
-    console.log(`Run 'woco upgrade' to install.`);
-    return;
-  }
-
-  console.log(`\nUpdate available: v${localVersion} -> v${latestVersion}`);
-
-  // Decide install source: use same source if version is available there,
-  // otherwise use whatever source we found the latest on
-  let upgradeSource: InstallSource = source === "github" ? "github" : "npm";
-  if (upgradeSource === "npm" && latest.source === "github") {
-    // npm didn't have it, we found it on github
-    upgradeSource = "github";
-  }
-
-  if (!opts.force) {
-    const ok = await confirm(`Upgrade to v${latestVersion}?`);
-    if (!ok) {
-      console.log("Upgrade cancelled.");
-      return;
-    }
-  }
-
-  await installVersion(latest.version, upgradeSource);
+  // Both responded but we're up to date (or ahead) on both
+  console.log("You are already up to date.");
 }
