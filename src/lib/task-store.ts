@@ -361,8 +361,21 @@ export function saveAllTasksToStore(
   const dir = tasksDir(projectRoot, config);
   ensureDir(dir);
   saveMeta(dir, { version: data.version, meta: data.meta });
+
+  // Write current tasks
+  const currentIds = new Set<string>();
   for (const task of data.tasks) {
     saveTaskFile(dir, task);
+    currentIds.add(task.id);
+  }
+
+  // Delete orphaned task files (tasks that were removed, e.g. by archiving)
+  for (const file of readdirSync(dir)) {
+    if (file === "_meta.yml" || !file.endsWith(".yml")) continue;
+    const id = file.slice(0, -4); // strip .yml
+    if (!currentIds.has(id)) {
+      deleteTaskFile(dir, id);
+    }
   }
 }
 
