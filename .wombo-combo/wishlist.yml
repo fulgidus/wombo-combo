@@ -14,3 +14,15 @@
   tags:
     - docs
     - config
+- id: 5027f6cc-6784-41cb-b83f-5336e0dde3aa
+  text: "TDD baseline mechanism: snapshot main's test results before launching quest agents, then diff against branch
+    results instead of requiring absolute zero failures. This prevents pre-existing test failures on main from blocking
+    all worktree agents. Relevant files: src/lib/verifier.ts, src/lib/tdd-verifier.ts, src/lib/test-runner.ts,
+    src/lib/test-detection.ts [tdd, verification, quest]"
+  created_at: 2026-03-15T16:40:59.964Z
+  tags: []
+- id: d60bd7bf-7a18-4c50-81a9-601b8d54db67
+  text: "Session ID dedup bug: citty-spike and ink-spike quest agents shared session ID ses_30de238d3ffe5h7Zahbj6GT7UI in
+    state.json — investigate whether session IDs are being reused across agents in the same wave [bug, state, sessions]"
+  created_at: 2026-03-15T16:41:05.106Z
+  tags: []
