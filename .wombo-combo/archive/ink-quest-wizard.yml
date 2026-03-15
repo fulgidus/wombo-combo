@@ -6,15 +6,15 @@ description: "Migrate tui-quest-wizard.ts (546 lines) to an Ink component. 6-ste
   (creates/destroys own screen). Uses the TextInput component from ink-input-system for text fields, and a
   SelectInput-style component for enum fields (priority, difficulty, hitlMode). Must preserve both overlay and
   standalone modes."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: high
 depends_on:
   - ink-input-system
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-03-15T22:30:05.197Z
 constraints: []
 forbidden: []
 references: []

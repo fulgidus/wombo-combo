@@ -13,6 +13,7 @@
 
 import type { WomboConfig } from "../config";
 import type { Priority, Difficulty, Task } from "../lib/tasks";
+import { loadFeatures, saveFeatures } from "../lib/tasks";
 import type { OutputFormat } from "../lib/output";
 import type { QuestStatus, QuestHitlMode, Quest } from "../lib/quest";
 import {
@@ -837,31 +838,65 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
   }
 
   if (dryRun) {
+    // Count tasks that would be archived
+    const { config } = opts;
+    const data = loadFeatures(projectRoot, config);
+    let dryRunTaskCount = 0;
+    for (const q of toArchive) {
+      dryRunTaskCount += getQuestTaskIds(q.id, data.tasks).length;
+    }
+
     output(outputFmt ?? "text", {
       action: "quest-archive-dry-run",
       quests: toArchive.map((q) => ({ id: q.id, status: q.status, title: q.title })),
+      tasksToArchive: dryRunTaskCount,
     }, () => {
       console.log(`\n  Would archive ${toArchive.length} quest(s):`);
       for (const q of toArchive) {
-        console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET}`);
+        const taskIds = getQuestTaskIds(q.id, data.tasks);
+        console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET} (${taskIds.length} task${taskIds.length !== 1 ? "s" : ""})`);
+      }
+      if (dryRunTaskCount > 0) {
+        console.log(`  Would archive ${dryRunTaskCount} associated task(s).`);
       }
       console.log();
     });
     return;
   }
 
-  // Archive each quest
+  // Archive each quest and its tasks
+  let totalTasksArchived = 0;
   for (const q of toArchive) {
+    // Archive tasks belonging to this quest (move from active to archive)
+    const { config } = opts;
+    const data = loadFeatures(projectRoot, config);
+    if (!data.archive) data.archive = [];
+
+    const questTaskIds = getQuestTaskIds(q.id, data.tasks);
+    if (questTaskIds.length > 0) {
+      const archiveSet = new Set(questTaskIds);
+      const tasksToMove = data.tasks.filter((t) => archiveSet.has(t.id));
+      data.tasks = data.tasks.filter((t) => !archiveSet.has(t.id));
+      data.archive.push(...tasksToMove);
+      saveFeatures(projectRoot, config, data);
+      totalTasksArchived += tasksToMove.length;
+    }
+
+    // Archive the quest itself
     archiveQuest(projectRoot, q.id);
   }
 
   output(outputFmt ?? "text", {
     action: "quest-archived",
     quests: toArchive.map((q) => ({ id: q.id, status: q.status, title: q.title })),
+    tasksArchived: totalTasksArchived,
   }, () => {
     console.log(`\n  Archived ${toArchive.length} quest(s):`);
     for (const q of toArchive) {
       console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET}`);
+    }
+    if (totalTasksArchived > 0) {
+      console.log(`  Archived ${totalTasksArchived} associated task(s).`);
     }
     console.log();
   });

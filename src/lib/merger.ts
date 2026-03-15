@@ -140,99 +140,89 @@ export async function mergeBranch(
   baseBranch: string,
   config: WomboConfig
 ): Promise<MergeResult> {
-  // Stash any dirty tracked files in the project root before we touch the
-  // working tree.  The merge target directory should ideally be clean, but
-  // agents, TUI state files, or prior failed resolution attempts can leave
-  // uncommitted modifications that cause `git checkout` / `git merge` to
-  // refuse with "Your local changes … would be overwritten".
-  const stashResult = await runSafe("git stash push -m wombo-merge-guard --include-untracked", projectRoot);
-  const didStash = stashResult.ok && !stashResult.output.includes("No local changes to save");
+  // Use a temporary worktree for the merge so we never touch the user's
+  // checkout.  The old approach did `git checkout <baseBranch>` in the
+  // project root, which hijacked the user's working branch — especially
+  // painful when merging into quest branches.
+  const tmpDir = `${projectRoot}/.wombo-combo/.tmp-merge-${Date.now()}`;
 
-  try {
-    return await _mergeBranchInner(projectRoot, featureBranch, baseBranch, config);
-  } finally {
-    // Restore the stash regardless of merge outcome so the user's working
-    // tree is returned to its previous state.
-    if (didStash) {
-      await runSafe("git stash pop", projectRoot);
-    }
-  }
-}
-
-/** Internal merge implementation — always called with a clean worktree. */
-async function _mergeBranchInner(
-  projectRoot: string,
-  featureBranch: string,
-  baseBranch: string,
-  config: WomboConfig
-): Promise<MergeResult> {
-  // Ensure we're on the base branch
-  const currentBranch = await run("git branch --show-current", projectRoot);
-  if (currentBranch !== baseBranch) {
-    const checkout = await runSafe(`git checkout "${baseBranch}"`, projectRoot);
-    if (!checkout.ok) {
-      return {
-        success: false,
-        merged: false,
-        error: `Failed to checkout ${baseBranch}: ${checkout.output}`,
-        commitHash: null,
-      };
-    }
-  }
-
-  // Pull latest — if --ff-only fails (diverged branches), fall back to
-  // fetch + reset so we always merge against the current remote state.
-  const pull = await runSafe(`git pull --ff-only ${config.git.remote} "${baseBranch}"`, projectRoot);
-  if (!pull.ok) {
-    // Fast-forward failed — fetch and hard-reset to remote tip instead.
-    // This is safe because the project root's base branch is a merge target,
-    // not a working tree where anyone edits files directly.
-    const fetch = await runSafe(`git fetch ${config.git.remote} "${baseBranch}"`, projectRoot);
-    if (fetch.ok) {
-      await runSafe(`git reset --hard ${config.git.remote}/${baseBranch}`, projectRoot);
-    }
-    // If fetch also fails (offline?), proceed with whatever we have locally.
-  }
-
-  // Attempt the merge
-  const mergeCmd = `git merge ${config.git.mergeStrategy} "${featureBranch}" -m "Merge branch '${featureBranch}' into ${baseBranch}"`;
-  let mergeResult = await runSafe(mergeCmd, projectRoot);
-
-  // If merge failed because untracked files would be overwritten, remove them
-  // and retry. The merge will bring in the tracked versions of these files, so
-  // the untracked copies are redundant (typically agent/ config files created
-  // by ensureAgentDefinition that the feature branch also committed).
-  if (
-    !mergeResult.ok &&
-    mergeResult.output.includes("untracked working tree files would be overwritten")
-  ) {
-    const untrackedFiles = parseUntrackedFiles(mergeResult.output);
-    if (untrackedFiles.length > 0) {
-      for (const file of untrackedFiles) {
-        await runSafe(`rm -f "${file}"`, projectRoot);
-      }
-      mergeResult = await runSafe(mergeCmd, projectRoot);
-    }
-  }
-
-  if (!mergeResult.ok) {
-    await runSafe("git merge --abort", projectRoot);
+  // Create a worktree checked out on the base branch
+  const addResult = await runSafe(
+    `git worktree add "${tmpDir}" "${baseBranch}"`,
+    projectRoot
+  );
+  if (!addResult.ok) {
     return {
       success: false,
       merged: false,
-      error: `Merge conflict: ${mergeResult.output}`,
+      error: `Failed to create merge worktree: ${addResult.output}`,
       commitHash: null,
     };
   }
 
-  const commitHash = await run("git rev-parse HEAD", projectRoot);
+  try {
+    // Pull latest into the temp worktree — if --ff-only fails (diverged
+    // branches), fall back to fetch + reset so we merge against the current
+    // remote state.
+    const pull = await runSafe(
+      `git pull --ff-only ${config.git.remote} "${baseBranch}"`,
+      tmpDir
+    );
+    if (!pull.ok) {
+      const fetch = await runSafe(
+        `git fetch ${config.git.remote} "${baseBranch}"`,
+        tmpDir
+      );
+      if (fetch.ok) {
+        await runSafe(
+          `git reset --hard ${config.git.remote}/${baseBranch}`,
+          tmpDir
+        );
+      }
+      // If fetch also fails (offline?), proceed with whatever we have locally.
+    }
 
-  return {
-    success: true,
-    merged: true,
-    error: null,
-    commitHash,
-  };
+    // Attempt the merge
+    const mergeCmd = `git merge ${config.git.mergeStrategy} "${featureBranch}" -m "Merge branch '${featureBranch}' into ${baseBranch}"`;
+    let mergeResult = await runSafe(mergeCmd, tmpDir);
+
+    // If merge failed because untracked files would be overwritten, remove
+    // them and retry.  The merge will bring in the tracked versions.
+    if (
+      !mergeResult.ok &&
+      mergeResult.output.includes("untracked working tree files would be overwritten")
+    ) {
+      const untrackedFiles = parseUntrackedFiles(mergeResult.output);
+      if (untrackedFiles.length > 0) {
+        for (const file of untrackedFiles) {
+          await runSafe(`rm -f "${file}"`, tmpDir);
+        }
+        mergeResult = await runSafe(mergeCmd, tmpDir);
+      }
+    }
+
+    if (!mergeResult.ok) {
+      await runSafe("git merge --abort", tmpDir);
+      return {
+        success: false,
+        merged: false,
+        error: `Merge conflict: ${mergeResult.output}`,
+        commitHash: null,
+      };
+    }
+
+    const commitHash = await run("git rev-parse HEAD", tmpDir);
+
+    return {
+      success: true,
+      merged: true,
+      error: null,
+      commitHash,
+    };
+  } finally {
+    // Always clean up the temporary worktree
+    await runSafe(`git worktree remove "${tmpDir}" --force`, projectRoot);
+  }
 }
 
 /**
@@ -314,11 +304,17 @@ export async function mergeBaseIntoFeature(
   baseBranch: string,
   config: WomboConfig
 ): Promise<{ conflicting: boolean; files: string[]; error?: string }> {
-  // Fetch latest from remote so the base branch ref is up to date
-  await runSafe(`git fetch ${config.git.remote} "${baseBranch}"`, worktreePath);
+  // Fetch latest from remote so the base branch ref is up to date.
+  // The fetch may fail if the branch doesn't exist on the remote (e.g. a
+  // quest branch that was never pushed). In that case we fall back to the
+  // local ref so merges still work for local-only branches.
+  const fetchResult = await runSafe(`git fetch ${config.git.remote} "${baseBranch}"`, worktreePath);
 
-  // Attempt the merge — use remote ref to get latest base
-  const mergeRef = `${config.git.remote}/${baseBranch}`;
+  // Use remote ref when available, otherwise fall back to local branch ref
+  const remoteRef = `${config.git.remote}/${baseBranch}`;
+  const refCheck = await runSafe(`git rev-parse --verify "${remoteRef}"`, worktreePath);
+  const mergeRef = refCheck.ok ? remoteRef : baseBranch;
+
   const result = await runSafe(
     `git merge "${mergeRef}" -m "Merge ${baseBranch} into feature branch for conflict resolution"`,
     worktreePath
