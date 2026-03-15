@@ -61,10 +61,9 @@ interface EditableFieldProps {
   label: string;
   value: string;
   focused: boolean;
-  onChange: (value: string) => void;
 }
 
-function EditableField({ label, value, focused, onChange }: EditableFieldProps): React.ReactElement {
+function EditableField({ label, value, focused }: EditableFieldProps): React.ReactElement {
   // When focused, we render a simple inline text input
   // For renderToString compatibility, we render the value directly
   return (
@@ -166,7 +165,7 @@ export function InitForm({
       return;
     }
 
-    // Tab or Down — move to next field, or confirm if at last field
+    // Tab or Down — move to next field
     if (key.tab || key.downArrow) {
       setFocusedField((prev) => Math.min(prev + 1, FIELDS.length - 1));
       return;
@@ -217,9 +216,6 @@ export function InitForm({
                 : values[field.key]
             }
             focused={idx === focusedField}
-            onChange={(newValue) => {
-              setValues((prev) => ({ ...prev, [field.key]: newValue }));
-            }}
           />
         ))}
       </Box>

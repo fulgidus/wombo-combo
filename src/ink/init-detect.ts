@@ -13,7 +13,6 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { execSync } from "node:child_process";
 
 // ---------------------------------------------------------------------------
 // Project Name

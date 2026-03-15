@@ -94,17 +94,14 @@ const ENTRIES: RegistryEntry[] = [
       summary: "Generate .wombo-combo/config.json in the current project",
       aliases: ["i"],
       mutating: true,
-      supportsDryRun: true,
+      supportsDryRun: false,
       completionSummary: "Generate config",
       description:
-        "Interactive guided setup that walks through every config section. " +
-        "Creates .wombo-combo/config.json and .wombo-combo/tasks.yml from template.",
+        "Minimal Ink confirmation screen that auto-detects project settings. " +
+        "Creates .wombo-combo/config.json, tasks/, and archive/ folder stores.",
       flagOverrides: {
         force: { description: "Overwrite existing config files", default: false },
       },
-      extraFlags: [
-        { name: "--dry-run", description: "Show what would be created without writing files", type: "boolean", default: false },
-      ],
     },
   },
 
