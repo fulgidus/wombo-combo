@@ -13,11 +13,23 @@ import { runCommand } from "citty";
 import { versionCommand } from "./version.js";
 import { helpCommand } from "./help.js";
 import { describeCommand } from "./describe.js";
+import { initCommand } from "./init.js";
+import { statusCommand } from "./status.js";
+import { verifyCommand } from "./verify.js";
+import { mergeCommand } from "./merge.js";
+import { abortCommand } from "./abort.js";
+import { cleanupCommand } from "./cleanup.js";
+import { historyCommand } from "./history.js";
+import { logsCommand } from "./logs.js";
+import { usageCommand } from "./usage.js";
+import { upgradeCommand } from "./upgrade.js";
+import { completionCommand } from "./completion.js";
 
 /**
  * Set of all command names / aliases that are handled by citty.
  */
 const CITTY_COMMANDS = new Set([
+  // Existing commands
   "version",
   "-v",
   "-V",
@@ -25,6 +37,29 @@ const CITTY_COMMANDS = new Set([
   "--help",
   "-h",
   "describe",
+  // Core commands
+  "init",
+  "i",          // alias for init
+  "status",
+  "s",          // alias for status
+  "verify",
+  "v",          // alias for verify
+  "merge",
+  "m",          // alias for merge
+  "abort",
+  "a",          // alias for abort
+  "cleanup",
+  "c",          // alias for cleanup
+  "history",
+  "h",          // alias for history
+  "logs",
+  "lo",         // alias for logs
+  "usage",
+  "us",         // alias for usage
+  "upgrade",
+  "u",          // alias for upgrade (note: 'u' is for upgrade per schema)
+  "completion",
+  "comp",       // alias for completion
 ]);
 
 /**
@@ -37,7 +72,7 @@ export function isCittyCommand(cmd: string): boolean {
 /**
  * Route a command to the appropriate citty command definition and run it.
  *
- * @param cmd - The command name or alias (e.g. "version", "-v", "help", "describe")
+ * @param cmd - The command name or alias (e.g. "version", "-v", "help", "describe", "init", etc.)
  * @param rawArgs - The remaining raw CLI arguments to pass through
  */
 export async function runCittyCommand(
@@ -59,6 +94,61 @@ export async function runCittyCommand(
 
     case "describe":
       await runCommand(describeCommand, { rawArgs });
+      break;
+
+    case "init":
+    case "i":
+      await runCommand(initCommand, { rawArgs });
+      break;
+
+    case "status":
+    case "s":
+      await runCommand(statusCommand, { rawArgs });
+      break;
+
+    case "verify":
+    case "v":
+      await runCommand(verifyCommand, { rawArgs });
+      break;
+
+    case "merge":
+    case "m":
+      await runCommand(mergeCommand, { rawArgs });
+      break;
+
+    case "abort":
+    case "a":
+      await runCommand(abortCommand, { rawArgs });
+      break;
+
+    case "cleanup":
+    case "c":
+      await runCommand(cleanupCommand, { rawArgs });
+      break;
+
+    case "history":
+    case "h":
+      await runCommand(historyCommand, { rawArgs });
+      break;
+
+    case "logs":
+    case "lo":
+      await runCommand(logsCommand, { rawArgs });
+      break;
+
+    case "usage":
+    case "us":
+      await runCommand(usageCommand, { rawArgs });
+      break;
+
+    case "upgrade":
+    case "u":
+      await runCommand(upgradeCommand, { rawArgs });
+      break;
+
+    case "completion":
+    case "comp":
+      await runCommand(completionCommand, { rawArgs });
       break;
 
     default:
