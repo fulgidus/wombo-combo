@@ -283,4 +283,49 @@ describe("cittyCommandToCommandDef", () => {
     expect(result.summary).toBe("Short summary");
     expect(result.description).toBe("Extended description for init command.");
   });
+
+  test("uses name/summary overrides when meta is a function (async meta)", () => {
+    // Simulate a citty command with async meta (like versionCommand)
+    const cmd = defineCommand({
+      meta: async () => ({
+        name: "version",
+        description: "Print version and exit",
+      }),
+      args: {},
+      run() {},
+    });
+
+    const meta: BridgeCommandMeta = {
+      name: "version",
+      summary: "Print version and exit (also: -v, -V)",
+      mutating: false,
+      supportsDryRun: false,
+    };
+
+    const result = cittyCommandToCommandDef(cmd, meta);
+    expect(result.name).toBe("version");
+    expect(result.summary).toBe("Print version and exit (also: -v, -V)");
+  });
+
+  test("meta name/summary overrides take precedence over citty meta", () => {
+    const cmd = defineCommand({
+      meta: {
+        name: "citty-name",
+        description: "citty description",
+      },
+      args: {},
+      run() {},
+    });
+
+    const meta: BridgeCommandMeta = {
+      name: "override-name",
+      summary: "override summary",
+      mutating: false,
+      supportsDryRun: false,
+    };
+
+    const result = cittyCommandToCommandDef(cmd, meta);
+    expect(result.name).toBe("override-name");
+    expect(result.summary).toBe("override summary");
+  });
 });

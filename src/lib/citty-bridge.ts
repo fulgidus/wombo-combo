@@ -49,6 +49,19 @@ export interface FlagOverride {
  * This fills in the gaps that citty's `defineCommand()` doesn't cover.
  */
 export interface BridgeCommandMeta {
+  /**
+   * Explicit command name override.
+   * Required when citty's meta is a function or async — the bridge can't
+   * resolve those at import time.
+   */
+  name?: string;
+  /**
+   * Explicit summary override.
+   * Required when citty's meta is a function or async — the bridge can't
+   * resolve those at import time. Also useful when the citty description
+   * is too long for a summary line.
+   */
+  summary?: string;
   /** Short aliases (e.g. ["i"] for init, ["lo"] for logs) */
   aliases?: string[];
   /** Whether this command mutates state */
@@ -159,14 +172,16 @@ export function cittyCommandToCommandDef(
   meta: BridgeCommandMeta,
 ): CommandDef {
   // citty meta can be a plain object, a function, or a Promise.
-  // For the bridge we only support plain objects (all our commands use them).
+  // For the bridge we only support plain objects directly — but if the
+  // meta is async/function, the caller can provide name/summary overrides
+  // in BridgeCommandMeta.
   const rawMeta = cittyCmd.meta;
   const cmdMeta = (rawMeta && typeof rawMeta === "object" && !("then" in rawMeta))
     ? rawMeta as { name?: string; description?: string }
-    : { name: "unknown", description: "" };
+    : { name: undefined, description: undefined };
 
-  const name = cmdMeta.name ?? "unknown";
-  const summary = cmdMeta.description ?? "";
+  const name = meta.name ?? cmdMeta.name ?? "unknown";
+  const summary = meta.summary ?? cmdMeta.description ?? "";
 
   // Extract args from citty command
   const args = cittyCmd.args ?? {};
