@@ -749,57 +749,60 @@ describe("Integration — TokenCollector + UsageStore", () => {
 });
 
 // ---------------------------------------------------------------------------
-// CLI — Usage command arg parsing
+// CLI — Usage command arg parsing (via citty resolveGlobalFlagsAndCommand)
 // ---------------------------------------------------------------------------
 
-import { parseArgs } from "../src/index.js";
+import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router.js";
 
 describe("Usage command arg parsing", () => {
-  function argv(...args: string[]): string[] {
-    return ["bun", "script.ts", ...args];
-  }
-
-  test("parses usage command", () => {
-    const result = parseArgs(argv("usage"));
+  test("resolves usage command", () => {
+    const result = resolveGlobalFlagsAndCommand(["usage"]);
     expect(result.command).toBe("usage");
   });
 
-  test("parses usage alias 'us'", () => {
-    const result = parseArgs(argv("us"));
+  test("resolves usage alias 'us'", () => {
+    const result = resolveGlobalFlagsAndCommand(["us"]);
+    expect(result.command).toBe("us");
+  });
+
+  test("preserves --by flag in remaining", () => {
+    const result = resolveGlobalFlagsAndCommand(["usage", "--by", "task"]);
     expect(result.command).toBe("usage");
+    expect(result.remaining).toEqual(["--by", "task"]);
   });
 
-  test("parses --by flag", () => {
-    const result = parseArgs(argv("usage", "--by", "task"));
-    expect(result.usageBy).toBe("task");
+  test("preserves --since flag in remaining", () => {
+    const result = resolveGlobalFlagsAndCommand(["usage", "--since", "2026-01-01"]);
+    expect(result.command).toBe("usage");
+    expect(result.remaining).toEqual(["--since", "2026-01-01"]);
   });
 
-  test("parses --since flag", () => {
-    const result = parseArgs(argv("usage", "--since", "2026-01-01"));
-    expect(result.usageSince).toBe("2026-01-01");
+  test("preserves --until flag in remaining", () => {
+    const result = resolveGlobalFlagsAndCommand(["usage", "--until", "2026-03-01"]);
+    expect(result.command).toBe("usage");
+    expect(result.remaining).toEqual(["--until", "2026-03-01"]);
   });
 
-  test("parses --until flag", () => {
-    const result = parseArgs(argv("usage", "--until", "2026-03-01"));
-    expect(result.usageUntil).toBe("2026-03-01");
+  test("preserves --format flag in remaining", () => {
+    const result = resolveGlobalFlagsAndCommand(["usage", "--format", "json"]);
+    expect(result.command).toBe("usage");
+    expect(result.remaining).toEqual(["--format", "json"]);
   });
 
-  test("parses --format flag", () => {
-    const result = parseArgs(argv("usage", "--format", "json"));
-    expect(result.usageFormat).toBe("json");
-  });
-
-  test("parses all usage flags together", () => {
-    const result = parseArgs(argv(
+  test("preserves all usage flags together in remaining", () => {
+    const result = resolveGlobalFlagsAndCommand([
       "usage",
       "--by", "model",
       "--since", "2026-01-01",
       "--until", "2026-06-01",
       "--format", "json"
-    ));
-    expect(result.usageBy).toBe("model");
-    expect(result.usageSince).toBe("2026-01-01");
-    expect(result.usageUntil).toBe("2026-06-01");
-    expect(result.usageFormat).toBe("json");
+    ]);
+    expect(result.command).toBe("usage");
+    expect(result.remaining).toEqual([
+      "--by", "model",
+      "--since", "2026-01-01",
+      "--until", "2026-06-01",
+      "--format", "json"
+    ]);
   });
 });

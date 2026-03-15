@@ -134,12 +134,12 @@ All wombo-combo files live under `.wombo-combo/`:
 - **Language:** TypeScript, strict mode. Run `bun run typecheck` to verify.
 - **Modules:** ESM only (`"type": "module"` in package.json). Use `.js`
   extensions in import paths (TypeScript resolves them to `.ts` at runtime in Bun).
-- **No external CLI frameworks.** Arg parsing is hand-rolled in `index.ts`.
-  This is intentional — it keeps the dependency tree minimal and gives full
-  control for agent-readiness features (schema introspection, etc.).
+- **CLI framework:** [citty](https://github.com/unjs/citty). All command
+  definitions live in `src/commands/citty/`. The router in
+  `src/commands/citty/router.ts` maps command names and aliases to citty
+  command definitions. Schema introspection (`woco describe`) uses the
+  separate `COMMAND_REGISTRY` in `src/lib/schema.ts`.
 - **YAML library:** `yaml` (v2). Use `YAML.parse()` / `YAML.stringify()`.
-- **No npm registry dependencies** for core functionality. `neo-blessed` is
-  the only large dependency (TUI). Keep it that way.
 
 ## Testing and verification
 

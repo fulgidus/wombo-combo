@@ -401,11 +401,23 @@ describe("citty router — core commands", () => {
 
   test("isCittyCommand returns false for non-citty commands", async () => {
     const { isCittyCommand } = await import("../src/commands/citty/router.js");
-    expect(isCittyCommand("launch")).toBe(false);
-    expect(isCittyCommand("resume")).toBe(false);
-    expect(isCittyCommand("retry")).toBe(false);
-    expect(isCittyCommand("tasks")).toBe(false);
-    expect(isCittyCommand("tui")).toBe(false);
+    // Only truly unknown strings should return false
+    expect(isCittyCommand("nonexistent")).toBe(false);
+    expect(isCittyCommand("foobar")).toBe(false);
+    expect(isCittyCommand("")).toBe(false);
+  });
+
+  test("isCittyCommand returns true for all migrated commands", async () => {
+    const { isCittyCommand } = await import("../src/commands/citty/router.js");
+    // All commands are now citty commands
+    expect(isCittyCommand("launch")).toBe(true);
+    expect(isCittyCommand("resume")).toBe(true);
+    expect(isCittyCommand("retry")).toBe(true);
+    expect(isCittyCommand("tasks")).toBe(true);
+    expect(isCittyCommand("tui")).toBe(true);
+    expect(isCittyCommand("quest")).toBe(true);
+    expect(isCittyCommand("genesis")).toBe(true);
+    expect(isCittyCommand("wishlist")).toBe(true);
   });
 
   test("isCittyCommand identifies aliases for migrated commands", async () => {

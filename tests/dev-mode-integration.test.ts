@@ -1,8 +1,7 @@
 /**
  * dev-mode-integration.test.ts — Integration tests for --dev devMode behavior.
  *
- * TDD: Verifies that --dev flag correctly integrates across the full stack:
- *   - parseArgs extracts --dev from any position and sets dev: true
+ * TDD: Verifies that --dev flag correctly integrates across the citty stack:
  *   - resolveGlobalFlagsAndCommand extracts --dev and maps bare --dev to tui
  *   - extractGlobalFlags strips --dev and preserves remaining args
  *   - --dev combined with all other global flags works correctly
@@ -13,21 +12,15 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { parseArgs } from "../src/index.js";
 import { extractGlobalFlags } from "../src/commands/citty/global-flags.js";
 import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router.js";
 
-// Helper to simulate argv from CLI input
-function argv(...args: string[]): string[] {
-  return ["bun", "script.ts", ...args];
-}
-
 // ---------------------------------------------------------------------------
-// Cross-layer consistency: parseArgs ↔ extractGlobalFlags ↔ resolveGlobalFlagsAndCommand
+// Cross-layer consistency: extractGlobalFlags ↔ resolveGlobalFlagsAndCommand
 // ---------------------------------------------------------------------------
 
 describe("--dev integration — cross-layer consistency", () => {
-  test("all three layers agree: --dev before command", () => {
+  test("both layers agree: --dev before command", () => {
     // extractGlobalFlags (lowest level)
     const extracted = extractGlobalFlags(["--dev", "launch"]);
     expect(extracted.flags.dev).toBe(true);
@@ -37,14 +30,9 @@ describe("--dev integration — cross-layer consistency", () => {
     const resolved = resolveGlobalFlagsAndCommand(["--dev", "launch"]);
     expect(resolved.globalFlags.dev).toBe(true);
     expect(resolved.command).toBe("launch");
-
-    // parseArgs (top level — own pre-scan logic)
-    const parsed = parseArgs(argv("--dev", "launch"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("launch");
   });
 
-  test("all three layers agree: --dev after command", () => {
+  test("both layers agree: --dev after command", () => {
     const extracted = extractGlobalFlags(["launch", "--dev"]);
     expect(extracted.flags.dev).toBe(true);
     expect(extracted.remaining).toEqual(["launch"]);
@@ -52,13 +40,9 @@ describe("--dev integration — cross-layer consistency", () => {
     const resolved = resolveGlobalFlagsAndCommand(["launch", "--dev"]);
     expect(resolved.globalFlags.dev).toBe(true);
     expect(resolved.command).toBe("launch");
-
-    const parsed = parseArgs(argv("launch", "--dev"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("launch");
   });
 
-  test("all three layers agree: bare --dev defaults to tui", () => {
+  test("both layers agree: bare --dev defaults to tui", () => {
     const extracted = extractGlobalFlags(["--dev"]);
     expect(extracted.flags.dev).toBe(true);
     expect(extracted.remaining).toEqual([]);
@@ -66,13 +50,9 @@ describe("--dev integration — cross-layer consistency", () => {
     const resolved = resolveGlobalFlagsAndCommand(["--dev"]);
     expect(resolved.globalFlags.dev).toBe(true);
     expect(resolved.command).toBe("tui");
-
-    const parsed = parseArgs(argv("--dev"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("tui");
   });
 
-  test("all three layers agree: --dev with --force and --output", () => {
+  test("both layers agree: --dev with --force and --output", () => {
     const args = ["--dev", "--force", "--output", "json", "launch"];
 
     const extracted = extractGlobalFlags(args);
@@ -86,12 +66,6 @@ describe("--dev integration — cross-layer consistency", () => {
     expect(resolved.globalFlags.force).toBe(true);
     expect(resolved.globalFlags.output).toBe("json");
     expect(resolved.command).toBe("launch");
-
-    const parsed = parseArgs(argv(...args));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.force).toBe(true);
-    expect(parsed.outputFmt).toBe("json");
-    expect(parsed.command).toBe("launch");
   });
 });
 
@@ -110,11 +84,6 @@ describe("--dev integration — tasks subcommands", () => {
     const resolved = resolveGlobalFlagsAndCommand(args);
     expect(resolved.command).toBe("tasks");
     expect(resolved.remaining).toEqual(["list"]);
-
-    const parsed = parseArgs(argv(...args));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("tasks");
-    expect(parsed.subcommand).toBe("list");
   });
 
   test("'tasks --dev list' extracts --dev from mid-position", () => {
@@ -127,12 +96,6 @@ describe("--dev integration — tasks subcommands", () => {
     const resolved = resolveGlobalFlagsAndCommand(args);
     expect(resolved.command).toBe("tasks");
     expect(resolved.remaining).toEqual(["list"]);
-
-    // parseArgs handles this correctly because --dev is stripped in pre-scan
-    const parsed = parseArgs(argv(...args));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("tasks");
-    expect(parsed.subcommand).toBe("list");
   });
 
   test("'tasks list --dev' extracts --dev from end position", () => {
@@ -142,44 +105,43 @@ describe("--dev integration — tasks subcommands", () => {
     expect(extracted.flags.dev).toBe(true);
     expect(extracted.remaining).toEqual(["tasks", "list"]);
 
-    const parsed = parseArgs(argv(...args));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("tasks");
-    expect(parsed.subcommand).toBe("list");
+    const resolved = resolveGlobalFlagsAndCommand(args);
+    expect(resolved.command).toBe("tasks");
+    expect(resolved.remaining).toEqual(["list"]);
   });
 });
 
 // ---------------------------------------------------------------------------
-// --dev combined with -h/--help
+// --dev combined with -h/--help (via resolveGlobalFlagsAndCommand)
 // ---------------------------------------------------------------------------
 
 describe("--dev integration — combined with help", () => {
   test("'--dev -h' → tui with dev + help", () => {
-    const parsed = parseArgs(argv("--dev", "-h"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.help).toBe(true);
-    expect(parsed.command).toBe("tui");
+    const resolved = resolveGlobalFlagsAndCommand(["--dev", "-h"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.help).toBe(true);
+    expect(resolved.command).toBe("tui");
   });
 
   test("'--dev launch -h' → launch with dev + help", () => {
-    const parsed = parseArgs(argv("--dev", "launch", "-h"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.help).toBe(true);
-    expect(parsed.command).toBe("launch");
+    const resolved = resolveGlobalFlagsAndCommand(["--dev", "launch", "-h"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.help).toBe(true);
+    expect(resolved.command).toBe("launch");
   });
 
   test("'-h --dev' → tui with dev + help (order doesn't matter)", () => {
-    const parsed = parseArgs(argv("-h", "--dev"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.help).toBe(true);
-    expect(parsed.command).toBe("tui");
+    const resolved = resolveGlobalFlagsAndCommand(["-h", "--dev"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.help).toBe(true);
+    expect(resolved.command).toBe("tui");
   });
 
   test("'launch -h --dev' → launch with dev + help", () => {
-    const parsed = parseArgs(argv("launch", "-h", "--dev"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.help).toBe(true);
-    expect(parsed.command).toBe("launch");
+    const resolved = resolveGlobalFlagsAndCommand(["launch", "-h", "--dev"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.help).toBe(true);
+    expect(resolved.command).toBe("launch");
   });
 });
 
@@ -189,35 +151,33 @@ describe("--dev integration — combined with help", () => {
 
 describe("--dev integration — no interference with command flags", () => {
   test("'--dev launch --dry-run --max-concurrent 3' preserves all flags", () => {
-    const parsed = parseArgs(argv("--dev", "launch", "--dry-run", "--max-concurrent", "3"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("launch");
-    expect(parsed.dryRun).toBe(true);
-    expect(parsed.maxConcurrent).toBe(3);
+    const resolved = resolveGlobalFlagsAndCommand(["--dev", "launch", "--dry-run", "--max-concurrent", "3"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.command).toBe("launch");
+    expect(resolved.remaining).toEqual(["--dry-run", "--max-concurrent", "3"]);
   });
 
   test("'--dev --output json launch --dry-run' combines global + command flags", () => {
-    const parsed = parseArgs(argv("--dev", "--output", "json", "launch", "--dry-run"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.outputFmt).toBe("json");
-    expect(parsed.command).toBe("launch");
-    expect(parsed.dryRun).toBe(true);
+    const resolved = resolveGlobalFlagsAndCommand(["--dev", "--output", "json", "launch", "--dry-run"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.output).toBe("json");
+    expect(resolved.command).toBe("launch");
+    expect(resolved.remaining).toEqual(["--dry-run"]);
   });
 
   test("'launch --model claude --dev --force' dev and force extracted, model preserved", () => {
-    const parsed = parseArgs(argv("launch", "--model", "claude", "--dev", "--force"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.force).toBe(true);
-    expect(parsed.command).toBe("launch");
-    expect(parsed.model).toBe("claude");
+    const resolved = resolveGlobalFlagsAndCommand(["launch", "--model", "claude", "--dev", "--force"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.globalFlags.force).toBe(true);
+    expect(resolved.command).toBe("launch");
+    expect(resolved.remaining).toEqual(["--model", "claude"]);
   });
 
-  test("'--dev tasks add my-task \"My Task\" --priority high' preserves positional + named args", () => {
-    const parsed = parseArgs(argv("--dev", "tasks", "add", "my-task", "My Task", "--priority", "high"));
-    expect(parsed.dev).toBe(true);
-    expect(parsed.command).toBe("tasks");
-    expect(parsed.subcommand).toBe("add");
-    expect(parsed.priority).toBe("high");
+  test("'--dev tasks add my-task --priority high' preserves positional + named args", () => {
+    const resolved = resolveGlobalFlagsAndCommand(["--dev", "tasks", "add", "my-task", "--priority", "high"]);
+    expect(resolved.globalFlags.dev).toBe(true);
+    expect(resolved.command).toBe("tasks");
+    expect(resolved.remaining).toEqual(["add", "my-task", "--priority", "high"]);
   });
 });
 
