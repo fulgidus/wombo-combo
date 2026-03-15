@@ -353,7 +353,7 @@ describe("QuestWizard full flow", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(onCreated).toHaveBeenCalled();
-    const quest = onCreated.mock.calls[0]![0] as any;
+    const quest = (onCreated.mock.calls as unknown as any[][])[0]![0];
     expect(quest.id).toBe("test-quest");
     expect(quest.title).toBe("Test Quest");
     expect(quest.goal).toBe("Test the wizard");
@@ -476,7 +476,7 @@ describe("QuestWizard prefill", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(onCreated).toHaveBeenCalled();
-    const quest = onCreated.mock.calls[0]![0] as any;
+    const quest = (onCreated.mock.calls as unknown as any[][])[0]![0];
     expect(quest.priority).toBe("high");
     expect(quest.difficulty).toBe("easy");
     expect(quest.hitlMode).toBe("cautious");
