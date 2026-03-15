@@ -11,17 +11,17 @@
  *   woco quest abandon <id>                                   (alias: q ab)
  */
 
-import type { WomboConfig } from "../config.js";
-import type { Priority, Difficulty, Task } from "../lib/tasks.js";
-import type { OutputFormat } from "../lib/output.js";
-import type { QuestStatus, QuestHitlMode, Quest } from "../lib/quest.js";
+import type { WomboConfig } from "../config";
+import type { Priority, Difficulty, Task } from "../lib/tasks";
+import type { OutputFormat } from "../lib/output";
+import type { QuestStatus, QuestHitlMode, Quest } from "../lib/quest";
 import {
   createBlankQuest,
   getQuestTaskIds,
   VALID_QUEST_STATUSES,
   VALID_HITL_MODES,
   QUEST_STATUS_ORDER,
-} from "../lib/quest.js";
+} from "../lib/quest";
 import {
   loadQuest,
   saveQuest,
@@ -29,24 +29,24 @@ import {
   listQuestIds,
   deleteQuest,
   loadQuestKnowledge,
-} from "../lib/quest-store.js";
+} from "../lib/quest-store";
 import {
   createQuestBranch,
   questBranchExists,
   deleteQuestBranch,
-} from "../lib/worktree.js";
+} from "../lib/worktree";
 import {
   mergeQuestIntoBranch,
-} from "../lib/merger.js";
+} from "../lib/merger";
 import {
   runQuestPlanner,
   applyPlanToQuest,
   type PlanResult,
-} from "../lib/quest-planner.js";
-import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema.js";
-import { loadTasksFromStore } from "../lib/task-store.js";
-import { output, outputError, outputMessage } from "../lib/output.js";
-import { validateEnum } from "../lib/validate.js";
+} from "../lib/quest-planner";
+import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema";
+import { loadTasksFromStore } from "../lib/task-store";
+import { output, outputError, outputMessage } from "../lib/output";
+import { validateEnum } from "../lib/validate";
 
 // ---------------------------------------------------------------------------
 // Types

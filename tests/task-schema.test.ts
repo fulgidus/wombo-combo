@@ -23,8 +23,8 @@ import {
   TASK_ARRAY_FIELDS,
   META_REQUIRED_FIELDS,
   META_INNER_REQUIRED_FIELDS,
-} from "../src/lib/task-schema.js";
-import type { SchemaIssue } from "../src/lib/task-schema.js";
+} from "../src/lib/task-schema";
+import type { SchemaIssue } from "../src/lib/task-schema";
 
 // ---------------------------------------------------------------------------
 // Helpers

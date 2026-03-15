@@ -10,14 +10,14 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { resolveOutputFormat, output, outputError } from "../../lib/output.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { resolveOutputFormat, output, outputError } from "../../lib/output";
 import {
   addItem as addWishlistItem,
   listItems as listWishlistItems,
   deleteItem as deleteWishlistItem,
   moveItem as moveWishlistItem,
-} from "../../lib/wishlist-store.js";
+} from "../../lib/wishlist-store";
 
 // ---------------------------------------------------------------------------
 // Shared: load config + ensure project is initialized

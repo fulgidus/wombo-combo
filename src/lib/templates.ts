@@ -17,10 +17,10 @@
 import { join, dirname, resolve } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import YAML from "yaml";
-import type { WomboConfig } from "../config.js";
-import { isPortlessAvailable } from "./portless.js";
-import { normalizeAgentFormat } from "./format-converter.js";
-import type { QuestHitlMode } from "./quest.js";
+import type { WomboConfig } from "../config";
+import { isPortlessAvailable } from "./portless";
+import { normalizeAgentFormat } from "./format-converter";
+import type { QuestHitlMode } from "./quest";
 
 // ---------------------------------------------------------------------------
 // Template Directory & Paths

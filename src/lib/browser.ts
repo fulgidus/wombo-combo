@@ -20,7 +20,7 @@
 import { exec, execSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
-import type { WomboConfig, BrowserConfig } from "../config.js";
+import type { WomboConfig, BrowserConfig } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types

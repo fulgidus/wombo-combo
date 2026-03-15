@@ -28,7 +28,7 @@ import {
   NON_TESTABLE_EXTENSIONS,
   type DiffFile,
   type TestDetectionConfig,
-} from "../src/lib/test-detection.js";
+} from "../src/lib/test-detection";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -120,7 +120,7 @@ describe("isExcludedFile", () => {
   });
 
   test("excludes barrel index.ts files", () => {
-    writeFile(tmpDir, "src/lib/index.ts", `export { foo } from "./foo.js";\nexport * from "./bar.js";\n`);
+    writeFile(tmpDir, "src/lib/index.ts", `export { foo } from "./foo";\nexport * from "./bar";\n`);
     const result = isExcludedFile("src/lib/index.ts", tmpDir);
     expect(result.excluded).toBe(true);
     expect(result.reason).toContain("barrel");
@@ -165,17 +165,17 @@ describe("isExcludedFile", () => {
 
 describe("isBarrelFile", () => {
   test("recognizes named re-exports", () => {
-    writeFile(tmpDir, "barrel.ts", `export { foo } from "./foo.js";\nexport { bar } from "./bar.js";\n`);
+    writeFile(tmpDir, "barrel.ts", `export { foo } from "./foo";\nexport { bar } from "./bar";\n`);
     expect(isBarrelFile(join(tmpDir, "barrel.ts"))).toBe(true);
   });
 
   test("recognizes wildcard re-exports", () => {
-    writeFile(tmpDir, "barrel.ts", `export * from "./foo.js";\nexport * from "./bar.js";\n`);
+    writeFile(tmpDir, "barrel.ts", `export * from "./foo";\nexport * from "./bar";\n`);
     expect(isBarrelFile(join(tmpDir, "barrel.ts"))).toBe(true);
   });
 
   test("recognizes type re-exports", () => {
-    writeFile(tmpDir, "barrel.ts", `export type { Foo } from "./foo.js";\n`);
+    writeFile(tmpDir, "barrel.ts", `export type { Foo } from "./foo";\n`);
     expect(isBarrelFile(join(tmpDir, "barrel.ts"))).toBe(true);
   });
 
@@ -183,13 +183,13 @@ describe("isBarrelFile", () => {
     writeFile(
       tmpDir,
       "barrel.ts",
-      `// This is a barrel file\n\nexport { foo } from "./foo.js";\n\n/* end */\n`
+      `// This is a barrel file\n\nexport { foo } from "./foo";\n\n/* end */\n`
     );
     expect(isBarrelFile(join(tmpDir, "barrel.ts"))).toBe(true);
   });
 
   test("rejects files with runtime code", () => {
-    writeFile(tmpDir, "not-barrel.ts", `export { foo } from "./foo.js";\nconst x = 42;\n`);
+    writeFile(tmpDir, "not-barrel.ts", `export { foo } from "./foo";\nconst x = 42;\n`);
     expect(isBarrelFile(join(tmpDir, "not-barrel.ts"))).toBe(false);
   });
 
@@ -252,7 +252,7 @@ describe("isTypesOnlyFile", () => {
     writeFile(
       tmpDir,
       "types.ts",
-      `import type { Foo } from "./foo.js";\n\nexport interface Bar extends Foo {\n  baz: string;\n}\n`
+      `import type { Foo } from "./foo";\n\nexport interface Bar extends Foo {\n  baz: string;\n}\n`
     );
     expect(isTypesOnlyFile(join(tmpDir, "types.ts"))).toBe(true);
   });

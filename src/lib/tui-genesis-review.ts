@@ -32,7 +32,7 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { ProposedQuest, GenesisResult, GenesisValidationIssue } from "./genesis-planner.js";
+import type { ProposedQuest, GenesisResult, GenesisValidationIssue } from "./genesis-planner";
 
 // ---------------------------------------------------------------------------
 // Types

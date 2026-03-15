@@ -18,9 +18,9 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
-import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks.js";
-import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
+import { loadFeatures, selectFeatures, parseDurationMinutes, saveFeatures } from "../lib/tasks";
 import {
   loadState,
   saveState,
@@ -37,7 +37,7 @@ import {
   type WaveState,
   type AgentState,
   type SerializedSchedulePlan,
-} from "../lib/state.js";
+} from "../lib/state";
 import {
   createWorktree,
   installDeps,
@@ -49,8 +49,8 @@ import {
   branchExists,
   removeWorktree,
   log as wtLog,
-} from "../lib/worktree.js";
-import { generatePrompt, generateConflictResolutionPrompt, generateTier4RerunPrompt, generateRebaseCommitPrompt, type QuestPromptContext, type ConflictResolutionContext } from "../lib/prompt.js";
+} from "../lib/worktree";
+import { generatePrompt, generateConflictResolutionPrompt, generateTier4RerunPrompt, generateRebaseCommitPrompt, type QuestPromptContext, type ConflictResolutionContext } from "../lib/prompt";
 import {
   launchHeadless,
   retryHeadless,
@@ -58,9 +58,9 @@ import {
   retryInteractive,
   launchConflictResolver,
   isProcessRunning,
-} from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { runBuild, runFullVerification, type FullVerificationOptions } from "../lib/verifier.js";
+} from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { runBuild, runFullVerification, type FullVerificationOptions } from "../lib/verifier";
 import {
   mergeBranch,
   mergeBaseIntoFeature,
@@ -76,16 +76,16 @@ import {
   abortRebase,
   cleanupRebaseBranch,
   finalizeRebase,
-} from "../lib/merger.js";
-import type { Tier25Result } from "../lib/conflict-hunks.js";
-import type { MaxEscalationTier } from "../config.js";
+} from "../lib/merger";
+import type { Tier25Result } from "../lib/conflict-hunks";
+import type { MaxEscalationTier } from "../config";
 import {
   printDashboard,
   printFeatureSelection,
   printAgentUpdate,
-} from "../lib/ui.js";
-import { WomboTUI } from "../lib/tui.js";
-import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates.js";
+} from "../lib/ui";
+import { WomboTUI } from "../lib/tui";
+import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates";
 import {
   buildDepGraph,
   validateDepGraph,
@@ -94,27 +94,27 @@ import {
   getStreamForFeature,
   type DepGraph,
   type SchedulePlan,
-} from "../lib/dependency-graph.js";
-import { ensureProxyRunning, isPortlessAvailable, portlessUrl } from "../lib/portless.js";
-import { output, outputError, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderLaunchDryRun } from "../lib/toon.js";
-import { ensureTmux, tmuxAttach } from "../lib/tmux.js";
-import { InteractiveMonitor, type InteractiveAgent } from "../lib/interactive-monitor.js";
-import { exportWaveHistory } from "../lib/history.js";
+} from "../lib/dependency-graph";
+import { ensureProxyRunning, isPortlessAvailable, portlessUrl } from "../lib/portless";
+import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { renderLaunchDryRun } from "../lib/toon";
+import { ensureTmux, tmuxAttach } from "../lib/tmux";
+import { InteractiveMonitor, type InteractiveAgent } from "../lib/interactive-monitor";
+import { exportWaveHistory } from "../lib/history";
 import {
   prepareAgentDefinitions,
   isSpecializedAgent,
   writeAgentToWorktree,
   type AgentResolution,
-} from "../lib/agent-registry.js";
+} from "../lib/agent-registry";
 import {
   tuiPreflightConfirm,
   consolePreflightConfirm,
-} from "../lib/preflight.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, applyQuestConstraintsToTask, type QuestHitlMode } from "../lib/quest.js";
-import { questBranchExists, createQuestBranch } from "../lib/worktree.js";
-import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel.js";
+} from "../lib/preflight";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, applyQuestConstraintsToTask, type QuestHitlMode } from "../lib/quest";
+import { questBranchExists, createQuestBranch } from "../lib/worktree";
+import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Constants

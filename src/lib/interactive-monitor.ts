@@ -20,9 +20,9 @@
  *     commits were made on the agent's branch.
  */
 
-import { tmuxCapturePaneText, tmuxKillSession, tmuxHasSession } from "./tmux.js";
-import { isProcessRunning } from "./launcher.js";
-import { branchHasChanges } from "./worktree.js";
+import { tmuxCapturePaneText, tmuxKillSession, tmuxHasSession } from "./tmux";
+import { isProcessRunning } from "./launcher";
+import { branchHasChanges } from "./worktree";
 
 // ---------------------------------------------------------------------------
 // Types

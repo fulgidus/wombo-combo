@@ -13,15 +13,15 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { resolve, relative, basename, dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { WomboConfig } from "../config.js";
-import { resolveAgentBin } from "../config.js";
-import type { Quest } from "./quest.js";
-import { getQuestTaskIds } from "./quest.js";
-import type { Task, Priority, Difficulty } from "./tasks.js";
-import { createBlankTask, saveTaskToStore } from "./tasks.js";
-import { loadTasksFromStore } from "./task-store.js";
-import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store.js";
-import { buildScoutIndex, formatScoutTree } from "./subagents/scout.js";
+import type { WomboConfig } from "../config";
+import { resolveAgentBin } from "../config";
+import type { Quest } from "./quest";
+import { getQuestTaskIds } from "./quest";
+import type { Task, Priority, Difficulty } from "./tasks";
+import { createBlankTask, saveTaskToStore } from "./tasks";
+import { loadTasksFromStore } from "./task-store";
+import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store";
+import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
 
 // ---------------------------------------------------------------------------
 // Types

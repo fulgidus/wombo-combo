@@ -15,7 +15,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { parseArgs, COMMAND_ALIASES, SUBCOMMAND_ALIASES } from "../src/index.js";
+import { parseArgs, COMMAND_ALIASES, SUBCOMMAND_ALIASES } from "../src/index";
 
 // Helper to simulate argv from CLI input. We need to prepend "bun" and "script"
 // since parseArgs does argv.slice(2).
@@ -748,7 +748,7 @@ describe("parseArgs — trailing flags / missing values (requireValue)", () => {
     stdout: string;
   }> {
     const script = `
-      import { parseArgs } from "./src/index.js";
+      import { parseArgs } from "./src/index";
       const result = parseArgs(${JSON.stringify(["bun", "script.ts", ...cliArgs])});
       // If we get here, parseArgs didn't exit
       console.log(JSON.stringify(result));

@@ -22,8 +22,8 @@ import {
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
-import type { WomboConfig } from "../src/config.js";
-import type { WorktreeInfo } from "../src/lib/worktree.js";
+import type { WomboConfig } from "../src/config";
+import type { WorktreeInfo } from "../src/lib/worktree";
 import {
   listWorktrees,
   listWomboWorktrees,
@@ -31,7 +31,7 @@ import {
   cleanupAllWorktrees,
   verifyConfigFiles,
   createWorktree,
-} from "../src/lib/worktree.js";
+} from "../src/lib/worktree";
 
 // ---------------------------------------------------------------------------
 // Helpers

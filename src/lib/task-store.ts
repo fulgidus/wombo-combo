@@ -30,10 +30,10 @@ import {
 } from "node:fs";
 import { resolve, join, basename, dirname } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import type { WomboConfig } from "../config.js";
-import { WOMBO_DIR } from "../config.js";
-import type { Task, TasksFile, ArchiveFile } from "./tasks.js";
-import { validateTask, validateMeta as validateMetaSchema } from "./task-schema.js";
+import type { WomboConfig } from "../config";
+import { WOMBO_DIR } from "../config";
+import type { Task, TasksFile, ArchiveFile } from "./tasks";
+import { validateTask, validateMeta as validateMetaSchema } from "./task-schema";
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -5,7 +5,7 @@
  *   woco tasks show <task-id>
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   findFeatureById,
@@ -15,9 +15,9 @@ import {
   getDoneFeatureIds,
   type Feature,
   type Subtask,
-} from "../../lib/tasks.js";
-import { output, outputError, filterFields, type OutputFormat } from "../../lib/output.js";
-import { renderTaskShow } from "../../lib/toon.js";
+} from "../../lib/tasks";
+import { output, outputError, filterFields, type OutputFormat } from "../../lib/output";
+import { renderTaskShow } from "../../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

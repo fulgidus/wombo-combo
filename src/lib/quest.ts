@@ -16,8 +16,8 @@
  *   - override: deep-merge fields that replace project config values
  */
 
-import type { WomboConfig } from "../config.js";
-import type { Priority, Difficulty, Task } from "./tasks.js";
+import type { WomboConfig } from "../config";
+import type { Priority, Difficulty, Task } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // Quest Status

@@ -28,18 +28,18 @@
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
 import { join } from "node:path";
-import type { Quest } from "./quest.js";
-import { QUEST_STATUS_ORDER, getQuestTaskIds } from "./quest.js";
-import { loadAllQuests, saveQuest, deleteQuest } from "./quest-store.js";
-import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks.js";
-import type { WomboConfig } from "../config.js";
-import type { ErrandSpec } from "./errand-planner.js";
-import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage.js";
-import type { UsageTotals } from "./token-usage.js";
-import { showQuestWizard } from "./tui-quest-wizard.js";
-import { showConfirm } from "./tui-progress.js";
-import { saveTaskToStore } from "./task-store.js";
-import type { Task } from "./tasks.js";
+import type { Quest } from "./quest";
+import { QUEST_STATUS_ORDER, getQuestTaskIds } from "./quest";
+import { loadAllQuests, saveQuest, deleteQuest } from "./quest-store";
+import { loadTasks, getDoneTaskIds, loadArchive } from "./tasks";
+import type { WomboConfig } from "../config";
+import type { ErrandSpec } from "./errand-planner";
+import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage";
+import type { UsageTotals } from "./token-usage";
+import { showQuestWizard } from "./tui-quest-wizard";
+import { showConfirm } from "./tui-progress";
+import { saveTaskToStore } from "./task-store";
+import type { Task } from "./tasks";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

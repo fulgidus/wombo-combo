@@ -8,7 +8,7 @@ import { describe, test, expect, beforeEach, afterAll } from "bun:test";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { WOMBO_DIR } from "../src/config.js";
+import { WOMBO_DIR } from "../src/config";
 
 import {
   loadWishlist,
@@ -16,7 +16,7 @@ import {
   deleteItem,
   listItems,
   moveItem,
-} from "../src/lib/wishlist-store.js";
+} from "../src/lib/wishlist-store";
 
 let tempRoot: string;
 

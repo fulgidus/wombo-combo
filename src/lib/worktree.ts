@@ -15,7 +15,7 @@
 import { exec, execSync } from "node:child_process";
 import { existsSync, cpSync, statSync, readdirSync, rmdirSync, mkdirSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types

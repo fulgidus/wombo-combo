@@ -27,9 +27,9 @@
  * itself is destroyed (e.g., by `woco cleanup`).
  */
 
-import type { WomboConfig } from "../config.js";
-import type { Feature } from "../lib/tasks.js";
-import { loadFeatures } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import type { Feature } from "../lib/tasks";
+import { loadFeatures } from "../lib/tasks";
 import {
   loadState,
   saveState,
@@ -41,7 +41,7 @@ import {
   isWaveComplete,
   type WaveState,
   type AgentState,
-} from "../lib/state.js";
+} from "../lib/state";
 import {
   createWorktree,
   installDeps,
@@ -50,17 +50,17 @@ import {
   branchHasChanges,
   removeWorktree,
   log as wtLog,
-} from "../lib/worktree.js";
-import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
+} from "../lib/worktree";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt";
 import {
   launchInteractive,
   isProcessRunning,
-} from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { pushBaseBranch } from "../lib/merger.js";
-import { runBuild } from "../lib/verifier.js";
-import { printDashboard, printAgentUpdate } from "../lib/ui.js";
-import { WomboTUI } from "../lib/tui.js";
+} from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { pushBaseBranch } from "../lib/merger";
+import { runBuild } from "../lib/verifier";
+import { printDashboard, printAgentUpdate } from "../lib/ui";
+import { WomboTUI } from "../lib/tui";
 import {
   launchSingleHeadless,
   handleBuildVerification,
@@ -71,19 +71,19 @@ import {
   attemptMerge,
   rescueChainPredecessors,
   dumpFailedAgentLogs,
-} from "./launch.js";
-import { exportWaveHistory } from "../lib/history.js";
-import { outputError, outputMessage, type OutputFormat } from "../lib/output.js";
+} from "./launch";
+import { exportWaveHistory } from "../lib/history";
+import { outputError, outputMessage, type OutputFormat } from "../lib/output";
 import {
   prepareAgentDefinitions,
   isSpecializedAgent,
   type AgentResolution,
-} from "../lib/agent-registry.js";
-import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
-import { writeAgentToWorktree } from "../lib/agent-registry.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
-import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel.js";
+} from "../lib/agent-registry";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates";
+import { writeAgentToWorktree } from "../lib/agent-registry";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest";
+import { getPendingQuestions, cleanupAll as cleanupHitl, submitAnswer, type HitlQuestion } from "../lib/hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Types

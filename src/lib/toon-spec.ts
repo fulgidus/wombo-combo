@@ -19,7 +19,7 @@
  *   - Arrays: comma-separated within a single field (no pipes)
  */
 
-import type { TaskStatus, Priority, Difficulty } from "./tasks.js";
+import type { TaskStatus, Priority, Difficulty } from "./tasks";
 
 // ---------------------------------------------------------------------------
 // Status Code Mappings

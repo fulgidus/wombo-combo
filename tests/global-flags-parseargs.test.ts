@@ -14,7 +14,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { parseArgs } from "../src/index.js";
+import { parseArgs } from "../src/index";
 
 // Helper to simulate argv from CLI input
 function argv(...args: string[]): string[] {

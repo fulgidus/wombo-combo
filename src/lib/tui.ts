@@ -24,19 +24,19 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { WaveState, AgentState, AgentStatus } from "./state.js";
-import { agentCounts } from "./state.js";
-import type { ProcessMonitor, ActivityEntry } from "./monitor.js";
+import type { WaveState, AgentState, AgentStatus } from "./state";
+import { agentCounts } from "./state";
+import type { ProcessMonitor, ActivityEntry } from "./monitor";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   tmuxHasSession,
   tmuxAttach,
-} from "./tmux.js";
-import { QuestionPopup } from "./tui-question-popup.js";
-import type { HitlQuestion } from "./hitl-channel.js";
+} from "./tmux";
+import { QuestionPopup } from "./tui-question-popup";
+import type { HitlQuestion } from "./hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Types

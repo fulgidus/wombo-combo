@@ -11,12 +11,12 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { ensureTasksFile } from "../../lib/tasks.js";
-import type { Priority, Difficulty } from "../../lib/tasks.js";
-import type { QuestHitlMode } from "../../lib/quest.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { handleQuestSubcommand } from "../quest.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { ensureTasksFile } from "../../lib/tasks";
+import type { Priority, Difficulty } from "../../lib/tasks";
+import type { QuestHitlMode } from "../../lib/quest";
+import { resolveOutputFormat } from "../../lib/output";
+import { handleQuestSubcommand } from "../quest";
 
 // ---------------------------------------------------------------------------
 // Shared: load config + ensure project is initialized

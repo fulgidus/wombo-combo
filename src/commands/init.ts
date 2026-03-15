@@ -21,8 +21,8 @@ import { resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import { stringify as stringifyYaml } from "yaml";
-import { CONFIG_FILE, DEFAULT_CONFIG, WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config.js";
-import { renderAgentTemplate } from "../lib/templates.js";
+import { CONFIG_FILE, DEFAULT_CONFIG, WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config";
+import { renderAgentTemplate } from "../lib/templates";
 
 export interface InitOptions {
   projectRoot: string;

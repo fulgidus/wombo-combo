@@ -30,8 +30,8 @@ import {
   queuedAgents,
   isWaveComplete,
   generateWaveId,
-} from "../src/lib/state.js";
-import type { WaveState, AgentState, AgentStatus } from "../src/lib/state.js";
+} from "../src/lib/state";
+import type { WaveState, AgentState, AgentStatus } from "../src/lib/state";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -35,19 +35,19 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { Task, TasksFile, Priority } from "./tasks.js";
-import { loadTasks, loadArchive, parseDurationMinutes, formatDuration, areDependenciesMet, getDoneTaskIds } from "./tasks.js";
-import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore } from "./task-store.js";
-import { PRIORITY_ORDER, DIFFICULTY_ORDER } from "./task-schema.js";
-import type { TUISession, SortField } from "./tui-session.js";
-import { saveTUISession } from "./tui-session.js";
-import type { WomboConfig } from "../config.js";
-import { WishlistOverlay } from "./tui-wishlist.js";
-import { UsageOverlay } from "./tui-usage-overlay.js";
-import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage.js";
-import type { UsageTotals } from "./token-usage.js";
-import type { UsageRecord } from "./token-collector.js";
-import type { ErrandSpec } from "./errand-planner.js";
+import type { Task, TasksFile, Priority } from "./tasks";
+import { loadTasks, loadArchive, parseDurationMinutes, formatDuration, areDependenciesMet, getDoneTaskIds } from "./tasks";
+import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore } from "./task-store";
+import { PRIORITY_ORDER, DIFFICULTY_ORDER } from "./task-schema";
+import type { TUISession, SortField } from "./tui-session";
+import { saveTUISession } from "./tui-session";
+import type { WomboConfig } from "../config";
+import { WishlistOverlay } from "./tui-wishlist";
+import { UsageOverlay } from "./tui-usage-overlay";
+import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "./token-usage";
+import type { UsageTotals } from "./token-usage";
+import type { UsageRecord } from "./token-collector";
+import type { ErrandSpec } from "./errand-planner";
 
 // ---------------------------------------------------------------------------
 // Types

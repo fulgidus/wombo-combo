@@ -30,7 +30,7 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { ProposedTask, PlanResult, PlanValidationIssue } from "./quest-planner.js";
+import type { ProposedTask, PlanResult, PlanValidationIssue } from "./quest-planner";
 
 // ---------------------------------------------------------------------------
 // Types

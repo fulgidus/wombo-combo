@@ -30,7 +30,7 @@ import {
   renameSync,
 } from "node:fs";
 import { resolve, join, basename } from "node:path";
-import { WOMBO_DIR } from "../config.js";
+import { WOMBO_DIR } from "../config";
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -9,7 +9,7 @@
  *   woco tasks list --archive           # include archived tasks
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   getReadyFeatures,
@@ -21,11 +21,11 @@ import {
   type Priority,
   type Difficulty,
   type FeaturesFile,
-} from "../../lib/tasks.js";
-import { output, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output.js";
-import { renderTasksList } from "../../lib/toon.js";
-import { loadAllQuests } from "../../lib/quest-store.js";
-import type { Quest } from "../../lib/quest.js";
+} from "../../lib/tasks";
+import { output, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output";
+import { renderTasksList } from "../../lib/toon";
+import { loadAllQuests } from "../../lib/quest-store";
+import type { Quest } from "../../lib/quest";
 
 // ---------------------------------------------------------------------------
 // Types

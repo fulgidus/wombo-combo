@@ -14,8 +14,8 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
-import { BrowserManager, type BrowserVerifyResult, type BrowserTestResult } from "./browser.js";
+import type { WomboConfig } from "../config";
+import { BrowserManager, type BrowserVerifyResult, type BrowserTestResult } from "./browser";
 
 // ---------------------------------------------------------------------------
 // Types

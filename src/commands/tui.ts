@@ -34,38 +34,38 @@
  * close and reopen the TUI without losing their task selections.
  */
 
-import type { WomboConfig } from "../config.js";
-import { ensureTasksFile } from "../lib/tasks.js";
-import { loadTasksFromStore } from "../lib/task-store.js";
-import { loadState } from "../lib/state.js";
-import { loadTUISession, saveTUISession } from "../lib/tui-session.js";
-import type { TUISession } from "../lib/tui-session.js";
-import { TaskBrowser } from "../lib/tui-browser.js";
-import { QuestPicker } from "../lib/tui-quest-picker.js";
-import type { QuestPickerAction } from "../lib/tui-quest-picker.js";
-import { PlanReview } from "../lib/tui-plan-review.js";
-import type { ProposedTask } from "../lib/quest-planner.js";
-import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner.js";
-import type { PlanResult } from "../lib/quest-planner.js";
-import { loadAllQuests, loadQuest, saveQuest, listQuestIds, saveQuestKnowledge } from "../lib/quest-store.js";
-import { GenesisReview } from "../lib/tui-genesis-review.js";
-import type { GenesisReviewAction } from "../lib/tui-genesis-review.js";
-import { runGenesisPlanner } from "../lib/genesis-planner.js";
-import type { GenesisResult, ProposedQuest } from "../lib/genesis-planner.js";
-import { createBlankQuest, getQuestTaskIds } from "../lib/quest.js";
-import { runErrandPlanner, applyErrandPlan } from "../lib/errand-planner.js";
-import type { ErrandSpec } from "../lib/errand-planner.js";
-import { ProgressScreen, showConfirm } from "../lib/tui-progress.js";
-import { WishlistPicker } from "../lib/tui-wishlist.js";
-import type { WishlistAction } from "../lib/tui-wishlist.js";
-import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store.js";
-import type { WishlistItem } from "../lib/wishlist-store.js";
-import { runQuestWizardAsync } from "../lib/tui-quest-wizard.js";
-import { projectExists, formatProjectContext } from "../lib/project-store.js";
-import { runOnboardingAsync } from "../lib/tui-onboarding.js";
-import { cmdLaunch } from "./launch.js";
-import type { LaunchCommandOptions } from "./launch.js";
-import { cmdResume } from "./resume.js";
+import type { WomboConfig } from "../config";
+import { ensureTasksFile } from "../lib/tasks";
+import { loadTasksFromStore } from "../lib/task-store";
+import { loadState } from "../lib/state";
+import { loadTUISession, saveTUISession } from "../lib/tui-session";
+import type { TUISession } from "../lib/tui-session";
+import { TaskBrowser } from "../lib/tui-browser";
+import { QuestPicker } from "../lib/tui-quest-picker";
+import type { QuestPickerAction } from "../lib/tui-quest-picker";
+import { PlanReview } from "../lib/tui-plan-review";
+import type { ProposedTask } from "../lib/quest-planner";
+import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner";
+import type { PlanResult } from "../lib/quest-planner";
+import { loadAllQuests, loadQuest, saveQuest, listQuestIds, saveQuestKnowledge } from "../lib/quest-store";
+import { GenesisReview } from "../lib/tui-genesis-review";
+import type { GenesisReviewAction } from "../lib/tui-genesis-review";
+import { runGenesisPlanner } from "../lib/genesis-planner";
+import type { GenesisResult, ProposedQuest } from "../lib/genesis-planner";
+import { createBlankQuest, getQuestTaskIds } from "../lib/quest";
+import { runErrandPlanner, applyErrandPlan } from "../lib/errand-planner";
+import type { ErrandSpec } from "../lib/errand-planner";
+import { ProgressScreen, showConfirm } from "../lib/tui-progress";
+import { WishlistPicker } from "../lib/tui-wishlist";
+import type { WishlistAction } from "../lib/tui-wishlist";
+import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store";
+import type { WishlistItem } from "../lib/wishlist-store";
+import { runQuestWizardAsync } from "../lib/tui-quest-wizard";
+import { projectExists, formatProjectContext } from "../lib/project-store";
+import { runOnboardingAsync } from "../lib/tui-onboarding";
+import { cmdLaunch } from "./launch";
+import type { LaunchCommandOptions } from "./launch";
+import { cmdResume } from "./resume";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -10,14 +10,14 @@
  * `woco cleanup`. Records are auto-exported when a wave completes.
  */
 
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   listHistory,
   loadHistory,
   type WaveHistoryRecord,
-} from "../lib/history.js";
-import { output, outputError, type OutputFormat } from "../lib/output.js";
-import { renderHistoryList, renderHistoryDetail } from "../lib/toon.js";
+} from "../lib/history";
+import { output, outputError, type OutputFormat } from "../lib/output";
+import { renderHistoryList, renderHistoryDetail } from "../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

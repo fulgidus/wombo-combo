@@ -22,7 +22,7 @@
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 
 // ---------------------------------------------------------------------------
 // Portless Binary Resolution

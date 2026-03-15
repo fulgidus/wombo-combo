@@ -14,8 +14,8 @@
 import { describe, test, expect, mock } from "bun:test";
 import React from "react";
 import { render, renderToString, Text, Box } from "ink";
-import { useTextInput } from "./use-text-input.js";
-import { TextInput } from "./text-input.js";
+import { useTextInput } from "./use-text-input";
+import { TextInput } from "./text-input";
 import { PassThrough } from "node:stream";
 
 // ---------------------------------------------------------------------------

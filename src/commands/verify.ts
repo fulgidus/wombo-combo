@@ -15,13 +15,13 @@
  * to fail on missing tests.
  */
 
-import type { WomboConfig } from "../config.js";
-import { loadFeatures, type Feature } from "../lib/tasks.js";
-import { loadState } from "../lib/state.js";
-import { printDashboard } from "../lib/ui.js";
-import { handleBuildVerification } from "./launch.js";
-import { output, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderVerifyResults } from "../lib/toon.js";
+import type { WomboConfig } from "../config";
+import { loadFeatures, type Feature } from "../lib/tasks";
+import { loadState } from "../lib/state";
+import { printDashboard } from "../lib/ui";
+import { handleBuildVerification } from "./launch";
+import { output, outputMessage, type OutputFormat } from "../lib/output";
+import { renderVerifyResults } from "../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -27,7 +27,7 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { HitlQuestion } from "./hitl-channel.js";
+import type { HitlQuestion } from "./hitl-channel";
 
 // ---------------------------------------------------------------------------
 // Types

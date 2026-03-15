@@ -15,17 +15,17 @@
 import { exec } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   runBrowserVerification,
   extractBrowserErrorSummary,
   type BrowserVerificationResult,
-} from "./browser-verifier.js";
+} from "./browser-verifier";
 import {
   runTddVerification,
   extractTddErrorSummary,
   type TddVerificationResult,
-} from "./tdd-verifier.js";
+} from "./tdd-verifier";
 
 // ---------------------------------------------------------------------------
 // Types

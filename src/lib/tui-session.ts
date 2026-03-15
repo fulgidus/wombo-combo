@@ -9,7 +9,7 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { WOMBO_DIR } from "../config.js";
+import { WOMBO_DIR } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types

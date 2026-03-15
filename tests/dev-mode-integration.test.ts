@@ -13,9 +13,9 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { parseArgs } from "../src/index.js";
-import { extractGlobalFlags } from "../src/commands/citty/global-flags.js";
-import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router.js";
+import { parseArgs } from "../src/index";
+import { extractGlobalFlags } from "../src/commands/citty/global-flags";
+import { resolveGlobalFlagsAndCommand } from "../src/commands/citty/router";
 
 // Helper to simulate argv from CLI input
 function argv(...args: string[]): string[] {

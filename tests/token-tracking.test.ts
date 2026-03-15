@@ -19,8 +19,8 @@ import {
   isTokenEvent,
   parseUsageFromEvent,
   type UsageRecord,
-} from "../src/lib/token-collector.js";
-import type { OpenCodeEvent } from "../src/lib/monitor.js";
+} from "../src/lib/token-collector";
+import type { OpenCodeEvent } from "../src/lib/monitor";
 import {
   UsageStore,
   appendUsageRecord,
@@ -30,8 +30,8 @@ import {
   groupBy,
   type UsageTotals,
   type GroupableField,
-} from "../src/lib/token-usage.js";
-import { WOMBO_DIR } from "../src/config.js";
+} from "../src/lib/token-usage";
+import { WOMBO_DIR } from "../src/config";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -752,7 +752,7 @@ describe("Integration — TokenCollector + UsageStore", () => {
 // CLI — Usage command arg parsing
 // ---------------------------------------------------------------------------
 
-import { parseArgs } from "../src/index.js";
+import { parseArgs } from "../src/index";
 
 describe("Usage command arg parsing", () => {
   function argv(...args: string[]): string[] {

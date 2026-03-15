@@ -20,7 +20,7 @@ import {
 } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { WOMBO_DIR } from "../config.js";
+import { WOMBO_DIR } from "../config";
 import { randomUUID } from "node:crypto";
 
 // ---------------------------------------------------------------------------

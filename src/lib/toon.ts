@@ -17,9 +17,9 @@
  *   - Arrays: comma-separated within a field
  */
 
-import type { Task, TaskStatus, Priority, Difficulty } from "./tasks.js";
-import type { AgentState, WaveState } from "./state.js";
-import type { AgentHistoryRecord, WaveHistoryRecord } from "./history.js";
+import type { Task, TaskStatus, Priority, Difficulty } from "./tasks";
+import type { AgentState, WaveState } from "./state";
+import type { AgentHistoryRecord, WaveHistoryRecord } from "./history";
 import {
   TOON_STATUS_ENCODE,
   TOON_PRIORITY_ENCODE,
@@ -28,7 +28,7 @@ import {
   encodeBool,
   encodeNullable,
   encodeArray,
-} from "./toon-spec.js";
+} from "./toon-spec";
 
 // ---------------------------------------------------------------------------
 // Generic Helpers

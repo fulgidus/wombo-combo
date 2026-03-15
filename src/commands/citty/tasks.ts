@@ -11,19 +11,19 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { ensureTasksFile } from "../../lib/tasks.js";
-import type { FeatureStatus, Priority, Difficulty } from "../../lib/tasks.js";
-import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output.js";
-import { cmdTasksList } from "../tasks/list.js";
-import { cmdTasksAdd } from "../tasks/add.js";
-import { cmdTasksSetStatus } from "../tasks/set-status.js";
-import { cmdTasksSetPriority } from "../tasks/set-priority.js";
-import { cmdTasksSetDifficulty } from "../tasks/set-difficulty.js";
-import { cmdTasksCheck } from "../tasks/check.js";
-import { cmdTasksArchive } from "../tasks/archive.js";
-import { cmdTasksShow } from "../tasks/show.js";
-import { cmdTasksGraph } from "../tasks/graph.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { ensureTasksFile } from "../../lib/tasks";
+import type { FeatureStatus, Priority, Difficulty } from "../../lib/tasks";
+import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output";
+import { cmdTasksList } from "../tasks/list";
+import { cmdTasksAdd } from "../tasks/add";
+import { cmdTasksSetStatus } from "../tasks/set-status";
+import { cmdTasksSetPriority } from "../tasks/set-priority";
+import { cmdTasksSetDifficulty } from "../tasks/set-difficulty";
+import { cmdTasksCheck } from "../tasks/check";
+import { cmdTasksArchive } from "../tasks/archive";
+import { cmdTasksShow } from "../tasks/show";
+import { cmdTasksGraph } from "../tasks/graph";
 
 // ---------------------------------------------------------------------------
 // Shared: load config + ensure project is initialized

@@ -23,7 +23,7 @@ import {
   getCommandFlags,
   type CommandDef,
   type FlagDef,
-} from "../lib/schema.js";
+} from "../lib/schema";
 
 /** Marker comment injected into rc files so we can find and remove our lines. */
 const RC_MARKER = "# Added by woco (wombo-combo) — do not edit this block";

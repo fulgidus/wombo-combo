@@ -18,29 +18,29 @@
  * that survives after the retry command exits.
  */
 
-import type { WomboConfig } from "../config.js";
-import { loadFeatures, type Feature } from "../lib/tasks.js";
+import type { WomboConfig } from "../config";
+import { loadFeatures, type Feature } from "../lib/tasks";
 import {
   loadState,
   saveState,
   updateAgent,
-} from "../lib/state.js";
-import { worktreeReady } from "../lib/worktree.js";
-import { generatePrompt, type QuestPromptContext } from "../lib/prompt.js";
-import { launchInteractive } from "../lib/launcher.js";
-import { ProcessMonitor } from "../lib/monitor.js";
-import { launchSingleHeadless } from "./launch.js";
-import { output, outputError, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderRetry } from "../lib/toon.js";
+} from "../lib/state";
+import { worktreeReady } from "../lib/worktree";
+import { generatePrompt, type QuestPromptContext } from "../lib/prompt";
+import { launchInteractive } from "../lib/launcher";
+import { ProcessMonitor } from "../lib/monitor";
+import { launchSingleHeadless } from "./launch";
+import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { renderRetry } from "../lib/toon";
 import {
   resolveAgentForTask,
   isSpecializedAgent,
   writeAgentToWorktree,
   type AgentResolution,
-} from "../lib/agent-registry.js";
-import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
-import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
+} from "../lib/agent-registry";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates";
+import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest";
 
 // ---------------------------------------------------------------------------
 // Types

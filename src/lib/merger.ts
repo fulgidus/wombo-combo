@@ -13,8 +13,8 @@
 
 import { exec } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
-import type { WomboConfig } from "../config.js";
-import { runTier25, type Tier25Result, type FileHunkResult } from "./conflict-hunks.js";
+import type { WomboConfig } from "../config";
+import { runTier25, type Tier25Result, type FileHunkResult } from "./conflict-hunks";
 
 // ---------------------------------------------------------------------------
 // Types

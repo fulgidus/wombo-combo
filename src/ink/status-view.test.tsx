@@ -11,8 +11,8 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString, render, Text } from "ink";
-import { StatusView } from "./status-view.js";
-import { Shell } from "./shell.js";
+import { StatusView } from "./status-view";
+import { Shell } from "./shell";
 import { PassThrough } from "node:stream";
 
 // ---------------------------------------------------------------------------

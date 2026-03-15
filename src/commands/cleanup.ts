@@ -25,12 +25,12 @@
 import { existsSync, unlinkSync, rmSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../config.js";
-import { WOMBO_DIR } from "../config.js";
-import { killAllMuxSessions, listMuxSessions } from "../lib/launcher.js";
-import { cleanupAllWorktrees, listWomboWorktrees, worktreesDir, isWorktreesDirEmpty } from "../lib/worktree.js";
-import { output, outputMessage, type OutputFormat } from "../lib/output.js";
-import { renderCleanup } from "../lib/toon.js";
+import type { WomboConfig } from "../config";
+import { WOMBO_DIR } from "../config";
+import { killAllMuxSessions, listMuxSessions } from "../lib/launcher";
+import { cleanupAllWorktrees, listWomboWorktrees, worktreesDir, isWorktreesDirEmpty } from "../lib/worktree";
+import { output, outputMessage, type OutputFormat } from "../lib/output";
+import { renderCleanup } from "../lib/toon";
 
 export interface CleanupOptions {
   projectRoot: string;

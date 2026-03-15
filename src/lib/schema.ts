@@ -17,11 +17,11 @@ import { resolve } from "node:path";
 
 // Re-export types and GLOBAL_FLAGS from schema-types for backward compatibility.
 // All existing consumers import from schema.ts — these re-exports keep them working.
-export type { FlagDef, PositionalDef, CommandDef } from "./schema-types.js";
-export { GLOBAL_FLAGS } from "./schema-types.js";
+export type { FlagDef, PositionalDef, CommandDef } from "./schema-types";
+export { GLOBAL_FLAGS } from "./schema-types";
 
-import type { CommandDef, FlagDef } from "./schema-types.js";
-import { GLOBAL_FLAGS } from "./schema-types.js";
+import type { CommandDef, FlagDef } from "./schema-types";
+import { GLOBAL_FLAGS } from "./schema-types";
 
 // ---------------------------------------------------------------------------
 // Dynamic version reader

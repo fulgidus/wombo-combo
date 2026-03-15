@@ -10,8 +10,8 @@
 
 import { describe, test, expect, mock, beforeEach, afterEach } from "bun:test";
 import { resolve } from "node:path";
-import type { WomboConfig } from "../src/config.js";
-import type { WorktreeInfo } from "../src/lib/worktree.js";
+import type { WomboConfig } from "../src/config";
+import type { WorktreeInfo } from "../src/lib/worktree";
 
 // ---------------------------------------------------------------------------
 // Helpers: minimal WomboConfig for testing
@@ -74,7 +74,7 @@ function makeConfig(overrides?: Partial<WomboConfig["git"]>): WomboConfig {
 // Tests for worktreePath and featureBranchName (pure functions, no git needed)
 // ---------------------------------------------------------------------------
 
-import { worktreePath, featureBranchName } from "../src/lib/worktree.js";
+import { worktreePath, featureBranchName } from "../src/lib/worktree";
 
 describe("featureBranchName", () => {
   test("generates correct branch name with default prefix", () => {

@@ -11,7 +11,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
-import { App } from "./app.js";
+import { App } from "./app";
 
 describe("App shell", () => {
   test("renders welcome text", () => {

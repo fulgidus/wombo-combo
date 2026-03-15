@@ -15,7 +15,7 @@ import {
   parseTestCounts,
   extractTestErrorSummary,
   runTests,
-} from "../src/lib/test-runner.js";
+} from "../src/lib/test-runner";
 
 // ---------------------------------------------------------------------------
 // Helpers

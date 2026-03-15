@@ -6,9 +6,9 @@
  * import from here. No more duplicated VALID_* arrays.
  */
 
-import type { TaskStatus, Priority, Difficulty, Task } from "./tasks.js";
-import { parseDurationMinutes } from "./tasks.js";
-import { validateId, type ValidationResult } from "./validate.js";
+import type { TaskStatus, Priority, Difficulty, Task } from "./tasks";
+import { parseDurationMinutes } from "./tasks";
+import { validateId, type ValidationResult } from "./validate";
 
 // ---------------------------------------------------------------------------
 // Canonical enum arrays (order matters: used for display and sorting)

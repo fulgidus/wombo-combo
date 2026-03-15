@@ -16,7 +16,7 @@
  * Reads from .wombo-combo/usage.jsonl and aggregates token counts.
  */
 
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   loadUsageRecords,
   filterByDateRange,
@@ -24,8 +24,8 @@ import {
   totalUsage,
   type UsageTotals,
   type GroupableField,
-} from "../lib/token-usage.js";
-import { output, outputError, type OutputFormat } from "../lib/output.js";
+} from "../lib/token-usage";
+import { output, outputError, type OutputFormat } from "../lib/output";
 
 // ---------------------------------------------------------------------------
 // Types

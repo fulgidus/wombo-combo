@@ -7,7 +7,7 @@
  *                   [--depends-on "task1,task2"]
  */
 
-import type { WomboConfig } from "../../config.js";
+import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
   saveFeatures,
@@ -15,13 +15,13 @@ import {
   allFeatureIds,
   type Priority,
   type Difficulty,
-} from "../../lib/tasks.js";
+} from "../../lib/tasks";
 import {
   VALID_PRIORITIES,
   VALID_DIFFICULTIES,
-} from "../../lib/task-schema.js";
-import { outputError, outputMessage, type OutputFormat } from "../../lib/output.js";
-import { validateEnum } from "../../lib/validate.js";
+} from "../../lib/task-schema";
+import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { validateEnum } from "../../lib/validate";
 
 // ---------------------------------------------------------------------------
 // Types

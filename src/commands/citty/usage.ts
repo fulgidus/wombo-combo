@@ -6,9 +6,9 @@
  */
 
 import { defineCommand } from "citty";
-import { loadConfig, validateConfig, isProjectInitialized } from "../../config.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { cmdUsage, type UsageGroupBy, VALID_USAGE_GROUP_BY } from "../usage.js";
+import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
+import { resolveOutputFormat } from "../../lib/output";
+import { cmdUsage, type UsageGroupBy, VALID_USAGE_GROUP_BY } from "../usage";
 
 export const usageCommand = defineCommand({
   meta: {

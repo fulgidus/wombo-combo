@@ -16,7 +16,7 @@
  */
 
 import type { CommandDef as CittyCommandDef } from "citty";
-import type { CommandDef, FlagDef, PositionalDef } from "./schema-types.js";
+import type { CommandDef, FlagDef, PositionalDef } from "./schema-types";
 
 // ---------------------------------------------------------------------------
 // Extended metadata for citty commands (wombo-specific fields)

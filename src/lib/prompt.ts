@@ -9,13 +9,13 @@
  *   - All project-specific values come from config (no hardcoded Astro references)
  */
 
-import type { Feature, Subtask } from "./tasks.js";
-import { formatDuration, parseDurationMinutes } from "./tasks.js";
-import type { WomboConfig } from "../config.js";
-import { isPortlessAvailable, portlessUrl } from "./portless.js";
-import type { QuestHitlMode } from "./quest.js";
-import { compressConstraints, compressSource } from "./prompt-compress.js";
-import { formatHunksForLLM, type Tier25Result } from "./conflict-hunks.js";
+import type { Feature, Subtask } from "./tasks";
+import { formatDuration, parseDurationMinutes } from "./tasks";
+import type { WomboConfig } from "../config";
+import { isPortlessAvailable, portlessUrl } from "./portless";
+import type { QuestHitlMode } from "./quest";
+import { compressConstraints, compressSource } from "./prompt-compress";
+import { formatHunksForLLM, type Tier25Result } from "./conflict-hunks";
 
 // ---------------------------------------------------------------------------
 // Quest Context (optional — passed when launching within a quest)

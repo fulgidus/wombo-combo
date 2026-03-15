@@ -7,7 +7,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { TextBuffer } from "./text-buffer.js";
+import { TextBuffer } from "./text-buffer";
 
 // ---------------------------------------------------------------------------
 // Construction

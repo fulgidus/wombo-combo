@@ -45,8 +45,8 @@
 
 import { resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "./config.js";
-import { loadState, saveState } from "./lib/state.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "./config";
+import { loadState, saveState } from "./lib/state";
 
 // ---------------------------------------------------------------------------
 // Dev-mode guard: warn if running the global binary inside the wombo-combo repo
@@ -85,41 +85,41 @@ function checkDevModeGuard(): void {
   }
 }
 
-import { cmdInit } from "./commands/init.js";
-import { cmdLaunch } from "./commands/launch.js";
-import { cmdResume } from "./commands/resume.js";
-import { cmdStatus } from "./commands/status.js";
-import { cmdVerify } from "./commands/verify.js";
-import { cmdMerge } from "./commands/merge.js";
-import { cmdRetry } from "./commands/retry.js";
-import { cmdCleanup } from "./commands/cleanup.js";
-import { cmdAbort } from "./commands/abort.js";
-import { cmdLogs } from "./commands/logs.js";
-import { cmdUpgrade } from "./commands/upgrade.js";
-import { cmdHistory } from "./commands/history.js";
-import { cmdCompletion } from "./commands/completion.js";
-import { isCittyCommand, runCittyCommand } from "./commands/citty/router.js";
-import { cmdTasksList } from "./commands/tasks/list.js";
-import { cmdTasksAdd } from "./commands/tasks/add.js";
-import { cmdTasksSetStatus } from "./commands/tasks/set-status.js";
-import { cmdTasksSetPriority } from "./commands/tasks/set-priority.js";
-import { cmdTasksSetDifficulty } from "./commands/tasks/set-difficulty.js";
-import { cmdTasksCheck } from "./commands/tasks/check.js";
-import { cmdTasksArchive } from "./commands/tasks/archive.js";
-import { cmdTasksShow } from "./commands/tasks/show.js";
-import { cmdTasksGraph } from "./commands/tasks/graph.js";
-import { cmdTui } from "./commands/tui.js";
-import { handleQuestSubcommand } from "./commands/quest.js";
-import { cmdGenesis } from "./commands/genesis.js";
-import { cmdUsage, type UsageGroupBy } from "./commands/usage.js";
-import { ensureTasksFile } from "./lib/tasks.js";
-import type { Priority, Difficulty, FeatureStatus } from "./lib/tasks.js";
-import type { QuestHitlMode } from "./lib/quest.js";
-import { resolveOutputFormat, output, outputError, type OutputFormat } from "./lib/output.js";
-import { validateId, validateText, validateBranchName, validateDuration, assertValid } from "./lib/validate.js";
-import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp, renderGlobalHelp, COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
-import { buildToonSpec, renderToonLegend } from "./lib/toon-spec.js";
-import { addItem as addWishlistItem, deleteItem as deleteWishlistItem, listItems as listWishlistItems, moveItem as moveWishlistItem } from "./lib/wishlist-store.js";
+import { cmdInit } from "./commands/init";
+import { cmdLaunch } from "./commands/launch";
+import { cmdResume } from "./commands/resume";
+import { cmdStatus } from "./commands/status";
+import { cmdVerify } from "./commands/verify";
+import { cmdMerge } from "./commands/merge";
+import { cmdRetry } from "./commands/retry";
+import { cmdCleanup } from "./commands/cleanup";
+import { cmdAbort } from "./commands/abort";
+import { cmdLogs } from "./commands/logs";
+import { cmdUpgrade } from "./commands/upgrade";
+import { cmdHistory } from "./commands/history";
+import { cmdCompletion } from "./commands/completion";
+import { isCittyCommand, runCittyCommand } from "./commands/citty/router";
+import { cmdTasksList } from "./commands/tasks/list";
+import { cmdTasksAdd } from "./commands/tasks/add";
+import { cmdTasksSetStatus } from "./commands/tasks/set-status";
+import { cmdTasksSetPriority } from "./commands/tasks/set-priority";
+import { cmdTasksSetDifficulty } from "./commands/tasks/set-difficulty";
+import { cmdTasksCheck } from "./commands/tasks/check";
+import { cmdTasksArchive } from "./commands/tasks/archive";
+import { cmdTasksShow } from "./commands/tasks/show";
+import { cmdTasksGraph } from "./commands/tasks/graph";
+import { cmdTui } from "./commands/tui";
+import { handleQuestSubcommand } from "./commands/quest";
+import { cmdGenesis } from "./commands/genesis";
+import { cmdUsage, type UsageGroupBy } from "./commands/usage";
+import { ensureTasksFile } from "./lib/tasks";
+import type { Priority, Difficulty, FeatureStatus } from "./lib/tasks";
+import type { QuestHitlMode } from "./lib/quest";
+import { resolveOutputFormat, output, outputError, type OutputFormat } from "./lib/output";
+import { validateId, validateText, validateBranchName, validateDuration, assertValid } from "./lib/validate";
+import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp, renderGlobalHelp, COMMAND_REGISTRY, buildAliasMap } from "./lib/schema";
+import { buildToonSpec, renderToonLegend } from "./lib/toon-spec";
+import { addItem as addWishlistItem, deleteItem as deleteWishlistItem, listItems as listWishlistItems, moveItem as moveWishlistItem } from "./lib/wishlist-store";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -8,19 +8,19 @@
  * (if --requeue is passed, returning it to the queue for retry).
  */
 
-import type { WomboConfig } from "../config.js";
+import type { WomboConfig } from "../config";
 import {
   loadState,
   saveState,
   updateAgent,
   type AgentState,
-} from "../lib/state.js";
+} from "../lib/state";
 import {
   killMuxSession,
   isProcessRunning,
-} from "../lib/launcher.js";
-import { output, outputError, type OutputFormat } from "../lib/output.js";
-import { renderAbort } from "../lib/toon.js";
+} from "../lib/launcher";
+import { output, outputError, type OutputFormat } from "../lib/output";
+import { renderAbort } from "../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Types

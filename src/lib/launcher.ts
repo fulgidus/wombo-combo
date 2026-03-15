@@ -43,8 +43,8 @@
 
 import { spawn, execSync, type ChildProcess } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
-import type { WomboConfig } from "../config.js";
-import { resolveAgentBin } from "../config.js";
+import type { WomboConfig } from "../config";
+import { resolveAgentBin } from "../config";
 import {
   ensureTmux,
   tmuxNewSession,
@@ -55,9 +55,9 @@ import {
   tmuxLoadBuffer,
   tmuxPasteBuffer,
   tmuxSendKeys,
-} from "./tmux.js";
-import { portlessEnv } from "./portless.js";
-import { hitlDir } from "./hitl-channel.js";
+} from "./tmux";
+import { portlessEnv } from "./portless";
+import { hitlDir } from "./hitl-channel";
 import { resolve, dirname, join, basename } from "node:path";
 
 // ---------------------------------------------------------------------------

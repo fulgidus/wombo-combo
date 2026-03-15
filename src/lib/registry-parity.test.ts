@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { BRIDGE_REGISTRY, findBridgeCommandDef } from "./citty-registry.js";
+import { BRIDGE_REGISTRY, findBridgeCommandDef } from "./citty-registry";
 import {
   COMMAND_REGISTRY,
   findCommandDef,
@@ -20,7 +20,7 @@ import {
   GLOBAL_FLAGS,
   type CommandDef,
   type FlagDef,
-} from "./schema.js";
+} from "./schema";
 
 // ---------------------------------------------------------------------------
 // Helpers

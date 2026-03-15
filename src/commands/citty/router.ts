@@ -12,27 +12,27 @@
  */
 
 import { runCommand } from "citty";
-import { versionCommand } from "./version.js";
-import { helpCommand } from "./help.js";
-import { describeCommand } from "./describe.js";
-import { extractGlobalFlags, type GlobalFlags } from "./global-flags.js";
-import { initCommand } from "./init.js";
-import { statusCommand } from "./status.js";
-import { verifyCommand } from "./verify.js";
-import { mergeCommand } from "./merge.js";
-import { abortCommand } from "./abort.js";
-import { cleanupCommand } from "./cleanup.js";
-import { historyCommand } from "./history.js";
-import { logsCommand } from "./logs.js";
-import { usageCommand } from "./usage.js";
-import { upgradeCommand } from "./upgrade.js";
-import { completionCommand } from "./completion.js";
-import { launchCommand } from "./launch.js";
-import { resumeCommand } from "./resume.js";
-import { retryCommand } from "./retry.js";
-import { tasksCommand } from "./tasks.js";
-import { questCommand } from "./quest.js";
-import { wishlistCommand } from "./wishlist.js";
+import { versionCommand } from "./version";
+import { helpCommand } from "./help";
+import { describeCommand } from "./describe";
+import { extractGlobalFlags, type GlobalFlags } from "./global-flags";
+import { initCommand } from "./init";
+import { statusCommand } from "./status";
+import { verifyCommand } from "./verify";
+import { mergeCommand } from "./merge";
+import { abortCommand } from "./abort";
+import { cleanupCommand } from "./cleanup";
+import { historyCommand } from "./history";
+import { logsCommand } from "./logs";
+import { usageCommand } from "./usage";
+import { upgradeCommand } from "./upgrade";
+import { completionCommand } from "./completion";
+import { launchCommand } from "./launch";
+import { resumeCommand } from "./resume";
+import { retryCommand } from "./retry";
+import { tasksCommand } from "./tasks";
+import { questCommand } from "./quest";
+import { wishlistCommand } from "./wishlist";
 
 /**
  * Set of all command names / aliases that are handled by citty.

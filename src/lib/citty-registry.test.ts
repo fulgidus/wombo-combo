@@ -9,8 +9,8 @@ import { describe, test, expect } from "bun:test";
 import {
   BRIDGE_REGISTRY,
   findBridgeCommandDef,
-} from "./citty-registry.js";
-import type { CommandDef } from "./schema-types.js";
+} from "./citty-registry";
+import type { CommandDef } from "./schema-types";
 
 // ---------------------------------------------------------------------------
 // Registry completeness

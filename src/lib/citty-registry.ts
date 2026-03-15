@@ -14,34 +14,34 @@
  */
 
 import type { CommandDef as CittyCommandDef } from "citty";
-import { cittyCommandToCommandDef, type BridgeCommandMeta } from "./citty-bridge.js";
-import type { CommandDef } from "./schema-types.js";
-import { VALID_STATUSES, VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema.js";
+import { cittyCommandToCommandDef, type BridgeCommandMeta } from "./citty-bridge";
+import type { CommandDef } from "./schema-types";
+import { VALID_STATUSES, VALID_PRIORITIES, VALID_DIFFICULTIES } from "./task-schema";
 
 // ---------------------------------------------------------------------------
 // Citty command imports
 // ---------------------------------------------------------------------------
 
-import { initCommand } from "../commands/citty/init.js";
-import { launchCommand } from "../commands/citty/launch.js";
-import { resumeCommand } from "../commands/citty/resume.js";
-import { retryCommand } from "../commands/citty/retry.js";
-import { statusCommand } from "../commands/citty/status.js";
-import { verifyCommand } from "../commands/citty/verify.js";
-import { mergeCommand } from "../commands/citty/merge.js";
-import { abortCommand } from "../commands/citty/abort.js";
-import { cleanupCommand } from "../commands/citty/cleanup.js";
-import { historyCommand } from "../commands/citty/history.js";
-import { logsCommand } from "../commands/citty/logs.js";
-import { usageCommand } from "../commands/citty/usage.js";
-import { upgradeCommand } from "../commands/citty/upgrade.js";
-import { completionCommand } from "../commands/citty/completion.js";
-import { tasksCommand } from "../commands/citty/tasks.js";
-import { questCommand } from "../commands/citty/quest.js";
-import { wishlistCommand } from "../commands/citty/wishlist.js";
-import { helpCommand } from "../commands/citty/help.js";
-import { versionCommand } from "../commands/citty/version.js";
-import { describeCommand } from "../commands/citty/describe.js";
+import { initCommand } from "../commands/citty/init";
+import { launchCommand } from "../commands/citty/launch";
+import { resumeCommand } from "../commands/citty/resume";
+import { retryCommand } from "../commands/citty/retry";
+import { statusCommand } from "../commands/citty/status";
+import { verifyCommand } from "../commands/citty/verify";
+import { mergeCommand } from "../commands/citty/merge";
+import { abortCommand } from "../commands/citty/abort";
+import { cleanupCommand } from "../commands/citty/cleanup";
+import { historyCommand } from "../commands/citty/history";
+import { logsCommand } from "../commands/citty/logs";
+import { usageCommand } from "../commands/citty/usage";
+import { upgradeCommand } from "../commands/citty/upgrade";
+import { completionCommand } from "../commands/citty/completion";
+import { tasksCommand } from "../commands/citty/tasks";
+import { questCommand } from "../commands/citty/quest";
+import { wishlistCommand } from "../commands/citty/wishlist";
+import { helpCommand } from "../commands/citty/help";
+import { versionCommand } from "../commands/citty/version";
+import { describeCommand } from "../commands/citty/describe";
 
 // ---------------------------------------------------------------------------
 // Registry entry type

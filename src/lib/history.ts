@@ -22,7 +22,7 @@ import {
   renameSync,
 } from "node:fs";
 import { resolve, basename } from "node:path";
-import type { WaveState, AgentState, AgentStatus } from "./state.js";
+import type { WaveState, AgentState, AgentStatus } from "./state";
 
 // ---------------------------------------------------------------------------
 // Types

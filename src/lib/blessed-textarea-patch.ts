@@ -9,7 +9,7 @@
  * rendered at the end of the text.  This patch fixes both problems.
  *
  * Usage:
- *   import { patchTextarea } from "./blessed-textarea-patch.js";
+ *   import { patchTextarea } from "./blessed-textarea-patch";
  *   const ta = blessed.textarea({ ... });
  *   patchTextarea(ta);
  *

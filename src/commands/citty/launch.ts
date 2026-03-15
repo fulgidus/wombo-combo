@@ -16,11 +16,11 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { ensureTasksFile } from "../../lib/tasks.js";
-import type { Priority, Difficulty } from "../../lib/tasks.js";
-import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output.js";
-import { cmdLaunch, type LaunchCommandOptions } from "../launch.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { ensureTasksFile } from "../../lib/tasks";
+import type { Priority, Difficulty } from "../../lib/tasks";
+import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output";
+import { cmdLaunch, type LaunchCommandOptions } from "../launch";
 
 // ---------------------------------------------------------------------------
 // Parsed launch args (intermediate representation before config merge)

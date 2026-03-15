@@ -116,10 +116,12 @@ conventions:
     prefix configurable via config.git.branchPrefix (default "feature/").
   testing: bun test (built-in runner), tests/ directory at project root, no external test framework. Test files use
     *.test.ts naming. TDD pipeline available via config.tdd when enabled.
-  coding_style: 'ESM only ("type": "module" in package.json). Use .js extensions in import paths (Bun resolves to .ts at
-    runtime). Prefer Bun APIs (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib equivalents. Minimal dependencies
-    — justify any new addition. Hand-rolled arg parsing is legacy; new commands go in separate files under
-    src/commands/. Keep modules focused and under ~500 lines where practical.'
+  coding_style: 'ESM only ("type": "module" in package.json). Use no file extensions in relative import paths (e.g.
+    import { foo } from "./foo", NOT "./foo.js"). The tsconfig uses moduleResolution: bundler which resolves extensionless
+    imports to .ts files automatically. The .js extension convention is legacy and must not be used. Prefer Bun APIs
+    (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib equivalents. Minimal dependencies — justify any new addition.
+    Hand-rolled arg parsing is legacy; new commands go in separate files under src/commands/. Keep modules focused and
+    under ~500 lines where practical.'
   naming: "kebab-case for files and task IDs (pattern: ^[a-z0-9]+(-[a-z0-9]+)*$). camelCase for functions and variables.
     PascalCase for types, classes, and interfaces. Prefix bug tasks with bug-. Prefix TUI modules with tui-. Template
     files use descriptive kebab-case."
@@ -135,13 +137,18 @@ rules:
       - testing
       - dogfooding
   - id: rule-2
-    text: Always publish to npm — suggest distribution via `bun add -g wombo-combo`
+    text: Never publish manually — publishing is handled by the GitHub Actions release workflow triggered on git tag pushes.
+      Never run `npm publish` manually. To release, bump package.json version, commit, tag (v<version>), push with --tags.
+      Users install via `bun add -g wombo-combo`.
     scope: distribution
-    rigidity: soft
-    consequences: Users cannot install via npm; reduces discoverability
+    rigidity: hard
+    consequences: Bypasses CI checks; publishes untested code; breaks the release audit trail; may publish without proper
+      version bump
     tags:
       - distribution
       - npm
+      - release
+      - ci
   - id: rule-3
     text: Keep bun.lock committed for reproducible installs
     scope: dependencies

@@ -12,7 +12,7 @@
  */
 
 import { defineCommand } from "citty";
-import { cmdCompletion, installCompletions, uninstallCompletions } from "../completion.js";
+import { cmdCompletion, installCompletions, uninstallCompletions } from "../completion";
 
 export const completionCommand = defineCommand({
   meta: {

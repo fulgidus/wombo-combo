@@ -14,8 +14,8 @@
 
 import { resolve } from "node:path";
 import { existsSync, readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
-import { output, outputError, type OutputFormat } from "../lib/output.js";
-import { renderLogs } from "../lib/toon.js";
+import { output, outputError, type OutputFormat } from "../lib/output";
+import { renderLogs } from "../lib/toon";
 
 // ---------------------------------------------------------------------------
 // Constants

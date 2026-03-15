@@ -6,8 +6,8 @@
  */
 
 import { defineCommand } from "citty";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { cmdLogs } from "../logs.js";
+import { resolveOutputFormat } from "../../lib/output";
+import { cmdLogs } from "../logs";
 
 export const logsCommand = defineCommand({
   meta: {

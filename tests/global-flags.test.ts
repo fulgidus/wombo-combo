@@ -18,7 +18,7 @@ import {
   extractGlobalFlags,
   type GlobalFlags,
   type ExtractResult,
-} from "../src/commands/citty/global-flags.js";
+} from "../src/commands/citty/global-flags";
 
 // ---------------------------------------------------------------------------
 // Basic extraction

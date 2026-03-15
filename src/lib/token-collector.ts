@@ -118,7 +118,7 @@
  *   and known model pricing.
  */
 
-import type { OpenCodeEvent } from "./monitor.js";
+import type { OpenCodeEvent } from "./monitor";
 
 // ---------------------------------------------------------------------------
 // Types

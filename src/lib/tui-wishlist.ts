@@ -54,8 +54,8 @@
 
 import blessed from "neo-blessed";
 import type { Widgets } from "neo-blessed";
-import type { WishlistItem } from "./wishlist-store.js";
-import { loadWishlist, addItem, deleteItem, moveItem } from "./wishlist-store.js";
+import type { WishlistItem } from "./wishlist-store";
+import { loadWishlist, addItem, deleteItem, moveItem } from "./wishlist-store";
 
 // ---------------------------------------------------------------------------
 // Types

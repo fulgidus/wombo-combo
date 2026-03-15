@@ -15,10 +15,10 @@
  */
 
 import blessed from "neo-blessed";
-import type { AgentResolution, ResolvedAgent } from "./agent-registry.js";
-import { isSpecializedAgent } from "./agent-registry.js";
-import type { Task } from "./tasks.js";
-import type { AgentRegistryMode, WomboConfig } from "../config.js";
+import type { AgentResolution, ResolvedAgent } from "./agent-registry";
+import { isSpecializedAgent } from "./agent-registry";
+import type { Task } from "./tasks";
+import type { AgentRegistryMode, WomboConfig } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types

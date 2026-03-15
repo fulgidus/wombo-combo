@@ -6,7 +6,7 @@
  */
 
 import { defineCommand } from "citty";
-import { cmdUpgrade } from "../upgrade.js";
+import { cmdUpgrade } from "../upgrade";
 
 export const upgradeCommand = defineCommand({
   meta: {

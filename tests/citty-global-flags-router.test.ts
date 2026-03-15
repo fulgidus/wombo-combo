@@ -11,7 +11,7 @@ import {
   isCittyCommand,
   runCittyCommand,
   resolveGlobalFlagsAndCommand,
-} from "../src/commands/citty/router.js";
+} from "../src/commands/citty/router";
 
 // ---------------------------------------------------------------------------
 // resolveGlobalFlagsAndCommand tests
