@@ -262,7 +262,8 @@ async function installVersion(version: string, source: InstallSource): Promise<v
   }
 
   console.log(`\nSuccessfully upgraded to ${version}.`);
-  checkShellCompletions();
+  const { installCompletions } = await import("./completion.js");
+  installCompletions();
 }
 
 // ---------------------------------------------------------------------------
@@ -366,95 +367,4 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   }
 
   await installVersion(latest.version, upgradeSource);
-}
-
-// ---------------------------------------------------------------------------
-// Shell completion check
-// ---------------------------------------------------------------------------
-
-/** Marker strings that woco completion injects into rc files. */
-const COMPLETION_MARKERS: Record<string, string> = {
-  bash: "woco completion bash",
-  zsh: "woco completion zsh",
-  fish: "woco completion fish", // covers both eval and source
-};
-
-/** Well-known rc file paths per shell (relative to $HOME). */
-const RC_FILES: Record<string, string[]> = {
-  bash: [".bashrc", ".bash_profile", ".profile"],
-  zsh: [".zshrc", ".zprofile"],
-};
-
-/**
- * Result of shell completion check.
- *   - `rcPath`: absolute path to the rc file where completions are configured (null if not found)
- *   - `shell`: detected shell name (null if unknown)
- */
-export interface CompletionCheckResult {
-  shell: string | null;
-  rcPath: string | null;
-}
-
-/**
- * Check whether the user's shell has woco completions set up.
- * Prints a hint if not. Returns info about what was found so callers
- * (e.g. postinstall) can source the rc file.
- */
-export function checkShellCompletions(): CompletionCheckResult {
-  const home = homedir();
-  const shell = detectCurrentShell();
-  const result: CompletionCheckResult = { shell, rcPath: null };
-
-  if (!shell) return result; // Unknown shell — don't nag
-
-  // Fish: check for the completions file instead of rc
-  if (shell === "fish") {
-    const fishCompFile = resolve(home, ".config/fish/completions/woco.fish");
-    if (existsSync(fishCompFile)) {
-      result.rcPath = fishCompFile;
-    } else {
-      console.log("");
-      console.log("Tip: Shell completions are not installed for fish.");
-      console.log("  To enable tab-completion, run:");
-      console.log("    woco completion fish > ~/.config/fish/completions/woco.fish");
-    }
-    return result;
-  }
-
-  // Bash / Zsh: scan rc files for the marker
-  const rcCandidates = RC_FILES[shell] ?? [];
-  const marker = COMPLETION_MARKERS[shell];
-  if (!marker) return result;
-
-  for (const rc of rcCandidates) {
-    const rcPath = resolve(home, rc);
-    try {
-      if (!existsSync(rcPath)) continue;
-      const content = readFileSync(rcPath, "utf-8");
-      if (content.includes(marker)) {
-        result.rcPath = rcPath;
-        return result; // Already set up
-      }
-    } catch {
-      // Can't read — skip
-    }
-  }
-
-  // Not found in any rc file
-  const rcFile = shell === "zsh" ? "~/.zshrc" : "~/.bashrc";
-  const evalLine = `eval "$(woco completion ${shell})"`;
-  console.log("");
-  console.log(`Tip: Shell completions are not installed for ${shell}.`);
-  console.log(`  Add this line to ${rcFile}:`);
-  console.log(`    ${evalLine}`);
-  console.log(`  Then reload your shell:`);
-  console.log(`    source ${rcFile}`);
-  return result;
-}
-
-function detectCurrentShell(): string | null {
-  const shellPath = process.env.SHELL || "";
-  const name = shellPath.split("/").pop() || "";
-  if (name === "bash" || name === "zsh" || name === "fish") return name;
-  return null;
 }
