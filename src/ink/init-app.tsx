@@ -14,6 +14,8 @@
 
 import React, { useState, useCallback, useMemo } from "react";
 import { Box, Text, useApp, render } from "ink";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { InitForm, type InitFormDefaults } from "./init-form";
 import {
   detectProjectName,
@@ -22,6 +24,8 @@ import {
   detectInstallCommand,
 } from "./init-detect";
 import { writeInitFiles } from "./init-writer";
+import { loadConfig } from "../config";
+import { renderAgentTemplate } from "../lib/templates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -174,16 +178,10 @@ export async function renderInitApp(props: InitAppProps): Promise<void> {
 
 /**
  * Install the generalist agent template into .opencode/agents/.
- * This is a simplified version — the full template rendering is in
- * src/lib/templates.ts but we import it lazily to avoid circular deps.
+ * Uses the project's loaded config and the template renderer to create
+ * the agent definition file.
  */
 function installAgentTemplate(projectRoot: string): void {
-  // Lazy import to avoid pulling in the entire template system at module load
-  const { existsSync, mkdirSync, writeFileSync } = require("node:fs");
-  const { resolve } = require("node:path");
-  const { loadConfig } = require("../config");
-  const { renderAgentTemplate } = require("../lib/templates");
-
   const config = loadConfig(projectRoot);
   const agentDir = resolve(projectRoot, ".opencode", "agents");
   const agentDefPath = resolve(agentDir, `${config.agent.name}.md`);

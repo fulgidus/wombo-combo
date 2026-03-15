@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput, useApp } from "ink";
+import { Box, Text, useInput } from "ink";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,12 +42,12 @@ export interface InitFormProps {
 // Field definitions
 // ---------------------------------------------------------------------------
 
-interface FieldDef {
+export interface FieldDef {
   key: keyof InitFormDefaults;
   label: string;
 }
 
-const FIELDS: FieldDef[] = [
+export const FIELDS: FieldDef[] = [
   { key: "baseBranch", label: "Base Branch" },
   { key: "buildCommand", label: "Build Command" },
   { key: "installCommand", label: "Install Command" },
@@ -108,13 +108,17 @@ export function InitForm({
   const [editBuffer, setEditBuffer] = useState("");
 
   const handleConfirm = useCallback(() => {
-    // If editing, apply the edit first
+    // If editing, merge the edit buffer into values before confirming.
+    // We compute finalValues inline because setValues is async and the
+    // state update won't have applied when onConfirm runs.
+    let finalValues = values;
     if (editing) {
       const field = FIELDS[focusedField];
-      setValues((prev) => ({ ...prev, [field.key]: editBuffer }));
+      finalValues = { ...values, [field.key]: editBuffer };
+      setValues(finalValues);
       setEditing(false);
     }
-    onConfirm(values);
+    onConfirm(finalValues);
   }, [values, onConfirm, editing, editBuffer, focusedField]);
 
   const handleCancel = useCallback(() => {

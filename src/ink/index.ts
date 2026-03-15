@@ -18,7 +18,7 @@ export {
   getEditorCommand,
   type OpenEditorOptions,
 } from "./open-editor";
-export { InitForm, type InitFormProps, type InitFormDefaults } from "./init-form";
+export { InitForm, FIELDS, type InitFormProps, type InitFormDefaults, type FieldDef } from "./init-form";
 export { InitApp, renderInitApp, type InitAppProps } from "./init-app";
 export {
   detectProjectName,

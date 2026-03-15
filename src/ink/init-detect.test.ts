@@ -6,6 +6,7 @@
  *   - detectBaseBranch detects git default branch
  *   - detectBuildCommand reads from package.json scripts
  *   - detectInstallCommand detects package manager
+ *   - Edge cases: invalid JSON, pnpm, bun.lockb, packed-refs, feature branches
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
@@ -34,6 +35,14 @@ describe("detectProjectName", () => {
 
   test("handles paths with trailing slash", () => {
     expect(detectProjectName("/home/user/my-app/")).toBe("my-app");
+  });
+
+  test("handles paths with multiple trailing slashes", () => {
+    expect(detectProjectName("/home/user/my-app///")).toBe("my-app");
+  });
+
+  test("handles single segment path", () => {
+    expect(detectProjectName("my-project")).toBe("my-project");
   });
 });
 
@@ -67,6 +76,33 @@ describe("detectBaseBranch", () => {
     writeFileSync(join(tmpDir, ".git", "refs", "heads", "master"), "abc123\n");
 
     expect(detectBaseBranch(tmpDir)).toBe("master");
+  });
+
+  test("detects 'develop' branch when HEAD is on develop", () => {
+    mkdirSync(join(tmpDir, ".git", "refs", "heads"), { recursive: true });
+    writeFileSync(join(tmpDir, ".git", "HEAD"), "ref: refs/heads/develop\n");
+    writeFileSync(join(tmpDir, ".git", "refs", "heads", "develop"), "abc123\n");
+
+    expect(detectBaseBranch(tmpDir)).toBe("develop");
+  });
+
+  test("falls back to well-known branch when on a feature branch", () => {
+    mkdirSync(join(tmpDir, ".git", "refs", "heads"), { recursive: true });
+    writeFileSync(join(tmpDir, ".git", "HEAD"), "ref: refs/heads/feature/foo\n");
+    writeFileSync(join(tmpDir, ".git", "refs", "heads", "main"), "abc123\n");
+
+    expect(detectBaseBranch(tmpDir)).toBe("main");
+  });
+
+  test("detects branch from packed-refs", () => {
+    mkdirSync(join(tmpDir, ".git"), { recursive: true });
+    writeFileSync(join(tmpDir, ".git", "HEAD"), "ref: refs/heads/feature/bar\n");
+    writeFileSync(
+      join(tmpDir, ".git", "packed-refs"),
+      "# pack-refs with: peeled fully-peeled\nabc123 refs/heads/main\n"
+    );
+
+    expect(detectBaseBranch(tmpDir)).toBe("main");
   });
 });
 
@@ -118,6 +154,25 @@ describe("detectBuildCommand", () => {
     writeFileSync(join(tmpDir, "yarn.lock"), "");
     expect(detectBuildCommand(tmpDir)).toBe("yarn run build");
   });
+
+  test("detects pnpm from pnpm-lock.yaml", () => {
+    writeFileSync(
+      join(tmpDir, "package.json"),
+      JSON.stringify({ scripts: { build: "tsc" } })
+    );
+    writeFileSync(join(tmpDir, "pnpm-lock.yaml"), "");
+    expect(detectBuildCommand(tmpDir)).toBe("pnpm run build");
+  });
+
+  test("handles invalid JSON in package.json gracefully", () => {
+    writeFileSync(join(tmpDir, "package.json"), "not json");
+    expect(detectBuildCommand(tmpDir)).toBe("bun run build");
+  });
+
+  test("handles package.json without scripts key", () => {
+    writeFileSync(join(tmpDir, "package.json"), JSON.stringify({ name: "test" }));
+    expect(detectBuildCommand(tmpDir)).toBe("bun run build");
+  });
 });
 
 describe("detectInstallCommand", () => {
@@ -147,6 +202,16 @@ describe("detectInstallCommand", () => {
   });
 
   test("returns 'bun install' as default", () => {
+    expect(detectInstallCommand(tmpDir)).toBe("bun install");
+  });
+
+  test("returns 'pnpm install' when pnpm-lock.yaml exists", () => {
+    writeFileSync(join(tmpDir, "pnpm-lock.yaml"), "");
+    expect(detectInstallCommand(tmpDir)).toBe("pnpm install");
+  });
+
+  test("returns 'bun install' when bun.lockb exists", () => {
+    writeFileSync(join(tmpDir, "bun.lockb"), "");
     expect(detectInstallCommand(tmpDir)).toBe("bun install");
   });
 });

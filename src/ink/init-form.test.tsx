@@ -8,12 +8,13 @@
  *   - InitForm calls onConfirm with the current values when confirmed
  *   - InitForm calls onCancel when cancelled
  *   - InitForm renders confirmation prompt
+ *   - FIELDS constant matches expected field definitions
  */
 
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
-import { InitForm, type InitFormProps } from "./init-form";
+import { InitForm, FIELDS, type InitFormProps, type InitFormDefaults } from "./init-form";
 
 function defaultProps(overrides: Partial<InitFormProps> = {}): InitFormProps {
   return {
@@ -81,5 +82,48 @@ describe("InitForm", () => {
   test("shows auto-detected label", () => {
     const output = renderToString(<InitForm {...defaultProps()} />);
     expect(output).toContain("auto-detected");
+  });
+
+  test("shows navigation key hints in non-editing mode", () => {
+    const output = renderToString(<InitForm {...defaultProps()} />);
+    expect(output).toContain("Ctrl+S");
+    expect(output).toContain("Esc");
+  });
+
+  test("renders settings separator", () => {
+    const output = renderToString(<InitForm {...defaultProps()} />);
+    expect(output).toContain("Settings");
+  });
+
+  test("focuses first field by default", () => {
+    const output = renderToString(<InitForm {...defaultProps()} />);
+    // The focused field shows ▸ indicator
+    expect(output).toContain("▸");
+  });
+
+  test("renders Project Setup subtitle", () => {
+    const output = renderToString(<InitForm {...defaultProps()} />);
+    expect(output).toContain("Project Setup");
+  });
+});
+
+describe("FIELDS", () => {
+  test("has exactly 3 fields", () => {
+    expect(FIELDS).toHaveLength(3);
+  });
+
+  test("defines baseBranch field first", () => {
+    expect(FIELDS[0].key).toBe("baseBranch");
+    expect(FIELDS[0].label).toBe("Base Branch");
+  });
+
+  test("defines buildCommand field second", () => {
+    expect(FIELDS[1].key).toBe("buildCommand");
+    expect(FIELDS[1].label).toBe("Build Command");
+  });
+
+  test("defines installCommand field third", () => {
+    expect(FIELDS[2].key).toBe("installCommand");
+    expect(FIELDS[2].label).toBe("Install Command");
   });
 });
