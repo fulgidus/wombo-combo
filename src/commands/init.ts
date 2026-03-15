@@ -23,6 +23,7 @@ import { createInterface } from "node:readline";
 import { stringify as stringifyYaml } from "yaml";
 import { CONFIG_FILE, DEFAULT_CONFIG, WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config.js";
 import { renderAgentTemplate } from "../lib/templates.js";
+import { checkShellCompletions } from "./upgrade.js";
 
 export interface InitOptions {
   projectRoot: string;
@@ -520,6 +521,9 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
       }
       console.log();
     }
+
+    // -- Shell completion hint ----------------------------------------------
+    checkShellCompletions();
 
     console.log(`\nYou're all set! Run 'woco help' to see available commands.\n`);
   } finally {
