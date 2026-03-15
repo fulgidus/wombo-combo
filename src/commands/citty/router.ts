@@ -16,6 +16,9 @@ import { versionCommand } from "./version.js";
 import { helpCommand } from "./help.js";
 import { describeCommand } from "./describe.js";
 import { extractGlobalFlags, type GlobalFlags } from "./global-flags.js";
+import { launchCommand } from "./launch.js";
+import { resumeCommand } from "./resume.js";
+import { retryCommand } from "./retry.js";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -28,6 +31,12 @@ const CITTY_COMMANDS = new Set([
   "--help",
   "-h",
   "describe",
+  "launch",
+  "l",
+  "resume",
+  "r",
+  "retry",
+  "re",
 ]);
 
 /**
@@ -98,6 +107,21 @@ export async function runCittyCommand(
 
     case "describe":
       await runCommand(describeCommand, { rawArgs });
+      break;
+
+    case "launch":
+    case "l":
+      await runCommand(launchCommand, { rawArgs });
+      break;
+
+    case "resume":
+    case "r":
+      await runCommand(resumeCommand, { rawArgs });
+      break;
+
+    case "retry":
+    case "re":
+      await runCommand(retryCommand, { rawArgs });
       break;
 
     default:
