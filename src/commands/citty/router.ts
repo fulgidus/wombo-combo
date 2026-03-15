@@ -1,5 +1,5 @@
 /**
- * router.ts — Bridge module that routes commands to citty definitions.
+ * router.ts — Bridge module that routes ALL commands to citty definitions.
  *
  * This module provides:
  *   - `isCittyCommand(cmd)` — checks if a command is handled by citty
@@ -7,8 +7,8 @@
  *   - `resolveGlobalFlagsAndCommand(args)` — extracts global flags and
  *     determines the command from raw args
  *
- * It acts as the integration point between the existing hand-rolled CLI
- * in index.ts and the new citty command definitions.
+ * All CLI commands are now routed through citty. The hand-rolled parser
+ * in index.ts has been removed.
  */
 
 import { runCommand } from "citty";
@@ -30,12 +30,17 @@ import { completionCommand } from "./completion.js";
 import { launchCommand } from "./launch.js";
 import { resumeCommand } from "./resume.js";
 import { retryCommand } from "./retry.js";
+import { tasksCommand } from "./tasks.js";
+import { questCommand } from "./quest.js";
+import { genesisCommand } from "./genesis.js";
+import { wishlistCommand } from "./wishlist.js";
+import { tuiCommand } from "./tui.js";
 
 /**
  * Set of all command names / aliases that are handled by citty.
  */
 const CITTY_COMMANDS = new Set([
-  // Existing commands
+  // --- Utility commands ---
   "version",
   "-v",
   "-V",
@@ -43,7 +48,8 @@ const CITTY_COMMANDS = new Set([
   "--help",
   "-h",
   "describe",
-  // Core commands
+  "d",          // alias for describe
+  // --- Core commands ---
   "init",
   "i",          // alias for init
   "status",
@@ -63,16 +69,32 @@ const CITTY_COMMANDS = new Set([
   "usage",
   "us",         // alias for usage
   "upgrade",
-  "u",          // alias for upgrade (note: 'u' is for upgrade per schema)
+  "u",          // alias for upgrade
   "completion",
   "comp",       // alias for completion
-  // Launch/resume/retry commands
+  // --- Launch/resume/retry commands ---
   "launch",
   "l",
   "resume",
   "r",
   "retry",
   "re",
+  // --- Tasks command (with subcommands) ---
+  "tasks",
+  "t",          // alias for tasks
+  "features",   // backward-compat alias for tasks
+  // --- Quest command (with subcommands) ---
+  "quest",
+  "q",          // alias for quest
+  // --- Genesis command ---
+  "genesis",
+  "g",          // alias for genesis
+  // --- Wishlist command (with subcommands) ---
+  "wishlist",
+  "w",          // alias for wishlist
+  "wl",         // alias for wishlist
+  // --- TUI (default command) ---
+  "tui",
 ]);
 
 /**
@@ -121,7 +143,7 @@ export function resolveGlobalFlagsAndCommand(args: string[]): ResolvedCommand {
 /**
  * Route a command to the appropriate citty command definition and run it.
  *
- * @param cmd - The command name or alias (e.g. "version", "-v", "help", "describe", "init", etc.)
+ * @param cmd - The command name or alias (e.g. "version", "-v", "tasks", "t", etc.)
  * @param rawArgs - The remaining raw CLI arguments to pass through
  */
 export async function runCittyCommand(
@@ -142,6 +164,7 @@ export async function runCittyCommand(
       break;
 
     case "describe":
+    case "d":
       await runCommand(describeCommand, { rawArgs });
       break;
 
@@ -213,6 +236,33 @@ export async function runCittyCommand(
     case "retry":
     case "re":
       await runCommand(retryCommand, { rawArgs });
+      break;
+
+    // --- New commands ---
+    case "tasks":
+    case "t":
+    case "features":
+      await runCommand(tasksCommand, { rawArgs });
+      break;
+
+    case "quest":
+    case "q":
+      await runCommand(questCommand, { rawArgs });
+      break;
+
+    case "genesis":
+    case "g":
+      await runCommand(genesisCommand, { rawArgs });
+      break;
+
+    case "wishlist":
+    case "w":
+    case "wl":
+      await runCommand(wishlistCommand, { rawArgs });
+      break;
+
+    case "tui":
+      await runCommand(tuiCommand, { rawArgs });
       break;
 
     default:
