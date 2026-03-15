@@ -179,16 +179,17 @@ function compareSemver(a: string, b: string): number {
 }
 
 /**
- * Prompt the user for yes/no confirmation.
+ * Prompt the user for yes/no confirmation (defaults to yes).
  */
 async function confirm(message: string): Promise<boolean> {
-  if (!process.stdin.isTTY) return false;
+  if (!process.stdin.isTTY) return true; // non-interactive → proceed
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise<boolean>((resolve) => {
-    rl.question(`${message} [y/N] `, (answer) => {
+    rl.question(`${message} [Y/n] `, (answer) => {
       rl.close();
-      resolve(answer.trim().toLowerCase() === "y");
+      const a = answer.trim().toLowerCase();
+      resolve(a === "" || a === "y" || a === "yes");
     });
   });
 }
@@ -262,8 +263,21 @@ async function installVersion(version: string, source: InstallSource): Promise<v
   }
 
   console.log(`\nSuccessfully upgraded to ${version}.`);
-  const { installCompletions } = await import("./completion.js");
-  installCompletions();
+
+  // Shell out to the NEW binary for completion install — this process is
+  // still running old code, so we can't import from our own source.
+  try {
+    const proc = Bun.spawn(["woco", "completion", "install"], {
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await proc.exited;
+  } catch {
+    // New binary might not support completion install yet (upgrading from
+    // an older version). Fall back to a one-liner hint.
+    console.log("\nRun this to set up shell completions:");
+    console.log("  woco completion install && source ~/.zshrc");
+  }
 }
 
 // ---------------------------------------------------------------------------
