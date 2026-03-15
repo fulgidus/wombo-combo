@@ -930,6 +930,55 @@ export function allCommandSchemas(): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Global help renderer (for `woco help` / `woco -h`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Render the top-level help screen from the command registry.
+ * Keeps the output in sync with registered commands and their aliases.
+ */
+export function renderGlobalHelp(): string {
+  const lines: string[] = [];
+
+  lines.push("");
+  lines.push("wombo-combo — AI Agent Orchestration System");
+  lines.push("");
+  lines.push("  WOMBO COMBO! Parallel feature development with AI agents.");
+  lines.push("");
+
+  // Build display entries: name, alias hint, summary
+  const entries = COMMAND_REGISTRY.map((cmd) => {
+    const hint = aliasHint(cmd);
+    let extra = "";
+    if (cmd.subcommands?.length) {
+      const scNames = cmd.subcommands.map((sc) => {
+        const short = sc.name.includes(" ") ? sc.name.split(" ").pop()! : sc.name;
+        return short;
+      });
+      extra = ` (subtopics: ${scNames.join(", ")})`;
+    }
+    return { name: cmd.name, hint, summary: cmd.summary + extra };
+  });
+
+  const maxNameLen = Math.max(...entries.map((e) => e.name.length));
+  const maxHintLen = Math.max(...entries.map((e) => e.hint.length));
+
+  lines.push(`Commands:${" ".repeat(maxNameLen + maxHintLen - 3)}(alias)`);
+
+  for (const e of entries) {
+    const paddedName = e.name.padEnd(maxNameLen + 2);
+    const paddedHint = e.hint.padEnd(maxHintLen ? maxHintLen + 2 : 0);
+    lines.push(`  ${paddedName}${paddedHint}${e.summary}`);
+  }
+
+  lines.push("");
+  lines.push("Run 'woco <command> -h' for details on a specific command.");
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
 // Per-command help renderer (for `woco <command> -h`)
 // ---------------------------------------------------------------------------
 

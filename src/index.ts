@@ -117,7 +117,7 @@ import type { Priority, Difficulty, FeatureStatus } from "./lib/tasks.js";
 import type { QuestHitlMode } from "./lib/quest.js";
 import { resolveOutputFormat, output, outputError, type OutputFormat } from "./lib/output.js";
 import { validateId, validateText, validateBranchName, validateDuration, assertValid } from "./lib/validate.js";
-import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp, COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
+import { findCommandDef, commandToSchema, allCommandSchemas, renderCommandHelp, renderGlobalHelp, COMMAND_REGISTRY, buildAliasMap } from "./lib/schema.js";
 import { buildToonSpec, renderToonLegend } from "./lib/toon-spec.js";
 import { addItem as addWishlistItem, deleteItem as deleteWishlistItem, listItems as listWishlistItems } from "./lib/wishlist-store.js";
 
@@ -490,37 +490,7 @@ export function parseArgs(argv: string[]): CLIArgs {
 // ---------------------------------------------------------------------------
 
 function cmdHelp(): void {
-  console.log(`
-wombo-combo — AI Agent Orchestration System
-
-  WOMBO COMBO! Parallel feature development with AI agents.
-
-Commands:                        (alias)
-  init                           (i)     Set up .wombo-combo/ in the current project
-  launch                         (l)     Launch a wave of agents
-  resume                         (r)     Resume a stopped wave
-  status                         (s)     Show wave status
-  verify                         (v)     Run build verification
-  merge                          (m)     Merge verified branches
-  retry                          (re)    Retry a failed agent
-  abort                          (a)     Kill a running agent
-  logs                           (lo)    View agent logs
-  cleanup                        (c)     Remove worktrees and sessions
-  history                        (h)     View past wave results
-  usage                          (us)    Token usage statistics
-  tasks                          (t)     Manage tasks (subtopics: list, add, show, ...)
-  quest                          (q)     Manage quests (subtopics: create, list, show, ...)
-  wishlist                       (w/wl)  Quick-capture ideas
-  genesis                        (g)     Decompose a project goal into quests
-  tui                                    Interactive TUI (default when no args)
-  upgrade                        (u)     Check for updates / self-upgrade
-  completion                     (comp)  Shell completions (install, uninstall, bash, zsh, fish)
-  describe                       (d)     Emit command schema (JSON or TOON)
-  version / -v                           Print version
-  help / -h                              This screen
-
-Run 'woco <command> -h' for details on a specific command.
-`);
+  console.log(renderGlobalHelp());
 }
 
 // ---------------------------------------------------------------------------
