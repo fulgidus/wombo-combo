@@ -69,7 +69,7 @@ import {
   printAgentUpdate,
 } from "../lib/ui.js";
 import { WomboTUI } from "../lib/tui.js";
-import { ensureAgentDefinition } from "../lib/templates.js";
+import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates.js";
 import {
   buildDepGraph,
   validateDepGraph,
@@ -94,7 +94,6 @@ import {
   writeAgentToWorktree,
   type AgentResolution,
 } from "../lib/agent-registry.js";
-import { patchImportedAgent } from "../lib/templates.js";
 import {
   tuiPreflightConfirm,
   consolePreflightConfirm,
@@ -306,11 +305,21 @@ export async function launchSingleHeadless(
     const agentName = agent.agent_name ?? undefined;
     if (resolution && isSpecializedAgent(resolution)) {
       try {
-        const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot);
+        const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot, hitlMode as QuestHitlMode | undefined);
         writeAgentToWorktree(agent.worktree, resolution.name, patchedContent);
         wtLog(agent.feature_id, `wrote specialized agent: ${resolution.name}`);
       } catch (err: any) {
         wtLog(agent.feature_id, `WARN: failed to write specialized agent, using generalist: ${err.message}`);
+      }
+    } else if (hitlMode && hitlMode !== "yolo") {
+      // For generalist agents under HITL, re-render the template with HITL awareness
+      // so the "never ask" rules don't contradict the HITL instructions in the task prompt
+      try {
+        const hitlAwareContent = renderGeneralistAgent(config, projectRoot, hitlMode as QuestHitlMode);
+        writeAgentToWorktree(agent.worktree, config.agent.name, hitlAwareContent);
+        wtLog(agent.feature_id, `wrote HITL-aware generalist agent (${hitlMode})`);
+      } catch (err: any) {
+        wtLog(agent.feature_id, `WARN: failed to write HITL-aware agent, using default: ${err.message}`);
       }
     }
 
@@ -1611,11 +1620,19 @@ async function launchWaveInteractive(
         const agentName = agent.agent_name ?? undefined;
         if (resolution && isSpecializedAgent(resolution)) {
           try {
-            const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot);
+            const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot, hitlMode as QuestHitlMode | undefined);
             writeAgentToWorktree(agent.worktree, resolution.name, patchedContent);
             wtLog(agent.feature_id, `wrote specialized agent: ${resolution.name}`);
           } catch (err: any) {
             wtLog(agent.feature_id, `WARN: failed to write specialized agent, using generalist: ${err.message}`);
+          }
+        } else if (hitlMode && hitlMode !== "yolo") {
+          try {
+            const hitlAwareContent = renderGeneralistAgent(config, projectRoot, hitlMode as QuestHitlMode);
+            writeAgentToWorktree(agent.worktree, config.agent.name, hitlAwareContent);
+            wtLog(agent.feature_id, `wrote HITL-aware generalist agent (${hitlMode})`);
+          } catch (err: any) {
+            wtLog(agent.feature_id, `WARN: failed to write HITL-aware agent, using default: ${err.message}`);
           }
         }
 

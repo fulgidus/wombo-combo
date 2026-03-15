@@ -84,7 +84,7 @@ import {
   isSpecializedAgent,
   type AgentResolution,
 } from "../lib/agent-registry.js";
-import { patchImportedAgent } from "../lib/templates.js";
+import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates.js";
 import { writeAgentToWorktree } from "../lib/agent-registry.js";
 import { loadQuest, loadQuestKnowledge } from "../lib/quest-store.js";
 import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest.js";
@@ -462,11 +462,19 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
           const agentName = agent.agent_name ?? undefined;
           if (resolution && isSpecializedAgent(resolution)) {
             try {
-              const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot);
+              const patchedContent = patchImportedAgent(resolution.rawContent, config, projectRoot, hitlMode as QuestHitlMode | undefined);
               writeAgentToWorktree(agent.worktree, resolution.name, patchedContent);
               wtLog(agent.feature_id, `wrote specialized agent: ${resolution.name}`);
             } catch (err: any) {
               wtLog(agent.feature_id, `WARN: failed to write specialized agent: ${err.message}`);
+            }
+          } else if (hitlMode && hitlMode !== "yolo") {
+            try {
+              const hitlAwareContent = renderGeneralistAgent(config, projectRoot, hitlMode as QuestHitlMode);
+              writeAgentToWorktree(agent.worktree, config.agent.name, hitlAwareContent);
+              wtLog(agent.feature_id, `wrote HITL-aware generalist agent (${hitlMode})`);
+            } catch (err: any) {
+              wtLog(agent.feature_id, `WARN: failed to write HITL-aware agent: ${err.message}`);
             }
           }
 

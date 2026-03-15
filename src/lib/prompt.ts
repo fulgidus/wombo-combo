@@ -377,10 +377,19 @@ export function generatePrompt(
   sections.push(`\n## Execution\n`);
   sections.push("1. Read the key files listed above to understand the codebase");
   sections.push("2. Create a plan (use the TodoWrite tool)");
-  sections.push("3. Implement each subtask, committing as you go");
-  sections.push(`4. Run \`${config.build.command}\` to verify`);
-  sections.push("5. If the build passes, you are done");
-  sections.push("6. If the build fails, fix the errors and re-run until it passes");
+  if (config.tdd?.enabled) {
+    const testCmd = config.tdd.testCommand || "bun test";
+    sections.push("3. For each subtask, follow the TDD cycle: write a failing test, make it pass, refactor");
+    sections.push("4. Commit after each green cycle");
+    sections.push(`5. Run \`${testCmd}\` to verify all tests pass`);
+    sections.push(`6. Run \`${config.build.command}\` to verify the build`);
+    sections.push("7. If tests or build fail, fix the errors and re-run until both pass");
+  } else {
+    sections.push("3. Implement each subtask, committing as you go");
+    sections.push(`4. Run \`${config.build.command}\` to verify`);
+    sections.push("5. If the build passes, you are done");
+    sections.push("6. If the build fails, fix the errors and re-run until it passes");
+  }
 
   return sections.join("\n");
 }

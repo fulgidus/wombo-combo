@@ -58,10 +58,14 @@ export interface PositionalDef {
 }
 
 export interface CommandDef {
-  /** Command name as typed by the user, e.g. "launch" or "features list" */
+  /** Command name as typed by the user, e.g. "launch" or "list" */
   name: string;
+  /** Short aliases for this command, e.g. ["i"] for init, ["lo"] for logs */
+  aliases?: string[];
   /** One-line summary */
   summary: string;
+  /** Shorter summary for shell completion menus (falls back to summary) */
+  completionSummary?: string;
   /** Longer description */
   description?: string;
   /** Positional arguments */
@@ -74,6 +78,26 @@ export interface CommandDef {
   supportsDryRun: boolean;
   /** Subcommands (for "tasks" parent) */
   subcommands?: CommandDef[];
+}
+
+// ---------------------------------------------------------------------------
+// Alias derivation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a { alias → canonicalName } map from a list of CommandDefs.
+ * For subcommands, extracts the short name (e.g. "list" from "tasks list").
+ */
+export function buildAliasMap(commands: CommandDef[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const cmd of commands) {
+    // For subcommands like "tasks list", derive the short name "list"
+    const shortName = cmd.name.includes(" ") ? cmd.name.split(" ").pop()! : cmd.name;
+    for (const alias of cmd.aliases ?? []) {
+      map[alias] = shortName;
+    }
+  }
+  return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +129,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- init ---------------------------------------------------------------
   {
     name: "init",
+    aliases: ["i"],
     summary: "Generate .wombo-combo/config.json in the current project",
+    completionSummary: "Generate config",
     description:
       "Interactive guided setup that walks through every config section. " +
       "Creates .wombo-combo/config.json and .wombo-combo/tasks.yml from template.",
@@ -131,7 +157,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- launch -------------------------------------------------------------
   {
     name: "launch",
+    aliases: ["l"],
     summary: "Launch a wave of agents to implement features",
+    completionSummary: "Launch agents",
     description:
       "Select features from the tasks file, create worktrees, and spawn agents. " +
       "Supports multiple selection strategies.",
@@ -164,7 +192,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- resume -------------------------------------------------------------
   {
     name: "resume",
+    aliases: ["r"],
     summary: "Resume a previously stopped wave",
+    completionSummary: "Resume wave",
     positionals: [],
     flags: [
       { name: "--max-concurrent", description: "Max agents running in parallel", type: "number" },
@@ -183,7 +213,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- status -------------------------------------------------------------
   {
     name: "status",
+    aliases: ["s"],
     summary: "Show the status of the current wave",
+    completionSummary: "Show wave status",
     positionals: [],
     flags: [],
     mutating: false,
@@ -193,7 +225,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- verify -------------------------------------------------------------
   {
     name: "verify",
+    aliases: ["v"],
     summary: "Run build verification on completed agents",
+    completionSummary: "Build verification",
     positionals: [
       { name: "feature-id", description: "Specific feature to verify (optional)", required: false },
     ],
@@ -211,7 +245,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- merge --------------------------------------------------------------
   {
     name: "merge",
+    aliases: ["m"],
     summary: "Merge verified branches into the base branch",
+    completionSummary: "Merge branches",
     positionals: [
       { name: "feature-id", description: "Specific feature to merge (optional)", required: false },
     ],
@@ -226,6 +262,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- retry --------------------------------------------------------------
   {
     name: "retry",
+    aliases: ["re"],
     summary: "Retry a failed agent",
     positionals: [
       { name: "feature-id", description: "Feature ID of the failed agent", required: true },
@@ -242,7 +279,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- cleanup ------------------------------------------------------------
   {
     name: "cleanup",
+    aliases: ["c"],
     summary: "Remove all wave worktrees and multiplexer sessions",
+    completionSummary: "Remove worktrees",
     description: "Kills multiplexer sessions, removes worktrees, removes state and log files.",
     positionals: [],
     flags: [
@@ -255,7 +294,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- history ------------------------------------------------------------
   {
     name: "history",
+    aliases: ["h"],
     summary: "List/view past wave results from .wombo-combo/history/",
+    completionSummary: "View past waves",
     description:
       "Wave history is auto-exported when a wave completes. Records are stored " +
       "separately from .wombo-combo/state.json and survive cleanup. Use without arguments " +
@@ -271,7 +312,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- usage --------------------------------------------------------------
   {
     name: "usage",
+    aliases: ["us"],
     summary: "Show token usage statistics from .wombo-combo/usage.jsonl",
+    completionSummary: "Token usage stats",
     description:
       "Displays aggregated token usage data collected during agent runs. " +
       "Can show totals or group by task, quest, model, provider, or harness. " +
@@ -309,7 +352,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- abort --------------------------------------------------------------
   {
     name: "abort",
+    aliases: ["a"],
     summary: "Kill a single running agent without affecting the rest of the wave",
+    completionSummary: "Kill running agent",
     description:
       "Kills the multiplexer session and agent process for a specific feature, then " +
       "marks the agent as failed. Use --requeue to return the feature to the " +
@@ -327,7 +372,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- upgrade ------------------------------------------------------------
   {
     name: "upgrade",
+    aliases: ["u"],
     summary: "Check for updates and upgrade wombo",
+    completionSummary: "Check for updates",
     positionals: [],
     flags: [
       { name: "--check", description: "Only check for updates, don't install", type: "boolean", default: false },
@@ -341,7 +388,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- logs ---------------------------------------------------------------
   {
     name: "logs",
+    aliases: ["lo"],
     summary: "Pretty-print agent logs from .wombo-combo/logs/<feature-id>.log",
+    completionSummary: "Agent logs",
     description:
       "Reads log files written by agents during headless runs and displays " +
       "them with colorized output. Supports tailing and following.",
@@ -356,10 +405,12 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     supportsDryRun: false,
   },
 
-  // --- tasks (parent with subcommands) — also accepts "features" as alias ---
+  // --- tasks (parent with subcommands) ------------------------------------
   {
     name: "tasks",
+    aliases: ["t"],
     summary: "Manage tasks file",
+    completionSummary: "Manage tasks",
     positionals: [],
     flags: [],
     mutating: false,
@@ -367,7 +418,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     subcommands: [
       {
         name: "tasks list",
+        aliases: ["ls"],
         summary: "List tasks with optional filtering",
+        completionSummary: "List tasks",
         positionals: [],
         flags: [
           { name: "--status", description: "Filter by status", type: "string", enum: VALID_STATUSES },
@@ -382,6 +435,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks add",
+        aliases: ["a"],
         summary: "Add a new task",
         positionals: [
           { name: "id", description: "Task ID (kebab-case)", required: true },
@@ -400,6 +454,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks set-status",
+        aliases: ["ss"],
         summary: "Change a task's status",
         positionals: [
           { name: "task-id", description: "Task ID to update", required: true },
@@ -413,6 +468,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks set-priority",
+        aliases: ["sp"],
         summary: "Change a task's priority",
         positionals: [
           { name: "task-id", description: "Task ID to update", required: true },
@@ -426,6 +482,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks set-difficulty",
+        aliases: ["sd"],
         summary: "Change a task's difficulty",
         positionals: [
           { name: "task-id", description: "Task ID to update", required: true },
@@ -439,7 +496,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks check",
+        aliases: ["ch"],
         summary: "Validate tasks file (schema, deps, duplicates, cycles)",
+        completionSummary: "Validate tasks",
         positionals: [],
         flags: [
           { name: "--output", description: "Output format: text (default), json, or toon", type: "string", default: "text" },
@@ -449,7 +508,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks archive",
+        aliases: ["ar"],
         summary: "Move done/cancelled tasks to archive section",
+        completionSummary: "Archive done tasks",
         positionals: [
           { name: "task-id", description: "Specific task to archive (optional)", required: false },
         ],
@@ -461,7 +522,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks show",
+        aliases: ["sh"],
         summary: "Show detailed information about a specific task",
+        completionSummary: "Show task details",
         positionals: [
           { name: "task-id", description: "Task ID to display", required: true },
         ],
@@ -473,7 +536,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "tasks graph",
+        aliases: ["g"],
         summary: "Visualize the task dependency graph as a terminal diagram",
+        completionSummary: "Dependency graph",
         description:
           "Builds a Mermaid flowchart from the tasks dependency graph and renders " +
           "it as a Unicode box diagram. Shows dependency edges, status badges, orphan " +
@@ -514,7 +579,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- describe -----------------------------------------------------------
   {
     name: "describe",
+    aliases: ["d"],
     summary: "Emit JSON schema of a command's arguments and flags",
+    completionSummary: "Emit JSON schema",
     description:
       "Machine-readable introspection for AI agents. Outputs the accepted " +
       "positionals, flags, types, defaults, and constraints for a command.",
@@ -529,7 +596,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- quest (parent with subcommands) -----------------------------------
   {
     name: "quest",
+    aliases: ["q"],
     summary: "Manage quests (scoped missions with their own task sets)",
+    completionSummary: "Manage quests",
     positionals: [],
     flags: [],
     mutating: false,
@@ -537,6 +606,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     subcommands: [
       {
         name: "quest create",
+        aliases: ["c"],
         summary: "Create a new quest",
         positionals: [
           { name: "id", description: "Quest ID (kebab-case)", required: true },
@@ -555,6 +625,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest list",
+        aliases: ["ls"],
         summary: "List all quests",
         positionals: [],
         flags: [
@@ -565,6 +636,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest show",
+        aliases: ["sh"],
         summary: "Show full quest details",
         positionals: [
           { name: "quest-id", description: "Quest ID to display", required: true },
@@ -577,6 +649,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest plan",
+        aliases: ["pl"],
         summary: "Run planner agent to decompose quest into tasks",
         positionals: [
           { name: "quest-id", description: "Quest ID to plan", required: true },
@@ -590,6 +663,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest activate",
+        aliases: ["a"],
         summary: "Activate a quest (creates branch, sets status to active)",
         positionals: [
           { name: "quest-id", description: "Quest ID to activate", required: true },
@@ -600,6 +674,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest pause",
+        aliases: ["p"],
         summary: "Pause an active quest",
         positionals: [
           { name: "quest-id", description: "Quest ID to pause", required: true },
@@ -610,6 +685,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest complete",
+        aliases: ["co"],
         summary: "Complete quest (merges branch into base)",
         positionals: [
           { name: "quest-id", description: "Quest ID to complete", required: true },
@@ -622,6 +698,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "quest abandon",
+        aliases: ["ab"],
         summary: "Abandon quest without merging",
         positionals: [
           { name: "quest-id", description: "Quest ID to abandon", required: true },
@@ -638,7 +715,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- genesis -----------------------------------------------------------
   {
     name: "genesis",
+    aliases: ["g"],
     summary: "Decompose a project vision into quests",
+    completionSummary: "Vision to quests",
     description:
       "Top of the Quest hierarchy: Genesis -> Quests -> Tasks. Takes a project " +
       "vision and produces a set of scoped quests via an AI planner agent.",
@@ -659,7 +738,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- wishlist -----------------------------------------------------------
   {
     name: "wishlist",
+    aliases: ["w", "wl"],
     summary: "Quick-capture ideas for later",
+    completionSummary: "Capture ideas",
     positionals: [],
     flags: [],
     mutating: false,
@@ -667,6 +748,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
     subcommands: [
       {
         name: "wishlist add",
+        aliases: ["a"],
         summary: "Add a wishlist item",
         positionals: [
           { name: "text", description: "Idea text", required: true },
@@ -679,6 +761,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "wishlist list",
+        aliases: ["ls"],
         summary: "List all wishlist items",
         positionals: [],
         flags: [],
@@ -687,6 +770,7 @@ export const COMMAND_REGISTRY: CommandDef[] = [
       },
       {
         name: "wishlist delete",
+        aliases: ["rm", "del", "d"],
         summary: "Delete a wishlist item",
         positionals: [
           { name: "id", description: "Wishlist item ID (or prefix)", required: true },
@@ -701,7 +785,9 @@ export const COMMAND_REGISTRY: CommandDef[] = [
   // --- completion ---------------------------------------------------------
   {
     name: "completion",
+    aliases: ["comp"],
     summary: "Shell completions (install, uninstall, or emit script)",
+    completionSummary: "Shell completions",
     description:
       "Manage shell completion scripts. Use 'install' to auto-configure your " +
       "shell, 'uninstall' to remove, or pass a shell name to emit the raw script.",
@@ -720,22 +806,18 @@ export const COMMAND_REGISTRY: CommandDef[] = [
 
 /**
  * Find a command definition by name. Supports compound names like "tasks list".
- * Also supports "features" as a backward-compat alias for "tasks".
  */
 export function findCommandDef(name: string): CommandDef | undefined {
-  // Normalize "features" -> "tasks" for backward compatibility
-  const normalized = name.replace(/^features(\s|$)/, "tasks$1");
-
   // Try direct match first
-  const direct = COMMAND_REGISTRY.find((c) => c.name === normalized);
+  const direct = COMMAND_REGISTRY.find((c) => c.name === name);
   if (direct) return direct;
 
   // Try compound: "tasks list" -> look in tasks subcommands
-  const parts = normalized.split(/\s+/);
+  const parts = name.split(/\s+/);
   if (parts.length === 2) {
     const parent = COMMAND_REGISTRY.find((c) => c.name === parts[0]);
     if (parent?.subcommands) {
-      return parent.subcommands.find((sc) => sc.name === normalized || sc.name === parts[1]);
+      return parent.subcommands.find((sc) => sc.name === name || sc.name === parts[1]);
     }
   }
 
@@ -752,6 +834,10 @@ export function commandToSchema(cmd: CommandDef): Record<string, unknown> {
     mutating: cmd.mutating,
     supports_dry_run: cmd.supportsDryRun,
   };
+
+  if (cmd.aliases?.length) {
+    schema.aliases = cmd.aliases;
+  }
 
   if (cmd.description) {
     schema.description = cmd.description;
