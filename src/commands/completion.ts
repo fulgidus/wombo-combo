@@ -17,6 +17,13 @@
 import { basename, resolve } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
+import {
+  COMMAND_REGISTRY,
+  GLOBAL_FLAGS,
+  getCommandFlags,
+  type CommandDef,
+  type FlagDef,
+} from "../lib/schema.js";
 
 /** Marker comment injected into rc files so we can find and remove our lines. */
 const RC_MARKER = "# Added by woco (wombo-combo) — do not edit this block";
