@@ -55,7 +55,7 @@ describe("runApp", () => {
   test("accepts custom children", async () => {
     const opts = createTestOptions();
     const chunks: string[] = [];
-    opts.stdout.on("data", (chunk: Buffer) => {
+    opts.stdout!.on("data", (chunk: Buffer) => {
       chunks.push(chunk.toString());
     });
 
