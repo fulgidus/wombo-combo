@@ -4,16 +4,26 @@
  * Generates native completion scripts for bash, zsh, and fish.
  *
  * Install:
- *   eval "$(woco completion bash)"                          # add to ~/.bashrc
- *   eval "$(woco completion zsh)"                           # add to ~/.zshrc
+ *   woco completion install                                 # auto-detect shell, install
+ *   eval "$(woco completion bash)"                          # manual: add to ~/.bashrc
+ *   eval "$(woco completion zsh)"                           # manual: add to ~/.zshrc
  *   woco completion fish | source                           # fish
  *   woco completion fish > ~/.config/fish/completions/woco.fish  # persist
+ *
+ * Uninstall:
+ *   woco completion uninstall                               # remove all installed completions
  */
 
-import { basename } from "node:path";
+import { basename, resolve } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
+
+/** Marker comment injected into rc files so we can find and remove our lines. */
+const RC_MARKER = "# Added by woco (wombo-combo) — do not edit this block";
+const RC_MARKER_END = "# End woco completion";
 
 // ---------------------------------------------------------------------------
-// Public API
+// Public API — generate scripts (stdout)
 // ---------------------------------------------------------------------------
 
 export function cmdCompletion({ shell }: { shell?: string }): void {
@@ -34,11 +44,255 @@ export function cmdCompletion({ shell }: { shell?: string }): void {
       console.error("Supported shells: bash, zsh, fish");
       console.error("");
       console.error("Install completions:");
-      console.error('  eval "$(woco completion bash)"    # Bash: add to ~/.bashrc');
-      console.error('  eval "$(woco completion zsh)"     # Zsh:  add to ~/.zshrc');
-      console.error("  woco completion fish | source     # Fish");
+      console.error("  woco completion install              # auto-detect & install");
+      console.error('  eval "$(woco completion bash)"       # Bash: add to ~/.bashrc');
+      console.error('  eval "$(woco completion zsh)"        # Zsh:  add to ~/.zshrc');
+      console.error("  woco completion fish | source        # Fish");
       process.exit(1);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Public API — install / uninstall completions
+// ---------------------------------------------------------------------------
+
+/**
+ * Auto-detect the user's shell and install completions:
+ *   - zsh: write _woco to a fpath dir (or create one and wire it into .zshrc)
+ *   - bash: append eval line to ~/.bashrc
+ *   - fish: write to ~/.config/fish/completions/woco.fish
+ *
+ * Safe to call repeatedly — skips if already installed.
+ */
+export function installCompletions(): void {
+  const shell = detectShell();
+
+  switch (shell) {
+    case "zsh":
+      installZsh();
+      break;
+    case "bash":
+      installBash();
+      break;
+    case "fish":
+      installFish();
+      break;
+    default:
+      console.log(`Shell "${shell}" is not supported for auto-install.`);
+      console.log("Supported: bash, zsh, fish");
+  }
+}
+
+/**
+ * Remove all completions installed by `woco completion install`.
+ */
+export function uninstallCompletions(): void {
+  let removed = false;
+
+  // Zsh: remove _woco from fpath dir, remove fpath line from .zshrc
+  removed = uninstallZsh() || removed;
+
+  // Bash: remove our block from .bashrc
+  removed = uninstallBash() || removed;
+
+  // Fish: remove the completions file
+  removed = uninstallFish() || removed;
+
+  if (removed) {
+    console.log("Shell completions removed.");
+    console.log("Open a new terminal for changes to take effect.");
+  } else {
+    console.log("No woco completions found to remove.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Zsh install/uninstall
+// ---------------------------------------------------------------------------
+
+/** Standard user completions dir for zsh. */
+function zshCompletionsDir(): string {
+  return resolve(homedir(), ".zsh", "completions");
+}
+
+function zshCompletionFile(): string {
+  return resolve(zshCompletionsDir(), "_woco");
+}
+
+function installZsh(): void {
+  const compDir = zshCompletionsDir();
+  const compFile = zshCompletionFile();
+  const zshrc = resolve(homedir(), ".zshrc");
+
+  // 1. Write the completion function file
+  mkdirSync(compDir, { recursive: true });
+  writeFileSync(compFile, zshScript(), "utf-8");
+
+  // 2. Ensure fpath includes our dir and compinit is called
+  //    Only add if not already present.
+  const fpathLine = `fpath=(${compDir} $fpath)`;
+  const compinitLine = `autoload -Uz compinit && compinit`;
+
+  let rcContent = "";
+  if (existsSync(zshrc)) {
+    rcContent = readFileSync(zshrc, "utf-8");
+  }
+
+  // Check if our marker block already exists
+  if (rcContent.includes(RC_MARKER) && rcContent.includes("fpath=")) {
+    // Already installed — just update the completion file (already written above)
+    console.log("Zsh completions updated.");
+    return;
+  }
+
+  // Check if fpath already includes our dir (user may have added it manually)
+  const fpathAlready = rcContent.includes(compDir);
+  const compinitAlready = rcContent.includes("compinit");
+
+  if (!fpathAlready || !compinitAlready) {
+    const block: string[] = [RC_MARKER];
+    if (!fpathAlready) block.push(fpathLine);
+    if (!compinitAlready) block.push(compinitLine);
+    block.push(RC_MARKER_END);
+
+    // Prepend to .zshrc — fpath must be set before compinit runs
+    const newContent = block.join("\n") + "\n" + rcContent;
+    writeFileSync(zshrc, newContent, "utf-8");
+  }
+
+  console.log("Zsh completions installed.");
+  console.log("  Open a new terminal or run: source ~/.zshrc");
+}
+
+function uninstallZsh(): boolean {
+  let removed = false;
+
+  // Remove completion file
+  const compFile = zshCompletionFile();
+  if (existsSync(compFile)) {
+    unlinkSync(compFile);
+    removed = true;
+  }
+
+  // Remove our block from .zshrc
+  const zshrc = resolve(homedir(), ".zshrc");
+  if (existsSync(zshrc)) {
+    const content = readFileSync(zshrc, "utf-8");
+    const cleaned = removeMarkerBlock(content);
+    if (cleaned !== content) {
+      writeFileSync(zshrc, cleaned, "utf-8");
+      removed = true;
+    }
+  }
+
+  return removed;
+}
+
+// ---------------------------------------------------------------------------
+// Bash install/uninstall
+// ---------------------------------------------------------------------------
+
+function installBash(): void {
+  const bashrc = resolve(homedir(), ".bashrc");
+  const evalLine = 'eval "$(woco completion bash)"';
+
+  let rcContent = "";
+  if (existsSync(bashrc)) {
+    rcContent = readFileSync(bashrc, "utf-8");
+  }
+
+  // Already installed?
+  if (rcContent.includes(RC_MARKER) && rcContent.includes("woco completion bash")) {
+    console.log("Bash completions already installed.");
+    return;
+  }
+
+  // Also check for manual installs (user may have added eval line themselves)
+  if (rcContent.includes("woco completion bash")) {
+    console.log("Bash completions already present in ~/.bashrc.");
+    return;
+  }
+
+  const block = [RC_MARKER, evalLine, RC_MARKER_END, ""].join("\n");
+  writeFileSync(bashrc, rcContent + "\n" + block, "utf-8");
+
+  console.log("Bash completions installed.");
+  console.log("  Open a new terminal or run: source ~/.bashrc");
+}
+
+function uninstallBash(): boolean {
+  const bashrc = resolve(homedir(), ".bashrc");
+  if (!existsSync(bashrc)) return false;
+
+  const content = readFileSync(bashrc, "utf-8");
+  const cleaned = removeMarkerBlock(content);
+  if (cleaned !== content) {
+    writeFileSync(bashrc, cleaned, "utf-8");
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Fish install/uninstall
+// ---------------------------------------------------------------------------
+
+function fishCompletionFile(): string {
+  return resolve(homedir(), ".config", "fish", "completions", "woco.fish");
+}
+
+function installFish(): void {
+  const compFile = fishCompletionFile();
+  const compDir = resolve(compFile, "..");
+
+  mkdirSync(compDir, { recursive: true });
+  writeFileSync(compFile, fishScript(), "utf-8");
+
+  console.log("Fish completions installed.");
+  console.log("  Open a new terminal or run: source " + compFile);
+}
+
+function uninstallFish(): boolean {
+  const compFile = fishCompletionFile();
+  if (existsSync(compFile)) {
+    unlinkSync(compFile);
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove lines between RC_MARKER and RC_MARKER_END (inclusive) from content.
+ * Handles trailing newlines gracefully.
+ */
+function removeMarkerBlock(content: string): string {
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let inBlock = false;
+
+  for (const line of lines) {
+    if (line.trim() === RC_MARKER) {
+      inBlock = true;
+      continue;
+    }
+    if (inBlock && line.trim() === RC_MARKER_END) {
+      inBlock = false;
+      continue;
+    }
+    if (!inBlock) {
+      result.push(line);
+    }
+  }
+
+  // Clean up leading/trailing blank lines that were left behind
+  let text = result.join("\n");
+  // Remove double blank lines at the seam
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text;
 }
 
 // ---------------------------------------------------------------------------

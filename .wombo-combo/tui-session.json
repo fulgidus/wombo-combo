@@ -2,7 +2,7 @@
   "selected": [],
   "sortBy": "priority",
   "sortOrder": "desc",
-  "maxConcurrent": 15,
+  "maxConcurrent": 10,
   "lastView": "browser",
   "collapsed": []
 }
