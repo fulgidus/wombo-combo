@@ -55,3 +55,32 @@ export {
   detectInstallCommand,
 } from "./init-detect";
 export { writeInitFiles, type InitWriterConfig, type InitWriterResult } from "./init-writer";
+
+// Onboarding wizard components
+export {
+  OnboardingWizard,
+  type OnboardingWizardProps,
+  StepWizard,
+  type StepWizardProps,
+  SectionPicker,
+  type SectionPickerProps,
+  FieldEditor,
+  type FieldEditorProps,
+  ProfileReview,
+  type ProfileReviewProps,
+  ConfirmDialog,
+  type ConfirmDialogProps,
+  ProgressView,
+  type ProgressViewProps,
+  type ProgressResult,
+  OnboardingApp,
+  type OnboardingAppProps,
+  runOnboardingInk,
+  type OnboardingResult,
+  type RunOnboardingOptions,
+  type RawInputs,
+  type InputStep,
+  INPUT_STEPS,
+  SECTION_NAMES,
+  structureRawInputs,
+} from "./onboarding";

@@ -15,7 +15,7 @@
         "dev": "bun src/index.ts",
         "woco": "bun src/index.ts",
         "start": "bun src/index.ts",
-        "build": "bun build src/index.ts --outdir dist --target node",
+        "build": "bun build src/index.ts --outdir dist --target node --external react-devtools-core",
         "typecheck": "tsc --noEmit",
         "test": "bun test"
     },
