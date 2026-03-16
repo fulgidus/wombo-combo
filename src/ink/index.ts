@@ -13,3 +13,175 @@ export {
   type UseTextInputOptions,
   type UseTextInputResult,
 } from "./use-text-input";
+export {
+  openEditor,
+  getEditorCommand,
+  type OpenEditorOptions,
+} from "./open-editor";
+export { Modal, type ModalProps } from "./modal";
+export {
+  ProgressView,
+  type ProgressViewProps,
+  type ProgressResult,
+} from "./progress";
+export { useSpinner } from "./use-spinner";
+export { ConfirmDialog, type ConfirmDialogProps } from "./confirm";
+export {
+  UsageOverlayView,
+  type UsageOverlayViewProps,
+  formatTokenCount,
+  formatCost,
+} from "./usage-overlay";
+export {
+  QuestionPopupView,
+  type QuestionPopupViewProps,
+  timeAgo,
+} from "./question-popup";
+export {
+  SelectInput,
+  type SelectInputItem,
+  type SelectInputProps,
+} from "./select-input";
+export {
+  QuestWizard,
+  type QuestWizardProps,
+  type QuestWizardPrefill,
+} from "./quest-wizard";
+export {
+  runQuestWizardInk,
+  type RunQuestWizardOptions,
+} from "./run-quest-wizard";
+export { formatDate, truncateText } from "./wishlist-helpers";
+export {
+  useWishlistStore,
+  type UseWishlistStoreOptions,
+  type UseWishlistStoreResult,
+} from "./use-wishlist-store";
+export {
+  WishlistPicker,
+  type WishlistPickerProps,
+} from "./wishlist-picker";
+export {
+  WishlistOverlay,
+  type WishlistOverlayProps,
+} from "./wishlist-overlay";
+export { InitForm, FIELDS, type InitFormProps, type InitFormDefaults, type FieldDef } from "./init-form";
+export { InitApp, renderInitApp, type InitAppProps } from "./init-app";
+export {
+  detectProjectName,
+  detectBaseBranch,
+  detectBuildCommand,
+  detectInstallCommand,
+} from "./init-detect";
+export { writeInitFiles, type InitWriterConfig, type InitWriterResult } from "./init-writer";
+
+// Onboarding wizard components
+// Note: ConfirmDialog, ProgressView, and ProgressResult are intentionally
+// omitted here to avoid collisions with the general-purpose versions from
+// ./confirm and ./progress. Import from "./onboarding" directly if you
+// need the onboarding-specific variants.
+export {
+  OnboardingWizard,
+  type OnboardingWizardProps,
+  StepWizard,
+  type StepWizardProps,
+  SectionPicker,
+  type SectionPickerProps,
+  FieldEditor,
+  type FieldEditorProps,
+  ProfileReview,
+  type ProfileReviewProps,
+  OnboardingApp,
+  type OnboardingAppProps,
+  runOnboardingInk,
+  type OnboardingResult,
+  type RunOnboardingOptions,
+  type RawInputs,
+  type InputStep,
+  INPUT_STEPS,
+  SECTION_NAMES,
+  structureRawInputs,
+} from "./onboarding";
+
+// Review screen components (shared ReviewList + genesis/plan adapters)
+export {
+  type ReviewItem,
+  type ReviewListConfig,
+  type EditFieldDef,
+  type DetailField,
+  type DetailSection,
+  type ReviewValidationIssue,
+  PRIORITY_ABBREV,
+  PRIORITY_COLORS,
+  DIFFICULTY_COLORS,
+  HITL_COLORS,
+} from "./review-list-types";
+export {
+  createReviewState,
+  toggleAccept,
+  toggleAll,
+  moveItem,
+  selectItem,
+  updateItem,
+  getAcceptedItems,
+  getCounts,
+  type ReviewState,
+} from "./use-review-list";
+export { ReviewList, type ReviewListProps } from "./review-list";
+export {
+  questToReviewItem,
+  reviewItemToQuest,
+  buildGenesisConfig,
+  GENESIS_EDIT_FIELDS,
+  GenesisReviewApp,
+  type GenesisReviewAppProps,
+} from "./genesis-review";
+export {
+  taskToReviewItem,
+  reviewItemToTask,
+  buildPlanConfig,
+  PLAN_EDIT_FIELDS,
+  PlanReviewApp,
+  type PlanReviewAppProps,
+} from "./plan-review";
+export {
+  runGenesisReviewInk,
+  runPlanReviewInk,
+  type GenesisReviewAction,
+  type PlanReviewAction,
+  type RunGenesisReviewOptions,
+  type RunPlanReviewOptions,
+} from "./run-review";
+
+// Complex TUI screen components (quest picker, task browser, wave monitor)
+export {
+  QUEST_STATUS_COLORS,
+  QUEST_STATUS_ABBREV,
+  TASK_STATUS_COLORS,
+  TASK_STATUS_ABBREV,
+  AGENT_STATUS_COLORS,
+  AGENT_STATUS_ICONS,
+  TASK_PRIORITY_COLORS,
+  elapsed,
+  progressBar,
+} from "./tui-constants";
+export {
+  ErrandWizard,
+  type ErrandWizardProps,
+} from "./errand-wizard";
+export {
+  QuestPickerView,
+  type QuestPickerViewProps,
+  type QuestSummary,
+} from "./quest-picker";
+export {
+  TaskBrowserView,
+  type TaskBrowserViewProps,
+  type TaskNode,
+} from "./task-browser";
+export {
+  WaveMonitorView,
+  type WaveMonitorViewProps,
+  type AgentInfo,
+  type AgentCounts,
+} from "./wave-monitor";

@@ -62,7 +62,7 @@ import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store";
 import type { WishlistItem } from "../lib/wishlist-store";
 import { runQuestWizardAsync } from "../lib/tui-quest-wizard";
 import { projectExists, formatProjectContext } from "../lib/project-store";
-import { runOnboardingAsync } from "../lib/tui-onboarding";
+import { runOnboardingInk } from "../ink/onboarding/run-onboarding";
 import { cmdLaunch } from "./launch";
 import type { LaunchCommandOptions } from "./launch";
 import { cmdResume } from "./resume";
@@ -125,15 +125,13 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   // If the user cancels/skips, we continue into the TUI anyway — next time
   // they launch, onboarding will appear again (snoozable).
   if (!projectExists(projectRoot)) {
-    const profile = await runOnboardingAsync({ projectRoot, config });
+    const result = await runOnboardingInk({ projectRoot, config });
     // Clear screen whether completed or skipped
     process.stdout.write('\x1B[2J\x1B[H');
 
     // If onboarding completed and the user requested genesis, run it now.
-    // The onboarding wizard sets _genesisRequested on the returned profile
-    // object (not persisted) as a signal for us to trigger the genesis flow.
-    if (profile && (profile as any)._genesisRequested) {
-      const vision = formatProjectContext(profile);
+    if (result.profile && result.genesisRequested) {
+      const vision = formatProjectContext(result.profile);
       await handleGenesisFlow(projectRoot, config, opts, vision);
       process.stdout.write('\x1B[2J\x1B[H');
     }
@@ -263,7 +261,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
 
       if (questAction.type === "onboarding") {
         // User pressed O to open onboarding wizard (edit mode)
-        await runOnboardingAsync({ projectRoot, config });
+        await runOnboardingInk({ projectRoot, config });
         // After onboarding, loop back to quest picker
         process.stdout.write("\x1B[2J\x1B[H");
         continue;
