@@ -85,7 +85,7 @@ import {
   printFeatureSelection,
   printAgentUpdate,
 } from "../lib/ui";
-import { WomboTUI } from "../lib/tui";
+import type { InkWomboTUI } from "../ink/run-wave-monitor";
 import { ensureAgentDefinition, renderGeneralistAgent, patchImportedAgent } from "../lib/templates";
 import {
   buildDepGraph,
@@ -108,10 +108,8 @@ import {
   writeAgentToWorktree,
   type AgentResolution,
 } from "../lib/agent-registry";
-import {
-  tuiPreflightConfirm,
-  consolePreflightConfirm,
-} from "../lib/preflight";
+// NOTE: inkPreflightConfirm & consolePreflightConfirm are dynamically imported
+// at runtime to avoid making the module graph async (which breaks schema.ts require())
 import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
 import { resolveQuestConfig, applyQuestConstraintsToTask, type QuestHitlMode } from "../lib/quest";
 import { questBranchExists, createQuestBranch } from "../lib/worktree";
@@ -1785,9 +1783,10 @@ async function launchWaveHeadless(
   // monitoring loop exit naturally. The caller (cmdTui) then loops back to
   // the task browser, which shows a "running wave" indicator.
   let detached = false;
-  const tuiRef = { current: null as WomboTUI | null };
-  const startTUI = () => {
-    tuiRef.current = new WomboTUI({
+  const tuiRef = { current: null as InkWomboTUI | null };
+  const startTUI = async () => {
+    const { InkWomboTUI } = await import("../ink/run-wave-monitor");
+    tuiRef.current = new InkWomboTUI({
       state,
       monitor,
       projectRoot,
@@ -1918,7 +1917,7 @@ async function launchWaveHeadless(
     }
   } else {
     if (fmt === "text") console.log(`${launched} agent(s) running. Launching TUI...\n`);
-    startTUI();
+    await startTUI();
   }
 
   // Background monitoring loop — checks for dead processes and launches queued
@@ -2800,8 +2799,9 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   // ---------------------------------------------------------------------------
   if (agentResolutions && agentResolutions.size > 0) {
     const isTTY = process.stdout.isTTY && process.stdin.isTTY;
+    const { inkPreflightConfirm, consolePreflightConfirm } = await import("../ink/run-preflight");
     const preflight = isTTY && !opts.noTui
-      ? await tuiPreflightConfirm(selected, agentResolutions, config)
+      ? await inkPreflightConfirm(selected, agentResolutions, config)
       : await consolePreflightConfirm(selected, agentResolutions, config);
 
     if (!preflight.proceed) {

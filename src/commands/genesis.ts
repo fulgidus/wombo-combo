@@ -30,7 +30,7 @@ import {
   saveQuestKnowledge,
   listQuestIds,
 } from "../lib/quest-store";
-import { GenesisReview } from "../lib/tui-genesis-review";
+import { runGenesisReviewInk, type GenesisReviewAction } from "../ink/run-review";
 import { output, outputError, outputMessage } from "../lib/output";
 
 // ---------------------------------------------------------------------------
@@ -339,22 +339,9 @@ type GenesisReviewResult =
   | { type: "approve"; quests: ProposedQuest[]; knowledge: string | null }
   | { type: "cancel" };
 
-function showGenesisReview(genesisResult: GenesisResult): Promise<GenesisReviewResult> {
-  return new Promise<GenesisReviewResult>((resolve) => {
-    const review = new GenesisReview({
-      genesisResult,
-
-      onApprove: (quests, knowledge) => {
-        resolve({ type: "approve", quests, knowledge });
-      },
-
-      onCancel: () => {
-        resolve({ type: "cancel" });
-      },
-    });
-
-    review.start();
-  });
+async function showGenesisReview(genesisResult: GenesisResult): Promise<GenesisReviewResult> {
+  const action = await runGenesisReviewInk({ genesisResult });
+  return action;
 }
 
 // ---------------------------------------------------------------------------

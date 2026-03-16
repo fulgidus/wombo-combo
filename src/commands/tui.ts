@@ -1,12 +1,12 @@
 /**
  * tui.ts -- Unified TUI command entry point for wombo-combo.
  *
- * Orchestrates multiple views in a persistent loop:
- *   1. Quest Picker (tui-quest-picker.ts) -- select a quest or "All Tasks"
- *   2. Task Browser (tui-browser.ts) -- select tasks, change priorities, launch
- *   3. Wave Monitor (tui.ts) -- watch running wave, view logs, retry agents
- *   4. Plan Review (tui-plan-review.ts) -- review/edit/approve planner output
- *   5. Genesis Review (tui-genesis-review.ts) -- review/edit/approve genesis plan
+ * Orchestrates multiple Ink views in a persistent loop:
+ *   1. Quest Picker (ink/run-quest-picker.tsx) -- select a quest or "All Tasks"
+ *   2. Task Browser (ink/run-task-browser.tsx) -- select tasks, change priorities, launch
+ *   3. Wave Monitor -- watch running wave (via cmdResume with TUI)
+ *   4. Plan Review (ink/run-review.tsx) -- review/edit/approve planner output
+ *   5. Genesis Review (ink/run-review.tsx) -- review/edit/approve genesis plan
  *
  * Flow:
  *   `woco` -> Quest Picker (if quests exist) -> Task Browser -> L -> launches
@@ -40,29 +40,26 @@ import { loadTasksFromStore } from "../lib/task-store";
 import { loadState } from "../lib/state";
 import { loadTUISession, saveTUISession } from "../lib/tui-session";
 import type { TUISession } from "../lib/tui-session";
-import { TaskBrowser } from "../lib/tui-browser";
-import { QuestPicker } from "../lib/tui-quest-picker";
-import type { QuestPickerAction } from "../lib/tui-quest-picker";
-import { PlanReview } from "../lib/tui-plan-review";
 import type { ProposedTask } from "../lib/quest-planner";
 import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner";
 import type { PlanResult } from "../lib/quest-planner";
 import { loadAllQuests, loadQuest, saveQuest, listQuestIds, saveQuestKnowledge } from "../lib/quest-store";
-import { GenesisReview } from "../lib/tui-genesis-review";
-import type { GenesisReviewAction } from "../lib/tui-genesis-review";
 import { runGenesisPlanner } from "../lib/genesis-planner";
 import type { GenesisResult, ProposedQuest } from "../lib/genesis-planner";
 import { createBlankQuest, getQuestTaskIds } from "../lib/quest";
 import { runErrandPlanner, applyErrandPlan } from "../lib/errand-planner";
 import type { ErrandSpec } from "../lib/errand-planner";
-import { ProgressScreen, showConfirm } from "../lib/tui-progress";
-import { WishlistPicker } from "../lib/tui-wishlist";
-import type { WishlistAction } from "../lib/tui-wishlist";
 import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store";
 import type { WishlistItem } from "../lib/wishlist-store";
-import { runQuestWizardAsync } from "../lib/tui-quest-wizard";
 import { projectExists, formatProjectContext } from "../lib/project-store";
 import { runOnboardingInk } from "../ink/onboarding/run-onboarding";
+import { runQuestPickerInk, type QuestPickerAction } from "../ink/run-quest-picker";
+import { runTaskBrowserInk, type TaskBrowserAction } from "../ink/run-task-browser";
+import { runGenesisReviewInk, runPlanReviewInk, type GenesisReviewAction, type PlanReviewAction } from "../ink/run-review";
+import { runWishlistPickerInk } from "../ink/run-wishlist-picker";
+import { runErrandWizardInk } from "../ink/run-errand-wizard";
+import { runQuestWizardInk } from "../ink/run-quest-wizard";
+import { runProgressInk, runConfirmInk, type ProgressController } from "../ink/run-progress";
 import { cmdLaunch } from "./launch";
 import type { LaunchCommandOptions } from "./launch";
 import { cmdResume } from "./resume";
@@ -91,17 +88,6 @@ export interface TUICommandOptions {
   /** Agent definition override */
   agent?: string;
 }
-
-type BrowserAction =
-  | { type: "launch"; ids: string[] }
-  | { type: "errand"; spec: ErrandSpec }
-  | { type: "back" }
-  | { type: "monitor" }
-  | { type: "quit" };
-
-type PlanReviewResult =
-  | { type: "approve"; tasks: ProposedTask[]; knowledge: string | null }
-  | { type: "cancel" };
 
 // ---------------------------------------------------------------------------
 // Command -- Main Loop
@@ -169,13 +155,12 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       // When the user detaches (Q while agents running), cmdResume also
       // returns and we fall through to the browser with running wave indicator.
       {
-        const ps = new ProgressScreen("Resuming Wave", existingState!.wave_id);
-        ps.start();
-        ps.setStatus("Reconnecting to active wave...");
+        const progress = runProgressInk({ title: "Resuming Wave", context: existingState!.wave_id });
+        progress.update("Reconnecting to active wave...");
         try {
           // Brief flash before cmdResume takes over the screen
           await sleep(500);
-          ps.destroy();
+          progress.unmount();
           await cmdResume({
             projectRoot,
             config,
@@ -190,11 +175,9 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
           });
         } catch (err: any) {
           // Don't crash -- show error and loop back
-          const errPs = new ProgressScreen("Resume Error");
-          errPs.start();
-          errPs.showError(`Resume error: ${err.message}`);
-          await errPs.waitForDismiss(3000);
-          errPs.destroy();
+          progress.unmount();
+          const errProgress = runProgressInk({ title: "Resume Error" });
+          await errProgress.finish({ type: "error", message: `Resume error: ${err.message}` });
         }
       }
       // After resume returns, don't auto-resume again — let the user
@@ -218,7 +201,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     let selectedQuestId: string | null = null;
 
     if (hasQuests || config.devMode) {
-      const questAction = await showQuestPicker(projectRoot, config, opts);
+      const questAction = await runQuestPickerInk({ projectRoot, config });
 
       if (questAction.type === "quit") {
         // User pressed Q in quest picker -- exit cleanly
@@ -236,16 +219,35 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       }
 
       if (questAction.type === "genesis") {
-        // User provided vision via blessed modal — run genesis planner + review
-        await handleGenesisFlow(projectRoot, config, opts, questAction.vision);
+        // Genesis action -- need to prompt for vision text
+        let vision = questAction.vision;
+        if (!vision) {
+          // The Ink quest picker signals genesis with empty vision;
+          // prompt for vision text via readline
+          vision = await promptVisionText();
+        }
+        if (vision) {
+          await handleGenesisFlow(projectRoot, config, opts, vision);
+        }
         // After genesis (approve or cancel), loop back to quest picker
         process.stdout.write("\x1B[2J\x1B[H");
         continue;
       }
 
       if (questAction.type === "errand") {
-        // User provided spec via blessed modal — run errand planner
-        await handleErrandFlow(projectRoot, config, opts, questAction.spec);
+        // Errand action -- may need the errand wizard
+        let spec = questAction.spec;
+        if (!spec.description) {
+          const wizardSpec = await runErrandWizardInk();
+          if (wizardSpec) {
+            spec = wizardSpec;
+          } else {
+            // User cancelled
+            process.stdout.write("\x1B[2J\x1B[H");
+            continue;
+          }
+        }
+        await handleErrandFlow(projectRoot, config, opts, spec);
         // After errand (approve or cancel), loop back to quest picker
         process.stdout.write("\x1B[2J\x1B[H");
         continue;
@@ -267,21 +269,52 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         continue;
       }
 
-      selectedQuestId = questAction.questId;
+      if (questAction.type === "select") {
+        if (questAction.questId === "__create__") {
+          // User wants to create a new quest
+          const quest = await runQuestWizardInk({
+            projectRoot,
+            baseBranch: opts.baseBranch ?? config.baseBranch,
+          });
+          // After wizard, loop back to quest picker
+          process.stdout.write("\x1B[2J\x1B[H");
+          continue;
+        }
+        selectedQuestId = questAction.questId;
+      }
     }
 
     // -----------------------------------------------------------------------
     // Task Browser (filtered by quest if one was selected)
     // -----------------------------------------------------------------------
-    const action = await showBrowser(
+
+    // Reload session from disk in case state changed after a wave
+    const freshSession = loadTUISession(projectRoot);
+    if (opts.maxConcurrent !== undefined) {
+      freshSession.maxConcurrent = opts.maxConcurrent;
+    }
+    Object.assign(session, freshSession);
+
+    // Load quest details for filtering
+    let questTitle: string | undefined;
+    let questTaskIds: string[] | undefined;
+    if (selectedQuestId) {
+      const quest = loadQuest(projectRoot, selectedQuestId);
+      if (quest) {
+        questTitle = quest.title;
+        questTaskIds = getQuestTaskIds(selectedQuestId, loadTasksFromStore(projectRoot, config).tasks);
+      }
+    }
+
+    const action = await runTaskBrowserInk({
       projectRoot,
       config,
-      session,
-      opts,
-      selectedQuestId,
-      hasQuests,
-      hasRunningWave
-    );
+      questId: selectedQuestId,
+      questTitle,
+      questTaskIds,
+      hasRunningWave,
+      showBack: hasQuests || config.devMode,
+    });
 
     if (action.type === "quit") {
       // User pressed Q in browser with no quest context -- exit cleanly
@@ -297,17 +330,24 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     }
 
     if (action.type === "errand") {
-      // User provided errand spec via blessed wizard in browser
-      await handleErrandFlow(projectRoot, config, opts, action.spec);
+      // User wants an errand -- may need to run wizard
+      let spec = action.spec;
+      if (!spec.description) {
+        const wizardSpec = await runErrandWizardInk();
+        if (wizardSpec) {
+          spec = wizardSpec;
+        } else {
+          process.stdout.write("\x1B[2J\x1B[H");
+          continue;
+        }
+      }
+      await handleErrandFlow(projectRoot, config, opts, spec);
       process.stdout.write("\x1B[2J\x1B[H");
       continue;
     }
 
-    if (action.type === "monitor") {
+    if (action.type === "switchToMonitor") {
       // User pressed Tab to switch to the running wave monitor.
-      // Resume connects to the existing wave and opens the monitor TUI.
-      // When the user presses Q in the monitor, cmdResume returns (detached)
-      // and we loop back to the browser with the running wave indicator.
       try {
         await cmdResume({
           projectRoot,
@@ -322,11 +362,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
           detachOnQuit: true,
         });
       } catch (err: any) {
-        const ps = new ProgressScreen("Resume Error");
-        ps.start();
-        ps.showError(`Resume error: ${err.message}`);
-        await ps.waitForDismiss(3000);
-        ps.destroy();
+        const progress = runProgressInk({ title: "Resume Error" });
+        await progress.finish({ type: "error", message: `Resume error: ${err.message}` });
       }
       process.stdout.write("\x1B[2J\x1B[H");
       // Don't auto-resume — let user browse tasks and Tab to monitor
@@ -334,9 +371,15 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       continue;
     }
 
+    if (action.type === "wishlist") {
+      await handleWishlistFlow(projectRoot, config, opts);
+      process.stdout.write("\x1B[2J\x1B[H");
+      continue;
+    }
+
     if (action.type === "launch") {
       // Save session before launching
-      session.selected = action.ids;
+      session.selected = action.selectedIds;
       session.lastView = "monitor";
       saveTUISession(projectRoot, session);
 
@@ -344,7 +387,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       const launchOpts: LaunchCommandOptions = {
         projectRoot,
         config,
-        features: action.ids,
+        features: action.selectedIds,
         maxConcurrent: session.maxConcurrent,
         model: opts.model,
         interactive: false,
@@ -364,11 +407,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         await cmdLaunch(launchOpts);
       } catch (err: any) {
         // Don't crash -- show error and loop back
-        const ps = new ProgressScreen("Launch Error");
-        ps.start();
-        ps.showError(`Launch error: ${err.message}`);
-        await ps.waitForDismiss(3000);
-        ps.destroy();
+        const progress = runProgressInk({ title: "Launch Error" });
+        await progress.finish({ type: "error", message: `Launch error: ${err.message}` });
       }
 
       // Clear terminal before showing picker/browser again
@@ -378,79 +418,6 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       continue;
     }
   }
-
-  // Centralized stdin cleanup — only runs when the TUI main loop exits.
-  // Individual view destroy() methods do NOT touch stdin because that would
-  // break blessed's internal program singleton during screen-to-screen
-  // transitions (e.g. QuestPicker → TaskBrowser).
-  cleanupStdin();
-}
-
-/**
- * Clean up stdin state left behind by blessed screens.
- * Called once when the TUI exits, NOT during screen transitions.
- */
-function cleanupStdin(): void {
-  try {
-    process.stdin.removeAllListeners("keypress");
-    process.stdin.removeAllListeners("data");
-    if (process.stdin.isTTY && typeof process.stdin.setRawMode === "function") {
-      process.stdin.setRawMode(false);
-    }
-  } catch {
-    // Ignore — stdin may already be closed
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Quest Picker View -- Promise-based
-// ---------------------------------------------------------------------------
-
-/**
- * Show the Quest Picker and return a Promise that resolves when the user
- * takes an action (select quest, plan quest, or quit).
- */
-function showQuestPicker(
-  projectRoot: string,
-  config: WomboConfig,
-  opts: TUICommandOptions
-): Promise<QuestPickerAction> {
-  return new Promise<QuestPickerAction>((resolve) => {
-    const picker = new QuestPicker({
-      projectRoot,
-      config,
-
-      onSelect: (questId: string | null) => {
-        resolve({ type: "select", questId });
-      },
-
-      onPlan: (questId: string) => {
-        resolve({ type: "plan", questId });
-      },
-
-      onGenesis: (vision: string) => {
-        resolve({ type: "genesis", vision });
-      },
-
-      onErrand: (spec: ErrandSpec) => {
-        resolve({ type: "errand", spec });
-      },
-
-      onWishlist: () => {
-        resolve({ type: "wishlist" });
-      },
-
-      onOnboarding: () => {
-        resolve({ type: "onboarding" });
-      },
-
-      onQuit: () => {
-        resolve({ type: "quit" });
-      },
-    });
-
-    picker.start();
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -459,7 +426,7 @@ function showQuestPicker(
 
 /**
  * Run the quest planner agent, then show the plan review TUI.
- * Handles the full flow: progress screen → planner → review → approve/cancel.
+ * Handles the full flow: progress screen -> planner -> review -> approve/cancel.
  */
 async function handlePlanFlow(
   projectRoot: string,
@@ -469,11 +436,8 @@ async function handlePlanFlow(
 ): Promise<void> {
   const quest = loadQuest(projectRoot, questId);
   if (!quest) {
-    const ps = new ProgressScreen("Error");
-    ps.start();
-    ps.showError(`Quest "${questId}" not found.`);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    const progress = runProgressInk({ title: "Error" });
+    await progress.finish({ type: "error", message: `Quest "${questId}" not found.` });
     return;
   }
 
@@ -483,9 +447,11 @@ async function handlePlanFlow(
   saveQuest(projectRoot, quest);
 
   // Show progress screen with spinner
-  const ps = new ProgressScreen("Quest Planner", `${quest.title} (${quest.id})`);
-  ps.start();
-  ps.setStatus("Running quest planner agent...");
+  const progress = runProgressInk({
+    title: "Quest Planner",
+    context: `${quest.title} (${quest.id})`,
+  });
+  progress.update("Running quest planner agent...");
 
   let planResult: PlanResult;
 
@@ -493,55 +459,48 @@ async function handlePlanFlow(
     planResult = await runQuestPlanner(quest, projectRoot, config, {
       model: opts.model,
       onProgress: (msg) => {
-        ps.setStatus(msg);
+        progress.update(msg);
       },
     });
   } catch (err: any) {
-    ps.showError(`Planner error: ${err.message}`);
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({ type: "error", message: `Planner error: ${err.message}` });
     return;
   }
 
   if (!planResult.success && planResult.tasks.length === 0) {
-    ps.showError(`Planner failed: ${planResult.error ?? "No tasks produced"}`);
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({
+      type: "error",
+      message: `Planner failed: ${planResult.error ?? "No tasks produced"}`,
+    });
     return;
   }
 
   // Show results briefly before switching to plan review
-  ps.showSuccess(`Planner produced ${planResult.tasks.length} tasks.`);
-  if (planResult.issues.length > 0) {
-    const errors = planResult.issues.filter((i) => i.level === "error").length;
-    const warnings = planResult.issues.filter((i) => i.level === "warning").length;
-    if (errors > 0) ps.addLine(`  {red-fg}${errors} validation error(s){/red-fg}`);
-    if (warnings > 0) ps.addLine(`  {yellow-fg}${warnings} validation warning(s){/yellow-fg}`);
-  }
-  ps.addLine("  Opening plan review...");
-  await ps.waitForDismiss(1500);
-  ps.destroy();
+  await progress.finish({
+    type: "success",
+    message: `Planner produced ${planResult.tasks.length} tasks. Opening plan review...`,
+  });
 
   // Show the plan review TUI
-  const reviewAction = await showPlanReview(
+  const reviewAction = await runPlanReviewInk({
     questId,
-    quest.title,
-    planResult
-  );
+    questTitle: quest.title,
+    planResult,
+  });
 
   if (reviewAction.type === "cancel") {
     // User cancelled — revert quest status
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    const ps2 = new ProgressScreen("Plan Cancelled");
-    ps2.start();
-    ps2.showInfo(`Plan discarded. Quest "${questId}" reverted to "${prevStatus}".`);
-    await ps2.waitForDismiss(2000);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Plan Cancelled" });
+    await p2.finish({
+      type: "info",
+      message: `Plan discarded. Quest "${questId}" reverted to "${prevStatus}".`,
+    });
     return;
   }
 
@@ -554,22 +513,17 @@ async function handlePlanFlow(
     };
 
     const tasks = applyPlanToQuest(approvedResult, quest, projectRoot, config);
-    const ps2 = new ProgressScreen("Plan Approved");
-    ps2.start();
-    ps2.showSuccess(`Created ${tasks.length} tasks. Quest "${questId}" is now active.`);
+    const p2 = runProgressInk({ title: "Plan Approved" });
+    let msg = `Created ${tasks.length} tasks. Quest "${questId}" is now active.`;
     if (reviewAction.knowledge) {
-      ps2.addLine(`  Saved knowledge file (${reviewAction.knowledge.length} chars).`);
+      msg += ` Saved knowledge file (${reviewAction.knowledge.length} chars).`;
     }
-    await ps2.waitForDismiss(2500);
-    ps2.destroy();
+    await p2.finish({ type: "success", message: msg });
   } catch (err: any) {
-    const ps2 = new ProgressScreen("Plan Error");
-    ps2.start();
-    ps2.showError(`Failed to apply plan: ${err.message}`);
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    await ps2.waitForDismiss(3000);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Plan Error" });
+    await p2.finish({ type: "error", message: `Failed to apply plan: ${err.message}` });
   }
 }
 
@@ -580,7 +534,7 @@ async function handlePlanFlow(
 /**
  * Run the genesis planner: take a vision string, run the genesis planner
  * agent, then show the genesis review TUI.
- * Handles the full flow: progress screen → planner → review → create quests.
+ * Handles the full flow: progress screen -> planner -> review -> create quests.
  */
 async function handleGenesisFlow(
   projectRoot: string,
@@ -589,11 +543,8 @@ async function handleGenesisFlow(
   vision: string
 ): Promise<void> {
   if (!vision) {
-    const ps = new ProgressScreen("Genesis");
-    ps.start();
-    ps.showInfo("No vision provided. Returning to quest picker.");
-    await ps.waitForDismiss(2000);
-    ps.destroy();
+    const progress = runProgressInk({ title: "Genesis" });
+    await progress.finish({ type: "info", message: "No vision provided. Returning to quest picker." });
     return;
   }
 
@@ -601,9 +552,8 @@ async function handleGenesisFlow(
   const existingQuestIds = listQuestIds(projectRoot);
 
   // Show progress screen with spinner
-  const ps = new ProgressScreen("Genesis Planner");
-  ps.start();
-  ps.setStatus("Running genesis planner agent...");
+  const progress = runProgressInk({ title: "Genesis Planner" });
+  progress.update("Running genesis planner agent...");
 
   let genesisResult: GenesisResult;
 
@@ -612,44 +562,34 @@ async function handleGenesisFlow(
       existingQuestIds,
       model: opts.model,
       onProgress: (msg) => {
-        ps.setStatus(msg);
+        progress.update(msg);
       },
     });
   } catch (err: any) {
-    ps.showError(`Genesis planner error: ${err.message}`);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({ type: "error", message: `Genesis planner error: ${err.message}` });
     return;
   }
 
   if (!genesisResult.success && genesisResult.quests.length === 0) {
-    ps.showError(`Genesis planner failed: ${genesisResult.error ?? "No quests produced"}`);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({
+      type: "error",
+      message: `Genesis planner failed: ${genesisResult.error ?? "No quests produced"}`,
+    });
     return;
   }
 
   // Show results briefly before switching to genesis review
-  ps.showSuccess(`Genesis planner produced ${genesisResult.quests.length} quests.`);
-  if (genesisResult.issues.length > 0) {
-    const errors = genesisResult.issues.filter((i) => i.level === "error").length;
-    const warnings = genesisResult.issues.filter((i) => i.level === "warning").length;
-    if (errors > 0) ps.addLine(`  {red-fg}${errors} validation error(s){/red-fg}`);
-    if (warnings > 0) ps.addLine(`  {yellow-fg}${warnings} validation warning(s){/yellow-fg}`);
-  }
-  ps.addLine("  Opening genesis review...");
-  await ps.waitForDismiss(1500);
-  ps.destroy();
+  await progress.finish({
+    type: "success",
+    message: `Genesis planner produced ${genesisResult.quests.length} quests. Opening genesis review...`,
+  });
 
   // Show the genesis review TUI
-  const reviewAction = await showGenesisReview(genesisResult);
+  const reviewAction = await runGenesisReviewInk({ genesisResult });
 
   if (reviewAction.type === "cancel") {
-    const ps2 = new ProgressScreen("Genesis Cancelled");
-    ps2.start();
-    ps2.showInfo("Genesis plan discarded.");
-    await ps2.waitForDismiss(2000);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Genesis Cancelled" });
+    await p2.finish({ type: "info", message: "Genesis plan discarded." });
     return;
   }
 
@@ -675,21 +615,17 @@ async function handleGenesisFlow(
   }
 
   // Show approval result
-  const ps2 = new ProgressScreen("Genesis Approved");
-  ps2.start();
-  const questList = created.map((id) => `    - ${id}`).join("\n");
-  ps2.showSuccess(`Created ${created.length} quests.`);
-  ps2.addLine(questList);
+  const p2 = runProgressInk({ title: "Genesis Approved" });
+  let msg = `Created ${created.length} quests.`;
 
   // Save knowledge if the planner produced any (attach to the first quest)
   const knowledge = reviewAction.knowledge;
   if (knowledge && created.length > 0) {
     saveQuestKnowledge(projectRoot, created[0], knowledge);
-    ps2.addLine(`  Saved knowledge file (${knowledge.length} chars) to quest "${created[0]}".`);
+    msg += ` Saved knowledge file (${knowledge.length} chars) to quest "${created[0]}".`;
   }
 
-  await ps2.waitForDismiss(2500);
-  ps2.destroy();
+  await p2.finish({ type: "success", message: msg });
 }
 
 // ---------------------------------------------------------------------------
@@ -710,18 +646,14 @@ async function handleErrandFlow(
   spec: ErrandSpec
 ): Promise<void> {
   if (!spec.description) {
-    const ps = new ProgressScreen("Errand");
-    ps.start();
-    ps.showInfo("No description provided. Returning.");
-    await ps.waitForDismiss(2000);
-    ps.destroy();
+    const progress = runProgressInk({ title: "Errand" });
+    await progress.finish({ type: "info", message: "No description provided. Returning." });
     return;
   }
 
   // Show progress screen with spinner
-  const ps = new ProgressScreen("Errand Planner");
-  ps.start();
-  ps.setStatus("Running errand planner...");
+  const progress = runProgressInk({ title: "Errand Planner" });
+  progress.update("Running errand planner...");
 
   let planResult: PlanResult;
 
@@ -729,50 +661,40 @@ async function handleErrandFlow(
     planResult = await runErrandPlanner(spec, projectRoot, config, {
       model: opts.model,
       onProgress: (msg) => {
-        ps.setStatus(msg);
+        progress.update(msg);
       },
     });
   } catch (err: any) {
-    ps.showError(`Errand planner error: ${err.message}`);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({ type: "error", message: `Errand planner error: ${err.message}` });
     return;
   }
 
   if (!planResult.success && planResult.tasks.length === 0) {
-    ps.showError(`Errand planner failed: ${planResult.error ?? "No tasks produced"}`);
-    await ps.waitForDismiss(3000);
-    ps.destroy();
+    await progress.finish({
+      type: "error",
+      message: `Errand planner failed: ${planResult.error ?? "No tasks produced"}`,
+    });
     return;
   }
 
   const desc = spec.description;
 
   // Show results briefly before switching to plan review
-  ps.showSuccess(`Errand planner produced ${planResult.tasks.length} task(s).`);
-  if (planResult.issues.length > 0) {
-    const errors = planResult.issues.filter((i) => i.level === "error").length;
-    const warnings = planResult.issues.filter((i) => i.level === "warning").length;
-    if (errors > 0) ps.addLine(`  {red-fg}${errors} validation error(s){/red-fg}`);
-    if (warnings > 0) ps.addLine(`  {yellow-fg}${warnings} validation warning(s){/yellow-fg}`);
-  }
-  ps.addLine("  Opening plan review...");
-  await ps.waitForDismiss(1500);
-  ps.destroy();
+  await progress.finish({
+    type: "success",
+    message: `Errand planner produced ${planResult.tasks.length} task(s). Opening plan review...`,
+  });
 
   // Reuse the plan review TUI (it works for any set of proposed tasks)
-  const reviewAction = await showPlanReview(
-    "(errand)",
-    desc.length > 50 ? desc.slice(0, 47) + "..." : desc,
-    planResult
-  );
+  const reviewAction = await runPlanReviewInk({
+    questId: "(errand)",
+    questTitle: desc.length > 50 ? desc.slice(0, 47) + "..." : desc,
+    planResult,
+  });
 
   if (reviewAction.type === "cancel") {
-    const ps2 = new ProgressScreen("Errand Cancelled");
-    ps2.start();
-    ps2.showInfo("Errand plan discarded.");
-    await ps2.waitForDismiss(2000);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Errand Cancelled" });
+    await p2.finish({ type: "info", message: "Errand plan discarded." });
     return;
   }
 
@@ -785,19 +707,15 @@ async function handleErrandFlow(
     };
 
     const tasks = applyErrandPlan(approvedResult, projectRoot, config);
-    const ps2 = new ProgressScreen("Errand Approved");
-    ps2.start();
-    const taskList = tasks.map((t) => `    - ${t.id}: ${t.title}`).join("\n");
-    ps2.showSuccess(`Created ${tasks.length} task(s).`);
-    ps2.addLine(taskList);
-    await ps2.waitForDismiss(2500);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Errand Approved" });
+    const taskList = tasks.map((t) => `  - ${t.id}: ${t.title}`).join("\n");
+    await p2.finish({
+      type: "success",
+      message: `Created ${tasks.length} task(s).\n${taskList}`,
+    });
   } catch (err: any) {
-    const ps2 = new ProgressScreen("Errand Error");
-    ps2.start();
-    ps2.showError(`Failed to create errand tasks: ${err.message}`);
-    await ps2.waitForDismiss(3000);
-    ps2.destroy();
+    const p2 = runProgressInk({ title: "Errand Error" });
+    await p2.finish({ type: "error", message: `Failed to create errand tasks: ${err.message}` });
   }
 }
 
@@ -815,33 +733,33 @@ async function handleWishlistFlow(
   config: WomboConfig,
   opts: TUICommandOptions
 ): Promise<void> {
-  const action = await showWishlistPicker(projectRoot);
+  const action = await runWishlistPickerInk({ projectRoot });
 
   if (action.type === "back" || action.type === "quit") {
     return;
   }
 
-  if (action.type === "promote-errand") {
+  if (action.type === "promoteErrand") {
     const item = action.item;
     await handleErrandFlow(projectRoot, config, opts, { description: item.text });
     await maybeDeleteWishlistItem(projectRoot, item);
     return;
   }
 
-  if (action.type === "promote-genesis") {
+  if (action.type === "promoteGenesis") {
     const item = action.item;
     await handleGenesisFlow(projectRoot, config, opts, item.text);
     await maybeDeleteWishlistItem(projectRoot, item);
     return;
   }
 
-  if (action.type === "promote-quest") {
+  if (action.type === "promoteQuest") {
     const item = action.item;
 
     // Run the quest creation wizard with the wishlist text as the goal
-    const quest = await runQuestWizardAsync({
+    const quest = await runQuestWizardInk({
       projectRoot,
-      baseBranch: config.baseBranch,
+      baseBranch: opts.baseBranch ?? config.baseBranch,
       prefill: { goal: item.text },
     });
 
@@ -860,42 +778,7 @@ async function handleWishlistFlow(
 }
 
 /**
- * Show the Wishlist Picker TUI and return a Promise that resolves when the
- * user takes an action.
- */
-function showWishlistPicker(projectRoot: string): Promise<WishlistAction> {
-  return new Promise<WishlistAction>((resolve) => {
-    const picker = new WishlistPicker({
-      projectRoot,
-
-      onPromoteErrand: (item) => {
-        resolve({ type: "promote-errand", item });
-      },
-
-      onPromoteGenesis: (item) => {
-        resolve({ type: "promote-genesis", item });
-      },
-
-      onPromoteQuest: (item) => {
-        resolve({ type: "promote-quest", item });
-      },
-
-      onBack: () => {
-        resolve({ type: "back" });
-      },
-
-      onQuit: () => {
-        resolve({ type: "quit" });
-      },
-    });
-
-    picker.start();
-  });
-}
-
-/**
  * After a wishlist item has been promoted, ask the user whether to delete it.
- * Uses a blessed confirm popup (no readline needed).
  */
 async function maybeDeleteWishlistItem(
   projectRoot: string,
@@ -904,177 +787,45 @@ async function maybeDeleteWishlistItem(
   const truncText =
     item.text.length > 50 ? item.text.slice(0, 47) + "..." : item.text;
 
-  const confirmed = await showConfirm(
-    "Delete Wishlist Item",
-    `Delete "${truncText}" from wishlist?`
-  );
+  const confirmed = await runConfirmInk({
+    title: "Delete Wishlist Item",
+    message: `Delete "${truncText}" from wishlist?`,
+  });
 
   if (confirmed) {
     const deleted = deleteWishlistItem(projectRoot, item.id);
-    const ps = new ProgressScreen("Wishlist");
-    ps.start();
+    const p = runProgressInk({ title: "Wishlist" });
     if (deleted) {
-      ps.showSuccess("Wishlist item deleted.");
+      await p.finish({ type: "success", message: "Wishlist item deleted." });
     } else {
-      ps.showInfo("Item not found (may have been already deleted).");
+      await p.finish({ type: "info", message: "Item not found (may have been already deleted)." });
     }
-    await ps.waitForDismiss(1500);
-    ps.destroy();
   } else {
-    const ps = new ProgressScreen("Wishlist");
-    ps.start();
-    ps.showInfo("Wishlist item kept.");
-    await ps.waitForDismiss(1000);
-    ps.destroy();
+    const p = runProgressInk({ title: "Wishlist" });
+    await p.finish({ type: "info", message: "Wishlist item kept." });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Genesis Review View -- Promise-based
+// Vision Text Prompt
 // ---------------------------------------------------------------------------
 
 /**
- * Show the Genesis Review TUI and return a Promise that resolves when the
- * user approves or cancels.
+ * Prompt the user for a vision text string via readline.
+ * Returns the vision text, or empty string if cancelled.
  */
-function showGenesisReview(
-  genesisResult: GenesisResult
-): Promise<GenesisReviewAction> {
-  return new Promise<GenesisReviewAction>((resolve) => {
-    const review = new GenesisReview({
-      genesisResult,
-
-      onApprove: (quests, knowledge) => {
-        resolve({ type: "approve", quests, knowledge });
-      },
-
-      onCancel: () => {
-        resolve({ type: "cancel" });
-      },
-    });
-
-    review.start();
+async function promptVisionText(): Promise<string> {
+  const readline = await import("node:readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
   });
-}
 
-// ---------------------------------------------------------------------------
-// Plan Review View -- Promise-based
-// ---------------------------------------------------------------------------
-
-/**
- * Show the Plan Review TUI and return a Promise that resolves when the user
- * approves or cancels.
- */
-function showPlanReview(
-  questId: string,
-  questTitle: string,
-  planResult: PlanResult
-): Promise<PlanReviewResult> {
-  return new Promise<PlanReviewResult>((resolve) => {
-    const review = new PlanReview({
-      questId,
-      questTitle,
-      planResult,
-
-      onApprove: (tasks, knowledge) => {
-        resolve({ type: "approve", tasks, knowledge });
-      },
-
-      onCancel: () => {
-        resolve({ type: "cancel" });
-      },
+  return new Promise<string>((resolve) => {
+    rl.question("Enter your project vision (or press Enter to cancel): ", (answer) => {
+      rl.close();
+      resolve(answer.trim());
     });
-
-    review.start();
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Browser View -- Promise-based
-// ---------------------------------------------------------------------------
-
-/**
- * Show the Task Browser and return a Promise that resolves when the user
- * takes an action (launch, back, quit, or switch to monitor).
- */
-function showBrowser(
-  projectRoot: string,
-  config: WomboConfig,
-  session: TUISession,
-  opts: TUICommandOptions,
-  questId: string | null,
-  hasQuestPicker: boolean,
-  hasRunningWave: boolean = false
-): Promise<BrowserAction> {
-  // Reload session from disk in case state changed after a wave
-  const freshSession = loadTUISession(projectRoot);
-  // Merge any runtime overrides
-  if (opts.maxConcurrent !== undefined) {
-    freshSession.maxConcurrent = opts.maxConcurrent;
-  }
-  // Copy fresh values back into the shared session object
-  Object.assign(session, freshSession);
-
-  // Load quest details for filtering if a quest was selected
-  let questTitle: string | undefined;
-  let questTaskIds: string[] | undefined;
-  if (questId) {
-    const quest = loadQuest(projectRoot, questId);
-    if (quest) {
-      questTitle = quest.title;
-      questTaskIds = getQuestTaskIds(questId, loadTasksFromStore(projectRoot, config).tasks);
-    }
-  }
-
-  return new Promise<BrowserAction>((resolve) => {
-    const browser = new TaskBrowser({
-      projectRoot,
-      config,
-      session,
-      questId,
-      questTitle,
-      questTaskIds,
-
-      onLaunch: (selectedIds: string[]) => {
-        if (selectedIds.length === 0) return;
-        // The browser has already shown a transition message on-screen.
-        // Destroy the blessed screen and clear the terminal.
-        browser.destroy();
-        resolve({ type: "launch", ids: selectedIds });
-      },
-
-      onQuit: () => {
-        browser.stop();
-        resolve({ type: "quit" });
-      },
-
-      onBack: hasQuestPicker
-        ? () => {
-            resolve({ type: "back" });
-          }
-        : undefined,
-
-      // Errand is available when not in quest-filtered mode
-      onErrand: !questId
-        ? (spec: ErrandSpec) => {
-            resolve({ type: "errand", spec });
-          }
-        : undefined,
-
-      // Switch to monitor is available when a wave is running in the background
-      onSwitchToMonitor: hasRunningWave
-        ? () => {
-            resolve({ type: "monitor" });
-          }
-        : undefined,
-    });
-
-    // Tell the browser about the running wave so it shows the Tab hint
-    if (hasRunningWave) {
-      browser.setHasRunningWave(true);
-    }
-
-    browser.start();
   });
 }
 

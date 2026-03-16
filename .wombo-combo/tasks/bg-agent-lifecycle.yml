@@ -1,0 +1,20 @@
+id: bg-agent-lifecycle
+quest: background-engine
+title: Fully detached agent process management
+description: Agents spawn as fully detached processes (detached:true, stdio:ignore after log setup). Daemon monitors via
+  PID polling or pidfd. Agent death is detected and reported without relying on parent process. Includes process
+  reaping, crash detection, and exit code capture. Works with both opencode and claude CLI backends.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - bg-daemon
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

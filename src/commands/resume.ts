@@ -60,7 +60,7 @@ import { ProcessMonitor } from "../lib/monitor";
 import { pushBaseBranch } from "../lib/merger";
 import { runBuild } from "../lib/verifier";
 import { printDashboard, printAgentUpdate } from "../lib/ui";
-import { WomboTUI } from "../lib/tui";
+import type { InkWomboTUI } from "../ink/run-wave-monitor";
 import {
   launchSingleHeadless,
   handleBuildVerification,
@@ -578,7 +578,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
     // SIGINT handler for detailed lifecycle documentation. Agents are
     // non-detached children; killAll() gives them SIGTERM before exit.
     let detached = false;
-    const tuiRef = { current: null as WomboTUI | null };
+    const tuiRef = { current: null as InkWomboTUI | null };
     const gracefulShutdown = (signal: string) => {
       if (tuiRef.current) tuiRef.current.stop();
       for (const agent of state.agents) {
@@ -614,7 +614,8 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
 
     // Start TUI dashboard (or skip if --no-tui)
     if (!opts.noTui) {
-      tuiRef.current = new WomboTUI({
+      const { InkWomboTUI } = await import("../ink/run-wave-monitor");
+      tuiRef.current = new InkWomboTUI({
         state,
         monitor,
         projectRoot,

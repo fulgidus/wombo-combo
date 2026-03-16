@@ -8,12 +8,10 @@
         "citty": "^0.2.1",
         "ink": "^6.8.0",
         "mermaidtui": "^0.0.5",
-        "neo-blessed": "^0.2.0",
         "react": "^19.2.4",
         "yaml": "^2.7.1",
       },
       "devDependencies": {
-        "@types/blessed": "^0.1.25",
         "@types/bun": "latest",
         "@types/react": "^19.2.14",
         "typescript": "^5.8.2",
@@ -22,8 +20,6 @@
   },
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.2.5", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-3NX/MpTdroi0aKz134A6RC2Gb2iXVECN4QaAXnvCIxxIm3C3AVB1mkUe8NaaiyvOpDfsrqWhYtj+Q6a62RrTsw=="],
-
-    "@types/blessed": ["@types/blessed@0.1.27", "", { "dependencies": { "@types/node": "*" } }, "sha512-ZOQGjLvWDclAXp0rW5iuUBXeD6Gr1PkitN7tj7/G8FCoSzTsij6OhXusOzMKhwrZ9YlL2Pmu0d6xJ9zVvk+Hsg=="],
 
     "@types/bun": ["@types/bun@1.3.10", "", { "dependencies": { "bun-types": "1.3.10" } }, "sha512-0+rlrUrOrTSskibryHbvQkDOWRJwJZqZlxrUs1u4oOoTln8+WIXBPmAuCF35SWB2z4Zl3E84Nl/D0P7803nigQ=="],
 
@@ -80,8 +76,6 @@
     "mermaidtui": ["mermaidtui@0.0.5", "", { "dependencies": { "commander": "^14.0.2" }, "bin": { "mermaidtui": "dist/cli/index.js" } }, "sha512-Q91XSlVQsxhbTw2GFiqjFJJffgq2jSA+pvp2eTRS0fW+sFqHS7pYFQiXrIutHTLnOc7qC0d3v0ZG0aSxGypJrA=="],
 
     "mimic-fn": ["mimic-fn@2.1.0", "", {}, "sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg=="],
-
-    "neo-blessed": ["neo-blessed@0.2.0", "", { "bin": { "neo-blessed": "./bin/tput.js" } }, "sha512-C2kC4K+G2QnNQFXUIxTQvqmrdSIzGTX1ZRKeDW6ChmvPRw8rTkTEJzbEQHiHy06d36PCl/yMOCjquCRV8SpSQw=="],
 
     "onetime": ["onetime@5.1.2", "", { "dependencies": { "mimic-fn": "^2.1.0" } }, "sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg=="],
 

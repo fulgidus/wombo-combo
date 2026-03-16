@@ -1,0 +1,21 @@
+id: bg-sequential-mode
+quest: background-engine
+title: Sequential headless execution mode for unattended overnight runs
+description: Add a --sequential flag (or 'autopilot' command) that processes tasks one at a time in dependency order.
+  Pick next ready task, launch agent, wait for completion, verify, merge, mark done, repeat. No TUI, no parallelism —
+  just stdout logging. Designed for fire-and-forget overnight usage. Uses the daemon internally but presents a simple
+  blocking interface.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - bg-launch-refactor
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

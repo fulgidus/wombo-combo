@@ -8,8 +8,8 @@ description: "Migrate the three largest interactive views to Ink: (1) tui-quest-
   monitor dashboard with header, selectable agent table, preview pane (activity stream), status bar. Keybinds: up/down
   navigate, Enter attach, r retry, b build log, p pause auto-scroll, q quit. These are the most complex views and depend
   on all simpler components being ready."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
@@ -17,8 +17,8 @@ depends_on:
   - ink-quest-wizard
   - ink-wishlist
 effort: PT16H
-started_at: null
-ended_at: null
+started_at: 2026-03-16T01:10:47.711Z
+ended_at: 2026-03-16T07:12:10.681Z
 constraints: []
 forbidden: []
 references: []

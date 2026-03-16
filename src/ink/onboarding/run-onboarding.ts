@@ -29,7 +29,7 @@ import {
 import {
   runBrownfieldScout,
   runLlmSynthesis,
-} from "../../lib/tui-onboarding";
+} from "../../lib/onboarding-helpers";
 import { OnboardingApp } from "./onboarding-app";
 
 // ---------------------------------------------------------------------------

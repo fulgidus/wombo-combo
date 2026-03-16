@@ -185,3 +185,45 @@ export {
   type AgentInfo,
   type AgentCounts,
 } from "./wave-monitor";
+
+// Standalone launchers
+export {
+  runQuestPickerInk,
+  type QuestPickerAction,
+  type RunQuestPickerOptions,
+} from "./run-quest-picker";
+export {
+  runTaskBrowserInk,
+  type TaskBrowserAction,
+  type RunTaskBrowserOptions,
+} from "./run-task-browser";
+export {
+  runWishlistPickerInk,
+  type WishlistPickerAction,
+  type RunWishlistPickerOptions,
+} from "./run-wishlist-picker";
+export {
+  runErrandWizardInk,
+  type RunErrandWizardOptions,
+} from "./run-errand-wizard";
+export {
+  runProgressInk,
+  runConfirmInk,
+  type RunProgressOptions,
+  type RunConfirmOptions,
+  type ProgressController,
+} from "./run-progress";
+
+// Wave monitor adapter (imperative wrapper for launch.ts / resume.ts)
+export {
+  InkWomboTUI,
+  type InkTUIOptions,
+} from "./run-wave-monitor";
+
+// Task graph utilities
+export {
+  buildTaskGraph,
+  sortStreams,
+  flattenStreams,
+  type Stream,
+} from "./task-graph";

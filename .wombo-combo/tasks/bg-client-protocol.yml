@@ -1,0 +1,21 @@
+id: bg-client-protocol
+quest: background-engine
+title: IPC protocol for CLI/TUI to communicate with daemon
+description: "Define the request/response and event streaming protocol over Unix socket. Commands: start-wave,
+  stop-wave, abort-agent, retry-agent, get-status, list-waves. Events: agent-started, agent-completed, agent-failed,
+  wave-progress, merge-result. Protocol is JSON-line based for simplicity. Includes client library used by both CLI
+  commands and TUI."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - bg-daemon
+effort: PT6H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
