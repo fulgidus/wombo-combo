@@ -140,6 +140,11 @@ export function InitForm({
         setEditing(false);
         return;
       }
+      // Ctrl+S — confirm directly from edit mode
+      if (key.ctrl && input === "s") {
+        handleConfirm();
+        return;
+      }
       if (key.backspace || key.delete) {
         setEditBuffer((prev) => prev.slice(0, -1));
         return;
