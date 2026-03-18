@@ -42,6 +42,7 @@ import { wishlistCommand } from "../commands/citty/wishlist";
 import { helpCommand } from "../commands/citty/help";
 import { versionCommand } from "../commands/citty/version";
 import { describeCommand } from "../commands/citty/describe";
+import { daemonCommand } from "../commands/citty/daemon";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -787,6 +788,57 @@ const ENTRIES: RegistryEntry[] = [
         shell: { name: "action", description: "Action: install, uninstall, bash, zsh, or fish" },
       },
     },
+  },
+
+  // --- daemon --------------------------------------------------------------
+  {
+    cittyCmd: daemonCommand,
+    meta: {
+      summary: "Manage the persistent background daemon",
+      aliases: ["dm"],
+      mutating: false,
+      supportsDryRun: false,
+      completionSummary: "Daemon management",
+      description:
+        "Start, stop, and check status of the persistent background daemon " +
+        "that manages the continuous task pipeline. The daemon runs as a detached " +
+        "process with a WebSocket server for CLI/TUI communication.",
+    },
+    subEntries: [
+      {
+        subKey: "start",
+        parentName: "daemon",
+        meta: {
+          summary: "Start the daemon process in the background",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          completionSummary: "Start daemon",
+        },
+      },
+      {
+        subKey: "stop",
+        parentName: "daemon",
+        meta: {
+          summary: "Stop the running daemon process",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          completionSummary: "Stop daemon",
+        },
+      },
+      {
+        subKey: "status",
+        parentName: "daemon",
+        meta: {
+          summary: "Show daemon process status",
+          aliases: ["st"],
+          mutating: false,
+          supportsDryRun: false,
+          completionSummary: "Daemon status",
+        },
+      },
+    ],
   },
 ];
 

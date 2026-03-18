@@ -528,7 +528,7 @@ export function selectFeatures(
 // Sorting Helpers
 // ---------------------------------------------------------------------------
 
-function sortByPriorityThenEffort(tasks: Task[]): Task[] {
+export function sortByPriorityThenEffort(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
     const pDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     if (pDiff !== 0) return pDiff;

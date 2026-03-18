@@ -35,6 +35,7 @@ import { questCommand } from "./quest";
 import { genesisCommand } from "./genesis";
 import { wishlistCommand } from "./wishlist";
 import { tuiCommand } from "./tui";
+import { daemonCommand } from "./daemon";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -95,6 +96,9 @@ const CITTY_COMMANDS = new Set([
     "wl",         // alias for wishlist
     // --- TUI (default command) ---
     "tui",
+    // --- Daemon management ---
+    "daemon",
+    "dm",         // alias for daemon
 ]);
 
 /**
@@ -150,6 +154,7 @@ const DEFAULT_SUBCOMMAND: Record<string, string> = {
     tasks: "list",
     quest: "list",
     wishlist: "list",
+    daemon: "status",
 };
 
 /**
@@ -289,6 +294,11 @@ export async function runCittyCommand(
 
         case "tui":
             await runCommand(tuiCommand, { rawArgs });
+            break;
+
+        case "daemon":
+        case "dm":
+            await runCommand(daemonCommand, { rawArgs: injectDefaultSubcommand("daemon", rawArgs) });
             break;
 
         default:
