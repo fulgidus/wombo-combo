@@ -149,61 +149,45 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     session.maxConcurrent = opts.maxConcurrent;
   }
 
-  // Debug log to file (alt-screen swallows stderr — write to a file so we
-  // can see exactly where execution stops).
-  const _tuiLog = (() => {
-    const { appendFileSync } = require("node:fs") as typeof import("node:fs");
-    const logPath = require("node:path").resolve(projectRoot, ".wombo-combo/tui-debug.log");
-    return (msg: string) => {
-      try { appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
-    };
-  })();
-
-  _tuiLog("cmdTui started");
-
   // Enter the alternate screen buffer for a true fullscreen experience.
   // The guard ensures we exit alt-screen on crash, SIGINT, or SIGTERM.
   enterAltScreen();
   const removeGuard = installAltScreenGuard();
-  _tuiLog("alt-screen entered");
 
   // Start the daemon (if not already running) and connect a client.
-  // The daemon manages the agent lifecycle; the TUI is a pure viewer/controller.
   // Dynamic imports to avoid pulling daemon/ink server code into the
   // synchronous module graph (same pattern as launch.ts tryDaemonLaunch).
   let daemonClient: DaemonClient | null = null;
   let daemonConnected = false;
 
   try {
-    _tuiLog("importing ensureDaemonRunning...");
     const { ensureDaemonRunning } = await import("../daemon/launcher");
-    _tuiLog("calling ensureDaemonRunning...");
     await ensureDaemonRunning(projectRoot);
-    _tuiLog("ensureDaemonRunning done, importing DaemonClient...");
     const { DaemonClient: DaemonClientImpl } = await import("../daemon/client");
     daemonClient = new DaemonClientImpl({ clientId: "tui", autoReconnect: true });
-    _tuiLog("calling daemonClient.connect()...");
     await daemonClient.connect();
     daemonConnected = true;
-    _tuiLog("daemon connected!");
   } catch (err: any) {
-    // Daemon failed to start or connect — fall back to direct mode
-    // (legacy cmdLaunch/cmdResume path).
-    _tuiLog(`daemon connect failed (falling back): ${err?.message ?? err}`);
     daemonClient = null;
     daemonConnected = false;
   }
 
-  _tuiLog(`daemonConnected=${daemonConnected}, entering main try block`);
+
+  // If connected, ensure the scheduler is running. Old daemon instances that
+  // started before auto-start was added will have status "shutdown" — kick
+  // them into life so planned tasks get picked up immediately.
+  if (daemonConnected && daemonClient) {
+    try {
+      daemonClient.start({}); // no-op if already running, kicks off if shutdown
+    } catch { /* best-effort */ }
+  }
 
   try {
 
   // First-run detection: if no project.yml exists, run onboarding wizard.
   // If the user cancels/skips, we continue into the TUI anyway — next time
   // they launch, onboarding will appear again (snoozable).
-  _tuiLog(`projectExists=${projectExists(projectRoot)}`);
   if (!projectExists(projectRoot)) {
-    _tuiLog("running onboarding...");
     const result = await runOnboardingInk({ projectRoot, config });
     // Clear screen whether completed or skipped
     clearScreen();
@@ -230,18 +214,17 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   // `skipAutoResume` prevents the loop from immediately re-entering the
   // monitor after the user explicitly detached from it.
   let skipAutoResume = false;
-  let _loopCount = 0;
   while (true) {
-    _loopCount++;
-    _tuiLog(`main loop iteration ${_loopCount}`);
-    // Check for active agents — via daemon (preferred) or legacy file state
+    // Check for active agents — via daemon (preferred) or legacy file state.
+    // When daemon is connected, Tab always shows the monitor (even with no
+    // agents yet) so the user can watch planned tasks get picked up.
     let hasRunningWave = false;
 
     if (daemonConnected && daemonClient) {
-      // Ask the daemon for current state
+      // Daemon connected: show monitor if agents are active OR tasks are planned
       try {
         const snapshot = await daemonClient.requestState(3000);
-        hasRunningWave = snapshot.agents.some(
+        const hasActiveAgents = snapshot.agents.some(
           (a) =>
             a.status === "running" ||
             a.status === "queued" ||
@@ -249,6 +232,11 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
             a.status === "resolving_conflict" ||
             a.status === "retry"
         );
+        // Also check disk for planned tasks (daemon may not have picked them up yet)
+        const { loadTasksFromStore: _lts } = await import("../lib/task-store");
+        const { tasks: diskTasks } = _lts(projectRoot, config);
+        const hasPlannedTasks = diskTasks.some((t) => t.status === "planned");
+        hasRunningWave = hasActiveAgents || hasPlannedTasks;
       } catch {
         // Daemon not responding — fall back to file-based check
         const existingState = loadState(projectRoot);
@@ -330,14 +318,11 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     // -----------------------------------------------------------------------
     const quests = loadAllQuests(projectRoot);
     const hasQuests = quests.length > 0;
-    _tuiLog(`hasQuests=${hasQuests}, devMode=${config.devMode}, hasRunningWave=${hasRunningWave}, skipAutoResume=${skipAutoResume}`);
 
     let selectedQuestId: string | null = null;
 
     if (hasQuests || config.devMode) {
-      _tuiLog("launching runQuestPickerInk...");
       const questAction = await runQuestPickerInk({ projectRoot, config });
-      _tuiLog(`runQuestPickerInk returned: ${questAction.type}`);
 
       if (questAction.type === "quit") {
         // User pressed Q in quest picker -- exit cleanly
@@ -444,7 +429,6 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       }
     }
 
-    _tuiLog(`launching runTaskBrowserInk (selectedQuestId=${selectedQuestId})...`);
     const action = await runTaskBrowserInk({
       projectRoot,
       config,
@@ -881,10 +865,7 @@ async function handleWishlistFlow(
   opts: TUICommandOptions
 ): Promise<void> {
   const { appendFileSync: _afs } = require("node:fs") as typeof import("node:fs");
-  const _wlog = (m: string) => { try { _afs(require("node:path").resolve(projectRoot, ".wombo-combo/tui-debug.log"), `[${new Date().toISOString()}] [wishlist] ${m}\n`); } catch {} };
-  _wlog(`handleWishlistFlow entered — stdin.isTTY=${process.stdin.isTTY} stdout.isTTY=${process.stdout.isTTY}`);
   const action = await runWishlistPickerInk({ projectRoot });
-  _wlog(`runWishlistPickerInk returned: ${action.type}`);
 
   if (action.type === "back" || action.type === "quit") {
     return;
