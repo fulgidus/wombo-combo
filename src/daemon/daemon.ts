@@ -24,6 +24,7 @@ import { Scheduler } from "./scheduler";
 import type { SchedulerConfig } from "./scheduler";
 import { AgentRunner } from "./agent-runner";
 import type { AgentRunnerConfig } from "./agent-runner";
+import { submitAnswer, getPendingQuestions } from "../lib/hitl-channel";
 import {
   DEFAULT_WS_PORT,
   DEFAULT_IDLE_TIMEOUT_MS,
@@ -100,6 +101,12 @@ export class Daemon {
   /** Timer for idle auto-shutdown. */
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Timer for HITL question polling. */
+  private hitlPollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Set of known question IDs (to avoid re-emitting events). */
+  private knownQuestionIds: Set<string> = new Set();
+
   /** State change listener unsubscribe fn. */
   private unsubscribeState: (() => void) | null = null;
 
@@ -156,6 +163,9 @@ export class Daemon {
     // Start idle timeout
     this.resetIdleTimer();
 
+    // Start HITL question polling (filesystem-based detection)
+    this.startHitlPolling();
+
     // Register signal handlers
     this.registerSignalHandlers();
 
@@ -205,6 +215,12 @@ export class Daemon {
     if (this.idleTimer) {
       clearTimeout(this.idleTimer);
       this.idleTimer = null;
+    }
+
+    // Stop HITL polling
+    if (this.hitlPollTimer) {
+      clearInterval(this.hitlPollTimer);
+      this.hitlPollTimer = null;
     }
 
     this.log("info", "Daemon stopped");
@@ -456,10 +472,70 @@ export class Daemon {
       (q) => q.questionId !== payload.questionId
     );
 
-    // TODO: Actually send the answer to the agent process (requires IPC
-    // mechanism with the running subprocess — stdin write or similar).
-    // For now, log it and emit an event.
-    this.log("info", `HITL answer for ${payload.featureId}: ${payload.answer}`);
+    // Deliver the answer to the agent process by writing an answer file.
+    // The agent's hitl-ask script is polling the filesystem for this file.
+    try {
+      submitAnswer(this.projectRoot, payload.featureId, payload.questionId, payload.answer);
+      // Remove from known set so we don't re-detect after hitl-ask cleans up
+      this.knownQuestionIds.delete(payload.questionId);
+      this.log("info", `HITL answer delivered for ${payload.featureId}`);
+    } catch (err: any) {
+      this.log("error", `HITL answer delivery failed for ${payload.featureId}: ${err.message}`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // HITL question polling
+  // -------------------------------------------------------------------------
+
+  /** Poll frequency for filesystem-based HITL question detection (ms). */
+  private static readonly HITL_POLL_MS = 3_000;
+
+  /**
+   * Start periodic polling of the HITL filesystem channel.
+   * The hitl-ask script writes question files; we detect them here and
+   * emit evt:hitl-question events for connected clients.
+   */
+  private startHitlPolling(): void {
+    this.hitlPollTimer = setInterval(() => {
+      this.pollHitlQuestions();
+    }, Daemon.HITL_POLL_MS);
+  }
+
+  /** Scan for pending HITL questions and emit events for new ones. */
+  private pollHitlQuestions(): void {
+    try {
+      const pending = getPendingQuestions(this.projectRoot);
+      for (const q of pending) {
+        // Skip questions we've already seen
+        if (this.knownQuestionIds.has(q.id)) continue;
+
+        this.knownQuestionIds.add(q.id);
+
+        // Find the agent this question belongs to
+        const agent = this.state.getAgent(q.agentId);
+        if (!agent) continue;
+
+        // Add to the agent's pending questions list (if not already there)
+        const already = agent.pendingQuestions.some((pq) => pq.questionId === q.id);
+        if (!already) {
+          agent.pendingQuestions.push({
+            questionId: q.id,
+            questionText: q.text,
+            askedAt: q.timestamp,
+          });
+        }
+
+        // Emit event to all connected clients
+        this.state.emit("evt:hitl-question", {
+          featureId: q.agentId,
+          questionId: q.id,
+          questionText: q.text,
+        });
+      }
+    } catch {
+      // Non-fatal — HITL dir may not exist yet
+    }
   }
 
   // -------------------------------------------------------------------------
