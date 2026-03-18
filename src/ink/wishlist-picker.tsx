@@ -21,7 +21,7 @@
  *   P         — promote selected item to quest
  *   G         — promote selected item to genesis
  *   D / Del   — delete selected item
- *   +/-       — move selected item down/up in order
+ *   S-Up/Down — move selected item up/down in order
  *   Up/Down   — navigate items
  *   Esc       — go back
  *   Q         — quit
@@ -251,7 +251,7 @@ function StatusBar({
         <Text> genesis  </Text>
         <Text dimColor>D</Text>
         <Text> delete  </Text>
-        <Text dimColor>+/-</Text>
+        <Text dimColor>S-{"\u2191"}/{"\u2193"}</Text>
         <Text> reorder  </Text>
         <Text dimColor>Esc</Text>
         <Text> back  </Text>
@@ -291,23 +291,22 @@ export function WishlistPicker({
 
   useInput((input, key) => {
     // Navigation
-    if (key.downArrow) {
+    if (key.downArrow && !key.shift) {
       store.selectNext();
       return;
     }
-    if (key.upArrow) {
+    if (key.upArrow && !key.shift) {
       store.selectPrev();
       return;
     }
 
-    // + — move selected item down in order
-    if (input === "+") {
-      store.moveSelectedDown();
+    // Shift+Up/Down — reorder
+    if (key.upArrow && key.shift) {
+      store.moveSelectedUp();
       return;
     }
-    // - — move selected item up in order
-    if (input === "-") {
-      store.moveSelectedUp();
+    if (key.downArrow && key.shift) {
+      store.moveSelectedDown();
       return;
     }
 

@@ -53,8 +53,6 @@ export interface WomboConfig {
   git: {
     /** Branch name prefix for feature branches */
     branchPrefix: string;
-    /** Worktree directory name prefix */
-    worktreePrefix: string;
     /** Git remote name */
     remote: string;
     /** Merge strategy flag */
@@ -194,7 +192,6 @@ export const DEFAULT_CONFIG: WomboConfig = {
   },
   git: {
     branchPrefix: "feature/",
-    worktreePrefix: "woco-",
     remote: "origin",
     mergeStrategy: "--no-ff",
   },
