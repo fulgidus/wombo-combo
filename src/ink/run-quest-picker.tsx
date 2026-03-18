@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
 import { QuestPickerView, type QuestSummary } from "./quest-picker";
 import type { Quest } from "../lib/quest";
@@ -238,7 +239,7 @@ export function runQuestPickerInk(
         config={config}
         onAction={handleAction}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }

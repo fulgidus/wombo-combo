@@ -19,6 +19,7 @@
  */
 
 import React from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
 import { QuestWizard, type QuestWizardPrefill } from "./quest-wizard";
 import { loadQuest, saveQuest } from "../lib/quest-store";
@@ -90,7 +91,7 @@ export function runQuestWizardInk(
         checkDuplicateId={checkDuplicateId}
         saveQuest={saveQuestFn}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }

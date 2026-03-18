@@ -42,6 +42,7 @@ import type {
   SchedulerState,
 } from "../daemon/protocol";
 import { enterAltScreen, exitAltScreen, isAltScreenActive, installAltScreenGuard } from "./alt-screen";
+import { getStableStdin } from "./bun-stdin";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,6 +104,8 @@ interface DaemonAdapterProps {
   config: WomboConfig;
   onQuit: () => void;
   onQuitAfterComplete: () => void;
+  /** Ref the class fills with a function to flush store → React state. */
+  notifyRef: React.MutableRefObject<(() => void) | null>;
 }
 
 const TERMINAL_STATUSES: AgentStatus[] = ["completed", "verified", "failed", "merged"];
@@ -114,8 +117,8 @@ function DaemonMonitorAdapter({
   config,
   onQuit,
   onQuitAfterComplete,
+  notifyRef,
 }: DaemonAdapterProps): React.ReactElement {
-  // Local state driven by polling the daemon store
   const [scheduler, setScheduler] = useState<SchedulerState | null>(store.scheduler);
   const [agents, setAgents] = useState<DaemonAgentState[]>(store.agents);
   const [pendingQuestions, setPendingQuestions] = useState<HitlQuestion[]>(store.pendingQuestions);
@@ -129,21 +132,17 @@ function DaemonMonitorAdapter({
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerText, setAnswerText] = useState("");
 
-  const lastVersionRef = useRef(store.version);
-
-  // Poll the daemon store for event-driven updates (every 200ms)
+  // Wire up the notify callback so the class can trigger React state updates
+  // directly instead of relying on a polling interval reading a mutable store.
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (store.version !== lastVersionRef.current) {
-        lastVersionRef.current = store.version;
-        setScheduler(store.scheduler ? { ...store.scheduler } : null);
-        setAgents([...store.agents]);
-        setPendingQuestions([...store.pendingQuestions]);
-        setAllComplete(store.allComplete);
-      }
-    }, 200);
-    return () => clearInterval(timer);
-  }, [store]);
+    notifyRef.current = () => {
+      setScheduler(store.scheduler ? { ...store.scheduler } : null);
+      setAgents([...store.agents]);
+      setPendingQuestions([...store.pendingQuestions]);
+      setAllComplete(store.allComplete);
+    };
+    return () => { notifyRef.current = null; };
+  }, [store, notifyRef]);
 
   // Build AgentInfo array from daemon agent state
   const agentInfos: AgentInfo[] = agents.map((a) => ({
@@ -212,7 +211,7 @@ function DaemonMonitorAdapter({
           timestamp: new Date().toISOString().slice(11, 19),
           text: `!! Cannot retry — agent status is "${selectedAgent.status}" (must be failed or retry)`,
         });
-        store.version++;
+        
       }
       return;
     }
@@ -224,7 +223,7 @@ function DaemonMonitorAdapter({
           timestamp: new Date().toISOString().slice(11, 19),
           text: `>> Retry requested — sent to daemon`,
         });
-        store.version++;
+        
       }
     } catch {
       // Client not connected — ignore
@@ -284,7 +283,7 @@ function DaemonMonitorAdapter({
             timestamp: new Date().toISOString().slice(11, 19),
             text: `-- No pending HITL questions`,
           });
-          store.version++;
+          
         }
       }
       return;
@@ -319,7 +318,7 @@ function DaemonMonitorAdapter({
       store.pendingQuestions = store.pendingQuestions.filter(
         (q) => !(q.agentId === agentId && q.id === questionId)
       );
-      store.version++;
+      
       setAnswerText("");
       const remaining = pendingQuestions.filter(
         (q) => !(q.agentId === agentId && q.id === questionId)
@@ -417,6 +416,8 @@ export class InkDaemonTUI {
   private inkInstance: InkInstance | null = null;
   private waveCompleteResolve: (() => void) | null = null;
   private unsubscribers: Array<() => void> = [];
+  /** Ref wired to the React component's flush function. */
+  private notifyRef: React.MutableRefObject<(() => void) | null> = React.createRef() as React.MutableRefObject<(() => void) | null>;
 
   /** Whether we entered the alt screen ourselves */
   private ownsAltScreen = false;
@@ -516,7 +517,7 @@ export class InkDaemonTUI {
           });
         }
         this.checkCompletion();
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -534,7 +535,7 @@ export class InkDaemonTUI {
           timestamp: new Date().toISOString().slice(11, 19),
           text: evt.activity,
         });
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -548,7 +549,7 @@ export class InkDaemonTUI {
           text: evt.questionText,
           timestamp: new Date().toISOString(),
         });
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -565,7 +566,7 @@ export class InkDaemonTUI {
           timestamp: new Date().toISOString().slice(11, 19),
           text: `[build] ${evt.passed ? "PASSED" : "FAILED"}${evt.output ? ` — ${evt.output.slice(0, 100)}` : ""}`,
         });
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -578,7 +579,7 @@ export class InkDaemonTUI {
           timestamp: new Date().toISOString().slice(11, 19),
           text: `[merge] ${evt.success ? "SUCCESS" : `FAILED: ${evt.error ?? "unknown"}`}`,
         });
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -592,7 +593,7 @@ export class InkDaemonTUI {
           outputTokens: (existing?.outputTokens ?? 0) + evt.outputTokens,
           totalCost: (existing?.totalCost ?? 0) + (evt.cost ?? 0),
         });
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -608,7 +609,7 @@ export class InkDaemonTUI {
           text: `[scheduler] ${evt.status}${evt.reason ? ` — ${evt.reason}` : ""}`,
         });
         this.checkCompletion();
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -624,7 +625,7 @@ export class InkDaemonTUI {
         if (this.store.systemMessages.length > 200) {
           this.store.systemMessages.splice(0, this.store.systemMessages.length - 200);
         }
-        this.store.version++;
+      this.notify();
       })
     );
 
@@ -636,7 +637,7 @@ export class InkDaemonTUI {
           timestamp: new Date().toISOString().slice(11, 19),
           text: `[daemon] Daemon is shutting down`,
         });
-        this.store.version++;
+      this.notify();
       })
     );
   }
@@ -682,7 +683,7 @@ export class InkDaemonTUI {
     }
 
     this.checkCompletion();
-    this.store.version++;
+    this.notify();
   }
 
   private checkCompletion(): void {
@@ -734,7 +735,7 @@ export class InkDaemonTUI {
       if (this.store.systemMessages.length > 200) {
         this.store.systemMessages.splice(0, this.store.systemMessages.length - 200);
       }
-      this.store.version++;
+      
     };
 
     console.log = capture;
@@ -749,6 +750,15 @@ export class InkDaemonTUI {
   }
 
   // -------------------------------------------------------------------------
+  // React notify
+  // -------------------------------------------------------------------------
+
+  /** Push current store state into React — triggers a re-render immediately. */
+  private notify(): void {
+    this.notifyRef.current?.();
+  }
+
+  // -------------------------------------------------------------------------
   // Ink mount / unmount
   // -------------------------------------------------------------------------
 
@@ -760,6 +770,7 @@ export class InkDaemonTUI {
         client={this.client}
         projectRoot={this.projectRoot}
         config={this.config}
+        notifyRef={this.notifyRef}
         onQuit={this.onQuitCallback}
         onQuitAfterComplete={() => {
           this.stop();
@@ -769,7 +780,7 @@ export class InkDaemonTUI {
           }
         }}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   }
 

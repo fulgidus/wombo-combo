@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
 import { WishlistPicker } from "./wishlist-picker";
 import type { WishlistItem } from "../lib/wishlist-store";
@@ -61,7 +62,7 @@ export function runWishlistPickerInk(
         onBack={() => handleAction({ type: "back" })}
         onQuit={() => handleAction({ type: "quit" })}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }

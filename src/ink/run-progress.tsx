@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render, useInput } from "ink";
 import { ProgressView, type ProgressResult } from "./progress";
 import { ConfirmDialog } from "./confirm";
@@ -102,7 +103,7 @@ export function runProgressInk(opts: RunProgressOptions): ProgressController {
         dismissResolve?.();
       }}
     />,
-    { exitOnCtrlC: false }
+    { exitOnCtrlC: false, stdin: getStableStdin() }
   );
 
   return {
@@ -151,7 +152,7 @@ export function runConfirmInk(opts: RunConfirmOptions): Promise<boolean> {
           resolve(confirmed);
         }}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }

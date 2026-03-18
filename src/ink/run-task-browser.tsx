@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
 import { TaskBrowserView, type TaskNode } from "./task-browser";
 import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task-graph";
@@ -355,7 +356,7 @@ export function runTaskBrowserInk(
         {...opts}
         onAction={handleAction}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }

@@ -18,6 +18,7 @@
  */
 
 import React from "react";
+import { getStableStdin } from "../bun-stdin";
 import { render } from "ink";
 import type { ProjectProfile } from "../../lib/project-store";
 import type { WomboConfig } from "../../config";
@@ -125,6 +126,7 @@ export async function runOnboardingInk(
     const instance = render(element, {
       // Don't exit on Ctrl+C — let the onboarding flow handle it
       exitOnCtrlC: false,
+      stdin: getStableStdin(),
     });
   });
 }

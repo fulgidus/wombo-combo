@@ -25,6 +25,7 @@
  */
 
 import React from "react";
+import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
 import { GenesisReviewApp } from "./genesis-review";
 import { PlanReviewApp } from "./plan-review";
@@ -85,7 +86,7 @@ export function runGenesisReviewInk(
         onApprove={handleApprove}
         onCancel={handleCancel}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }
@@ -136,7 +137,7 @@ export function runPlanReviewInk(
         onApprove={handleApprove}
         onCancel={handleCancel}
       />,
-      { exitOnCtrlC: false }
+      { exitOnCtrlC: false, stdin: getStableStdin() }
     );
   });
 }
