@@ -93,6 +93,11 @@ export interface InkDaemonTUIOptions {
    * the outer session.
    */
   skipAltScreen?: boolean;
+  /**
+   * When true, skip the splash screen and show the monitor directly.
+   * Use this when called from within an existing TUI session (e.g. tui.ts).
+   */
+  skipSplash?: boolean;
 }
 
 /**
@@ -717,6 +722,10 @@ export class InkDaemonTUI {
    * The outer caller (e.g. tui.ts) owns alt-screen lifecycle.
    */
   private skipAltScreen: boolean;
+  /**
+   * When true, skip the splash screen and show the monitor directly.
+   */
+  private skipSplash: boolean;
 
   /** TuiSession owns alt-screen lifecycle (replaces direct enterAltScreen calls). */
   _session: TuiSession;
@@ -727,6 +736,7 @@ export class InkDaemonTUI {
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
     this.skipAltScreen = opts.skipAltScreen ?? false;
+    this.skipSplash = opts.skipSplash ?? false;
     this._session = new TuiSession();
     // Wrap onQuit so pressing Q also resolves waitForQuit()
     this.onQuitCallback = () => {
@@ -1033,6 +1043,7 @@ export class InkDaemonTUI {
         config={this.config}
         notifyRef={this.notifyRef}
         onQuit={this.onQuitCallback}
+        skipSplash={this.skipSplash}
         onQuitAfterComplete={() => {
           this.stop();
           this.resolveQuit();

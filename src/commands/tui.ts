@@ -103,6 +103,8 @@ async function runDaemonMonitor(opts: {
     // tui.ts already owns the alt-screen via enterAltScreen(); skip nested
     // start/stop to avoid double-enter / premature exit of the outer session.
     skipAltScreen: true,
+    // We're already inside the TUI session — skip the monitor's own splash.
+    skipSplash: true,
   });
   daemonTui.start();
   await daemonTui.waitForQuit();
@@ -233,27 +235,6 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
             const errProgress = runProgressInk({ title: "Monitor Error" });
             await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
           }
-        }
-        clearScreen();
-      },
-      onLaunch: async () => {
-        clearScreen();
-        if (daemonConnected && daemonClient) {
-          try {
-            // Tell daemon to start processing planned tasks
-            daemonClient.start({
-              maxConcurrent: opts.maxConcurrent,
-              model: opts.model,
-            });
-            // Then navigate to the monitor so the user can watch progress
-            await runDaemonMonitor({ client: daemonClient, projectRoot, config });
-          } catch (err: any) {
-            const errProgress = runProgressInk({ title: "Launch Error" });
-            await errProgress.finish({ type: "error", message: `Launch error: ${err.message}` });
-          }
-        } else {
-          const errProgress = runProgressInk({ title: "Launch" });
-          await errProgress.finish({ type: "info", message: "Daemon not connected. Start the daemon first." });
         }
         clearScreen();
       },

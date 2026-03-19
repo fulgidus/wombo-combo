@@ -79,8 +79,6 @@ export interface TuiAppCallbacks {
   onQuestCreate?: () => Promise<void>;
   /** Navigate to the daemon/wave monitor. Returns when user detaches. */
   onShowMonitor?: () => Promise<void>;
-  /** Launch the daemon (start processing planned tasks), then show monitor. */
-  onLaunch?: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
