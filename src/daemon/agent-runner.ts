@@ -1252,16 +1252,15 @@ export class AgentRunner {
   reapDeadProcesses(): void {
     for (const agent of this.state.getAgentsByStatus("running", "installing")) {
       if (agent.pid && !isProcessRunning(agent.pid)) {
-        // Process is dead but state says running — treat as crash
-        this.state.updateAgentStatus(
-          agent.featureId,
-          "failed",
-          `Process ${agent.pid} died unexpectedly`
-        );
-        this.state.updateAgent(agent.featureId, {
-          error: `Process ${agent.pid} died unexpectedly`,
-        });
-        this.state.cancelDownstream(agent.featureId);
+        this.state.emit("evt:log", { level: "warn", message: `Agent ${agent.featureId} PID ${agent.pid} is dead — reaping` });
+        // Reset task back to "planned" so scheduler picks it up again
+        this.resetTaskToPlanned(agent.featureId);
+        // Clean up worktree if present
+        if (agent.worktree) {
+          try { removeWorktree(agent.worktree, this.projectRoot); } catch { /* best-effort */ }
+        }
+        // Remove from daemon state entirely (scheduler will re-submit from disk)
+        this.state.removeAgent(agent.featureId);
       }
     }
 
@@ -1269,13 +1268,29 @@ export class AgentRunner {
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
         if (agent.retries >= agent.maxRetries) {
-          this.state.updateAgentStatus(agent.featureId, "failed", "Retries exhausted (stuck)");
-          this.state.cancelDownstream(agent.featureId);
+          this.resetTaskToPlanned(agent.featureId);
+          if (agent.worktree) {
+            try { removeWorktree(agent.worktree, this.projectRoot); } catch { /* best-effort */ }
+          }
+          this.state.removeAgent(agent.featureId);
         } else {
           this.state.updateAgentStatus(agent.featureId, "queued", "Re-queuing stuck retry");
         }
       }
     }
+  }
+
+  /** Reset a task file back to "planned" so the scheduler picks it up again. */
+  private resetTaskToPlanned(featureId: string): void {
+    try {
+      const data = loadFeatures(this.projectRoot, this.config);
+      const task = data.tasks.find((t) => t.id === featureId);
+      if (task && task.status !== "done" && task.status !== "cancelled") {
+        task.status = "planned";
+        task.started_at = null;
+        saveTaskToStore(this.projectRoot, this.config, task);
+      }
+    } catch { /* best-effort */ }
   }
 
   // -------------------------------------------------------------------------

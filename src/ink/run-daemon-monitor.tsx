@@ -414,7 +414,8 @@ export class InkDaemonTUI {
   private config: WomboConfig;
   private onQuitCallback: () => void;
   private inkInstance: InkInstance | null = null;
-  private waveCompleteResolve: (() => void) | null = null;
+  /** Resolves waitForQuit() — set by both Q-key quit and completion. */
+  private quitResolve: (() => void) | null = null;
   private unsubscribers: Array<() => void> = [];
   /** Ref wired to the React component's flush function. */
   private notifyRef: React.MutableRefObject<(() => void) | null> = React.createRef() as React.MutableRefObject<(() => void) | null>;
@@ -423,17 +424,25 @@ export class InkDaemonTUI {
   private ownsAltScreen = false;
   private removeAltScreenGuard: (() => void) | null = null;
 
-  /** Saved originals for console interception */
-  private origConsoleLog: typeof console.log = console.log;
-  private origConsoleError: typeof console.error = console.error;
-  private origConsoleWarn: typeof console.warn = console.warn;
-
   constructor(opts: InkDaemonTUIOptions) {
     this.client = opts.client;
     this.store = createEmptyStore();
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
-    this.onQuitCallback = opts.onQuit;
+    // Wrap onQuit so pressing Q also resolves waitForQuit()
+    this.onQuitCallback = () => {
+      opts.onQuit();
+      this.resolveQuit();
+    };
+  }
+
+  /** Resolve the waitForQuit() promise and stop the TUI. */
+  private resolveQuit(): void {
+    if (this.quitResolve) {
+      const r = this.quitResolve;
+      this.quitResolve = null;
+      r();
+    }
   }
 
   /**
@@ -446,7 +455,6 @@ export class InkDaemonTUI {
       this.ownsAltScreen = true;
       this.removeAltScreenGuard = installAltScreenGuard();
     }
-    this.interceptConsole();
     this.subscribeToDaemonEvents();
     this.mount();
 
@@ -462,7 +470,6 @@ export class InkDaemonTUI {
    * Unmount, unsubscribe, and restore terminal.
    */
   stop(): void {
-    this.restoreConsole();
     this.unsubscribeAll();
     this.unmount();
     if (this.ownsAltScreen) {
@@ -480,7 +487,7 @@ export class InkDaemonTUI {
    */
   waitForQuit(): Promise<void> {
     return new Promise<void>((resolve) => {
-      this.waveCompleteResolve = resolve;
+      this.quitResolve = resolve;
     });
   }
 
@@ -714,42 +721,6 @@ export class InkDaemonTUI {
   }
 
   // -------------------------------------------------------------------------
-  // Console interception
-  // -------------------------------------------------------------------------
-
-  private interceptConsole(): void {
-    this.origConsoleLog = console.log;
-    this.origConsoleError = console.error;
-    this.origConsoleWarn = console.warn;
-
-    const capture = (...args: any[]) => {
-      const text = args
-        .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
-        .join(" ");
-      const clean = text.replace(/\x1b\[[0-9;]*m/g, "");
-      if (!clean.trim()) return;
-      this.store.systemMessages.push({
-        timestamp: new Date().toISOString().slice(11, 19),
-        text: clean,
-      });
-      if (this.store.systemMessages.length > 200) {
-        this.store.systemMessages.splice(0, this.store.systemMessages.length - 200);
-      }
-      
-    };
-
-    console.log = capture;
-    console.error = capture;
-    console.warn = capture;
-  }
-
-  private restoreConsole(): void {
-    console.log = this.origConsoleLog;
-    console.error = this.origConsoleError;
-    console.warn = this.origConsoleWarn;
-  }
-
-  // -------------------------------------------------------------------------
   // React notify
   // -------------------------------------------------------------------------
 
@@ -774,10 +745,7 @@ export class InkDaemonTUI {
         onQuit={this.onQuitCallback}
         onQuitAfterComplete={() => {
           this.stop();
-          if (this.waveCompleteResolve) {
-            this.waveCompleteResolve();
-            this.waveCompleteResolve = null;
-          }
+          this.resolveQuit();
         }}
       />,
       { exitOnCtrlC: false, stdin: getStableStdin() }
