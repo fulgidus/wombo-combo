@@ -1,0 +1,17 @@
+id: quest-flag-tasks-add-missing
+title: quest-flag-tasks-add was marked done but --quest flag is absent from tasks add command
+description: The merge of feature/quest-flag-tasks-add did not land the --quest flag in src/commands/tasks/add.ts. bun
+  dev tasks add --help shows no --quest option. Needs re-investigation.
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

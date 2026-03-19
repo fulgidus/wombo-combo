@@ -84,6 +84,15 @@ export interface InkTUIOptions {
    * Use this to flush pending state writes to disk.
    */
   onBeforeDestroy?: () => void;
+  /**
+   * When true, skip calling _session.start() and _session.stop().
+   *
+   * Use this when the caller already owns the alt-screen (e.g. tui.ts calls
+   * enterAltScreen() before entering the main loop). Without this flag, the
+   * TUI would re-enter alt-screen on start() and exit it on stop(), corrupting
+   * the outer session.
+   */
+  skipAltScreen?: boolean;
 }
 
 /**
@@ -601,6 +610,11 @@ export class InkWomboTUI {
   private onRetry?: (featureId: string) => void;
   private onAnswer?: (agentId: string, questionId: string, answerText: string) => void;
   private onBeforeDestroy?: () => void;
+  /**
+   * When true, _session.start() and _session.stop() are NOT called.
+   * The outer caller (e.g. tui.ts) owns alt-screen lifecycle.
+   */
+  private skipAltScreen: boolean;
 
   private inkInstance: InkInstance | null = null;
   private waveCompleteResolve: (() => void) | null = null;
@@ -630,6 +644,7 @@ export class InkWomboTUI {
     this.onRetry = opts.onRetry;
     this.onAnswer = opts.onAnswer;
     this.onBeforeDestroy = opts.onBeforeDestroy;
+    this.skipAltScreen = opts.skipAltScreen ?? false;
     this._session = new TuiSession();
   }
 
@@ -637,7 +652,9 @@ export class InkWomboTUI {
    * Mount the Ink component tree and start console interception.
    */
   start(): void {
-    this._session.start();
+    if (!this.skipAltScreen) {
+      this._session.start();
+    }
     this.interceptConsole();
     this.mount();
   }
@@ -655,7 +672,9 @@ export class InkWomboTUI {
     }
     this.restoreConsole();
     this.unmount();
-    this._session.stop();
+    if (!this.skipAltScreen) {
+      this._session.stop();
+    }
   }
 
   /**

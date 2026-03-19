@@ -1,0 +1,22 @@
+id: tui-theme-system
+title: "Theme system: lift tui-constants.ts into swappable theme object"
+description: "Create src/ink/theme.ts: define ThemeTokens interface covering status colors, status icons, progress bar
+  chars, border styles, spinner chars. Ship 3 presets: 'default' (current tui-constants.ts values), 'high-contrast'
+  (bold/bright), 'minimal' (no color, ASCII-only icons). ThemeContext provides active theme to all components.
+  useTheme() hook. Active theme stored in config.json under tui.theme. Update tui-constants.ts to re-export from theme
+  for backward compat. Add tui key to WomboConfig type in src/config.ts. Depends on tui-persistent-chrome (chrome uses
+  theme tokens). TDD: tests/ink/theme.test.ts."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - tui-persistent-chrome
+effort: PT3H
+started_at: 2026-03-19T20:16:51.273Z
+ended_at: 2026-03-19T20:20:53.059Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

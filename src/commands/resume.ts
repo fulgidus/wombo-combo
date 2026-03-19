@@ -106,6 +106,11 @@ export interface ResumeCommandOptions {
    * between the monitor and task browser while agents keep running.
    */
   detachOnQuit?: boolean;
+  /**
+   * When true, the InkWomboTUI will NOT call _session.start()/_session.stop().
+   * Pass this when the outer caller (e.g. tui.ts) already owns alt-screen.
+   */
+  skipAltScreen?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -630,6 +635,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
         projectRoot,
         interactive: false,
         config,
+        skipAltScreen: opts.skipAltScreen ?? false,
         onQuit: () => {
           if (opts.detachOnQuit) {
             // Detach from the wave monitor — agents keep running in the background.

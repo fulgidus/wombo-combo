@@ -1,0 +1,21 @@
+id: tui-settings-screen
+title: "Settings screen: view and edit config.json interactively"
+description: "Create src/ink/settings-screen.tsx: SettingsScreen — a full TUI screen registered in the SCREEN_MAP. Shows
+  all config.json keys with current values grouped by category (agents, git, build, tui). Allow inline editing, validate
+  on change, save to config.json. Include theme picker (cycles through presets). Include locale picker. Include
+  reset-to-defaults option. Accessible from EscMenu. Depends on tui-esc-menu (navigation from ESC menu) and
+  tui-theme-system (theme picker). TDD: tests/ink/settings-screen.test.tsx."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - tui-esc-menu
+effort: PT3H
+started_at: null
+ended_at: 2026-03-19T20:28:02.333Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

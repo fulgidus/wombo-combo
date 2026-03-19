@@ -112,6 +112,9 @@ async function runDaemonMonitor(opts: {
     onQuit: () => {
       // Detach from monitor — daemon keeps agents running
     },
+    // tui.ts already owns the alt-screen via enterAltScreen(); skip nested
+    // start/stop to avoid double-enter / premature exit of the outer session.
+    skipAltScreen: true,
   });
   daemonTui.start();
   await daemonTui.waitForQuit();
@@ -294,6 +297,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
             baseBranch: opts.baseBranch,
             maxRetries: opts.maxRetries,
             detachOnQuit: true,
+            // tui.ts owns alt-screen — don't let InkWomboTUI re-enter/exit it
+            skipAltScreen: true,
           });
         } catch (err: any) {
           progress.unmount();
@@ -495,6 +500,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
             baseBranch: opts.baseBranch,
             maxRetries: opts.maxRetries,
             detachOnQuit: true,
+            // tui.ts owns alt-screen — don't let InkWomboTUI re-enter/exit it
+            skipAltScreen: true,
           });
         } catch (err: any) {
           const progress = runProgressInk({ title: "Resume Error" });

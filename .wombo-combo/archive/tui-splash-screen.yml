@@ -1,0 +1,22 @@
+id: tui-splash-screen
+title: "Animated splash screen: ASCII art, rotating Minecraft-style texts"
+description: "Create src/ink/splash-screen.tsx: SplashScreen — shown briefly when the TUI starts. Animated ASCII art
+  logo, rotating splash texts (Minecraft-style, locale-aware via t()). Configurable: tui.splash.enabled (bool),
+  tui.splash.durationMs (default 1500), tui.splash.customTextsFile (optional path). Animation is non-blocking and
+  skippable with any keypress. After duration or keypress, auto-navigates to the main dashboard screen. Depends on
+  tui-settings-screen (config schema is fully established by now, t() is available). TDD:
+  tests/ink/splash-screen.test.tsx."
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - tui-settings-screen
+effort: PT2H
+started_at: null
+ended_at: 2026-03-19T20:30:21.421Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

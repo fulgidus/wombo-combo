@@ -1,0 +1,21 @@
+id: tui-i18n-skeleton
+title: "i18n skeleton: t() helper, strings.ts, English only"
+description: "Create src/ink/i18n.ts: a minimal t() helper that looks up keys from a strings map. Create
+  src/ink/strings/en.ts with all user-facing strings currently hardcoded in TUI components. No external i18n library yet
+  — just a typed key-value map and a t(key, vars?) function with interpolation. Wire up locale config: read tui.locale
+  from WomboConfig (default 'en'). The full i18next migration is a separate wishlist item. Depends on tui-theme-system
+  (config.ts tui key must exist). TDD: tests/ink/i18n.test.ts."
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - tui-theme-system
+effort: PT2H
+started_at: null
+ended_at: 2026-03-19T20:23:29.875Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

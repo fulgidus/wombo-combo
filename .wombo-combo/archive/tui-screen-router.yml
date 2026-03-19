@@ -1,0 +1,19 @@
+id: tui-screen-router
+title: "Screen router: single render(), stack navigator, NavigationContext"
+description: "Create src/ink/router.tsx: NavigationContext (React context), useNavigation() hook, ScreenRouter component
+  that does a single inkRender() call for the entire TUI lifetime. Stack-based push/pop navigator. Screens are React
+  components registered in a SCREEN_MAP. Navigation state lives in context. This is the foundation — all other TUI work
+  depends on it. Replace the 9 separate run-*.tsx entry points pattern. TDD: tests/ink/router.test.tsx."
+status: done
+completion: 100
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT4H
+started_at: 2026-03-19T20:08:27.024Z
+ended_at: 2026-03-19T20:10:52.357Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

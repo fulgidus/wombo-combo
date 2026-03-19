@@ -1,0 +1,21 @@
+id: tui-persistent-chrome
+title: "Persistent chrome: fixed top and bottom status bars"
+description: "Create src/ink/chrome.tsx: ChromeLayout wraps every screen with a fixed top bar (daemon connected
+  indicator, wave summary N running/done/failed, current screen name) and a fixed bottom bar (context-sensitive keybind
+  hints + global ones: ESC, ?, q). Bottom bar shows icon strip: sound level icon, desktop notifications icon, active
+  locale flag — each icon is placeholder/navigates to Settings. Bars survive screen navigation. Depends on
+  tui-ink-lifecycle (single render, stable raw mode). TDD: tests/ink/chrome.test.tsx."
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - tui-ink-lifecycle
+effort: PT3H
+started_at: 2026-03-19T20:14:09.505Z
+ended_at: 2026-03-19T20:16:46.259Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

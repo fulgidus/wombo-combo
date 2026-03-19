@@ -1,0 +1,21 @@
+id: tui-esc-menu
+title: "Global ESC menu: floating overlay with Settings/Help/Quit/Back"
+description: "Create src/ink/esc-menu.tsx: EscMenu component — a floating overlay that appears when Escape is pressed
+  anywhere in the TUI (unless a more specific Escape handler fires first). Options: Settings (push settings screen),
+  Help (push help screen), Back (pop current screen), Quit. Implemented as an Ink component that layers over current
+  screen content without destroying it. Must use NavigationContext from the router. Depends on tui-i18n-skeleton (uses
+  t() for labels) and tui-theme-system (uses theme tokens). TDD: tests/ink/esc-menu.test.tsx."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - tui-i18n-skeleton
+effort: PT2H
+started_at: null
+ended_at: 2026-03-19T20:25:49.905Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

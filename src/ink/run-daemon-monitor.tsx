@@ -81,6 +81,15 @@ export interface InkDaemonTUIOptions {
   projectRoot: string;
   /** Config. */
   config: WomboConfig;
+  /**
+   * When true, skip calling _session.start() and _session.stop().
+   *
+   * Use this when the caller already owns the alt-screen (e.g. tui.ts calls
+   * enterAltScreen() before entering the main loop). Without this flag, the
+   * TUI would re-enter alt-screen on start() and exit it on stop(), corrupting
+   * the outer session.
+   */
+  skipAltScreen?: boolean;
 }
 
 /**
@@ -609,6 +618,11 @@ export class InkDaemonTUI {
   private unsubscribers: Array<() => void> = [];
   /** Ref wired to the React component's flush function. */
   private notifyRef: MutableRefObject<(() => void) | null> = { current: null };
+  /**
+   * When true, _session.start() and _session.stop() are NOT called.
+   * The outer caller (e.g. tui.ts) owns alt-screen lifecycle.
+   */
+  private skipAltScreen: boolean;
 
   /** TuiSession owns alt-screen lifecycle (replaces direct enterAltScreen calls). */
   _session: TuiSession;
@@ -618,6 +632,7 @@ export class InkDaemonTUI {
     this.store = createEmptyStore();
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
+    this.skipAltScreen = opts.skipAltScreen ?? false;
     this._session = new TuiSession();
     // Wrap onQuit so pressing Q also resolves waitForQuit()
     this.onQuitCallback = () => {
@@ -640,7 +655,9 @@ export class InkDaemonTUI {
    * request an initial state snapshot.
    */
   start(): void {
-    this._session.start();
+    if (!this.skipAltScreen) {
+      this._session.start();
+    }
     this.subscribeToDaemonEvents();
     this.mount();
 
@@ -658,7 +675,9 @@ export class InkDaemonTUI {
   stop(): void {
     this.unsubscribeAll();
     this.unmount();
-    this._session.stop();
+    if (!this.skipAltScreen) {
+      this._session.stop();
+    }
   }
 
   /**

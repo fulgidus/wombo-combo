@@ -184,3 +184,37 @@
     - scheduling
     - visualization
   order: 21
+- id: 1e9e59f1-4c1d-4a7c-a7c9-3bcc580342cd
+  text: "Persistent chrome: fixed top and bottom status bars visible on every TUI screen. Top bar: daemon
+    connected/disconnected indicator, active wave summary (N running / N done / N failed), current screen name. Bottom
+    bar: context-sensitive keybind hints for current screen + global ones (ESC, ?, q). Bottom bar also shows
+    armed-feature icon strip: sound level icon, desktop notifications icon, active locale flag — each icon is
+    clickable/selectable to jump directly to that setting. Bars survive screen navigation and never get replaced by
+    content."
+  created_at: 2026-03-19T20:00:12.578Z
+  tags: []
+  order: 22
+- id: d11a1b7c-0987-41f6-bac3-21dff6b0a3fe
+  text: "Theme system: lift all hardcoded color/icon values out of tui-constants.ts into a swappable theme object. Ship 3
+    presets: default (current colors), high-contrast (bold/bright), minimal (no color, ASCII-only icons). Active theme
+    stored in config.json under tui.theme. Theme picker accessible from Settings screen. Theme tokens cover: status
+    colors, status icons, progress bar chars, border styles, spinner chars."
+  created_at: 2026-03-19T20:00:16.304Z
+  tags: []
+  order: 23
+- id: 2f419a9d-d937-471b-a412-d7120191c858
+  text: "Screen router: single Ink render() call for the entire TUI lifetime. Stack-based navigator (push/pop) replaces
+    the 9 separate run-*.tsx entry points each mounting their own Ink instance. Screens are React components registered
+    in a router map. Navigation state lives in React context. Eliminates multi-instance alt-screen conflicts and the
+    bun-stdin isTTY corruption that happens on unmount/remount cycles."
+  created_at: 2026-03-19T20:00:19.161Z
+  tags: []
+  order: 24
+- id: 4624b453-9bfa-4127-b47a-1e90b03c8cbc
+  text: "Fix Ink lifecycle on Bun: own the raw mode and alt-screen lifecycle for the full TUI session. Enter alt screen
+    once at TUI start, exit once at TUI stop. Call setRawMode(true) once, never release it mid-session. Eliminate
+    bun-stdin.ts (isTTY proxy kludge) and simplify alt-screen.ts. Depends on screen router (single render() call) being
+    in place first."
+  created_at: 2026-03-19T20:00:22.360Z
+  tags: []
+  order: 25
