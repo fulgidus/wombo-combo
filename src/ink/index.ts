@@ -255,6 +255,20 @@ export {
   type TuiSessionOptions,
 } from "./tui-session";
 
+// Persistent chrome: top/bottom status bars
+export {
+  ChromeLayout,
+  ChromeTopBar,
+  ChromeBottomBar,
+  ChromeTitleContext,
+  useChromTitle,
+  type ChromeLayoutProps,
+  type ChromeTopBarProps,
+  type ChromeBottomBarProps,
+  type WaveSummary,
+  type KeybindHint,
+} from "./chrome";
+
 // Screen router (single render() lifetime, stack-based navigator)
 export {
   NavigationContext,
