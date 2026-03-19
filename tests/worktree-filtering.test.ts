@@ -325,7 +325,7 @@ describe("removeWorktree — safety guard (integration)", () => {
 
   test("throws when asked to remove project root (exact match)", () => {
     repoDir = createTempGitRepo("my-project");
-    expect(() => removeWorktree(repoDir, repoDir)).toThrow(
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: repoDir })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });
@@ -333,14 +333,14 @@ describe("removeWorktree — safety guard (integration)", () => {
   test("throws when asked to remove project root with resolved relative path", () => {
     repoDir = createTempGitRepo("my-project");
     const messyPath = join(repoDir, ".", "subdir", "..");
-    expect(() => removeWorktree(repoDir, messyPath)).toThrow(
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: messyPath })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });
 
   test("throws when asked to remove project root with trailing slash", () => {
     repoDir = createTempGitRepo("my-project");
-    expect(() => removeWorktree(repoDir, repoDir + "/")).toThrow(
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: repoDir + "/" })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });
@@ -348,8 +348,24 @@ describe("removeWorktree — safety guard (integration)", () => {
   test("throws when project root name starts with prefix (woco-something)", () => {
     // The dangerous case: project dir IS named "woco-something"
     repoDir = createTempGitRepo("woco-my-project");
-    expect(() => removeWorktree(repoDir, repoDir)).toThrow(
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: repoDir })).toThrow(
       "SAFETY: refusing to remove project root"
+    );
+  });
+
+  test("throws when wtPath is an ancestor of projectRoot", () => {
+    repoDir = createTempGitRepo("my-project");
+    const parentDir = resolve(repoDir, "..");
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: parentDir })).toThrow(
+      "SAFETY: refusing to remove ancestor"
+    );
+  });
+
+  test("throws when wtPath is inside projectRoot", () => {
+    repoDir = createTempGitRepo("my-project");
+    const insidePath = join(repoDir, "some-subdir");
+    expect(() => removeWorktree({ projectRoot: repoDir, wtPath: insidePath })).toThrow(
+      "SAFETY: worktree path is inside the project root"
     );
   });
 
@@ -366,7 +382,7 @@ describe("removeWorktree — safety guard (integration)", () => {
     expect(existsSync(wtPath)).toBe(true);
 
     // Remove it
-    removeWorktree(repoDir, wtPath, true);
+    removeWorktree({ projectRoot: repoDir, wtPath, deleteBranch: true });
 
     // Verify it's gone
     expect(existsSync(wtPath)).toBe(false);
@@ -380,7 +396,7 @@ describe("removeWorktree — safety guard (integration)", () => {
     const wtPath = join(parentDir, "woco-delete-me");
     git(`worktree add "${wtPath}" feature/delete-me`, repoDir);
 
-    removeWorktree(repoDir, wtPath, true);
+    removeWorktree({ projectRoot: repoDir, wtPath, deleteBranch: true });
 
     // Branch should be deleted
     const branches = git("branch --list feature/delete-me", repoDir);
@@ -395,7 +411,7 @@ describe("removeWorktree — safety guard (integration)", () => {
     const wtPath = join(parentDir, "woco-keep-branch");
     git(`worktree add "${wtPath}" feature/keep-branch`, repoDir);
 
-    removeWorktree(repoDir, wtPath, false);
+    removeWorktree({ projectRoot: repoDir, wtPath, deleteBranch: false });
 
     // Branch should still exist
     const branches = git("branch --list feature/keep-branch", repoDir);

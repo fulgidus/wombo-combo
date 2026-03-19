@@ -217,7 +217,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
         // skipAncestryCheck=true: wave state already confirmed the merge.
         markFeatureDone(projectRoot, agent.feature_id, config, agent.base_branch ?? state.base_branch, fmt, true);
         try {
-          removeWorktree(projectRoot, agent.worktree, true);
+          removeWorktree({ projectRoot, wtPath: agent.worktree, deleteBranch: true });
           if (fmt === "text") console.log(`  ${agent.feature_id}: worktree and branch removed`);
         } catch {
           // Already cleaned — not critical

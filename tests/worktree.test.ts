@@ -324,7 +324,7 @@ describe("removeWorktree — safety guard", () => {
   test("throws when asked to remove project root (exact match)", async () => {
     const { removeWorktree } = await import("../src/lib/worktree.js");
     const root = "/home/user/projects/my-app";
-    expect(() => removeWorktree(root, root)).toThrow(
+    expect(() => removeWorktree({ projectRoot: root, wtPath: root })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });
@@ -333,7 +333,7 @@ describe("removeWorktree — safety guard", () => {
     const { removeWorktree } = await import("../src/lib/worktree.js");
     const root = "/home/user/projects/my-app";
     const messyPath = "/home/user/projects/./my-app";
-    expect(() => removeWorktree(root, messyPath)).toThrow(
+    expect(() => removeWorktree({ projectRoot: root, wtPath: messyPath })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });
@@ -343,7 +343,7 @@ describe("removeWorktree — safety guard", () => {
     const root = "/home/user/projects/my-app";
     const trailingSlash = "/home/user/projects/my-app/";
     // resolve() strips trailing slashes
-    expect(() => removeWorktree(root, trailingSlash)).toThrow(
+    expect(() => removeWorktree({ projectRoot: root, wtPath: trailingSlash })).toThrow(
       "SAFETY: refusing to remove project root"
     );
   });

@@ -13,34 +13,5 @@
     "totalCompleted": 0,
     "totalFailed": 0
   },
-  "agents": [
-    {
-      "featureId": "session-id-dedup-guard",
-      "taskTitle": "Guard Against Cross-Agent Session ID Reuse",
-      "branch": "feature/session-id-dedup-guard",
-      "baseBranch": "main",
-      "worktree": "/home/fulgidus/Documents/wombo-combo-worktrees/session-id-dedup-guard",
-      "status": "running",
-      "pid": 380451,
-      "sessionId": null,
-      "activity": "Installing dependencies...",
-      "activityUpdatedAt": "2026-03-19T00:09:21.947Z",
-      "retries": 0,
-      "maxRetries": 2,
-      "startedAt": "2026-03-19T00:09:22.069Z",
-      "completedAt": null,
-      "buildPassed": null,
-      "error": null,
-      "effortEstimateMs": 3600000,
-      "streamIndex": null,
-      "dependsOn": [],
-      "dependedOnBy": [],
-      "agentName": null,
-      "agentType": null,
-      "pendingQuestions": [],
-      "tokenUsage": null,
-      "buildOutput": null,
-      "mergeQueuePosition": null
-    }
-  ]
+  "agents": []
 }

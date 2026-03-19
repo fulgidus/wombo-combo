@@ -528,20 +528,47 @@ export function listWomboWorktrees(
 }
 
 /**
+ * Options for removeWorktree. Named to prevent positional-arg confusion.
+ */
+export interface RemoveWorktreeOptions {
+  /** Absolute path to the git project root (where .git lives). */
+  projectRoot: string;
+  /** Absolute path to the worktree directory to remove. */
+  wtPath: string;
+  /** Also delete the feature branch. Defaults to true. */
+  deleteBranch?: boolean;
+}
+
+/**
  * Remove a worktree and optionally delete its branch.
  *
- * SAFETY: Refuses to remove the project root itself. This is a hard guard
- * against bugs in worktree filtering that could otherwise destroy the main repo.
+ * SAFETY guards (both must pass or an error is thrown):
+ *   1. wtPath must not equal projectRoot — never delete the main repo.
+ *   2. wtPath must not contain projectRoot as a prefix — never delete a
+ *      parent of the project root.
+ *   3. wtPath must be an absolute path that exists outside projectRoot.
  */
-export function removeWorktree(
-  projectRoot: string,
-  wtPath: string,
-  deleteBranchToo: boolean = true
-): void {
-  // Hard safety check: never remove the main project root
-  if (resolve(wtPath) === resolve(projectRoot)) {
+export function removeWorktree(opts: RemoveWorktreeOptions): void {
+  const { projectRoot, wtPath, deleteBranch = true } = opts;
+
+  const absWt = resolve(wtPath);
+  const absRoot = resolve(projectRoot);
+
+  // Guard 1: must not be the project root itself
+  if (absWt === absRoot) {
+    throw new Error(`SAFETY: refusing to remove project root as worktree: ${wtPath}`);
+  }
+
+  // Guard 2: wtPath must not be a parent of projectRoot
+  if (absRoot.startsWith(absWt + "/")) {
+    throw new Error(`SAFETY: refusing to remove ancestor of project root: ${wtPath}`);
+  }
+
+  // Guard 3: wtPath must not be inside projectRoot (worktrees should live outside)
+  if (absWt.startsWith(absRoot + "/")) {
     throw new Error(
-      `SAFETY: refusing to remove project root as worktree: ${wtPath}`
+      `SAFETY: worktree path is inside the project root — this looks wrong: ${wtPath}\n` +
+      `Expected a path under a sibling directory (e.g. ${absRoot}-worktrees/...)`
     );
   }
 
@@ -557,7 +584,7 @@ export function removeWorktree(
     runSync("git worktree prune", { cwd: projectRoot });
   }
 
-  if (deleteBranchToo && wt?.branch) {
+  if (deleteBranch && wt?.branch) {
     try {
       runSync(`git branch -D "${wt.branch}"`, {
         cwd: projectRoot,
@@ -602,7 +629,7 @@ export function cleanupAllWorktrees(
   let removed = 0;
   for (const wt of womboWorktrees) {
     try {
-      removeWorktree(projectRoot, wt.path, false);
+      removeWorktree({ projectRoot, wtPath: wt.path, deleteBranch: false });
       removed++;
     } catch (err: any) {
       console.error(`Failed to remove worktree ${wt.path}: ${err.message}`);

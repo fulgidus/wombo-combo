@@ -1028,7 +1028,7 @@ function handleMergeSuccess(
     printAgentUpdate(agent, "worktree preserved for chain successor");
   } else {
     try {
-      removeWorktree(projectRoot, agent.worktree, true);
+      removeWorktree({ projectRoot, wtPath: agent.worktree, deleteBranch: true });
       printAgentUpdate(agent, "worktree and branch removed");
     } catch (err: any) {
       // Log the failure so it's visible — stale worktrees waste disk space
@@ -2703,7 +2703,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
           finalizedIds.push(agent.feature_id);
           // Clean up worktree and branch (already merged, safe to delete)
           try {
-            removeWorktree(projectRoot, agent.worktree, true);
+            removeWorktree({ projectRoot, wtPath: agent.worktree, deleteBranch: true });
             if (fmt === "text") console.log(`  ${agent.feature_id}: marked done, worktree removed`);
           } catch {
             if (fmt === "text") console.log(`  ${agent.feature_id}: marked done (worktree already cleaned)`);
