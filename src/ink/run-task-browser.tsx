@@ -23,6 +23,7 @@ import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/to
 import type { UsageTotals } from "../lib/token-usage";
 import type { WomboConfig } from "../config";
 import type { ErrandSpec } from "../lib/errand-planner";
+import type { TuiAppCallbacks } from "./run-tui-app";
 
 // ---------------------------------------------------------------------------
 // Sort field cycle order
@@ -350,6 +351,11 @@ export interface TaskBrowserScreenProps {
   showBack?: boolean;
   /** Called when the user quits the task browser entirely. */
   onExit: () => void;
+  /**
+   * Optional imperative callbacks for complex async flows (errand, wishlist,
+   * monitor) passed from tui.ts via TuiApp.
+   */
+  callbacks?: TuiAppCallbacks;
 }
 
 /**
@@ -370,6 +376,7 @@ export function TaskBrowserScreen({
   hasRunningWave,
   showBack,
   onExit,
+  callbacks,
 }: TaskBrowserScreenProps): React.ReactElement {
   const nav = useNavigation();
 
@@ -380,24 +387,38 @@ export function TaskBrowserScreen({
           nav.pop();
           break;
         case "switchToMonitor":
-          nav.push("daemon-monitor", {
-            projectRoot,
-            config: config as unknown,
-            onExit,
-          } as Record<string, unknown>);
+          if (callbacks?.onShowMonitor) {
+            callbacks.onShowMonitor().then(() => {
+              // After detaching from monitor, stay on task-browser
+            });
+          } else {
+            nav.push("daemon-monitor", {
+              projectRoot,
+              config: config as unknown,
+              onExit,
+            } as Record<string, unknown>);
+          }
           break;
         case "errand":
-          // Errand wizard: navigate when screen is available.
+          if (callbacks?.onErrand) {
+            callbacks.onErrand(action.spec).then(() => {
+              // After errand flow, stay on task-browser so user sees new tasks
+            });
+          }
           break;
         case "wishlist":
-          // Wishlist screen: navigate when available.
+          if (callbacks?.onWishlist) {
+            callbacks.onWishlist().then(() => {
+              // After wishlist flow, stay on task-browser
+            });
+          }
           break;
         case "quit":
           onExit();
           break;
       }
     },
-    [nav, projectRoot, config, onExit]
+    [nav, projectRoot, config, onExit, callbacks]
   );
 
   return (

@@ -239,8 +239,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     };
 
     // Determine initial screen: onboarding for first run, splash otherwise
-    const skipSplash = false;
-    const initialScreen = isFirstRun ? "onboarding" : undefined;
+    const initialScreen: "splash" | "onboarding" = isFirstRun ? "onboarding" : "splash";
 
     // Render the unified TUI app (single mount, persistent for entire session)
     process.stdin.resume();
@@ -248,7 +247,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
       React.createElement(TuiApp, {
         projectRoot,
         config,
-        skipSplash: isFirstRun, // skip splash on first run (go to onboarding)
+        initialScreen,
         splashDurationMs: 1500,
         onExit: () => {
           session.lastView = "browser";
@@ -264,18 +263,6 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         stdin: getStableStdin(),
       }
     );
-
-    // If first run, we want to start on onboarding, but TuiApp only supports
-    // skipSplash (→ quest-picker) or splash (→ quest-picker). For now we use
-    // the callbacks.onOnboarding path: after mount navigate to onboarding via
-    // a post-render effect. A cleaner solution would be an `initialScreen`
-    // prop on TuiApp — tracked as a future improvement.
-    //
-    // Actually: when isFirstRun=true we pass skipSplash=true so TuiApp starts
-    // at quest-picker. The quest-picker action handler for "onboarding" will
-    // fire callbacks.onOnboarding, but we also want to auto-trigger it on
-    // mount. For now the user sees quest-picker first and can press O.
-    // TODO: add initialScreen prop to TuiApp to support "onboarding" as start.
 
     await instance.waitUntilExit();
   } finally {

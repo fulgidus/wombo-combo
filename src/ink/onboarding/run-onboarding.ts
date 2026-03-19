@@ -146,6 +146,13 @@ export async function runOnboardingInk(
 export interface OnboardingScreenProps {
   projectRoot: string;
   config?: WomboConfig;
+  /** Called when the user quits from the TUI entirely (propagated to quest-picker). */
+  onExit?: () => void;
+  /**
+   * Opaque callbacks reference propagated to quest-picker after onboarding completes.
+   * Typed as unknown to avoid a circular import with run-tui-app.
+   */
+  callbacks?: unknown;
   /** Called when the onboarding flow completes (used for testing / direct rendering). */
   onDone?: (profile: ProjectProfile | null, genesisRequested?: boolean) => void;
 }
@@ -162,6 +169,8 @@ export interface OnboardingScreenProps {
 export function OnboardingScreen({
   projectRoot,
   config,
+  onExit,
+  callbacks,
   onDone,
 }: OnboardingScreenProps): React.ReactElement {
   const nav = useNavigation();
@@ -183,14 +192,15 @@ export function OnboardingScreen({
     (profile: ProjectProfile | null, genesisRequested?: boolean) => {
       // Call optional external callback (useful in tests)
       onDone?.(profile, genesisRequested);
-      // Navigate back to quest-picker
+      // Navigate back to quest-picker, forwarding onExit and callbacks
       nav.replace("quest-picker", {
         projectRoot,
         config: config as unknown,
-        onExit: () => {},
+        onExit: onExit ?? (() => {}),
+        callbacks,
       } as Record<string, unknown>);
     },
-    [nav, projectRoot, config, onDone],
+    [nav, projectRoot, config, onExit, callbacks, onDone],
   );
 
   return React.createElement(OnboardingApp, {
