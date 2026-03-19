@@ -18,6 +18,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { t } from "./i18n";
+import { useTerminalSize } from "./use-terminal-size";
 
 // ---------------------------------------------------------------------------
 // Splash texts (Minecraft-style rotating copy)
@@ -105,12 +106,15 @@ export function SplashScreen({
     ? t("splash.version", { version })
     : undefined;
 
+  const { rows } = useTerminalSize();
+
   return (
     <Box
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
-      paddingY={2}
+      width="100%"
+      height={rows}
     >
       {/* ASCII logo */}
       <Box flexDirection="column" alignItems="center">

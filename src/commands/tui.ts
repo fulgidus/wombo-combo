@@ -236,6 +236,27 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         }
         clearScreen();
       },
+      onLaunch: async () => {
+        clearScreen();
+        if (daemonConnected && daemonClient) {
+          try {
+            // Tell daemon to start processing planned tasks
+            daemonClient.start({
+              maxConcurrent: opts.maxConcurrent,
+              model: opts.model,
+            });
+            // Then navigate to the monitor so the user can watch progress
+            await runDaemonMonitor({ client: daemonClient, projectRoot, config });
+          } catch (err: any) {
+            const errProgress = runProgressInk({ title: "Launch Error" });
+            await errProgress.finish({ type: "error", message: `Launch error: ${err.message}` });
+          }
+        } else {
+          const errProgress = runProgressInk({ title: "Launch" });
+          await errProgress.finish({ type: "info", message: "Daemon not connected. Start the daemon first." });
+        }
+        clearScreen();
+      },
     };
 
     // Determine initial screen: onboarding for first run, splash otherwise

@@ -45,6 +45,7 @@ export type TaskBrowserAction =
   | { type: "errand"; spec: ErrandSpec }
   | { type: "back" }
   | { type: "switchToMonitor" }
+  | { type: "launch" }
   | { type: "wishlist" }
   | { type: "quit" };
 
@@ -301,6 +302,11 @@ function TaskBrowserApp({
     onAction({ type: "wishlist" });
   }, [saveSession, onAction]);
 
+  const handleLaunch = useCallback(() => {
+    saveSession();
+    onAction({ type: "launch" });
+  }, [saveSession, onAction]);
+
   return (
     <TaskBrowserView
       nodes={displayNodes}
@@ -326,6 +332,7 @@ function TaskBrowserApp({
       onQuit={handleQuit}
       onBack={showBack ? handleBack : undefined}
       onSwitchToMonitor={hasRunningWave ? handleSwitchToMonitor : undefined}
+      onLaunch={handleLaunch}
       onErrand={handleErrand}
       onArchiveDone={handleArchiveDone}
       onWishlist={handleWishlist}
@@ -397,6 +404,15 @@ export function TaskBrowserScreen({
               config: config as unknown,
               onExit,
             } as Record<string, unknown>);
+          }
+          break;
+        case "launch":
+          if (callbacks?.onLaunch) {
+            callbacks.onLaunch().then(() => {
+              // After launch + monitor detach, stay on task-browser
+            });
+          } else if (callbacks?.onShowMonitor) {
+            callbacks.onShowMonitor().then(() => {});
           }
           break;
         case "errand":

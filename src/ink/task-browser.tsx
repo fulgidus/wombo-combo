@@ -100,6 +100,7 @@ export interface TaskBrowserViewProps {
   onQuit: () => void;
   onBack?: () => void;
   onSwitchToMonitor?: () => void;
+  onLaunch?: () => void;
   onErrand?: () => void;
   onArchiveDone?: () => void;
   onWishlist?: () => void;
@@ -344,6 +345,7 @@ function StatusBar({
   hasRunningWave,
   hasBack,
   hasErrand,
+  hasLaunch,
   questId,
 }: {
   selectedCount: number;
@@ -351,6 +353,7 @@ function StatusBar({
   hasRunningWave?: boolean;
   hasBack?: boolean;
   hasErrand?: boolean;
+  hasLaunch?: boolean;
   questId?: boolean;
 }): React.ReactElement {
   return (
@@ -378,6 +381,13 @@ function StatusBar({
         <Text>  </Text>
         <Text dimColor>C</Text>
         <Text> concurrency</Text>
+        {hasLaunch && (
+          <>
+            <Text>  </Text>
+            <Text bold color="green">L</Text>
+            <Text bold color="green"> launch</Text>
+          </>
+        )}
         {hasErrand && (
           <>
             <Text>  </Text>
@@ -463,6 +473,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     onQuit,
     onBack,
     onSwitchToMonitor,
+    onLaunch,
     onErrand,
     onArchiveDone,
     onWishlist,
@@ -511,6 +522,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     if (input === "w") { onWishlist?.(); return; }
     if (input === "u") { onUsage?.(); return; }
     if (input === "x") { onArchiveDone?.(); return; }
+    if (input === "l") { onLaunch?.(); return; }
     if (input === "+" || input === "=") { onChangePriority(-1); return; }
     if (input === "-") { onChangePriority(1); return; }
 
@@ -591,6 +603,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
         hideDone={hideDone}
         hasRunningWave={hasRunningWave}
         hasBack={!!onBack}
+        hasLaunch={!!onLaunch}
         hasErrand={!!onErrand}
         questId={!!questTitle}
       />

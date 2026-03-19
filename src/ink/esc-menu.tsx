@@ -236,7 +236,11 @@ export function EscMenuProvider({
   return (
     <EscMenuContext.Provider value={ctxValue}>
       {children}
-      <EscMenu open={open} onClose={closeMenu} onNavigate={handleNavigate} />
+      {open && (
+        <Box position="absolute" marginTop={2} marginLeft={2}>
+          <EscMenu open={open} onClose={closeMenu} onNavigate={handleNavigate} />
+        </Box>
+      )}
     </EscMenuContext.Provider>
   );
 }
