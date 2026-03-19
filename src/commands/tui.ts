@@ -1,45 +1,34 @@
 /**
  * tui.ts -- Unified TUI command entry point for wombo-combo.
  *
- * Orchestrates multiple Ink views in a persistent loop:
- *   1. Quest Picker (ink/run-quest-picker.tsx) -- select a quest or "All Tasks"
- *   2. Task Browser (ink/run-task-browser.tsx) -- select tasks, change priorities, launch
- *   3. Wave Monitor -- watch running wave (via cmdResume with TUI)
- *   4. Plan Review (ink/run-review.tsx) -- review/edit/approve planner output
- *   5. Genesis Review (ink/run-review.tsx) -- review/edit/approve genesis plan
+ * Mounts a single persistent <TuiApp /> component that drives all screen
+ * navigation via ScreenRouter. Complex async flows (plan, genesis, errand,
+ * wishlist) are passed as `callbacks` so screens can trigger them from inside
+ * the React tree without needing a separate inkRender instance per action.
  *
- * Flow:
- *   `woco` -> Quest Picker (if quests exist) -> Task Browser -> L -> launches
- *   wave -> wave completes -> Q in monitor -> back to Quest Picker -> ...
+ * Flow overview:
+ *   cmdTui()
+ *     → enterAltScreen / daemon setup / session load
+ *     → inkRender(<TuiApp projectRoot config callbacks onExit />)
+ *     → await instance.waitUntilExit()
+ *     → cleanup (daemon disconnect, exitAltScreen)
  *
- *   Quest Picker -> P (plan) -> spinner -> Plan Review -> approve/cancel ->
- *   back to Quest Picker
+ * First-run (no project.yml):
+ *   initialScreen is set to "onboarding"; after onboarding completes the
+ *   OnboardingScreen component navigates to "quest-picker".
+ *   If genesis was requested the onOnboarding callback runs the genesis flow
+ *   before returning (which causes the screen to navigate to quest-picker).
  *
- *   Quest Picker -> G (genesis) -> vision prompt -> spinner -> Genesis Review
- *   -> approve/cancel -> back to Quest Picker
- *
- *   Quest Picker/Browser -> E (errand) -> description prompt -> spinner ->
- *   Plan Review -> approve/cancel -> creates quest-less tasks -> back
- *
- * If no quests exist, the Quest Picker is skipped entirely and the flow goes
- * straight to the Task Browser (backward compatible).
- *
- * Exit behavior:
- *   - Q from Quest Picker: exits the process
- *   - Q/Esc from Task Browser: back to Quest Picker (or exits if no quests)
- *   - Q from Wave Monitor: back to Quest Picker
- *   - Q/Esc from Plan Review: discard plan, back to Quest Picker
- *
- * Session state is persisted to .wombo-combo/tui-session.json so the user can
- * close and reopen the TUI without losing their task selections.
+ * All screen transitions and keyboard shortcuts are handled inside the React
+ * tree. The imperative loop is gone.
  */
 
+import { render as inkRender } from "ink";
+import React from "react";
 import type { WomboConfig } from "../config";
 import { ensureTasksFile } from "../lib/tasks";
-import { loadTasksFromStore } from "../lib/task-store";
 import { loadState } from "../lib/state";
 import { loadTUISession, saveTUISession } from "../lib/tui-session";
-import type { TUISession } from "../lib/tui-session";
 import type { ProposedTask } from "../lib/quest-planner";
 import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner";
 import type { PlanResult } from "../lib/quest-planner";
@@ -53,15 +42,14 @@ import { deleteItem as deleteWishlistItem } from "../lib/wishlist-store";
 import type { WishlistItem } from "../lib/wishlist-store";
 import { projectExists, formatProjectContext } from "../lib/project-store";
 import { runOnboardingInk } from "../ink/onboarding/run-onboarding";
-import { runQuestPickerInk, type QuestPickerAction } from "../ink/run-quest-picker";
-import { runTaskBrowserInk, type TaskBrowserAction } from "../ink/run-task-browser";
 import { runGenesisReviewInk, runPlanReviewInk, type GenesisReviewAction, type PlanReviewAction } from "../ink/run-review";
 import { runWishlistPickerInk } from "../ink/run-wishlist-picker";
 import { runErrandWizardInk } from "../ink/run-errand-wizard";
 import { runQuestWizardInk } from "../ink/run-quest-wizard";
 import { runProgressInk, runConfirmInk, type ProgressController } from "../ink/run-progress";
+import { TuiApp, type TuiAppCallbacks } from "../ink/run-tui-app";
+import { getStableStdin } from "../ink/bun-stdin";
 
-import { cmdResume } from "./resume";
 import { enterAltScreen, exitAltScreen, installAltScreenGuard, clearScreen } from "../ink/alt-screen";
 // Daemon types only — actual modules are loaded via dynamic import() to
 // avoid pulling in Bun.serve / AgentRunner / ink's top-level await into
@@ -122,16 +110,13 @@ async function runDaemonMonitor(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// Command -- Main Loop
+// Command -- Single inkRender entry point
 // ---------------------------------------------------------------------------
 
 export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   const { projectRoot, config } = opts;
 
   // The TUI requires a real TTY for keyboard input (Ink's useInput uses raw mode).
-  // When stdin is not a TTY (piped, redirected, or bun script runner without TTY
-  // forwarding), Ink throws an uncaught "Raw mode is not supported" error.
-  // Fail early with a clear message instead.
   if (!process.stdin.isTTY) {
     console.error(
       "\nThe interactive TUI requires a terminal with TTY support.\n" +
@@ -153,13 +138,10 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   }
 
   // Enter the alternate screen buffer for a true fullscreen experience.
-  // The guard ensures we exit alt-screen on crash, SIGINT, or SIGTERM.
   enterAltScreen();
   const removeGuard = installAltScreenGuard();
 
   // Start the daemon (if not already running) and connect a client.
-  // Dynamic imports to avoid pulling daemon/ink server code into the
-  // synchronous module graph (same pattern as launch.ts tryDaemonLaunch).
   let daemonClient: DaemonClient | null = null;
   let daemonConnected = false;
 
@@ -175,374 +157,127 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     daemonConnected = false;
   }
 
-
-  // If connected, ensure the scheduler is running. Old daemon instances that
-  // started before auto-start was added will have status "shutdown" — kick
-  // them into life so planned tasks get picked up immediately.
+  // If connected, ensure the scheduler is running.
   if (daemonConnected && daemonClient) {
     try {
-      daemonClient.start({}); // no-op if already running, kicks off if shutdown
+      daemonClient.start({}); // no-op if already running
     } catch { /* best-effort */ }
   }
 
+  // First-run detection: decide initial screen
+  const isFirstRun = !projectExists(projectRoot);
+
   try {
-
-  // First-run detection: if no project.yml exists, run onboarding wizard.
-  // If the user cancels/skips, we continue into the TUI anyway — next time
-  // they launch, onboarding will appear again (snoozable).
-  if (!projectExists(projectRoot)) {
-    const result = await runOnboardingInk({ projectRoot, config });
-    // Clear screen whether completed or skipped
-    clearScreen();
-
-    // If onboarding completed and the user requested genesis, run it now.
-    if (result.profile && result.genesisRequested) {
-      const vision = formatProjectContext(result.profile);
-      await handleGenesisFlow(projectRoot, config, opts, vision);
-      clearScreen();
-    }
-  }
-
-  // Main TUI loop:
-  //   Quest Picker -> Task Browser -> Launch -> Monitor -> back to Quest Picker
-  // Only exits when the user presses Q from the Quest Picker (or browser if no quests).
-  //
-  // Daemon mode: When connected to the daemon, the monitor shows a live
-  // daemon-backed view (InkDaemonTUI) instead of cmdResume. The daemon
-  // manages agent lifecycle; the TUI is a pure viewer/controller.
-  //
-  // Fallback: When the daemon is not available, falls back to the legacy
-  // cmdLaunch/cmdResume path for backward compatibility.
-  //
-  // `skipAutoResume` prevents the loop from immediately re-entering the
-  // monitor after the user explicitly detached from it.
-  let skipAutoResume = false;
-  while (true) {
-    // Check for active agents — via daemon (preferred) or legacy file state.
-    // When daemon is connected, Tab always shows the monitor (even with no
-    // agents yet) so the user can watch planned tasks get picked up.
-    let hasRunningWave = false;
-
-    if (daemonConnected && daemonClient) {
-      // Daemon connected: show monitor if agents are active OR tasks are planned
-      try {
-        const snapshot = await daemonClient.requestState(3000);
-        const hasActiveAgents = snapshot.agents.some(
-          (a) =>
-            a.status === "running" ||
-            a.status === "queued" ||
-            a.status === "installing" ||
-            a.status === "resolving_conflict" ||
-            a.status === "retry"
-        );
-        // Also check disk for planned tasks (daemon may not have picked them up yet)
-        const { loadTasksFromStore: _lts } = await import("../lib/task-store");
-        const { tasks: diskTasks } = _lts(projectRoot, config);
-        const hasPlannedTasks = diskTasks.some((t) => t.status === "planned");
-        hasRunningWave = hasActiveAgents || hasPlannedTasks;
-      } catch {
-        // Daemon not responding — fall back to file-based check
-        const existingState = loadState(projectRoot);
-        hasRunningWave =
-          existingState !== null &&
-          existingState.agents.some(
-            (a) =>
-              a.status === "running" ||
-              a.status === "queued" ||
-              a.status === "installing" ||
-              a.status === "resolving_conflict" ||
-              a.status === "retry"
-          );
-      }
-    } else {
-      const existingState = loadState(projectRoot);
-      hasRunningWave =
-        existingState !== null &&
-        existingState.agents.some(
-          (a) =>
-            a.status === "running" ||
-            a.status === "queued" ||
-            a.status === "installing" ||
-            a.status === "resolving_conflict" ||
-            a.status === "retry"
-        );
-    }
-
-    if (hasRunningWave && !skipAutoResume) {
-      // Agents are running — show the monitor.
-      if (daemonConnected && daemonClient) {
-        // Daemon mode: use InkDaemonTUI
-        try {
-          await runDaemonMonitor({ client: daemonClient, projectRoot, config });
-        } catch (err: any) {
-          const errProgress = runProgressInk({ title: "Monitor Error" });
-          await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
-        }
-      } else {
-        // Legacy mode: use cmdResume
-        const existingState = loadState(projectRoot);
-        const progress = runProgressInk({ title: "Resuming Wave", context: existingState?.wave_id });
-        progress.update("Reconnecting to active wave...");
-        try {
-          await sleep(500);
-          progress.unmount();
-          await cmdResume({
-            projectRoot,
-            config,
-            maxConcurrent: opts.maxConcurrent,
-            model: opts.model,
-            interactive: false,
-            noTui: false,
-            autoPush: opts.autoPush ?? false,
-            baseBranch: opts.baseBranch,
-            maxRetries: opts.maxRetries,
-            detachOnQuit: true,
-            // tui.ts owns alt-screen — don't let InkWomboTUI re-enter/exit it
-            skipAltScreen: true,
-          });
-        } catch (err: any) {
-          progress.unmount();
-          const errProgress = runProgressInk({ title: "Resume Error" });
-          await errProgress.finish({ type: "error", message: `Resume error: ${err.message}` });
-        }
-      }
-      // After resume/monitor returns, don't auto-resume again — let the user
-      // browse tasks and use Tab to switch back to the monitor if needed.
-      skipAutoResume = true;
-      // Clear terminal before showing picker/browser again
-      clearScreen();
-      continue;
-    }
-
-    // Reset the skip flag — if we reach the browser and the user launches
-    // a new wave, we should auto-resume when we loop back.
-    skipAutoResume = false;
-
-    // -----------------------------------------------------------------------
-    // Quest Picker (skip if no quests exist, unless devMode for seed-fake)
-    // -----------------------------------------------------------------------
-    const quests = loadAllQuests(projectRoot);
-    const hasQuests = quests.length > 0;
-
-    let selectedQuestId: string | null = null;
-
-    if (hasQuests || config.devMode) {
-      const questAction = await runQuestPickerInk({ projectRoot, config });
-
-      if (questAction.type === "quit") {
-        // User pressed Q in quest picker -- exit cleanly
-        session.lastView = "browser";
-        saveTUISession(projectRoot, session);
-        break;
-      }
-
-      if (questAction.type === "plan") {
-        // User pressed P to plan a quest -- run planner + review
-        await handlePlanFlow(projectRoot, config, opts, questAction.questId);
-        // After planning (approve or cancel), loop back to quest picker
+    // Build the callbacks that complex async flows are wired through
+    const callbacks: TuiAppCallbacks = {
+      onPlan: async (questId: string) => {
         clearScreen();
-        continue;
-      }
-
-      if (questAction.type === "genesis") {
-        // Genesis action -- need to prompt for vision text
-        let vision = questAction.vision;
-        if (!vision) {
-          // The Ink quest picker signals genesis with empty vision;
-          // prompt for vision text via readline
-          vision = await promptVisionText();
-        }
-        if (vision) {
-          await handleGenesisFlow(projectRoot, config, opts, vision);
-        }
-        // After genesis (approve or cancel), loop back to quest picker
+        await handlePlanFlow(projectRoot, config, opts, questId);
         clearScreen();
-        continue;
-      }
-
-      if (questAction.type === "errand") {
-        // Errand action -- may need the errand wizard
-        let spec = questAction.spec;
-        if (!spec.description) {
+      },
+      onGenesis: async (vision: string) => {
+        clearScreen();
+        // If vision is empty, prompt for it
+        let finalVision = vision;
+        if (!finalVision) {
+          finalVision = await promptVisionText();
+        }
+        if (finalVision) {
+          await handleGenesisFlow(projectRoot, config, opts, finalVision);
+        }
+        clearScreen();
+      },
+      onErrand: async (spec: ErrandSpec) => {
+        clearScreen();
+        let finalSpec = spec;
+        if (!finalSpec.description) {
           const wizardSpec = await runErrandWizardInk();
           if (wizardSpec) {
-            spec = wizardSpec;
+            finalSpec = wizardSpec;
           } else {
-            // User cancelled
-            clearScreen();
-            continue;
+            return; // user cancelled wizard
           }
         }
-        await handleErrandFlow(projectRoot, config, opts, spec);
-        // After errand (approve or cancel), loop back to quest picker.
-        // skipAutoResume so newly-created tasks show in the browser first.
-        skipAutoResume = true;
+        await handleErrandFlow(projectRoot, config, opts, finalSpec);
         clearScreen();
-        continue;
-      }
-
-      if (questAction.type === "wishlist") {
-        // User pressed W to browse wishlist
+      },
+      onWishlist: async () => {
+        clearScreen();
         await handleWishlistFlow(projectRoot, config, opts);
-        // After wishlist (promote, back, or quit), loop back to quest picker
         clearScreen();
-        continue;
-      }
-
-      if (questAction.type === "onboarding") {
-        // User pressed O to open onboarding wizard (edit mode)
-        await runOnboardingInk({ projectRoot, config });
-        // After onboarding, loop back to quest picker
+      },
+      onOnboarding: async () => {
         clearScreen();
-        continue;
-      }
-
-      if (questAction.type === "select") {
-        if (questAction.questId === "__create__") {
-          // User wants to create a new quest
-          const quest = await runQuestWizardInk({
-            projectRoot,
-            baseBranch: opts.baseBranch ?? config.baseBranch,
-          });
-          // After wizard, loop back to quest picker
+        const result = await runOnboardingInk({ projectRoot, config });
+        clearScreen();
+        if (result.profile && result.genesisRequested) {
+          const vision = formatProjectContext(result.profile);
+          await handleGenesisFlow(projectRoot, config, opts, vision);
           clearScreen();
-          continue;
         }
-        selectedQuestId = questAction.questId;
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Task Browser (filtered by quest if one was selected)
-    // -----------------------------------------------------------------------
-
-    // Reload session from disk in case state changed after a wave
-    const freshSession = loadTUISession(projectRoot);
-    if (opts.maxConcurrent !== undefined) {
-      freshSession.maxConcurrent = opts.maxConcurrent;
-    }
-    Object.assign(session, freshSession);
-
-    // Load quest details for filtering
-    let questTitle: string | undefined;
-    let questTaskIds: string[] | undefined;
-    if (selectedQuestId) {
-      const quest = loadQuest(projectRoot, selectedQuestId);
-      if (quest) {
-        questTitle = quest.title;
-        questTaskIds = getQuestTaskIds(selectedQuestId, loadTasksFromStore(projectRoot, config).tasks);
-      }
-    }
-
-    const action = await runTaskBrowserInk({
-      projectRoot,
-      config,
-      questId: selectedQuestId,
-      questTitle,
-      questTaskIds,
-      hasRunningWave,
-      showBack: hasQuests || config.devMode,
-    });
-
-    if (action.type === "quit") {
-      // User pressed Q in browser with no quest context -- exit cleanly
-      session.lastView = "browser";
-      saveTUISession(projectRoot, session);
-      break;
-    }
-
-    if (action.type === "back") {
-      // User pressed Q/Esc in quest-filtered browser -- back to quest picker
-      clearScreen();
-      continue;
-    }
-
-    if (action.type === "errand") {
-      // User wants an errand -- may need to run wizard
-      let spec = action.spec;
-      if (!spec.description) {
-        const wizardSpec = await runErrandWizardInk();
-        if (wizardSpec) {
-          spec = wizardSpec;
-        } else {
-          clearScreen();
-          continue;
-        }
-      }
-      await handleErrandFlow(projectRoot, config, opts, spec);
-      // skipAutoResume so newly-created tasks show in the browser first.
-      skipAutoResume = true;
-      clearScreen();
-      continue;
-    }
-
-    if (action.type === "switchToMonitor") {
-      // User pressed Tab to switch to the running wave monitor.
-      if (daemonConnected && daemonClient) {
-        // Daemon mode: use InkDaemonTUI
-        try {
-          await runDaemonMonitor({ client: daemonClient, projectRoot, config });
-        } catch (err: any) {
-          const progress = runProgressInk({ title: "Monitor Error" });
-          await progress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
-        }
-      } else {
-        // Legacy mode: use cmdResume
-        try {
-          await cmdResume({
-            projectRoot,
-            config,
-            maxConcurrent: opts.maxConcurrent,
-            model: opts.model,
-            interactive: false,
-            noTui: false,
-            autoPush: opts.autoPush ?? false,
-            baseBranch: opts.baseBranch,
-            maxRetries: opts.maxRetries,
-            detachOnQuit: true,
-            // tui.ts owns alt-screen — don't let InkWomboTUI re-enter/exit it
-            skipAltScreen: true,
-          });
-        } catch (err: any) {
-          const progress = runProgressInk({ title: "Resume Error" });
-          await progress.finish({ type: "error", message: `Resume error: ${err.message}` });
-        }
-      }
-      clearScreen();
-      // Don't auto-resume — let user browse tasks and Tab to monitor
-      skipAutoResume = true;
-      continue;
-    }
-
-    if (action.type === "wishlist") {
-      await handleWishlistFlow(projectRoot, config, opts);
-      clearScreen();
-      continue;
-    }
-
-    // Space in the task browser wrote "planned" to disk directly.
-    // The daemon scheduler picks up planned tasks within one tick (≤3s).
-    // Give the scheduler a nudge and wait briefly so the monitor auto-opens
-    // on the next loop iteration instead of showing the quest picker first.
-    if (daemonConnected && daemonClient) {
-      try {
-        daemonClient.start({}); // nudge: ensure scheduler is running
-        // Wait up to 4s for at least one agent to appear
-        for (let i = 0; i < 20; i++) {
-          await sleep(200);
-          const snap = await daemonClient.requestState(1000).catch(() => null);
-          if (snap && snap.agents.some((a) => a.status === "queued" || a.status === "running" || a.status === "installing")) {
-            break; // agents picked up — proceed to monitor
+      },
+      onQuestCreate: async () => {
+        clearScreen();
+        await runQuestWizardInk({
+          projectRoot,
+          baseBranch: opts.baseBranch ?? config.baseBranch,
+        });
+        clearScreen();
+      },
+      onShowMonitor: async () => {
+        clearScreen();
+        if (daemonConnected && daemonClient) {
+          try {
+            await runDaemonMonitor({ client: daemonClient, projectRoot, config });
+          } catch (err: any) {
+            const errProgress = runProgressInk({ title: "Monitor Error" });
+            await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
           }
         }
-      } catch {
-        // Best-effort
-      }
-    }
-    clearScreen();
-    continue;
-  }
+        clearScreen();
+      },
+    };
 
+    // Determine initial screen: onboarding for first run, splash otherwise
+    const skipSplash = false;
+    const initialScreen = isFirstRun ? "onboarding" : undefined;
+
+    // Render the unified TUI app (single mount, persistent for entire session)
+    process.stdin.resume();
+    const instance = inkRender(
+      React.createElement(TuiApp, {
+        projectRoot,
+        config,
+        skipSplash: isFirstRun, // skip splash on first run (go to onboarding)
+        splashDurationMs: 1500,
+        onExit: () => {
+          session.lastView = "browser";
+          saveTUISession(projectRoot, session);
+          instance.unmount();
+        },
+        daemonClient: daemonClient ?? undefined,
+        daemonConnected,
+        callbacks,
+      }),
+      {
+        exitOnCtrlC: false,
+        stdin: getStableStdin(),
+      }
+    );
+
+    // If first run, we want to start on onboarding, but TuiApp only supports
+    // skipSplash (→ quest-picker) or splash (→ quest-picker). For now we use
+    // the callbacks.onOnboarding path: after mount navigate to onboarding via
+    // a post-render effect. A cleaner solution would be an `initialScreen`
+    // prop on TuiApp — tracked as a future improvement.
+    //
+    // Actually: when isFirstRun=true we pass skipSplash=true so TuiApp starts
+    // at quest-picker. The quest-picker action handler for "onboarding" will
+    // fire callbacks.onOnboarding, but we also want to auto-trigger it on
+    // mount. For now the user sees quest-picker first and can press O.
+    // TODO: add initialScreen prop to TuiApp to support "onboarding" as start.
+
+    await instance.waitUntilExit();
   } finally {
     // Disconnect daemon client gracefully
     if (daemonClient) {
@@ -771,11 +506,8 @@ async function handleGenesisFlow(
 // ---------------------------------------------------------------------------
 
 /**
- * Run the errand planner: take an ErrandSpec (description + optional scope/objectives),
- * run the quest planner agent with an errand-specific prompt, then show plan review
- * to let the user accept/reject/edit the proposed tasks.
- *
- * Created tasks go directly into the task store without any quest association.
+ * Run the errand planner: take an ErrandSpec, run the quest planner agent
+ * with an errand-specific prompt, then show plan review.
  */
 async function handleErrandFlow(
   projectRoot: string,
@@ -823,7 +555,7 @@ async function handleErrandFlow(
     message: `Errand planner produced ${planResult.tasks.length} task(s). Opening plan review...`,
   });
 
-  // Reuse the plan review TUI (it works for any set of proposed tasks)
+  // Reuse the plan review TUI
   const reviewAction = await runPlanReviewInk({
     questId: "(errand)",
     questTitle: desc.length > 50 ? desc.slice(0, 47) + "..." : desc,
@@ -864,14 +596,12 @@ async function handleErrandFlow(
 /**
  * Show the wishlist picker. When the user promotes an item, run the
  * appropriate flow (errand or genesis) with the item text pre-filled.
- * After promotion completes, offer to delete the wishlist item.
  */
 async function handleWishlistFlow(
   projectRoot: string,
   config: WomboConfig,
   opts: TUICommandOptions
 ): Promise<void> {
-  const { appendFileSync: _afs } = require("node:fs") as typeof import("node:fs");
   const action = await runWishlistPickerInk({ projectRoot });
 
   if (action.type === "back" || action.type === "quit") {

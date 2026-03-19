@@ -15,11 +15,15 @@
  * Genesis sentinel: Instead of `(profile as any)._genesisRequested = true`,
  * this module uses OnboardingResult.genesisRequested. The integration in
  * tui.ts checks this field.
+ *
+ * Also exports `OnboardingScreen` — a ScreenRouter-compatible wrapper that
+ * can be used inside TuiApp's unified screen map.
  */
 
-import React from "react";
+import React, { useCallback } from "react";
 import { getStableStdin } from "../bun-stdin";
 import { render } from "ink";
+import { useNavigation } from "../router";
 import type { ProjectProfile } from "../../lib/project-store";
 import type { WomboConfig } from "../../config";
 import {
@@ -128,5 +132,75 @@ export async function runOnboardingInk(
       exitOnCtrlC: false,
       stdin: getStableStdin(),
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// OnboardingScreen — ScreenRouter-compatible wrapper
+// ---------------------------------------------------------------------------
+
+/**
+ * Props received when OnboardingScreen is used inside a ScreenRouter.
+ * These are passed via ScreenRouter's initialProps or nav.push/replace.
+ */
+export interface OnboardingScreenProps {
+  projectRoot: string;
+  config?: WomboConfig;
+  /** Called when the onboarding flow completes (used for testing / direct rendering). */
+  onDone?: (profile: ProjectProfile | null, genesisRequested?: boolean) => void;
+}
+
+/**
+ * OnboardingScreen — a ScreenRouter-compatible screen component.
+ *
+ * Wraps OnboardingApp so it can live inside the unified TuiApp ScreenRouter.
+ * On completion it calls useNavigation().replace("quest-picker", ...) so the
+ * user lands back on the quest picker.
+ *
+ * Exported for use in TuiApp's screen map and for testing.
+ */
+export function OnboardingScreen({
+  projectRoot,
+  config,
+  onDone,
+}: OnboardingScreenProps): React.ReactElement {
+  const nav = useNavigation();
+
+  // Determine mode from project existence
+  const isEdit = projectExists(projectRoot);
+  const mode = isEdit ? "edit" : "create";
+
+  // Load existing profile for edit mode (synchronous)
+  let existingProfile: ProjectProfile | undefined;
+  if (isEdit) {
+    const loaded = loadProject(projectRoot);
+    if (loaded) {
+      existingProfile = loaded;
+    }
+  }
+
+  const handleDone = useCallback(
+    (profile: ProjectProfile | null, genesisRequested?: boolean) => {
+      // Call optional external callback (useful in tests)
+      onDone?.(profile, genesisRequested);
+      // Navigate back to quest-picker
+      nav.replace("quest-picker", {
+        projectRoot,
+        config: config as unknown,
+        onExit: () => {},
+      } as Record<string, unknown>);
+    },
+    [nav, projectRoot, config, onDone],
+  );
+
+  return React.createElement(OnboardingApp, {
+    mode,
+    projectRoot,
+    existingProfile,
+    config,
+    onDone: handleDone,
+    scoutFn: runBrownfieldScout,
+    synthesisFn: runLlmSynthesis,
+    saveFn: saveProject,
   });
 }

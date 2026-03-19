@@ -12,6 +12,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
+import { useNavigation } from "./router";
 import { TaskBrowserView, type TaskNode } from "./task-browser";
 import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task-graph";
 import { loadTasks, getDoneTaskIds, loadArchive, areDependenciesMet } from "../lib/tasks";
@@ -327,6 +328,88 @@ function TaskBrowserApp({
       onErrand={handleErrand}
       onArchiveDone={handleArchiveDone}
       onWishlist={handleWishlist}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TaskBrowserScreen — router-compatible screen component
+// ---------------------------------------------------------------------------
+
+/**
+ * Props received when TaskBrowserScreen is used inside a ScreenRouter.
+ * Superset of RunTaskBrowserOptions plus routing-specific extras.
+ */
+export interface TaskBrowserScreenProps {
+  projectRoot: string;
+  config: WomboConfig;
+  questId?: string | null;
+  questTitle?: string;
+  questTaskIds?: string[];
+  hasRunningWave?: boolean;
+  showBack?: boolean;
+  /** Called when the user quits the task browser entirely. */
+  onExit: () => void;
+}
+
+/**
+ * TaskBrowserScreen — a ScreenRouter-compatible screen component.
+ *
+ * Wraps TaskBrowserApp so it can live inside the unified TuiApp ScreenRouter.
+ * Navigation (back to quest-picker, switchToMonitor, errand, quit) is handled
+ * via useNavigation() push/pop/replace rather than onAction() callbacks.
+ *
+ * Exported for use in TuiApp screen map and for testing.
+ */
+export function TaskBrowserScreen({
+  projectRoot,
+  config,
+  questId,
+  questTitle,
+  questTaskIds,
+  hasRunningWave,
+  showBack,
+  onExit,
+}: TaskBrowserScreenProps): React.ReactElement {
+  const nav = useNavigation();
+
+  const handleAction = useCallback(
+    (action: TaskBrowserAction) => {
+      switch (action.type) {
+        case "back":
+          nav.pop();
+          break;
+        case "switchToMonitor":
+          nav.push("daemon-monitor", {
+            projectRoot,
+            config: config as unknown,
+            onExit,
+          } as Record<string, unknown>);
+          break;
+        case "errand":
+          // Errand wizard: navigate when screen is available.
+          break;
+        case "wishlist":
+          // Wishlist screen: navigate when available.
+          break;
+        case "quit":
+          onExit();
+          break;
+      }
+    },
+    [nav, projectRoot, config, onExit]
+  );
+
+  return (
+    <TaskBrowserApp
+      projectRoot={projectRoot}
+      config={config}
+      questId={questId}
+      questTitle={questTitle}
+      questTaskIds={questTaskIds}
+      hasRunningWave={hasRunningWave}
+      showBack={showBack}
+      onAction={handleAction}
     />
   );
 }

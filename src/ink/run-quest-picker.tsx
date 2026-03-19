@@ -12,6 +12,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { getStableStdin } from "./bun-stdin";
 import { render } from "ink";
+import { useNavigation } from "./router";
 import { QuestPickerView, type QuestSummary } from "./quest-picker";
 import type { Quest } from "../lib/quest";
 import { QUEST_STATUS_ORDER, getQuestTaskIds } from "../lib/quest";
@@ -21,6 +22,7 @@ import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/to
 import type { UsageTotals } from "../lib/token-usage";
 import type { WomboConfig } from "../config";
 import type { ErrandSpec } from "../lib/errand-planner";
+import type { TuiAppCallbacks } from "./run-tui-app";
 
 // ---------------------------------------------------------------------------
 // Action Type (matches the old QuestPickerAction)
@@ -207,6 +209,148 @@ function QuestPickerApp({
       onWishlist={handleWishlist}
       onOnboarding={handleOnboarding}
       onDelete={handleDelete}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// QuestPickerScreen — router-compatible screen component
+// ---------------------------------------------------------------------------
+
+/**
+ * Props received when QuestPickerScreen is used inside a ScreenRouter.
+ * These are passed via ScreenRouter's initialProps or nav.push/replace.
+ */
+export interface QuestPickerScreenProps {
+  projectRoot: string;
+  config: WomboConfig;
+  /** Called when the user quits from the quest picker. */
+  onExit: () => void;
+  /**
+   * Optional imperative callbacks for complex async flows (plan, genesis,
+   * errand, etc.) passed from tui.ts via TuiApp.
+   */
+  callbacks?: TuiAppCallbacks;
+}
+
+/**
+ * QuestPickerScreen — a ScreenRouter-compatible screen component.
+ *
+ * Wraps QuestPickerApp so it can live inside the unified TuiApp ScreenRouter
+ * instead of being a standalone inkRender() call. Navigation (select quest,
+ * plan, genesis, errand, quit) is handled via useNavigation() push/replace
+ * calls rather than onAction() callbacks.
+ *
+ * Exported for use in TuiApp screen map and for testing.
+ */
+export function QuestPickerScreen({
+  projectRoot,
+  config,
+  onExit,
+  callbacks,
+}: QuestPickerScreenProps): React.ReactElement {
+  const nav = useNavigation();
+
+  const handleAction = useCallback(
+    (action: QuestPickerAction) => {
+      switch (action.type) {
+        case "select":
+          nav.push("task-browser", {
+            projectRoot,
+            config: config as unknown,
+            questId: action.questId ?? undefined,
+            onExit,
+            callbacks: callbacks as unknown,
+          } as Record<string, unknown>);
+          break;
+        case "plan":
+          if (callbacks?.onPlan) {
+            callbacks.onPlan(action.questId).then(() => {
+              // After plan flow completes, replace back to quest-picker
+              nav.replace("quest-picker", {
+                projectRoot,
+                config: config as unknown,
+                onExit,
+                callbacks: callbacks as unknown,
+              } as Record<string, unknown>);
+            });
+          } else {
+            // Fallback: navigate to task-browser (quest-scoped)
+            nav.push("task-browser", {
+              projectRoot,
+              config: config as unknown,
+              questId: action.questId,
+              onExit,
+              callbacks: callbacks as unknown,
+            } as Record<string, unknown>);
+          }
+          break;
+        case "genesis":
+          if (callbacks?.onGenesis) {
+            callbacks.onGenesis(action.vision).then(() => {
+              nav.replace("quest-picker", {
+                projectRoot,
+                config: config as unknown,
+                onExit,
+                callbacks: callbacks as unknown,
+              } as Record<string, unknown>);
+            });
+          }
+          break;
+        case "errand":
+          if (callbacks?.onErrand) {
+            callbacks.onErrand(action.spec).then(() => {
+              nav.replace("quest-picker", {
+                projectRoot,
+                config: config as unknown,
+                onExit,
+                callbacks: callbacks as unknown,
+              } as Record<string, unknown>);
+            });
+          }
+          break;
+        case "wishlist":
+          if (callbacks?.onWishlist) {
+            callbacks.onWishlist().then(() => {
+              nav.replace("quest-picker", {
+                projectRoot,
+                config: config as unknown,
+                onExit,
+                callbacks: callbacks as unknown,
+              } as Record<string, unknown>);
+            });
+          }
+          break;
+        case "onboarding":
+          if (callbacks?.onOnboarding) {
+            callbacks.onOnboarding().then(() => {
+              nav.replace("quest-picker", {
+                projectRoot,
+                config: config as unknown,
+                onExit,
+                callbacks: callbacks as unknown,
+              } as Record<string, unknown>);
+            });
+          } else {
+            nav.push("onboarding", {
+              projectRoot,
+              config: config as unknown,
+            } as Record<string, unknown>);
+          }
+          break;
+        case "quit":
+          onExit();
+          break;
+      }
+    },
+    [nav, projectRoot, config, onExit, callbacks]
+  );
+
+  return (
+    <QuestPickerApp
+      projectRoot={projectRoot}
+      config={config}
+      onAction={handleAction}
     />
   );
 }
