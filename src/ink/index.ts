@@ -290,3 +290,15 @@ export {
   type ThemeTokens,
   type ThemeName,
 } from "./theme";
+
+// i18n skeleton (t() helper, English strings, locale context)
+export {
+  t,
+  createI18n,
+  getLocaleT,
+  I18nContext,
+  useI18n,
+  EN_STRINGS,
+  type TFunction,
+  type StringsMap,
+} from "./i18n";
