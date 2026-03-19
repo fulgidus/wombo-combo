@@ -325,3 +325,10 @@ export {
   type SettingsFieldProps,
   type SettingsScreenConfig,
 } from "./settings-screen";
+
+// Animated splash screen (shown on TUI startup)
+export {
+  SplashScreen,
+  SPLASH_TEXTS,
+  type SplashScreenProps,
+} from "./splash-screen";
