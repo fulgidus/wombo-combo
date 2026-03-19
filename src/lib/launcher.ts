@@ -282,6 +282,20 @@ function agentEnv(
   return env;
 }
 
+/**
+ * Generate a unique title for an opencode agent session.
+ *
+ * Appends a timestamp suffix (milliseconds since epoch) to the base title
+ * so that each invocation of launchHeadless gets a distinct title. This
+ * prevents opencode from reusing a prior session that matches the title,
+ * which would cause multiple agents to share the same session ID.
+ *
+ * Example: "woco: my-feature-1742413200000"
+ */
+export function makeAgentTitle(featureId: string): string {
+  return `woco: ${featureId}-${Date.now()}`;
+}
+
 // ---------------------------------------------------------------------------
 // Headless Launch
 // ---------------------------------------------------------------------------
@@ -325,7 +339,7 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
       "--format", "json",
       "--agent", opts.agentName ?? opts.config.agent.name,
       "--dir", opts.worktreePath,
-      "--title", `woco: ${opts.featureId}`,
+      "--title", makeAgentTitle(opts.featureId),
     );
   }
 
@@ -459,7 +473,7 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
       "--format", "json",
       "--agent", agentName,
       "--dir", opts.worktreePath,
-      "--title", `woco: conflict-resolve ${opts.featureId}`,
+      "--title", makeAgentTitle(`conflict-resolve-${opts.featureId}`),
     );
   }
 

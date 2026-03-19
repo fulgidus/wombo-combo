@@ -455,6 +455,9 @@ export class ProcessMonitor {
 
           if (!monitored.sessionId && event.sessionID) {
             monitored.sessionId = event.sessionID;
+            // Cross-process collision check: warn if another agent already
+            // holds this session ID (possible opencode session reuse bug).
+            this._checkSessionIdCollision(featureId, event.sessionID);
             this.callbacks.onSessionId?.(featureId, event.sessionID);
             this.pushActivity(featureId, `-- session: ${event.sessionID}`);
           }
@@ -554,6 +557,11 @@ export class ProcessMonitor {
     this.pushActivity(featureId, `-- reconnected to running process (PID ${pid})`);
     this.writeLog(featureId, `\n[wombo] Reconnected to PID ${pid} at ${new Date().toISOString()}\n`);
 
+    // Cross-process collision check for the provided session ID
+    if (sessionId) {
+      this._checkSessionIdCollision(featureId, sessionId);
+    }
+
     // Load historical activity from the log file so the TUI has context
     this._loadHistoricalActivity(featureId);
 
@@ -616,6 +624,27 @@ export class ProcessMonitor {
     } catch {
       // Non-critical — log file may be unreadable
     }
+  }
+
+  /**
+   * Check if another monitored process already holds the given session ID.
+   * If a collision is detected, logs a [WARN] message to the activity log
+   * and the log file of the colliding agent, then returns the existing
+   * agent's feature ID. Returns null if no collision.
+   *
+   * This guards against opencode session reuse bugs where two parallel
+   * agents end up sharing the same session ID.
+   */
+  private _checkSessionIdCollision(featureId: string, sessionId: string): string | null {
+    for (const [existingId, m] of this.processes.entries()) {
+      if (existingId !== featureId && m.sessionId === sessionId) {
+        const msg = `[WARN] session ID ${sessionId} is already in use by agent ${existingId} — possible opencode session reuse bug`;
+        this.pushActivity(featureId, msg);
+        this.writeLog(featureId, `${msg}\n`);
+        return existingId;
+      }
+    }
+    return null;
   }
 
   getSessionId(featureId: string): string | null {

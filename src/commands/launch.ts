@@ -1862,6 +1862,16 @@ async function launchWaveHeadless(
 
   const monitor = new ProcessMonitor(projectRoot, {
     onSessionId: (featureId, sessionId) => {
+      // Uniqueness assertion: warn if this session ID is already in use by
+      // another agent in state.agents (cross-agent session reuse detection).
+      const conflicting = state.agents.find(
+        (a) => a.feature_id !== featureId && a.session_id === sessionId
+      );
+      if (conflicting) {
+        console.warn(
+          `[WARN] session ID ${sessionId} is already in use by agent ${conflicting.feature_id} — possible opencode session reuse bug`
+        );
+      }
       updateAgent(state, featureId, { session_id: sessionId });
       saveState(projectRoot, state);
       if (tuiRef.current) tuiRef.current.updateState(state);

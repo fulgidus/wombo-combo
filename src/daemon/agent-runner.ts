@@ -154,6 +154,16 @@ export class AgentRunner {
   private buildCallbacks(): MonitorCallbacks {
     return {
       onSessionId: (featureId, sessionId) => {
+        // Uniqueness assertion: warn if another agent in the daemon state
+        // already holds this session ID (cross-agent session reuse detection).
+        const conflicting = this.state.getAllAgents().find(
+          (a) => a.featureId !== featureId && a.sessionId === sessionId
+        );
+        if (conflicting) {
+          console.warn(
+            `[WARN] session ID ${sessionId} is already in use by agent ${conflicting.featureId} — possible opencode session reuse bug`
+          );
+        }
         this.state.updateAgent(featureId, { sessionId });
       },
 
