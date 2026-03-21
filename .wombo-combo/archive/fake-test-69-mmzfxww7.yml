@@ -1,0 +1,18 @@
+id: fake-test-69-mmzfxww7
+title: Implement retry logic (3)
+description: FAKE_SLEEP_MS=1071 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT25M
+started_at: 2026-03-20T22:18:34.540Z
+ended_at: 2026-03-20T22:19:44.452Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

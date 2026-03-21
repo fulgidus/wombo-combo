@@ -1,0 +1,21 @@
+id: i18n-full
+title: Full i18n Support with i18next
+goal: Extract all user-facing strings from the TUI and CLI into locale files. Integrate i18next with language detection,
+  pluralization, and interpolation. Ship at least en and provide a contributor guide for adding locales. Replace the
+  current createI18n() skeleton in i18n.ts.
+status: draft
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/i18n-full
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:08:52.285Z
+updated_at: 2026-03-20T00:08:52.286Z
+started_at: null
+ended_at: null
+notes: []

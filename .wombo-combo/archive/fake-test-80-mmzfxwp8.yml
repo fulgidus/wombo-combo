@@ -1,0 +1,20 @@
+id: fake-test-80-mmzfxwp8
+title: Add health check endpoint (4)
+description: FAKE_SLEEP_MS=928 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test-49-mmzfxwod
+  - fake-test-34-mmzfxwny
+effort: PT30M
+started_at: 2026-03-20T23:34:25.809Z
+ended_at: 2026-03-20T23:36:00.197Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,20 @@
+id: fake-test-85-mmzfxwwn
+title: Add unit tests for parser (4)
+description: FAKE_SLEEP_MS=977 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on:
+  - fake-test-16-mmzfxwuq
+  - fake-test-72-mmzfxwwa
+effort: PT51M
+started_at: 2026-03-20T22:30:11.857Z
+ended_at: 2026-03-20T23:24:53.427Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,20 @@
+id: replay-cmd
+quest: session-replay
+title: Add 'woco replay [list|show <id>]' CLI commands
+description: Implement 'woco replay list' to show replay index, 'woco replay
+  show <feature-id>' to launch the TUI viewer. Include --format json flag for
+  list. Wire into the TUI task browser as a keybind on completed tasks.
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - replay-playback-controls
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,0 +1,18 @@
+id: fake-test-13-mmzfxwnd
+title: Profile and optimise hot path
+description: FAKE_SLEEP_MS=899 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: low
+depends_on: []
+effort: PT55M
+started_at: 2026-03-20T22:19:01.154Z
+ended_at: 2026-03-20T22:22:19.668Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

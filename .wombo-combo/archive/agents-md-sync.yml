@@ -1,0 +1,18 @@
+id: agents-md-sync
+title: Sync AGENTS.md with current project config and constraints
+description: "AGENTS.md references outdated constraints that conflict with current Ink/Citty/ScreenRouter setup. Update
+  all sections to reflect the actual codebase: remove obsolete migration notes, add current component contracts, update
+  architecture diagram."
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: 2026-03-20T00:30:50.248Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

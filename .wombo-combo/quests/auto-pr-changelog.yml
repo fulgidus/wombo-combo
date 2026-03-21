@@ -1,0 +1,21 @@
+id: auto-pr-changelog
+title: Auto PR and Changelog Generation
+goal: "After a successful wave merge, automatically open a GitHub PR with a structured description (summary, affected
+  files, test results) and append a CHANGELOG.md entry. Configurable: auto-open vs draft vs skip. Integrate with 'woco
+  merge' and the daemon merge flow."
+status: draft
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/auto-pr-changelog
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:09:17.625Z
+updated_at: 2026-03-20T00:09:17.625Z
+started_at: null
+ended_at: null
+notes: []

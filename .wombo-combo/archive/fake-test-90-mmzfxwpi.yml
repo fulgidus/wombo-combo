@@ -1,0 +1,19 @@
+id: fake-test-90-mmzfxwpi
+title: Review security vulnerabilities (4)
+description: FAKE_SLEEP_MS=913 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test-37-mmzfxwo1
+effort: PT59M
+started_at: 2026-03-20T23:22:07.960Z
+ended_at: 2026-03-20T23:27:50.764Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

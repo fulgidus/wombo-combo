@@ -1,0 +1,20 @@
+id: multi-cli-gemini-adapter
+quest: multi-cli-support
+title: Implement GeminiCliProvider adapter
+description: Implement src/providers/gemini-cli.ts for gemini-cli tool. Handle
+  prompt formatting differences, parse gemini-cli output format, map to
+  AgentResult. Document required gemini-cli version and config.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - multi-cli-claude-adapter
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

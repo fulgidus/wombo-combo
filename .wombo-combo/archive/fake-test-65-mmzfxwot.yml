@@ -1,0 +1,18 @@
+id: fake-test-65-mmzfxwot
+title: Review security vulnerabilities (3)
+description: FAKE_SLEEP_MS=792 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT25M
+started_at: 2026-03-20T22:18:34.318Z
+ended_at: 2026-03-20T22:19:36.150Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,18 @@
+id: analytics-export
+title: Export agent analytics to CSV, JSON, or HTML report
+description: "Extend 'woco usage' with --export flag. CSV: one row per task with all metrics. JSON: full nested
+  structure. HTML: self-contained report with Chart.js embedded graphs (token usage over time, success rate, cost
+  breakdown). Reads from .wombo-combo/usage.jsonl."
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT4H
+started_at: null
+ended_at: 2026-03-20T00:36:00.209Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

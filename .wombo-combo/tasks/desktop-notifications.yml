@@ -1,0 +1,18 @@
+id: desktop-notifications
+title: Add OS-native desktop notifications for key agent events
+description: "Send desktop notifications for: wave complete, agent failed, build broken, merge conflict, daemon idle.
+  Use node-notifier or native Bun APIs. Three modes: all / errors-only / off. Configurable in config.json under
+  tui.notifications. Respect Do Not Disturb on macOS/Linux."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

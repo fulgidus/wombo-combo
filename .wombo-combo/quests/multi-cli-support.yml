@@ -1,0 +1,21 @@
+id: multi-cli-support
+title: Multi-CLI and Multi-Account Support
+goal: "Route agent work through different AI CLI tools: claude-code, gemini-cli, opencode, aider, etc. Support per-task
+  agent selection, per-account API key routing, and fallback chains. Define agent profiles in config.json with
+  capability flags so the scheduler can match tasks to the right tool."
+status: draft
+priority: high
+difficulty: hard
+depends_on: []
+branch: quest/multi-cli-support
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:09:23.617Z
+updated_at: 2026-03-20T00:09:23.617Z
+started_at: null
+ended_at: null
+notes: []

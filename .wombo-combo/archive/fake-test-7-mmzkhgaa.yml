@@ -1,0 +1,18 @@
+id: fake-test-7-mmzkhgaa
+title: Clean up unused imports
+description: FAKE_SLEEP_MS=1063 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: medium
+depends_on: []
+effort: PT33M
+started_at: 2026-03-21T00:58:22.914Z
+ended_at: 2026-03-21T01:05:10.657Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,20 @@
+id: multi-cli-provider-schema
+quest: multi-cli-support
+title: Define provider config schema in WomboConfig
+description: "Add WomboConfig.providers: ProviderConfig[] where each entry has:
+  id, binary, model, apiKeyEnv, rateLimit (req/min), costPerMtoken,
+  capabilities: string[]. Add validation and sensible defaults for the existing
+  claude-code provider."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

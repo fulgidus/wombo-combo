@@ -1,0 +1,20 @@
+id: i18n-replace-tui-strings
+quest: i18n-full
+title: Replace hardcoded strings in TUI with t() calls
+description: Migrate all Ink components (chrome, task-browser, quest-picker, esc-menu, splash, etc.) to use the i18next
+  t() hook. Replace the existing createI18n() skeleton in src/ink/i18n.ts with the new i18next wrapper.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-setup-i18next
+  - i18n-locale-en
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

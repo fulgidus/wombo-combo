@@ -1,0 +1,22 @@
+id: dashboard-screen-assembly
+quest: dashboard-realtime
+title: Assemble full DashboardScreen and wire into ScreenRouter
+description: Compose sparklines, status panel, and activity feed into a
+  DashboardScreen layout. Register in TuiApp screen map. Add 'D' keybind in
+  ChromeLayout to navigate to dashboard. Update chrome bottom bar hints.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-sparklines
+  - dashboard-status-panel
+  - dashboard-activity-feed
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,0 +1,20 @@
+id: dashboard-sparklines
+quest: dashboard-realtime
+title: Implement sparkline graph Ink component
+description: Build a <Sparkline data={number[]} width={n} color={string} /> Ink
+  component using Braille Unicode block characters (⣿ range). Support min/max
+  labels, current value indicator. Used for throughput and token-rate graphs.
+status: backlog
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - dashboard-data-model
+effort: PT5H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,0 +1,20 @@
+id: tdd-diff-reporter
+quest: tdd-baseline
+title: Compare branch results against baseline and report delta
+description: After build verification, run the test suite on the branch and diff
+  against the baseline snapshot. Fail only if NEW tests regress (tests that were
+  passing on main now fail). Produce a human-readable delta report.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - tdd-snapshot-baseline
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -1,0 +1,20 @@
+id: i18n-replace-cli-strings
+quest: i18n-full
+title: Replace hardcoded strings in CLI commands with t()
+description: Migrate console.log / error / progress messages in src/commands/ and src/lib/ to use t(). Add --locale flag
+  to CLI entry point.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-setup-i18next
+  - i18n-locale-en
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

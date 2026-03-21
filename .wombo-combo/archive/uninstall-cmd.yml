@@ -1,0 +1,18 @@
+id: uninstall-cmd
+title: Add 'woco uninstall' command with lifecycle hooks
+description: Implement 'woco uninstall' that removes .wombo-combo/ dir, uninstalls git hooks (pre-push, post-merge), and
+  optionally removes the global binary. Show a confirmation prompt listing what will be deleted. Support --keep-data
+  flag to preserve history and tasks.
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: 2026-03-20T07:36:11.738Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

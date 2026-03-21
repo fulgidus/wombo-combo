@@ -1,5 +1,0 @@
-fake-agent marker
-task:      fake-test-quest-47-mmzcdeuk-1774042944309
-agent:     fake-agent
-timestamp: 2026-03-20T21:42:25.119Z
-sleep_ms:  779

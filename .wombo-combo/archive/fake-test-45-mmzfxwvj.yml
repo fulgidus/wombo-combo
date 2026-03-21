@@ -1,0 +1,20 @@
+id: fake-test-45-mmzfxwvj
+title: Create deployment script (2)
+description: FAKE_SLEEP_MS=772 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-40-mmzfxwve
+  - fake-test-6-mmzfxwug
+effort: PT26M
+started_at: 2026-03-20T23:23:30.775Z
+ended_at: 2026-03-20T23:29:51.678Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

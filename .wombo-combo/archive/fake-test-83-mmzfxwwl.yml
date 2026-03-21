@@ -1,0 +1,20 @@
+id: fake-test-83-mmzfxwwl
+title: Update test fixtures (4)
+description: FAKE_SLEEP_MS=886 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-82-mmzfxwwk
+  - fake-test-76-mmzfxwwe
+effort: PT43M
+started_at: 2026-03-20T23:28:43.394Z
+ended_at: 2026-03-20T23:33:13.767Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

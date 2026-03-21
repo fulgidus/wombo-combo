@@ -1,0 +1,20 @@
+id: team-presence
+quest: team-collab
+title: Implement developer presence via .wombo-combo/team/
+description: On daemon start, write presence file. Update heartbeat every 30s.
+  On daemon stop, mark as offline. Read all presence files to show team status.
+  Prune stale presence files (>5min old).
+status: backlog
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - team-git-protocol
+effort: PT4H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

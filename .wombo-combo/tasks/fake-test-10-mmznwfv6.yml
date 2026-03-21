@@ -1,0 +1,20 @@
+id: fake-test-10-mmznwfv6
+title: Refactor authentication module
+description: FAKE_SLEEP_MS=809 Random deps across tasks (~30% density).
+status: planned
+completion: 0
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-test-9-mmznwfv5
+  - fake-test-6-mmznwfv2
+effort: PT35M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,19 @@
+id: fake-test-41-mmzfxwvf
+title: Update dependency versions (2)
+description: FAKE_SLEEP_MS=716 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-19-mmzfxwut
+effort: PT19M
+started_at: 2026-03-20T23:30:13.614Z
+ended_at: 2026-03-20T23:33:45.851Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

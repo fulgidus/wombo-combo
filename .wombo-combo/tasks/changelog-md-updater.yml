@@ -1,0 +1,20 @@
+id: changelog-md-updater
+quest: auto-pr-changelog
+title: Update CHANGELOG.md with new release section
+description: "Prepend a new ## [version] - date section to CHANGELOG.md from
+  ChangelogEntry[]. Create CHANGELOG.md if absent. Preserve existing content.
+  Follow Keep a Changelog format."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - changelog-conventional-parser
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

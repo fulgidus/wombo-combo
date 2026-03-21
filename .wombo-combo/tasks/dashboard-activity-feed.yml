@@ -1,0 +1,20 @@
+id: dashboard-activity-feed
+quest: dashboard-realtime
+title: Recent activity feed (last N agent events)
+description: Build <ActivityFeed events={AgentEvent[]} maxRows={n} /> showing
+  scrolling timestamped log of recent task completions, failures, and merges.
+  Highlight errors in red.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-data-model
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

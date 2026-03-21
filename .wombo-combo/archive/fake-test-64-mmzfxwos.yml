@@ -1,0 +1,18 @@
+id: fake-test-64-mmzfxwos
+title: Extract shared utilities (3)
+description: FAKE_SLEEP_MS=827 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT15M
+started_at: 2026-03-20T22:18:53.170Z
+ended_at: 2026-03-20T22:21:29.273Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

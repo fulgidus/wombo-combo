@@ -1,0 +1,22 @@
+id: team-collab
+title: Team Collaboration via Git
+goal: Support multiple developers using wombo-combo on the same repo with
+  git-native coordination. Shared .wombo-combo/ state via git (lock files,
+  presence, task ownership). Conflict resolution for concurrent task edits.
+  Per-developer daemon instances with shared visibility.
+status: draft
+priority: low
+difficulty: hard
+depends_on: []
+branch: quest/team-collab
+baseBranch: main
+hitlMode: cautious
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:09:29.988Z
+updated_at: 2026-03-20T00:09:29.989Z
+started_at: null
+ended_at: null
+notes: []

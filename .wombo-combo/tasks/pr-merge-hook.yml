@@ -1,0 +1,21 @@
+id: pr-merge-hook
+quest: auto-pr-changelog
+title: Wire auto-PR and changelog into 'woco merge' post-merge flow
+description: After successful merge in src/commands/merge.ts and daemon merge
+  handler, optionally call PR creation and changelog update based on
+  config.git.autoPr (true|false|draft) and config.git.autoChangelog.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - pr-description-builder
+  - changelog-md-updater
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

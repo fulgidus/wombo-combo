@@ -1,0 +1,21 @@
+id: i18n-contributor-guide
+quest: i18n-full
+title: Write locale contributor guide and validate CI step
+description: "Document how to add a new locale: file location, key conventions,
+  pluralisation. Add a CI lint step that fails if en.json has keys not used in
+  source or source has t() calls with no key in en.json."
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - i18n-replace-tui-strings
+  - i18n-replace-cli-strings
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

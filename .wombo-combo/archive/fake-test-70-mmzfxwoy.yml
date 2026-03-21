@@ -1,0 +1,20 @@
+id: fake-test-70-mmzfxwoy
+title: Fix flaky integration test (3)
+description: FAKE_SLEEP_MS=1062 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-18-mmzfxwni
+  - fake-test-21-mmzfxwnl
+effort: PT16M
+started_at: 2026-03-20T23:25:04.537Z
+ended_at: 2026-03-20T23:31:48.946Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,18 @@
+id: fake-test-1-mmzfxwub
+title: Optimize database queries
+description: FAKE_SLEEP_MS=933 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on: []
+effort: PT24M
+started_at: 2026-03-20T22:18:31.747Z
+ended_at: 2026-03-20T22:19:19.891Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

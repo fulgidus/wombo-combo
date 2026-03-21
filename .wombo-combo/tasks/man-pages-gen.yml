@@ -1,0 +1,17 @@
+id: man-pages-gen
+title: Auto-generate Unix man pages from COMMAND_REGISTRY metadata
+description: Add 'woco completion man' or a build script that walks COMMAND_REGISTRY and emits roff-format man pages for
+  woco(1) and each subcommand. Output to man/ directory. Add a CI step to verify man pages are up to date.
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

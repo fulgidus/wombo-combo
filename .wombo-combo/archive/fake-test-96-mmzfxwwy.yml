@@ -1,0 +1,19 @@
+id: fake-test-96-mmzfxwwy
+title: Implement caching layer (4)
+description: FAKE_SLEEP_MS=884 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on:
+  - fake-test-60-mmzfxwvy
+effort: PT49M
+started_at: 2026-03-20T23:37:33.719Z
+ended_at: 2026-03-20T23:37:58.740Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

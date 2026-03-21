@@ -1,0 +1,19 @@
+id: fake-test-85-mmzfxwpd
+title: Update dependency versions (4)
+description: FAKE_SLEEP_MS=989 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: high
+depends_on:
+  - fake-test-53-mmzfxwoh
+effort: PT45M
+started_at: 2026-03-20T23:27:29.130Z
+ended_at: 2026-03-20T23:32:59.722Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

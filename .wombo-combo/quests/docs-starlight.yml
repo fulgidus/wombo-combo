@@ -1,0 +1,22 @@
+id: docs-starlight
+title: Starlight Documentation Site
+goal: "Set up an Astro + Starlight documentation site under docs/ with
+  auto-generated command reference from COMMAND_REGISTRY metadata. Deploy to
+  GitHub Pages via CI. Cover: getting started, quest/task workflows, config
+  reference, and architecture overview."
+status: draft
+priority: low
+difficulty: medium
+depends_on: []
+branch: quest/docs-starlight
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:08:57.228Z
+updated_at: 2026-03-20T00:08:57.228Z
+started_at: null
+ended_at: null
+notes: []

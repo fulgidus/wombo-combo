@@ -1,0 +1,21 @@
+id: agent-analytics
+title: Agent Performance Analytics
+goal: "Track per-agent metrics across waves and quests: time-to-complete, token usage, retry count, build pass rate,
+  lines changed. Persist to .wombo-combo/analytics/. Show aggregated stats in TUI and via 'woco usage' command
+  extensions."
+status: draft
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/agent-analytics
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-03-20T00:09:06.754Z
+updated_at: 2026-03-20T00:09:06.754Z
+started_at: null
+ended_at: null
+notes: []

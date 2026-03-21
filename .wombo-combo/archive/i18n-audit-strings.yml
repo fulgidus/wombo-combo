@@ -1,0 +1,18 @@
+id: i18n-audit-strings
+quest: i18n-full
+title: Audit and extract all hardcoded user-facing strings
+description: Grep the entire src/ tree for string literals used in console output, Ink Text nodes, error messages, and
+  CLI help text. Produce a manifest of every string that needs a translation key. Output to docs/i18n-audit.md.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

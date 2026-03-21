@@ -1,0 +1,20 @@
+id: replay-playback-controls
+quest: session-replay
+title: Add playback speed and auto-scroll to replay viewer
+description: "Add auto-play mode: events advance at configurable speed
+  (1x/2x/5x/10x). Space to pause, +/- to change speed, Home/End to jump. Show
+  elapsed time and % complete in status bar."
+status: backlog
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - replay-tui-viewer
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
