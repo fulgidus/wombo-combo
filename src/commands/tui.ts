@@ -131,13 +131,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   // Ensure tasks file exists
   await ensureTasksFile(projectRoot, config);
 
-  // Load session state (persisted selections, sort, concurrency)
+  // Load session state (persisted selections, sort preferences)
   const session = loadTUISession(projectRoot);
-
-  // Apply concurrency override from CLI if provided
-  if (opts.maxConcurrent !== undefined) {
-    session.maxConcurrent = opts.maxConcurrent;
-  }
 
   // Enter the alternate screen buffer for a true fullscreen experience.
   enterAltScreen();
@@ -160,9 +155,10 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   }
 
   // If connected, ensure the scheduler is running.
+  // Pass CLI --max-concurrent override so it takes effect immediately.
   if (daemonConnected && daemonClient) {
     try {
-      daemonClient.start({}); // no-op if already running
+      daemonClient.start(opts.maxConcurrent !== undefined ? { maxConcurrent: opts.maxConcurrent } : {});
     } catch { /* best-effort */ }
   }
 
@@ -238,6 +234,30 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         }
         clearScreen();
       },
+      onTasksPlanned: () => {
+        // Wake the scheduler from idle so it picks up newly-planned tasks
+        // immediately rather than waiting for the next 3s tick (or missing
+        // them entirely if the scheduler had already transitioned to idle).
+        if (daemonConnected && daemonClient) {
+          try {
+            daemonClient.start({});
+          } catch { /* best-effort */ }
+        }
+      },
+      onRetryAgent: (taskId: string) => {
+        if (daemonConnected && daemonClient) {
+          try {
+            daemonClient.retryAgent(taskId);
+          } catch { /* best-effort */ }
+        }
+      },
+      onSetConcurrency: (n: number) => {
+        if (daemonConnected && daemonClient) {
+          try {
+            daemonClient.setConcurrency(n);
+          } catch { /* best-effort */ }
+        }
+      },
     };
 
     // Determine initial screen: onboarding for first run, splash otherwise
@@ -279,6 +299,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     // Always exit the alternate screen buffer, even on error.
     removeGuard();
     exitAltScreen();
+    process.stdin.pause();
+    process.exit(0);
   }
 }
 

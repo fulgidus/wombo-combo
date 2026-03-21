@@ -44,7 +44,7 @@ const NPM_REGISTRY = "https://registry.npmjs.org";
  * Uses import.meta to find the package.json relative to this source file,
  * which works whether running from local source or global install.
  */
-function getLocalVersion(): string {
+export function getLocalVersion(): string {
   const pkgPath = resolve(import.meta.dir, "../../package.json");
   const raw = readFileSync(pkgPath, "utf-8");
   return JSON.parse(raw).version as string;
@@ -95,7 +95,7 @@ function detectInstallSource(): InstallSource {
  * Fetch the latest version from the npm registry.
  * Returns the version string (without 'v' prefix) or null on failure.
  */
-async function fetchNpmLatest(): Promise<string | null> {
+export async function fetchNpmLatest(): Promise<string | null> {
   try {
     const res = await fetch(`${NPM_REGISTRY}/${PKG_NAME}/latest`, {
       headers: { Accept: "application/json" },
@@ -170,7 +170,7 @@ async function fetchRemoteTags(): Promise<string[]> {
  *    0 if a === b
  *    1 if a > b
  */
-function compareSemver(a: string, b: string): number {
+export function compareSemver(a: string, b: string): number {
   const pa = a.replace(/^v/, "").split(".").map(Number);
   const pb = b.replace(/^v/, "").split(".").map(Number);
   for (let i = 0; i < 3; i++) {
