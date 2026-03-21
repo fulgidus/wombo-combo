@@ -1,0 +1,17 @@
+id: sched-verify-b
+title: Scheduler Verify B (5s)
+description: FAKE_SLEEP_MS=5000
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT1M
+agent: fake-agent
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+started_at: 2026-03-21T06:01:37.675Z
+ended_at: 2026-03-21T06:01:47.639Z

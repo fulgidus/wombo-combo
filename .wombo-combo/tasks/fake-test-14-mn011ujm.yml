@@ -1,0 +1,18 @@
+id: fake-test-14-mn011ujm
+title: Refactor authentication module
+description: FAKE_SLEEP_MS=1029 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: low
+depends_on: []
+effort: PT53M
+started_at: 2026-03-21T07:50:34.155Z
+ended_at: 2026-03-21T07:52:37.643Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

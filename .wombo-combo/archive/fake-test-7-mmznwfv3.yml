@@ -1,0 +1,19 @@
+id: fake-test-7-mmznwfv3
+title: Update test fixtures
+description: FAKE_SLEEP_MS=924 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: high
+depends_on:
+  - fake-test-2-mmznwfuy
+effort: PT47M
+started_at: 2026-03-21T02:45:00.055Z
+ended_at: 2026-03-21T03:04:25.382Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

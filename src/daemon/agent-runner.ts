@@ -135,7 +135,7 @@ export class AgentRunner {
   private static readonly LAUNCH_STAGGER_MS = 250;
 
   /** Queue for staggered launches. */
-  private launchQueue: Array<() => Promise<void>> = [];
+  private launchQueue: Array<{ fn: () => Promise<void>; skipStagger: boolean }> = [];
   private isProcessingQueue = false;
 
   constructor(opts: AgentRunnerConfig, state: DaemonState) {
@@ -275,8 +275,8 @@ export class AgentRunner {
 
     this.state.addAgent(agentState);
 
-    // Queue the launch (staggered to avoid SQLite races)
-    this.enqueueLaunch(() => this.doLaunch(task.id, task));
+    // Queue the launch (staggered to avoid SQLite races for real agents)
+    this.enqueueLaunch(() => this.doLaunch(task.id, task), agentState.agentName === FAKE_AGENT_SENTINEL);
   }
 
   /** Launch a queued agent that's already in state (used for dependency-unblocked agents). */
@@ -291,7 +291,7 @@ export class AgentRunner {
       return;
     }
 
-    this.enqueueLaunch(() => this.doLaunch(featureId, task));
+    this.enqueueLaunch(() => this.doLaunch(featureId, task), agent.agentName === FAKE_AGENT_SENTINEL);
   }
 
   // -------------------------------------------------------------------------
@@ -1328,6 +1328,92 @@ export class AgentRunner {
     }
   }
 
+  /**
+   * On daemon startup, reset any task files with status "in_progress" that
+   * have no corresponding active agent in state back to "planned".
+   *
+   * These are orphans left behind by a previous daemon crash or kill.  They
+   * would otherwise never be picked up because the scheduler's getReadyTasks()
+   * only selects tasks with status "planned".
+   */
+  reconcileOrphanedTasks(): void {
+    let data: ReturnType<typeof loadFeatures>;
+    try {
+      data = loadFeatures(this.projectRoot, this.config);
+    } catch {
+      return; // best-effort
+    }
+
+    for (const task of data.tasks) {
+      if (task.status !== "in_progress") continue;
+
+      // If the daemon has an active agent for this task, leave it alone.
+      const agent = this.state.getAgent(task.id);
+      if (agent) continue;
+
+      // No agent — orphan.  Reset to planned so scheduler picks it up.
+      try {
+        task.status = "planned";
+        task.started_at = null;
+        saveTaskToStore(this.projectRoot, this.config, task);
+        this.state.emit("evt:log", {
+          level: "info",
+          message: `Reconciled orphaned task ${task.id} → planned`,
+        });
+      } catch { /* best-effort */ }
+    }
+  }
+
+  /**
+   * On daemon startup, re-trigger the merge pipeline for any agents that were
+   * left in "verified" state by a previous daemon run.
+   *
+   * Agents in "verified" state have completed their work and passed the build
+   * verification, but the merge has not yet landed (e.g. the daemon was killed
+   * while waiting in the merge queue).  Without this reconciliation they would
+   * remain permanently stranded — the merge pipeline is only triggered from
+   * within the agent lifecycle (onComplete → handleBuildVerification → attemptMerge),
+   * and there is no other path to re-enter it after a restart.
+   *
+   * Similarly, agents stuck in "resolving_conflict" after a restart should be
+   * retried — reset to "verified" so the next call to this method re-queues them
+   * for merge on the following startup.  This prevents them from silently blocking
+   * their downstream dependents indefinitely.
+   */
+  reconcileVerifiedAgents(): void {
+    const verifiedAgents = this.state.getAgentsByStatus("verified");
+    for (const agent of verifiedAgents) {
+      this.state.emit("evt:log", {
+        level: "info",
+        message: `Reconciling verified agent ${agent.featureId} — re-attempting merge`,
+      });
+      // Re-trigger the merge pipeline (fire-and-forget, errors handled inside)
+      this.attemptMerge(agent.featureId).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.state.updateAgentStatus(agent.featureId, "failed", `Merge reconciliation error: ${msg}`);
+        this.state.updateAgent(agent.featureId, { error: msg });
+      });
+    }
+
+    // Agents stuck mid-conflict-resolution after a restart have no running
+    // process to advance them.  Reset to "verified" so they join the merge
+    // queue on the next reconciliation pass (next daemon start).
+    const conflictAgents = this.state.getAgentsByStatus("resolving_conflict");
+    for (const agent of conflictAgents) {
+      this.state.emit("evt:log", {
+        level: "info",
+        message: `Resetting stale resolving_conflict agent ${agent.featureId} → verified for merge retry`,
+      });
+      this.state.updateAgentStatus(agent.featureId, "verified", "Reset from stale resolving_conflict on startup");
+      // Now re-trigger merge for it too
+      this.attemptMerge(agent.featureId).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.state.updateAgentStatus(agent.featureId, "failed", `Merge reconciliation error: ${msg}`);
+        this.state.updateAgent(agent.featureId, { error: msg });
+      });
+    }
+  }
+
   /** Reset a task file back to "planned" so the scheduler picks it up again. */
   private resetTaskToPlanned(featureId: string): void {
     try {
@@ -1345,8 +1431,8 @@ export class AgentRunner {
   // Staggered launch queue
   // -------------------------------------------------------------------------
 
-  private enqueueLaunch(fn: () => Promise<void>): void {
-    this.launchQueue.push(fn);
+  protected enqueueLaunch(fn: () => Promise<void>, skipStagger = false): void {
+    this.launchQueue.push({ fn, skipStagger });
     if (!this.isProcessingQueue) {
       this.processLaunchQueue();
     }
@@ -1355,13 +1441,15 @@ export class AgentRunner {
   private async processLaunchQueue(): Promise<void> {
     this.isProcessingQueue = true;
     while (this.launchQueue.length > 0) {
-      const fn = this.launchQueue.shift()!;
+      const { fn, skipStagger } = this.launchQueue.shift()!;
       // Fire-and-forget: doLaunch (worktree creation + installDeps + agent spawn)
       // runs concurrently so multiple tasks can set up in parallel.
       // Errors are handled inside doLaunch itself.
       fn().catch(() => {});
-      // Stagger next launch start to avoid concurrent worktree/fs write races.
-      if (this.launchQueue.length > 0) {
+      // Stagger next launch start to avoid concurrent worktree/fs write races
+      // (SQLite session DB initialization in real agent processes).
+      // Fake-agent tasks skip this wait — they never touch SQLite.
+      if (!skipStagger && this.launchQueue.length > 0) {
         await new Promise((resolve) =>
           setTimeout(resolve, AgentRunner.LAUNCH_STAGGER_MS)
         );

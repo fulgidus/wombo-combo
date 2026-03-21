@@ -22,7 +22,7 @@ import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task
 import { loadTasks, getDoneTaskIds, loadArchive, areDependenciesMet } from "../lib/tasks";
 import { PRIORITY_ORDER } from "../lib/task-schema";
 import { loadTUISession, saveTUISession, type SortField, type TUISession } from "../lib/tui-session";
-import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore } from "../lib/task-store";
+import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore, loadTasksFromStore, saveAllTasksToStore } from "../lib/task-store";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/token-usage";
 import type { UsageTotals } from "../lib/token-usage";
 import type { WomboConfig, } from "../config";
@@ -271,10 +271,23 @@ function TaskBrowserApp({
       (n) => n.task.status === "backlog" || n.task.status === "planned"
     );
     const allPlanned = toggleable.every((n) => n.task.status === "planned");
+    const newStatus = allPlanned ? "backlog" : "planned";
+
+    // Mutate toggled tasks in memory
+    const toggleableIds = new Set(toggleable.map((n) => n.task.id));
     for (const n of toggleable) {
-      n.task.status = allPlanned ? "backlog" : "planned";
-      saveTaskToStore(projectRoot, config, n.task);
+      n.task.status = newStatus;
     }
+
+    // Batch write: load full task set, apply mutations, write once
+    const fullData = loadTasksFromStore(projectRoot, config);
+    for (const task of fullData.tasks) {
+      if (toggleableIds.has(task.id)) {
+        task.status = newStatus;
+      }
+    }
+    saveAllTasksToStore(projectRoot, config, fullData);
+
     if (!allPlanned) {
       callbacks?.onTasksPlanned?.();
     }

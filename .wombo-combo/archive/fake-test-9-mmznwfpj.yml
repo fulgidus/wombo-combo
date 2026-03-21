@@ -1,0 +1,19 @@
+id: fake-test-9-mmznwfpj
+title: Add error handling middleware
+description: FAKE_SLEEP_MS=913 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on:
+  - fake-test-1-mmznwfpb
+effort: PT27M
+started_at: 2026-03-21T03:03:56.012Z
+ended_at: 2026-03-21T03:04:56.606Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

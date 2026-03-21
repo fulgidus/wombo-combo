@@ -13,6 +13,7 @@
 
 import { exec } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import type { WomboConfig } from "../config";
 import { runTier25, type Tier25Result, type FileHunkResult } from "./conflict-hunks";
 
@@ -148,7 +149,7 @@ export async function mergeBranch(
   // checkout.  The old approach did `git checkout <baseBranch>` in the
   // project root, which hijacked the user's working branch — especially
   // painful when merging into quest branches.
-  const tmpDir = `${projectRoot}/.wombo-combo/.tmp-merge-${Date.now()}`;
+  const tmpDir = path.resolve(projectRoot, '..', '.wombo-tmp', `${path.basename(projectRoot)}-merge-${Date.now()}`);
 
   // Create a worktree checked out on the base branch.
   // --force is required because baseBranch (e.g. "main") is typically already
@@ -390,7 +391,7 @@ export async function syncQuestBranch(
 
   // Need to merge. Use a temporary worktree for the quest branch.
   // --force: the quest branch may already be checked out in another worktree.
-  const tmpDir = `${projectRoot}/.wombo-combo/.tmp-quest-sync`;
+  const tmpDir = path.resolve(projectRoot, '..', '.wombo-tmp', `${path.basename(projectRoot)}-quest-sync-${Date.now()}`);
   const addResult = await runSafe(
     `git worktree add --force "${tmpDir}" "${questBranch}"`,
     projectRoot

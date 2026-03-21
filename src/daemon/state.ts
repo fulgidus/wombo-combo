@@ -57,7 +57,6 @@ const STATE_VERSION = 1;
 // Terminal statuses — agents in these states won't be scheduled
 const TERMINAL_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "completed",
-  "verified",
   "failed",
   "merged",
 ]);
@@ -67,6 +66,7 @@ const ACTIVE_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "installing",
   "running",
   "resolving_conflict",
+  "verified",
 ]);
 
 // Dep-satisfied statuses — downstream agents can proceed
@@ -328,10 +328,18 @@ export class DaemonState {
     );
   }
 
-  /** Number of available concurrency slots. 0 means unlimited. */
+  /** Number of available concurrency slots. 0 means unlimited.
+   *
+   * Counts both actively-running agents (installing/running/resolving_conflict)
+   * AND queued-ready agents (queued + deps satisfied) against the limit.
+   * Queued-ready agents are committed to launch and must consume a slot
+   * immediately — otherwise back-to-back ticks over-submit tasks.
+   */
   availableSlots(): number {
     if (this.scheduler.maxConcurrent === 0) return Number.MAX_SAFE_INTEGER;
-    return Math.max(0, this.scheduler.maxConcurrent - this.getActiveAgents().length);
+    const active = this.getActiveAgents().length;
+    const queuedReady = this.getReadyAgents().length;
+    return Math.max(0, this.scheduler.maxConcurrent - active - queuedReady);
   }
 
   /** Check if all agents are in terminal states. */

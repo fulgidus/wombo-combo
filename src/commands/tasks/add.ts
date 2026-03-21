@@ -37,6 +37,8 @@ export interface TasksAddOptions {
   difficulty?: Difficulty;
   effort?: string;
   dependsOn?: string[];
+  /** Optional agent override (e.g. "fake-agent" for testing). */
+  agent?: string;
   outputFmt?: OutputFormat;
   dryRun?: boolean;
 }

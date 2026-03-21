@@ -185,6 +185,14 @@ export class Daemon {
     // Auto-start the scheduler: continuously picks up planned tasks.
     // No manual cmd:start needed — the scheduler wakes on every tick and
     // picks any tasks whose status is "planned" and whose deps are met.
+    //
+    // First reconcile any tasks that were left "in_progress" by a previous
+    // daemon run that crashed or was killed — reset them to "planned" so the
+    // scheduler can pick them up again.
+    this.runner.reconcileOrphanedTasks();
+    // Re-trigger the merge pipeline for any agents that were left in "verified"
+    // state (completed but not yet merged) by a previous daemon run.
+    this.runner.reconcileVerifiedAgents();
     this.scheduler.start();
 
     this.log("info", "Daemon ready");
@@ -285,6 +293,10 @@ export class Daemon {
               uptime: Date.now() - daemon.startedAt,
               clients: daemon.clients.size,
               schedulerStatus: daemon.state.getSchedulerStatus(),
+              maxConcurrent: daemon.state.getSchedulerState().maxConcurrent,
+              activeAgents: daemon.state.getActiveAgents().length,
+              queuedReadyAgents: daemon.state.getReadyAgents().length,
+              availableSlots: daemon.state.availableSlots(),
             }),
             { headers: { "content-type": "application/json" } }
           );
@@ -468,6 +480,8 @@ export class Daemon {
     // Apply overrides from the start command
     if (payload.maxConcurrent !== undefined) {
       this.state.setMaxConcurrent(payload.maxConcurrent);
+      // Pin so subsequent automatic start() re-triggers don't overwrite this.
+      this.scheduler.concurrencyPinned = true;
     }
     if (payload.model !== undefined) {
       this.state.setModel(payload.model);

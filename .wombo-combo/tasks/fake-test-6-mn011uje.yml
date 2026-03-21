@@ -1,0 +1,19 @@
+id: fake-test-6-mn011uje
+title: Add telemetry hooks
+description: FAKE_SLEEP_MS=1022 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: high
+depends_on:
+  - fake-test-1-mn011uj9
+effort: PT31M
+started_at: 2026-03-21T07:50:07.247Z
+ended_at: 2026-03-21T07:51:02.725Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

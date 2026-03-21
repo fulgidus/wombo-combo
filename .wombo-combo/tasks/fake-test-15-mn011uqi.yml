@@ -1,0 +1,19 @@
+id: fake-test-15-mn011uqi
+title: Write API documentation
+description: FAKE_SLEEP_MS=1069 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - fake-test-4-mn011uq7
+effort: PT39M
+started_at: 2026-03-21T07:50:14.193Z
+ended_at: 2026-03-21T07:51:25.077Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -30,6 +30,10 @@ export interface DaemonStatus {
     uptime: number;
     clients: number;
     schedulerStatus: string;
+    maxConcurrent: number;
+    activeAgents: number;
+    queuedReadyAgents: number;
+    availableSlots: number;
   };
 }
 
@@ -78,11 +82,19 @@ export async function getDaemonHealthStatus(
         uptime: number;
         clients: number;
         schedulerStatus: string;
+        maxConcurrent: number;
+        activeAgents: number;
+        queuedReadyAgents: number;
+        availableSlots: number;
       };
       status.health = {
         uptime: data.uptime,
         clients: data.clients,
         schedulerStatus: data.schedulerStatus,
+        maxConcurrent: data.maxConcurrent ?? 0,
+        activeAgents: data.activeAgents ?? 0,
+        queuedReadyAgents: data.queuedReadyAgents ?? 0,
+        availableSlots: data.availableSlots ?? 0,
       };
     }
   } catch {

@@ -146,9 +146,11 @@ const statusCommand = defineCommand({
         console.log(`Daemon running (pid=${status.pid}, port=${status.port})`);
         if (status.health) {
           const uptimeSec = Math.floor(status.health.uptime / 1000);
-          console.log(`  Uptime: ${uptimeSec}s`);
-          console.log(`  Clients: ${status.health.clients}`);
-          console.log(`  Scheduler: ${status.health.schedulerStatus}`);
+          console.log(`  Uptime:     ${uptimeSec}s`);
+          console.log(`  Clients:    ${status.health.clients}`);
+          console.log(`  Scheduler:  ${status.health.schedulerStatus}`);
+          const max = status.health.maxConcurrent === 0 ? "unlimited" : String(status.health.maxConcurrent);
+          console.log(`  Concurrency: ${status.health.activeAgents} active + ${status.health.queuedReadyAgents} queued-ready / ${max} max (${status.health.availableSlots} slots free)`);
         }
       } else {
         console.log("Daemon is not running.");

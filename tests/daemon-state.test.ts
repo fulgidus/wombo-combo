@@ -335,8 +335,19 @@ describe("updateAgentStatus", () => {
     state.updateAgentStatus("a1", "running");
     expect(state.getAgent("a1")!.completedAt).toBeNull();
 
-    state.updateAgentStatus("a1", "verified");
+    state.updateAgentStatus("a1", "merged");
     expect(state.getAgent("a1")!.completedAt).not.toBeNull();
+    state.destroy();
+  });
+
+  test("does NOT set completedAt when transitioning to verified (verified is active, not terminal)", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgentStatus("a1", "running");
+    // running → verified directly (skipping completed) should not set completedAt
+    // because verified is active, not terminal
+    state.updateAgentStatus("a1", "verified");
+    expect(state.getAgent("a1")!.completedAt).toBeNull();
     state.destroy();
   });
 
@@ -608,26 +619,46 @@ describe("dependency resolution", () => {
     state.addAgent(makeAgent("a1"));
     state.addAgent(makeAgent("a2"));
     state.addAgent(makeAgent("a3"));
+    state.addAgent(makeAgent("a4"));
 
     state.updateAgentStatus("a1", "running");
     state.updateAgentStatus("a2", "installing");
-    // a3 stays queued
+    state.updateAgentStatus("a3", "running");
+    state.updateAgentStatus("a3", "completed");
+    state.updateAgentStatus("a3", "verified");
+    // a4 stays queued
 
     const active = state.getActiveAgents();
-    expect(active).toHaveLength(2);
-    expect(active.map((a) => a.featureId).sort()).toEqual(["a1", "a2"]);
+    expect(active).toHaveLength(3);
+    expect(active.map((a) => a.featureId).sort()).toEqual(["a1", "a2", "a3"]);
     state.destroy();
   });
 
-  test("availableSlots reflects concurrency minus active", () => {
+  test("availableSlots reflects concurrency minus active and queued-ready", () => {
     const state = new DaemonState(tempDir);
     state.setMaxConcurrent(3);
 
     state.addAgent(makeAgent("a1"));
     state.addAgent(makeAgent("a2"));
     state.updateAgentStatus("a1", "running");
+    // a2 is queued with no deps → counts as ready, consumes a slot
 
-    expect(state.availableSlots()).toBe(2); // 3 - 1 active
+    expect(state.availableSlots()).toBe(1); // 3 - 1 active - 1 queued-ready
+    state.destroy();
+  });
+
+  test("availableSlots counts verified agents as active (consuming a slot)", () => {
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(3);
+
+    state.addAgent(makeAgent("a1"));
+    state.addAgent(makeAgent("a2"));
+    state.updateAgentStatus("a1", "running");
+    state.updateAgentStatus("a1", "completed");
+    state.updateAgentStatus("a1", "verified");
+    // a2 is queued with no deps → counts as ready, consumes a slot
+
+    expect(state.availableSlots()).toBe(1); // 3 - 1 verified - 1 queued-ready
     state.destroy();
   });
 
@@ -668,6 +699,20 @@ describe("dependency resolution", () => {
     state.addAgent(makeAgent("a2"));
 
     state.updateAgentStatus("a1", "running");
+    state.updateAgentStatus("a2", "failed");
+
+    expect(state.allComplete()).toBe(false);
+    state.destroy();
+  });
+
+  test("allComplete returns false when an agent is verified (awaiting merge)", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.addAgent(makeAgent("a2"));
+
+    state.updateAgentStatus("a1", "running");
+    state.updateAgentStatus("a1", "completed");
+    state.updateAgentStatus("a1", "verified");
     state.updateAgentStatus("a2", "failed");
 
     expect(state.allComplete()).toBe(false);

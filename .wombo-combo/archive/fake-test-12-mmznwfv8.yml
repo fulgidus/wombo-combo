@@ -1,0 +1,20 @@
+id: fake-test-12-mmznwfv8
+title: Migrate to new schema
+description: FAKE_SLEEP_MS=757 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-4-mmznwfv0
+  - fake-test-7-mmznwfv3
+effort: PT47M
+started_at: 2026-03-21T03:03:55.131Z
+ended_at: 2026-03-21T03:04:38.647Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

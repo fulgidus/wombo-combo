@@ -13,7 +13,7 @@
  */
 
 import type { WomboConfig } from "../config";
-import { loadFeatures, selectFeatures, sortByPriorityThenEffort } from "../lib/tasks";
+import { loadFeatures, selectFeatures, sortByPriorityThenEffort, areDependenciesMet, getDoneTaskIds } from "../lib/tasks";
 import type { Task, FeaturesFile } from "../lib/tasks";
 import { buildDepGraph, validateDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
 import type { DepGraph, SchedulePlan } from "../lib/dependency-graph";
@@ -60,6 +60,15 @@ export class Scheduler {
   /** Set of task IDs already submitted to the runner (prevent double-launch). */
   private submittedTasks = new Set<string>();
 
+  /**
+   * Whether concurrency has been explicitly set this daemon session.
+   * Once true, automatic re-invocations of start() (e.g. from task-file
+   * watchers) will not silently overwrite the runtime value with the config
+   * default. Resets to false when the Scheduler instance is constructed
+   * (i.e. on daemon restart or scheduler rebuild).
+   */
+  concurrencyPinned: boolean = false;
+
   constructor(config: SchedulerConfig, deps: SchedulerDeps) {
     this.config = config;
     this.deps = deps;
@@ -74,10 +83,26 @@ export class Scheduler {
     const { state } = this.deps;
     const status = state.getSchedulerStatus();
 
-    if (status === "running") return; // Already running
+    // Guard against double-start only when the tick timer is already active.
+    // We must NOT bail out based on persisted status alone — after a daemon
+    // restart the persisted status may be "running" but the in-memory tick
+    // timer is null (never started). Checking tickTimer covers this case.
+    if (this.tickTimer !== null && status === "running") return; // Already running with active timer
 
-    // Apply config overrides
-    if (this.config.maxConcurrent !== undefined) {
+    // Apply concurrency setting only on first start (or when the config
+    // carries an explicit override via SchedulerConfig.maxConcurrent).
+    // Once pinned, automatic re-triggers (task-file watcher, idle restart)
+    // must NOT silently overwrite a runtime value set by the user.
+    if (!this.concurrencyPinned) {
+      const effectiveConcurrency =
+        this.config.maxConcurrent ?? this.config.config.defaults?.maxConcurrent;
+      if (effectiveConcurrency !== undefined) {
+        state.setMaxConcurrent(effectiveConcurrency);
+      }
+      this.concurrencyPinned = true;
+    } else if (this.config.maxConcurrent !== undefined) {
+      // An explicit override in the SchedulerConfig (e.g. cmd:start with
+      // maxConcurrent payload rebuilds the Scheduler with it set) always wins.
       state.setMaxConcurrent(this.config.maxConcurrent);
     }
     if (this.config.model !== undefined) {
@@ -93,7 +118,12 @@ export class Scheduler {
     // Build initial dependency graph
     this.rebuildDepGraph();
 
-    // Start the tick loop
+    // Start the tick loop — clear any stale timer first so re-activation
+    // after going "idle" never leaks a duplicate interval.
+    if (this.tickTimer) {
+      clearInterval(this.tickTimer);
+      this.tickTimer = null;
+    }
     const interval = this.config.tickIntervalMs ?? 3000;
     this.tickTimer = setInterval(() => this.tick(), interval);
 
@@ -173,27 +203,55 @@ export class Scheduler {
     // Refresh task data from disk (tasks may have been added/modified externally)
     this.rebuildDepGraph();
 
-    // How many slots are available?
-    const availableSlots = state.availableSlots();
-    if (availableSlots <= 0) return;
-
-    // Get ready agents (already submitted but queued)
+    // Get ready agents (already submitted and queued with deps satisfied).
+    // These are launched up to the concurrency limit.  We sort pinned ones
+    // first so pins are honoured even among pre-queued agents.
     const readyQueued = state.getReadyAgents();
+    const pinnedIds = new Set(state.getSchedulerState().pinnedTasks);
+    const sortedReady = [
+      ...readyQueued.filter((a) => pinnedIds.has(a.featureId)),
+      ...readyQueued.filter((a) => !pinnedIds.has(a.featureId)),
+    ];
+
+    // Determine how many of the already-queued agents we can launch.
+    // availableSlots() = maxConcurrent - active - readyQueued.
+    // To get "capacity for launching queued", we need: maxConcurrent - active.
+    const max = state.getMaxConcurrent();
+    const activeCount = state.getActiveAgents().length;
+    const launchCapacity = max === 0 ? Number.MAX_SAFE_INTEGER : Math.max(0, max - activeCount);
+
+    let launched = 0;
+    for (const agent of sortedReady) {
+      if (launched >= launchCapacity) break;
+      this.deps.runner.launchAgent(agent.featureId);
+      launched++;
+    }
+
+    // How many slots remain open for NEW task submissions after the above?
+    // For finite concurrency: remaining capacity minus what we just claimed.
+    // For infinite concurrency (max === 0): submit ALL candidates — the slot
+    // arithmetic is meaningless and MAX_SAFE_INTEGER - launched can produce
+    // large values with no semantic benefit. Using candidateTasks.length is
+    // set below after getCandidateTasks() is called.
+    const finiteSlots = max === 0 ? null : Math.max(0, launchCapacity - launched);
 
     // Get candidate tasks from disk that haven't been submitted yet
     const candidateTasks = this.getCandidateTasks();
 
-    // Merge: pinned tasks first, then ready queued agents, then new candidates
-    const toSubmit = this.prioritize(readyQueued, candidateTasks, availableSlots);
+    const slotsForNew = finiteSlots !== null ? finiteSlots : candidateTasks.length;
 
-    // Submit each
-    for (const item of toSubmit) {
-      if (item.type === "queued-agent") {
-        // Agent already in state, just tell runner to launch it
-        this.deps.runner.launchAgent(item.featureId);
-      } else {
-        // New task: create agent state and submit
-        this.submitNewTask(item.task);
+    if (slotsForNew > 0 && candidateTasks.length > 0) {
+      // Merge: pinned tasks first, then new candidates
+      const toSubmit = this.prioritize([], candidateTasks, slotsForNew);
+
+      for (const item of toSubmit) {
+        if (item.type === "queued-agent") {
+          // Should not happen (readyQueued already launched above), but guard
+          this.deps.runner.launchAgent(item.featureId);
+        } else {
+          // New task: create agent state and submit
+          this.submitNewTask(item.task);
+        }
       }
     }
 
@@ -204,6 +262,12 @@ export class Scheduler {
       readyQueued.length === 0
     ) {
       state.setSchedulerStatus("idle", "All tasks processed");
+      // Stop the tick timer while idle — it will be restarted by start() when
+      // new work arrives (e.g. via the tasks-directory watcher).
+      if (this.tickTimer) {
+        clearInterval(this.tickTimer);
+        this.tickTimer = null;
+      }
     }
   }
 
@@ -216,12 +280,44 @@ export class Scheduler {
     try {
       const data = loadFeatures(this.config.projectRoot, this.config.config);
 
+      // Build the set of "satisfied" dependency IDs.
+      // This is the union of:
+      //   (a) tasks marked done on disk (status === "done" or completion === 100), and
+      //   (b) tasks whose agents are in verified or merged state in the daemon.
+      //
+      // The daemon sets a task file to "in_progress" when an agent starts, but only
+      // marks it "done" after the merge completes.  Without augmenting with daemon
+      // state, downstream tasks would be invisible to the scheduler during the entire
+      // window between "agent completed" and "merge landed" — blocking concurrency.
+      const diskDoneIds = getDoneTaskIds(data, data.archive);
+      const daemonSatisfiedIds = new Set<string>();
+      for (const agent of this.deps.state.getAllAgents()) {
+        if (agent.status === "verified" || agent.status === "merged") {
+          daemonSatisfiedIds.add(agent.featureId);
+        }
+      }
+      // Merge: a dep is satisfied if it's done on disk OR verified/merged in daemon
+      const satisfiedIds = new Set<string>([...diskDoneIds, ...daemonSatisfiedIds]);
+
       // If specific task IDs were requested, only consider those
       let tasks: Task[];
       if (this.config.taskIds?.length) {
-        tasks = selectFeatures(data, { taskIds: this.config.taskIds, allReady: false });
+        const idSet = new Set(this.config.taskIds);
+        tasks = data.tasks.filter(
+          (t) =>
+            idSet.has(t.id) &&
+            t.status === "planned" &&
+            (t.completion === undefined || t.completion === 0) &&
+            areDependenciesMet(t, satisfiedIds)
+        );
       } else {
-        tasks = selectFeatures(data, { allReady: true });
+        // All planned tasks whose deps are satisfied (disk-done OR daemon-verified)
+        tasks = data.tasks.filter(
+          (t) =>
+            t.status === "planned" &&
+            (t.completion === undefined || t.completion === 0) &&
+            areDependenciesMet(t, satisfiedIds)
+        );
       }
 
       // Filter by quest if scoped
@@ -385,6 +481,7 @@ export class Scheduler {
   /** Update concurrency at runtime. */
   setConcurrency(n: number): void {
     this.deps.state.setMaxConcurrent(n);
+    this.concurrencyPinned = true;
     // Tick immediately in case we freed up slots
     if (this.deps.state.getSchedulerStatus() === "running") {
       this.tick();

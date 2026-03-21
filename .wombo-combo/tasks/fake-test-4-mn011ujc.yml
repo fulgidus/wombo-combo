@@ -1,0 +1,18 @@
+id: fake-test-4-mn011ujc
+title: Add structured logging
+description: FAKE_SLEEP_MS=1069 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT35M
+started_at: 2026-03-21T07:49:55.448Z
+ended_at: 2026-03-21T07:50:06.437Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,19 @@
+id: fake-test-4-mmznwfv0
+title: Implement rate limiting
+description: FAKE_SLEEP_MS=990 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: low
+depends_on:
+  - fake-test-1-mmznwfux
+effort: PT40M
+started_at: 2026-03-21T02:44:46.610Z
+ended_at: 2026-03-21T03:04:14.937Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test
