@@ -288,6 +288,7 @@ export function WaveMonitorShell({
       if (action === "settings") {
         navRef.current?.push("settings", {
           config: settingsConfig as unknown,
+          projectRoot,
           onSave: (patched: SettingsScreenConfig) => setSettingsConfig(patched),
           onBack: () => navRef.current?.pop(),
         } as Record<string, unknown>);
@@ -295,7 +296,7 @@ export function WaveMonitorShell({
         onQuit();
       }
     },
-    [settingsConfig, onQuit]
+    [settingsConfig, projectRoot, onQuit]
   );
 
   // Build the monitor screen props

@@ -31,10 +31,12 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import { Box, Text, useInput } from "ink";
 import { t } from "./i18n";
+import { useTerminalSize } from "./use-terminal-size";
 
 // ---------------------------------------------------------------------------
 // EscMenuContext
@@ -60,6 +62,60 @@ const EscMenuContext = createContext<EscMenuState>(defaultEscMenuState);
  */
 export function useEscMenu(): EscMenuState {
   return useContext(EscMenuContext);
+}
+
+// ---------------------------------------------------------------------------
+// ASCII art title
+// ---------------------------------------------------------------------------
+
+const MENU_LINES = [
+  "███╗   ███╗███████╗███╗   ██╗██╗   ██╗",
+  "████╗ ████║██╔════╝████╗  ██║██║   ██║",
+  "██╔████╔██║█████╗  ██╔██╗ ██║██║   ██║",
+  "██║╚██╔╝██║██╔══╝  ██║╚██╗██║██║   ██║",
+  "██║ ╚═╝ ██║███████╗██║ ╚████║╚██████╔╝",
+  "╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝ ╚═════╝",
+];
+
+// ---------------------------------------------------------------------------
+// Gradient utilities
+// ---------------------------------------------------------------------------
+
+/** HSL → #rrggbb */
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+  };
+  const hex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${hex(f(0))}${hex(f(8))}${hex(f(4))}`;
+}
+
+// ---------------------------------------------------------------------------
+// MenuTitle
+// ---------------------------------------------------------------------------
+
+function MenuTitle({ tick }: { tick: number }): React.ReactElement {
+  const totalLines = MENU_LINES.length;
+  return (
+    <Box flexDirection="column" alignItems="center">
+      {MENU_LINES.map((line, lineIdx) => (
+        <Text key={lineIdx}>
+          {line.split("").map((char, x) => {
+            const px = line.length > 1 ? x / (line.length - 1) : 0;
+            const py = totalLines > 1 ? lineIdx / (totalLines - 1) : 0;
+            const hue = ((px * 200 + py * 140 + tick * 4) % 360 + 360) % 360;
+            const brightness = 58 + Math.sin(px * Math.PI * 4 + py * Math.PI * 2.5 + tick * 0.12) * 14;
+            const l = Math.max(38, Math.min(82, brightness));
+            return <Text key={x} color={hslToHex(hue, 100, l)}>{char}</Text>;
+          })}
+        </Text>
+      ))}
+    </Box>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +181,13 @@ export function EscMenu({
   onNavigate,
 }: EscMenuProps): React.ReactElement | null {
   const [cursor, setCursor] = useState(0);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => setTick(t => t + 1), 60);
+    return () => clearInterval(id);
+  }, [open]);
 
   // Keyboard: arrow keys + enter + escape
   useInput(
@@ -157,13 +220,12 @@ export function EscMenu({
       borderColor="cyan"
       paddingX={2}
       paddingY={1}
-      minWidth={30}
+      minWidth={42}
+      backgroundColor="black"
     >
       {/* Title */}
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          {t("menu.title")}
-        </Text>
+      <Box marginBottom={1} justifyContent="center">
+        <MenuTitle tick={tick} />
       </Box>
 
       {/* Items */}
@@ -209,6 +271,7 @@ export function EscMenuProvider({
   onNavigate,
 }: EscMenuProviderProps): React.ReactElement {
   const [open, setOpen] = useState(false);
+  const { rows, columns } = useTerminalSize();
 
   const openMenu = useCallback(() => setOpen(true), []);
   const closeMenu = useCallback(() => setOpen(false), []);
@@ -237,7 +300,13 @@ export function EscMenuProvider({
     <EscMenuContext.Provider value={ctxValue}>
       {children}
       {open && (
-        <Box position="absolute" marginTop={2} marginLeft={2}>
+        <Box
+          position="absolute"
+          width={columns}
+          height={rows}
+          alignItems="center"
+          justifyContent="center"
+        >
           <EscMenu open={open} onClose={closeMenu} onNavigate={handleNavigate} />
         </Box>
       )}

@@ -28,6 +28,7 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
   type ComponentType,
 } from "react";
@@ -124,6 +125,8 @@ export interface ScreenRouterProps {
    * bars, overlay menus). They receive NavigationContext.
    */
   children?: ReactNode;
+  /** Called whenever the active screen key changes (e.g. for updating chrome title). */
+  onScreenChange?: (screenKey: ScreenKey) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +144,7 @@ export function ScreenRouter({
   initialScreen,
   initialProps = {},
   children,
+  onScreenChange,
 }: ScreenRouterProps): React.ReactElement {
   const [stack, setStack] = useState<StackEntry[]>([
     { key: initialScreen, props: initialProps },
@@ -180,6 +184,11 @@ export function ScreenRouter({
 
   const top = stack[stack.length - 1];
   const ScreenComponent = screens[top.key];
+
+  // Notify parent when the active screen changes
+  useEffect(() => {
+    onScreenChange?.(top.key);
+  }, [top.key, onScreenChange]);
 
   const navValue: NavigationState = {
     currentScreen: top.key,

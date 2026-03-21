@@ -83,6 +83,10 @@ export interface QuestPickerViewProps {
   onDelete?: () => void;
   /** Called when 'f' is pressed (seed fake tasks, devMode only). */
   onSeedFake?: () => void;
+  /** Count of tasks without a quest assignment (errands). */
+  errandCount?: number;
+  /** When false, keyboard input is disabled (e.g. while an overlay is open). */
+  isActive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,12 +103,8 @@ function Header({
   totalTaskCount: number;
 }): React.ReactElement {
   return (
-    <Box flexDirection="column" height={3}>
+    <Box flexDirection="column" height={2}>
       <Box>
-        <Text bold>wombo-combo</Text>
-        <Text> </Text>
-        <Text color="magenta">Quest Picker</Text>
-        <Text dimColor>  |  </Text>
         <Text>{questCount}</Text>
         <Text> quest{questCount !== 1 ? "s" : ""}</Text>
         {activeCount > 0 && (
@@ -218,6 +218,44 @@ function AllTasksDetail({
         </Box>
       )}
       <Text>  Press <Text bold>Enter</Text> to open the full task browser.</Text>
+    </Box>
+  );
+}
+
+function ErrandsItem({
+  errandCount,
+  isSelected,
+}: {
+  errandCount: number;
+  isSelected: boolean;
+}): React.ReactElement {
+  return (
+    <Box>
+      <Text color={isSelected ? "blue" : undefined} bold={isSelected}>
+        {isSelected ? "▸ " : "  "}
+      </Text>
+      <Text color="yellow" bold>⚡</Text>
+      <Text bold> Errands</Text>
+      <Text dimColor> ({errandCount})</Text>
+    </Box>
+  );
+}
+
+function ErrandsDetail({
+  errandCount,
+}: {
+  errandCount: number;
+}): React.ReactElement {
+  return (
+    <Box flexDirection="column">
+      <Text bold color="yellow">Errands</Text>
+      <Text />
+      <Text>  Quest-less tasks — one-off work</Text>
+      <Text>  not tied to any quest.</Text>
+      <Text />
+      <Text>  Total: {errandCount} task{errandCount !== 1 ? "s" : ""}</Text>
+      <Text />
+      <Text>  Press <Text bold>Enter</Text> to browse errands.</Text>
     </Box>
   );
 }
@@ -427,10 +465,12 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     onOnboarding,
     onDelete,
     onSeedFake,
+    errandCount = 0,
+    isActive = true,
   } = props;
 
-  // Total item count: "All Tasks" + quests
-  const itemCount = 1 + quests.length;
+  // Total item count: "All Tasks" + "Errands" + quests
+  const itemCount = 2 + quests.length;
 
   // Keyboard handling
   useInput((input, key) => {
@@ -455,9 +495,11 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     // Select
     if (key.return) {
       if (selectedIndex === 0) {
-        onSelect(null); // All Tasks
+        onSelect(null);    // All Tasks
+      } else if (selectedIndex === 1) {
+        onSelect("");      // Errands
       } else {
-        const quest = quests[selectedIndex - 1];
+        const quest = quests[selectedIndex - 2];
         if (quest) onSelect(quest.quest.id);
       }
       return;
@@ -473,16 +515,17 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     if (input === "o") { onOnboarding?.(); return; }
     if (input === "d") { onDelete?.(); return; }
     if (input === "f" && devMode) { onSeedFake?.(); return; }
-  });
+  }, { isActive });
 
   // Compute derived display data
   const questCount = quests.length;
   const activeCount = quests.filter((s) => s.quest.status === "active").length;
 
   // Determine what to show in the detail pane
+  // index 0 = All Tasks, 1 = Errands, 2+ = quests
   const selectedQuest =
-    selectedIndex > 0 && selectedIndex <= quests.length
-      ? quests[selectedIndex - 1]
+    selectedIndex >= 2 && selectedIndex - 2 < quests.length
+      ? quests[selectedIndex - 2]
       : null;
 
   const selectedQuestUsage =
@@ -494,7 +537,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
   const { rows } = useTerminalSize();
 
   return (
-    <Box flexDirection="column" width="100%" height={rows}>
+    <Box flexDirection="column" width="100%" flexGrow={1}>
       {/* Header */}
       <Header
         questCount={questCount}
@@ -510,11 +553,16 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
             totalTaskCount={totalTaskCount}
             isSelected={selectedIndex === 0}
           />
+          <ErrandsItem
+            errandCount={errandCount}
+            isSelected={selectedIndex === 1}
+          />
+          {quests.length > 0 && <Text dimColor>  ── quests ──</Text>}
           {quests.map((summary, i) => (
             <QuestListItem
               key={summary.quest.id}
               summary={summary}
-              isSelected={selectedIndex === i + 1}
+              isSelected={selectedIndex === i + 2}
             />
           ))}
           {quests.length === 0 && (
@@ -529,6 +577,8 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
               totalTaskCount={totalTaskCount}
               overallUsage={overallUsage}
             />
+          ) : selectedIndex === 1 ? (
+            <ErrandsDetail errandCount={errandCount} />
           ) : selectedQuest ? (
             <QuestDetail
               summary={selectedQuest}

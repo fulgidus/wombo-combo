@@ -330,6 +330,7 @@ export function DaemonMonitorShell({
       if (action === "settings") {
         navRef.current?.push("settings", {
           config: settingsConfig as unknown,
+          projectRoot,
           onSave: (patched: SettingsScreenConfig) => setSettingsConfig(patched),
           onBack: () => navRef.current?.pop(),
         } as Record<string, unknown>);
@@ -337,7 +338,7 @@ export function DaemonMonitorShell({
         onQuit();
       }
     },
-    [settingsConfig, onQuit]
+    [settingsConfig, projectRoot, onQuit]
   );
 
   // Wave summary for ChromeTopBar

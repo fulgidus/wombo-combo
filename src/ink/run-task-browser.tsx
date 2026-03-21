@@ -10,10 +10,14 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { getStableStdin } from "./bun-stdin";
-import { render } from "ink";
+import { render, Box } from "ink";
 import { useNavigation } from "./router";
+import { useTerminalSize } from "./use-terminal-size";
 import { TaskBrowserView, type TaskNode } from "./task-browser";
+import { TaskEditor } from "./task-editor";
 import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task-graph";
 import { loadTasks, getDoneTaskIds, loadArchive, areDependenciesMet } from "../lib/tasks";
 import { PRIORITY_ORDER } from "../lib/task-schema";
@@ -21,7 +25,9 @@ import { loadTUISession, saveTUISession, type SortField, type TUISession } from 
 import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore } from "../lib/task-store";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/token-usage";
 import type { UsageTotals } from "../lib/token-usage";
-import type { WomboConfig } from "../config";
+import type { WomboConfig, } from "../config";
+import { WOMBO_DIR } from "../config";
+import type { DaemonAgentState } from "../daemon/protocol";
 import type { ErrandSpec } from "../lib/errand-planner";
 import type { TuiAppCallbacks } from "./run-tui-app";
 
@@ -80,8 +86,10 @@ function TaskBrowserApp({
   hasRunningWave,
   showBack,
   onAction,
+  callbacks,
 }: RunTaskBrowserOptions & {
   onAction: (action: TaskBrowserAction) => void;
+  callbacks?: TuiAppCallbacks;
 }) {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [displayNodes, setDisplayNodes] = useState<TaskNode[]>([]);
@@ -90,12 +98,28 @@ function TaskBrowserApp({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [hideDone, setHideDone] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const [taskUsage, setTaskUsage] = useState<Map<string, UsageTotals>>(new Map());
+  const [agentStates, setAgentStates] = useState<Map<string, DaemonAgentState>>(new Map());
 
-  // Session state
+  // Session state (sort prefs only — concurrency lives on the daemon)
   const sessionRef = useRef<TUISession>(loadTUISession(projectRoot));
   const [sortBy, setSortBy] = useState<SortField>(sessionRef.current.sortBy);
-  const [maxConcurrent, setMaxConcurrent] = useState(sessionRef.current.maxConcurrent);
+
+  // Concurrency — read initial value from daemon-state.json; synced by poll below.
+  // maxConcurrentOverride holds a pending value set by the user that hasn't yet been
+  // confirmed by the daemon (prevents the poll loop from reverting it immediately).
+  const [maxConcurrent, setMaxConcurrent] = useState<number>(() => {
+    const stateFile = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
+    try {
+      if (existsSync(stateFile)) {
+        const data = JSON.parse(readFileSync(stateFile, "utf8"));
+        return data.scheduler?.maxConcurrent ?? 4;
+      }
+    } catch { /* fallback */ }
+    return 4;
+  });
+  const maxConcurrentOverride = useRef<number | null>(null);
 
   // Quest filter set
   const questIdSet = useRef<Set<string> | null>(
@@ -111,6 +135,10 @@ function TaskBrowserApp({
     let tasks = tasksData.tasks;
     if (questIdSet.current) {
       tasks = tasks.filter((t) => questIdSet.current!.has(t.id));
+    } else if (questId === "") {
+      tasks = tasks.filter((t) => !(t as any).quest);
+    } else if (questId) {
+      tasks = tasks.filter((t) => (t as any).quest === questId);
     }
 
     setAllTasks(tasks);
@@ -150,17 +178,51 @@ function TaskBrowserApp({
     loadData();
   }, [loadData]);
 
+  // Poll daemon-state.json for live agent states + concurrency sync
+  useEffect(() => {
+    const poll = () => {
+      const stateFile = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
+      if (!existsSync(stateFile)) return;
+      try {
+        const raw = readFileSync(stateFile, "utf8");
+        const data = JSON.parse(raw);
+        const map = new Map<string, DaemonAgentState>();
+        for (const agent of (data.agents ?? [])) {
+          map.set(agent.featureId, agent as DaemonAgentState);
+        }
+        setAgentStates(map);
+        // Keep local concurrency display in sync with the daemon's actual setting.
+        // If the user just changed concurrency, don't revert until daemon confirms it.
+        const daemonMax = data.scheduler?.maxConcurrent;
+        if (daemonMax !== undefined) {
+          if (maxConcurrentOverride.current !== null) {
+            // Override is pending — clear it once daemon catches up
+            if (daemonMax === maxConcurrentOverride.current) {
+              maxConcurrentOverride.current = null;
+            }
+            // Either way, display the override value (not the stale daemon value)
+            setMaxConcurrent(maxConcurrentOverride.current ?? daemonMax);
+          } else {
+            setMaxConcurrent(daemonMax);
+          }
+        }
+      } catch { /* non-fatal */ }
+    };
+    poll(); // immediate
+    const id = setInterval(poll, 1000);
+    return () => clearInterval(id);
+  }, [projectRoot]);
+
   // Save session helper
   const saveSession = useCallback(() => {
     sessionRef.current = {
       ...sessionRef.current,
       selected: [...selectedIds],
       sortBy,
-      maxConcurrent,
       lastView: "browser",
     };
     saveTUISession(projectRoot, sessionRef.current);
-  }, [projectRoot, selectedIds, sortBy, maxConcurrent]);
+  }, [projectRoot, selectedIds, sortBy]);
 
   // Computed values
   const totalTaskCount = allTasks.length;
@@ -179,8 +241,11 @@ function TaskBrowserApp({
     if (task.status !== "backlog" && task.status !== "planned") return;
     task.status = task.status === "planned" ? "backlog" : "planned";
     saveTaskToStore(projectRoot, config, task);
+    if (task.status === "planned") {
+      callbacks?.onTasksPlanned?.();
+    }
     loadData();
-  }, [displayNodes, selectedIndex, projectRoot, config, loadData]);
+  }, [displayNodes, selectedIndex, projectRoot, config, loadData, callbacks]);
 
   /** Toggle all visible tasks in the current stream between backlog and planned. */
   const handleToggleStream = useCallback(() => {
@@ -194,8 +259,11 @@ function TaskBrowserApp({
       n.task.status = allPlanned ? "backlog" : "planned";
       saveTaskToStore(projectRoot, config, n.task);
     }
+    if (!allPlanned) {
+      callbacks?.onTasksPlanned?.();
+    }
     loadData();
-  }, [displayNodes, selectedIndex, projectRoot, config, loadData]);
+  }, [displayNodes, selectedIndex, projectRoot, config, loadData, callbacks]);
 
   /** Toggle all visible backlog/planned tasks. */
   const handleToggleAll = useCallback(() => {
@@ -207,8 +275,11 @@ function TaskBrowserApp({
       n.task.status = allPlanned ? "backlog" : "planned";
       saveTaskToStore(projectRoot, config, n.task);
     }
+    if (!allPlanned) {
+      callbacks?.onTasksPlanned?.();
+    }
     loadData();
-  }, [displayNodes, projectRoot, config, loadData]);
+  }, [displayNodes, projectRoot, config, loadData, callbacks]);
 
   const handleCycleSort = useCallback(() => {
     setSortBy((prev) => {
@@ -238,11 +309,16 @@ function TaskBrowserApp({
   }, []);
 
   const handleCycleConcurrency = useCallback(() => {
-    setMaxConcurrent((prev) => {
-      const idx = CONCURRENCY_LEVELS.indexOf(prev);
-      return CONCURRENCY_LEVELS[(idx + 1) % CONCURRENCY_LEVELS.length];
-    });
-  }, []);
+    const prev = maxConcurrent;
+    const idx = CONCURRENCY_LEVELS.indexOf(prev);
+    // If the current value isn't in the list, find the nearest slot above it
+    const safeIdx = idx >= 0 ? idx : CONCURRENCY_LEVELS.findIndex(v => v > prev);
+    const nextIdx = (safeIdx >= 0 ? safeIdx + 1 : 0) % CONCURRENCY_LEVELS.length;
+    const next = CONCURRENCY_LEVELS[nextIdx];
+    maxConcurrentOverride.current = next;
+    setMaxConcurrent(next);
+    callbacks?.onSetConcurrency?.(next);
+  }, [maxConcurrent, callbacks]);
 
   const handleQuit = useCallback(() => {
     saveSession();
@@ -276,32 +352,71 @@ function TaskBrowserApp({
   }, [saveSession, onAction]);
 
   const handleArchiveDone = useCallback(() => {
-    // Archive done/cancelled tasks
-    const candidates =
-      selectedIds.size > 0
-        ? allTasks.filter(
-            (t) =>
-              selectedIds.has(t.id) &&
-              (t.status === "done" || t.status === "cancelled")
-          )
-        : allTasks.filter(
-            (t) => t.status === "done" || t.status === "cancelled"
-          );
-
+    // Archive all done/cancelled tasks in the current view.
+    const candidates = allTasks.filter(
+      (t) => t.status === "done" || t.status === "cancelled"
+    );
     for (const task of candidates) {
       saveTaskToArchive(projectRoot, config, task);
       removeTaskFromStore(projectRoot, config, task.id);
     }
-
     loadData();
-  }, [selectedIds, allTasks, projectRoot, config, loadData]);
+  }, [allTasks, projectRoot, config, loadData]);
+
+  const handleDeleteCurrent = useCallback(() => {
+    // Remove the task under the cursor regardless of status (no queuing needed).
+    const node = displayNodes[selectedIndex];
+    if (!node) return;
+    saveTaskToArchive(projectRoot, config, node.task);
+    removeTaskFromStore(projectRoot, config, node.task.id);
+    loadData();
+  }, [displayNodes, selectedIndex, projectRoot, config, loadData]);
 
   const handleWishlist = useCallback(() => {
     saveSession();
     onAction({ type: "wishlist" });
   }, [saveSession, onAction]);
 
+  const handleRetry = useCallback(() => {
+    const node = displayNodes[selectedIndex];
+    if (!node) return;
+    const task = node.task;
+    task.status = "planned";
+    task.started_at = null;
+    task.ended_at = null;
+    saveTaskToStore(projectRoot, config, task);
+    // Optimistically clear the stale agent state so the display shows "planned" immediately
+    // (agentStates poll runs every 1s — without this the display stays stuck on "FAIL")
+    setAgentStates(prev => {
+      const next = new Map(prev);
+      next.delete(task.id);
+      return next;
+    });
+    // Tell the daemon to re-queue this agent (handles submittedTasks + retry count reset)
+    callbacks?.onRetryAgent?.(task.id);
+    callbacks?.onTasksPlanned?.();
+    loadData();
+  }, [displayNodes, selectedIndex, projectRoot, config, loadData, callbacks]);
+
+  const handleEdit = useCallback(() => {
+    if (displayNodes[selectedIndex]) setShowEditor(true);
+  }, [displayNodes, selectedIndex]);
+
+  const handleEditorConfirm = useCallback((updated: any) => {
+    saveTaskToStore(projectRoot, config, updated);
+    setShowEditor(false);
+    loadData();
+  }, [projectRoot, config, loadData]);
+
+  const handleEditorCancel = useCallback(() => {
+    setShowEditor(false);
+  }, []);
+
+  const { columns, rows } = useTerminalSize();
+  const editNode = showEditor ? displayNodes[selectedIndex] : null;
+
   return (
+    <>
     <TaskBrowserView
       nodes={displayNodes}
       selectedIndex={selectedIndex}
@@ -315,6 +430,7 @@ function TaskBrowserApp({
       taskUsage={taskUsage}
       questTitle={questTitle}
       hasRunningWave={hasRunningWave}
+      agentStates={agentStates}
       onSelectionChange={setSelectedIndex}
       onToggle={handleToggle}
       onToggleStream={handleToggleStream}
@@ -324,12 +440,32 @@ function TaskBrowserApp({
       onToggleDone={handleToggleDone}
       onCycleConcurrency={handleCycleConcurrency}
       onQuit={handleQuit}
-      onBack={showBack ? handleBack : undefined}
+      onBack={handleBack}
       onSwitchToMonitor={hasRunningWave ? handleSwitchToMonitor : undefined}
       onErrand={handleErrand}
       onArchiveDone={handleArchiveDone}
+      onDeleteCurrent={handleDeleteCurrent}
       onWishlist={handleWishlist}
+      onEdit={handleEdit}
+      onRetry={handleRetry}
+      isActive={!showEditor}
     />
+    {editNode && (
+      <Box
+        position="absolute"
+        width={columns}
+        height={rows}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <TaskEditor
+          task={editNode.task}
+          onConfirm={handleEditorConfirm}
+          onCancel={handleEditorCancel}
+        />
+      </Box>
+    )}
+    </>
   );
 }
 
@@ -431,6 +567,7 @@ export function TaskBrowserScreen({
       hasRunningWave={hasRunningWave}
       showBack={showBack}
       onAction={handleAction}
+      callbacks={callbacks}
     />
   );
 }

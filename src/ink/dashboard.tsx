@@ -144,12 +144,7 @@ export function DashboardScreen(_props: DashboardScreenProps): React.ReactElemen
 
   if (store.agents.length === 0) {
     return (
-      <Box flexDirection="column" paddingX={2} paddingY={1}>
-        <Box marginBottom={1}>
-          <Text bold color="cyan">
-            {t("screen.dashboard")}
-          </Text>
-        </Box>
+      <Box flexDirection="column" paddingX={2} paddingY={1} flexGrow={1}>
         <Text dimColor>{t("wave.noWave")}</Text>
         <Box marginTop={1}>
           <Text dimColor>Press ESC to open the menu.</Text>
@@ -159,12 +154,9 @@ export function DashboardScreen(_props: DashboardScreenProps): React.ReactElemen
   }
 
   return (
-    <Box flexDirection="column" paddingX={2} paddingY={1}>
-      {/* Title + summary */}
+    <Box flexDirection="column" paddingX={2} paddingY={1} flexGrow={1}>
+      {/* Summary */}
       <Box flexDirection="row" gap={2} marginBottom={1}>
-        <Text bold color="cyan">
-          {t("screen.dashboard")}
-        </Text>
         <Text color="blue">
           {t("wave.running")} {store.running}
         </Text>

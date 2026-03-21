@@ -90,7 +90,6 @@ describe("WaveMonitorView Header", () => {
         })}
       />
     );
-    expect(output).toContain("wombo-combo");
     expect(output).toContain("wave-42");
     expect(output).toContain("develop");
   });

@@ -62,6 +62,8 @@ export const EN_STRINGS: Record<string, string> = {
   "settings.theme": "Theme",
   "settings.locale": "Language",
   "settings.devMode": "Developer mode",
+  "settings.checkForUpdates": "Check for updates on startup",
+  "settings.autoInstallUpdates": "Auto-install updates",
   "settings.saved": "Settings saved",
 
   // Splash screen

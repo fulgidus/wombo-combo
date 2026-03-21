@@ -5,7 +5,7 @@
  *
  * Covers:
  *   - Module exports: SplashScreen, SPLASH_TEXTS, type SplashScreenProps
- *   - SplashScreen renders the "woco" / "wombo" logo text
+ *   - SplashScreen renders the 'wombo' / 'combo' logo text
  *   - SplashScreen renders a splash tagline from EN_STRINGS
  *   - SplashScreen renders the version string when provided
  *   - SPLASH_TEXTS is an array of non-empty strings
@@ -42,7 +42,7 @@ describe("SPLASH_TEXTS", () => {
 });
 
 describe("SplashScreen rendering", () => {
-  test("renders 'woco' app name", async () => {
+  test("renders the WOMBO/COMBO ASCII logo", async () => {
     const { SplashScreen } = await import("../../src/ink/splash-screen");
     const output = renderToString(
       React.createElement(SplashScreen, {
@@ -50,19 +50,22 @@ describe("SplashScreen rendering", () => {
         durationMs: 0,
       })
     );
-    expect(output.toLowerCase()).toMatch(/woco|wombo/i);
+    // The logo uses ASCII block art — check for the ⚡ divider and block chars
+    expect(output).toContain("⚡");
+    expect(output).toContain("██");
   });
 
-  test("renders tagline from splash.tagline i18n key", async () => {
-    const { SplashScreen } = await import("../../src/ink/splash-screen");
+  test("renders tagline from SPLASH_TEXTS", async () => {
+    const { SplashScreen, SPLASH_TEXTS } = await import("../../src/ink/splash-screen");
     const output = renderToString(
       React.createElement(SplashScreen, {
         onDone: () => {},
         durationMs: 0,
+        splashTextIndex: 1,
       })
     );
-    // EN_STRINGS["splash.tagline"] = "Parallel AI development, orchestrated."
-    expect(output).toContain("Parallel");
+    // SPLASH_TEXTS[1] = "Parallel AI, orchestrated."
+    expect(output).toContain(SPLASH_TEXTS[1]);
   });
 
   test("renders version string when provided", async () => {

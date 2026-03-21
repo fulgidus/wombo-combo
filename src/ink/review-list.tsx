@@ -660,7 +660,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexGrow={1}>
       {/* Header */}
       <ReviewHeader
         config={config}

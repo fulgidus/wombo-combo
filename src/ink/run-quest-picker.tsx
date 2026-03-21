@@ -9,15 +9,19 @@
  * pure view component that receives everything via props.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { execSync } from "node:child_process";
 import { getStableStdin } from "./bun-stdin";
-import { render } from "ink";
+import { render, Box } from "ink";
+import { useTerminalSize } from "./use-terminal-size";
 import { useNavigation } from "./router";
 import { QuestPickerView, type QuestSummary } from "./quest-picker";
+import { FakeTaskWizard, generateFakeTasks, type FakeTaskConfig } from "./fake-task-wizard";
 import type { Quest } from "../lib/quest";
 import { QUEST_STATUS_ORDER, getQuestTaskIds } from "../lib/quest";
 import { loadAllQuests, saveQuest, deleteQuest } from "../lib/quest-store";
-import { loadTasks, getDoneTaskIds, loadArchive } from "../lib/tasks";
+import { loadTasks, getDoneTaskIds, loadArchive, type Task } from "../lib/tasks";
+import { saveTaskToStore } from "../lib/task-store";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/token-usage";
 import type { UsageTotals } from "../lib/token-usage";
 import type { WomboConfig } from "../config";
@@ -61,9 +65,11 @@ function QuestPickerApp({
 }) {
   const [quests, setQuests] = useState<QuestSummary[]>([]);
   const [totalTaskCount, setTotalTaskCount] = useState(0);
+  const [errandCount, setErrandCount] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [questUsage, setQuestUsage] = useState<Map<string, UsageTotals>>(new Map());
   const [overallUsage, setOverallUsage] = useState<UsageTotals | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   // Load data on mount
   const loadData = useCallback(() => {
@@ -73,6 +79,7 @@ function QuestPickerApp({
     const doneIds = getDoneTaskIds(tasksData, archiveData.tasks);
 
     setTotalTaskCount(tasksData.tasks.length);
+    setErrandCount(tasksData.tasks.filter((t: any) => !t.quest).length);
 
     // Sort quests: by status order (active first)
     const sorted = [...allQuests].sort((a, b) => {
@@ -119,8 +126,8 @@ function QuestPickerApp({
   }, [onAction]);
 
   const handlePlan = useCallback(() => {
-    if (selectedIndex === 0 || !quests[selectedIndex - 1]) return;
-    const summary = quests[selectedIndex - 1];
+    if (selectedIndex <= 1 || !quests[selectedIndex - 2]) return;
+    const summary = quests[selectedIndex - 2];
     onAction({ type: "plan", questId: summary.quest.id });
   }, [selectedIndex, quests, onAction]);
 
@@ -146,8 +153,8 @@ function QuestPickerApp({
   }, [onAction]);
 
   const handleToggleActive = useCallback(() => {
-    if (selectedIndex === 0) return;
-    const summary = quests[selectedIndex - 1];
+    if (selectedIndex <= 1) return;
+    const summary = quests[selectedIndex - 2];
     if (!summary) return;
     const quest = summary.quest;
 
@@ -167,49 +174,111 @@ function QuestPickerApp({
   }, [selectedIndex, quests, projectRoot, loadData]);
 
   const handleDelete = useCallback(() => {
-    if (selectedIndex === 0) return;
-    const summary = quests[selectedIndex - 1];
+    if (selectedIndex <= 1) return;
+    const summary = quests[selectedIndex - 2];
     if (!summary) return;
 
-    // Delete immediately (the old flow used a confirm dialog, but
-    // since we're inside Ink, we'll just delete — the user pressed D
-    // intentionally). For safety, we could add a ConfirmDialog overlay,
-    // but keeping it simple for now matches the integration scope.
     deleteQuest(projectRoot, summary.quest.id);
     loadData();
-    // Clamp selection
-    const maxIdx = quests.length; // quests.length because "All Tasks" is index 0
-    if (selectedIndex >= maxIdx) {
-      setSelectedIndex(Math.max(0, maxIdx - 1));
+    // Clamp selection (All Tasks=0, Errands=1, quests start at 2)
+    const maxIdx = quests.length + 1; // +1 for Errands
+    if (selectedIndex > maxIdx) {
+      setSelectedIndex(Math.max(0, maxIdx));
     }
   }, [selectedIndex, quests, projectRoot, loadData]);
 
   const handleCreate = useCallback(() => {
-    // Signal parent to run the quest wizard
-    // The parent will call runQuestWizardInk and then come back
     onAction({ type: "select", questId: "__create__" });
   }, [onAction]);
 
+  const handleSeedFake = useCallback(() => {
+    setShowWizard(true);
+  }, []);
+
+  const handleWizardConfirm = useCallback((cfg: FakeTaskConfig) => {
+    const tasks = generateFakeTasks(cfg);
+    // Create the quest first so it shows up in the picker
+    if (cfg.questName.trim()) {
+      const slug = cfg.questName.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const now = new Date().toISOString();
+      const quest: Quest = {
+        id: slug,
+        title: cfg.questName.trim(),
+        goal: `Fake quest: ${cfg.questName.trim()}`,
+        status: "draft",
+        priority: "medium",
+        difficulty: "medium",
+        depends_on: [],
+        branch: `quest/${slug}`,
+        baseBranch: config.baseBranch,
+        hitlMode: "yolo",
+        constraints: { add: [], ban: [], override: {} },
+        created_at: now,
+        updated_at: now,
+        started_at: now,
+        ended_at: null,
+        notes: [],
+      };
+      saveQuest(projectRoot, quest);
+      // Create the actual git branch so tasks can branch off it
+      try {
+        execSync(`git branch "quest/${slug}" "${config.baseBranch}"`, {
+          cwd: projectRoot,
+          stdio: "pipe",
+        });
+      } catch {
+        // Branch already exists — fine
+      }
+    }
+    for (const task of tasks) {
+      saveTaskToStore(projectRoot, config, task);
+    }
+    setShowWizard(false);
+    loadData();
+  }, [projectRoot, config, loadData]);
+
+  const handleWizardCancel = useCallback(() => {
+    setShowWizard(false);
+  }, []);
+
+  const { columns, rows } = useTerminalSize();
+
   return (
-    <QuestPickerView
-      quests={quests}
-      totalTaskCount={totalTaskCount}
-      selectedIndex={selectedIndex}
-      onSelect={handleSelect}
-      onQuit={handleQuit}
-      onSelectionChange={setSelectedIndex}
-      questUsage={questUsage}
-      overallUsage={overallUsage}
-      devMode={config.devMode}
-      onCreate={handleCreate}
-      onToggleActive={handleToggleActive}
-      onPlan={handlePlan}
-      onGenesis={handleGenesis}
-      onErrand={handleErrand}
-      onWishlist={handleWishlist}
-      onOnboarding={handleOnboarding}
-      onDelete={handleDelete}
-    />
+    <>
+      <QuestPickerView
+        quests={quests}
+        totalTaskCount={totalTaskCount}
+        errandCount={errandCount}
+        selectedIndex={selectedIndex}
+        onSelect={handleSelect}
+        onQuit={handleQuit}
+        onSelectionChange={setSelectedIndex}
+        questUsage={questUsage}
+        overallUsage={overallUsage}
+        devMode={config.devMode}
+        onCreate={handleCreate}
+        onToggleActive={handleToggleActive}
+        onPlan={handlePlan}
+        onGenesis={handleGenesis}
+        onErrand={handleErrand}
+        onWishlist={handleWishlist}
+        onOnboarding={handleOnboarding}
+        onDelete={handleDelete}
+        onSeedFake={handleSeedFake}
+        isActive={!showWizard}
+      />
+      {showWizard && (
+        <Box
+          position="absolute"
+          width={columns}
+          height={rows}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <FakeTaskWizard onConfirm={handleWizardConfirm} onCancel={handleWizardCancel} />
+        </Box>
+      )}
+    </>
   );
 }
 
@@ -259,6 +328,8 @@ export function QuestPickerScreen({
             projectRoot,
             config: config as unknown,
             questId: action.questId ?? undefined,
+            questTitle: action.questId === "" ? "Errands" : undefined,
+            showBack: true,
             onExit,
             callbacks: callbacks as unknown,
           } as Record<string, unknown>);
@@ -280,6 +351,7 @@ export function QuestPickerScreen({
               projectRoot,
               config: config as unknown,
               questId: action.questId,
+              showBack: true,
               onExit,
               callbacks: callbacks as unknown,
             } as Record<string, unknown>);

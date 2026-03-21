@@ -159,19 +159,15 @@ function Header({
   const done = counts.verified + counts.merged;
 
   return (
-    <Box flexDirection="column" height={3}>
-      {/* Line 1: branding + metadata */}
+    <Box flexDirection="column" height={2}>
+      {/* Line 1: metadata */}
       <Box>
-        <Text bold>wombo-combo</Text>
-        <Text> </Text>
-        <Text dimColor>{waveId}</Text>
         {waveComplete && (
           <>
-            <Text dimColor>  │  </Text>
             <Text bold color="green">WAVE COMPLETE</Text>
+            <Text dimColor>  │  </Text>
           </>
         )}
-        <Text dimColor>  │  </Text>
         <Text>Base: </Text>
         <Text color="cyan">{baseBranch}</Text>
         <Text dimColor>  │  </Text>
@@ -649,7 +645,7 @@ export function WaveMonitorView(props: WaveMonitorViewProps): React.ReactElement
   const { rows } = useTerminalSize();
 
   return (
-    <Box flexDirection="column" width="100%" height={rows}>
+    <Box flexDirection="column" width="100%" flexGrow={1}>
       {/* Header */}
       <Header
         waveId={waveId}

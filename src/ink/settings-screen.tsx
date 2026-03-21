@@ -25,6 +25,7 @@ import React, {
 import { Box, Text, useInput } from "ink";
 import { t } from "./i18n";
 import type { ThemeName } from "./theme";
+import { saveConfig } from "../config";
 
 // ---------------------------------------------------------------------------
 // Partial config shape (only TUI-editable fields for now)
@@ -34,6 +35,8 @@ export interface SettingsScreenConfig {
   tui?: {
     theme?: string;
     locale?: string;
+    checkForUpdates?: boolean;
+    autoInstallUpdates?: boolean;
   };
   devMode?: boolean;
 }
@@ -64,7 +67,7 @@ export function SettingsField({
   return (
     <Box flexDirection="row" gap={1} marginLeft={1}>
       <Text color={selected ? "cyan" : undefined}>{selected ? ">" : " "}</Text>
-      <Box flexDirection="row" minWidth={20}>
+      <Box flexDirection="row" minWidth={24}>
         <Text color={selected ? "cyan" : undefined} bold={selected}>
           {label}
         </Text>
@@ -119,9 +122,11 @@ export interface SettingsScreenProps {
   onSave: (patched: SettingsScreenConfig) => void;
   /** Called when user presses Back / Escape */
   onBack: () => void;
+  /** Project root — required to persist settings to disk */
+  projectRoot?: string;
 }
 
-type FieldId = "theme" | "locale" | "devMode" | "reset";
+type FieldId = "theme" | "locale" | "checkForUpdates" | "autoInstallUpdates" | "devMode" | "reset";
 
 interface FieldDef {
   id: FieldId;
@@ -141,6 +146,16 @@ const FIELDS: FieldDef[] = [
     getValue: (cfg) => cfg.tui?.locale ?? "en",
   },
   {
+    id: "checkForUpdates",
+    label: t("settings.checkForUpdates"),
+    getValue: (cfg) => (cfg.tui?.checkForUpdates ?? true) ? "on" : "off",
+  },
+  {
+    id: "autoInstallUpdates",
+    label: t("settings.autoInstallUpdates"),
+    getValue: (cfg) => (cfg.tui?.autoInstallUpdates ? "on" : "off"),
+  },
+  {
     id: "devMode",
     label: t("settings.devMode"),
     getValue: (cfg) => (cfg.devMode ? "on" : "off"),
@@ -152,6 +167,11 @@ const FIELDS: FieldDef[] = [
   },
 ];
 
+// Indices for the render sections
+const APPEARANCE_FIELD_IDS: FieldId[] = ["theme", "locale"];
+const GENERAL_FIELD_IDS: FieldId[] = ["checkForUpdates", "autoInstallUpdates", "devMode"];
+const RESET_IDX = FIELDS.length - 1;
+
 /**
  * Full settings TUI screen.
  *
@@ -162,10 +182,26 @@ export function SettingsScreen({
   config: initialConfig,
   onSave,
   onBack,
+  projectRoot,
 }: SettingsScreenProps): React.ReactElement {
   const [cfg, setCfg] = useState<SettingsScreenConfig>(initialConfig);
   const [cursor, setCursor] = useState(0);
   const [saved, setSaved] = useState(false);
+
+  const persist = useCallback(
+    (patched: SettingsScreenConfig) => {
+      onSave(patched);
+      if (projectRoot) {
+        try {
+          saveConfig(projectRoot, patched as any);
+        } catch {
+          // Best-effort: if we can't write, in-memory change still applies
+        }
+      }
+      setSaved(true);
+    },
+    [onSave, projectRoot]
+  );
 
   const handleInput = useCallback(
     (_input: string, key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean }) => {
@@ -184,8 +220,9 @@ export function SettingsScreen({
       if (key.return) {
         const field = FIELDS[cursor];
         if (field.id === "reset") {
-          setCfg({});
-          setSaved(false);
+          const reset: SettingsScreenConfig = {};
+          setCfg(reset);
+          persist(reset);
           return;
         }
         if (field.id === "theme") {
@@ -194,8 +231,7 @@ export function SettingsScreen({
           const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length];
           const patched = { ...cfg, tui: { ...cfg.tui, theme: next } };
           setCfg(patched);
-          onSave(patched);
-          setSaved(true);
+          persist(patched);
           return;
         }
         if (field.id === "locale") {
@@ -204,20 +240,30 @@ export function SettingsScreen({
           const next = LOCALE_OPTIONS[(idx + 1) % LOCALE_OPTIONS.length];
           const patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
           setCfg(patched);
-          onSave(patched);
-          setSaved(true);
+          persist(patched);
+          return;
+        }
+        if (field.id === "checkForUpdates") {
+          const patched = { ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } };
+          setCfg(patched);
+          persist(patched);
+          return;
+        }
+        if (field.id === "autoInstallUpdates") {
+          const patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
+          setCfg(patched);
+          persist(patched);
           return;
         }
         if (field.id === "devMode") {
           const patched = { ...cfg, devMode: !cfg.devMode };
           setCfg(patched);
-          onSave(patched);
-          setSaved(true);
+          persist(patched);
           return;
         }
       }
     },
-    [cursor, cfg, onSave, onBack]
+    [cursor, cfg, persist, onBack]
   );
 
   useInput(handleInput);
@@ -236,37 +282,43 @@ export function SettingsScreen({
 
       {/* TUI / Appearance section */}
       <SettingsSection title="TUI / Appearance">
-        {FIELDS.filter((f) => f.id === "theme" || f.id === "locale").map((field, i) => (
-          <SettingsField
-            key={field.id}
-            label={field.label}
-            value={field.getValue(cfg)}
-            selected={cursor === i}
-            onEdit={() => {}}
-            hint="Enter to cycle"
-          />
-        ))}
+        {FIELDS.filter((f) => APPEARANCE_FIELD_IDS.includes(f.id)).map((field) => {
+          const idx = FIELDS.findIndex((x) => x.id === field.id);
+          return (
+            <SettingsField
+              key={field.id}
+              label={field.label}
+              value={field.getValue(cfg)}
+              selected={cursor === idx}
+              onEdit={() => {}}
+              hint="Enter to cycle"
+            />
+          );
+        })}
       </SettingsSection>
 
       {/* General section */}
       <SettingsSection title="General">
-        {FIELDS.filter((f) => f.id === "devMode").map((field) => (
-          <SettingsField
-            key={field.id}
-            label={field.label}
-            value={field.getValue(cfg)}
-            selected={cursor === 2}
-            onEdit={() => {}}
-            hint="Enter to toggle"
-          />
-        ))}
+        {FIELDS.filter((f) => GENERAL_FIELD_IDS.includes(f.id)).map((field) => {
+          const idx = FIELDS.findIndex((x) => x.id === field.id);
+          return (
+            <SettingsField
+              key={field.id}
+              label={field.label}
+              value={field.getValue(cfg)}
+              selected={cursor === idx}
+              onEdit={() => {}}
+              hint="Enter to toggle"
+            />
+          );
+        })}
       </SettingsSection>
 
       {/* Reset option */}
       <Box marginTop={1} marginLeft={2}>
         <Box flexDirection="row" gap={1}>
-          <Text color={cursor === 3 ? "red" : undefined}>{cursor === 3 ? ">" : " "}</Text>
-          <Text color={cursor === 3 ? "red" : "gray"} bold={cursor === 3}>
+          <Text color={cursor === RESET_IDX ? "red" : undefined}>{cursor === RESET_IDX ? ">" : " "}</Text>
+          <Text color={cursor === RESET_IDX ? "red" : "gray"} bold={cursor === RESET_IDX}>
             Reset to defaults
           </Text>
         </Box>

@@ -100,7 +100,7 @@ describe("TuiApp renders quest-picker when skipSplash=true", () => {
     expect(output.length).toBeGreaterThan(0);
   });
 
-  test("renders chrome top bar (woco label visible)", async () => {
+  test("renders chrome top bar (Home label visible)", async () => {
     const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
 
     const output = renderToString(
@@ -113,7 +113,7 @@ describe("TuiApp renders quest-picker when skipSplash=true", () => {
       })
     );
 
-    expect(output).toContain("woco");
+    expect(output).toContain("Home");
   });
 });
 
@@ -139,7 +139,7 @@ describe("TuiApp renders splash when skipSplash=false", () => {
     expect(output.length).toBeGreaterThan(0);
   });
 
-  test("shows splash screen content (woco/wombo logo)", async () => {
+  test("shows splash screen content (wombo/combo logo)", async () => {
     const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
 
     const output = renderToString(
@@ -152,10 +152,10 @@ describe("TuiApp renders splash when skipSplash=false", () => {
       })
     );
 
-    expect(output.toLowerCase()).toMatch(/woco|wombo/);
+    expect(output.toLowerCase()).toMatch(/wombo|combo/);
   });
 
-  test("renders chrome (woco label in top bar visible alongside splash)", async () => {
+  test("renders chrome (Home label in top bar visible alongside splash)", async () => {
     const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
 
     const output = renderToString(
@@ -168,7 +168,7 @@ describe("TuiApp renders splash when skipSplash=false", () => {
       })
     );
 
-    expect(output).toContain("woco");
+    expect(output).toContain("Home");
   });
 });
 

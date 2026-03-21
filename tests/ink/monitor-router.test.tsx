@@ -127,7 +127,7 @@ describe("WaveMonitorShell uses ScreenRouter", () => {
     expect(output).toContain("router-feat");
   });
 
-  test("WaveMonitorShell with skipSplash=false shows splash (contains woco/wombo logo)", async () => {
+  test("WaveMonitorShell with skipSplash=false shows splash (contains wombo/combo logo)", async () => {
     const { WaveMonitorShell } = (await import("../../src/ink/run-wave-monitor")) as any;
 
     const output = renderToString(
@@ -146,11 +146,11 @@ describe("WaveMonitorShell uses ScreenRouter", () => {
       })
     );
 
-    // SplashScreen shows the woco/wombo logo text
-    expect(output.toLowerCase()).toMatch(/woco|wombo/);
+    // SplashScreen shows the wombo/combo logo text
+    expect(output.toLowerCase()).toMatch(/wombo|combo/);
   });
 
-  test("WaveMonitorShell renders chrome (woco label in top bar)", async () => {
+  test("WaveMonitorShell renders chrome (Home label in top bar)", async () => {
     const { WaveMonitorShell } = (await import("../../src/ink/run-wave-monitor")) as any;
 
     const output = renderToString(
@@ -169,7 +169,7 @@ describe("WaveMonitorShell uses ScreenRouter", () => {
       })
     );
 
-    expect(output).toContain("woco");
+    expect(output).toContain("Home");
   });
 });
 
@@ -270,8 +270,8 @@ describe("DaemonMonitorShell uses ScreenRouter", () => {
       })
     );
 
-    expect(output).toContain("woco");
-  });
+    expect(output).toContain("Home");
+    });
 
   test("DaemonMonitorShell with skipSplash=true renders monitor content (no crash)", async () => {
     const { DaemonMonitorShell } = (await import("../../src/ink/run-daemon-monitor")) as any;

@@ -33,11 +33,18 @@
 import React, {
   useState,
   useCallback,
+  useMemo,
+  useEffect,
   useRef,
   type MutableRefObject,
 } from "react";
+import { Box } from "ink";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { WOMBO_DIR } from "../config";
+import { useTerminalSize } from "./use-terminal-size";
 import { ScreenRouter, useNavigation, type NavigationState } from "./router";
-import { ChromeLayout } from "./chrome";
+import { ChromeLayout, type DaemonStats } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
 import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
@@ -79,6 +86,16 @@ export interface TuiAppCallbacks {
   onQuestCreate?: () => Promise<void>;
   /** Navigate to the daemon/wave monitor. Returns when user detaches. */
   onShowMonitor?: () => Promise<void>;
+  /**
+   * Called whenever the user marks one or more tasks as "planned" in the task
+   * browser. Lets tui.ts re-send cmd:start so the scheduler wakes from idle
+   * and immediately picks up the newly-planned work.
+   */
+  onTasksPlanned?: () => void;
+  /** Called when user retries a failed task — sends cmd:retry-agent to daemon. */
+  onRetryAgent?: (taskId: string) => void;
+  /** Called when user changes concurrency — sends cmd:set-concurrency to daemon. */
+  onSetConcurrency?: (n: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +173,7 @@ export interface TuiAppProps {
 export function TuiApp({
   projectRoot,
   config,
-  splashDurationMs = 1500,
+  splashDurationMs = 5000,
   skipSplash = false,
   initialScreen: initialScreenProp,
   onExit,
@@ -180,6 +197,23 @@ export function TuiApp({
     devMode: (config as any).devMode ?? false,
   });
 
+  // Track current screen for chrome title
+  const SCREEN_NAMES: Record<string, string> = {
+    splash: "Loading",
+    "quest-picker": "Quest Picker",
+    "task-browser": "Task Browser",
+    "daemon-monitor": "Daemon Monitor",
+    "wave-monitor": "Wave Monitor",
+    settings: "Settings",
+    onboarding: "Setup",
+  };
+  const [currentScreenKey, setCurrentScreenKey] = useState<string>(
+    initialScreenProp ?? (skipSplash ? "quest-picker" : "splash")
+  );
+
+  // Local override for concurrency to prevent flickering during polling delay
+  const [maxConcurrentOverride, setMaxConcurrentOverride] = useState<number | null>(null);
+
   // navRef bridges EscMenuProvider's onNavigate callback to the inner ScreenRouter
   const navRef = useRef<NavigationState | null>(null);
 
@@ -188,6 +222,7 @@ export function TuiApp({
       if (action === "settings") {
         navRef.current?.push("settings", {
           config: settingsConfig as unknown,
+          projectRoot,
           onSave: (patched: SettingsScreenConfig) => setSettingsConfig(patched),
           onBack: () => navRef.current?.pop(),
         } as Record<string, unknown>);
@@ -195,15 +230,26 @@ export function TuiApp({
         onExit();
       }
     },
-    [settingsConfig, onExit]
+    [settingsConfig, projectRoot, onExit]
   );
+
+  // Wrapped callbacks to handle local overrides (e.g. concurrency)
+  const wrappedCallbacks = useMemo(() => {
+    return {
+      ...callbacks,
+      onSetConcurrency: (n: number) => {
+        setMaxConcurrentOverride(n);
+        callbacks?.onSetConcurrency?.(n);
+      },
+    };
+  }, [callbacks]);
 
   // Initial quest-picker props (reused by multiple paths)
   const questPickerProps: Record<string, unknown> = {
     projectRoot,
     config: config as unknown,
     onExit,
-    callbacks: callbacks as unknown,
+    callbacks: wrappedCallbacks as unknown,
   };
 
   // Initial onboarding props
@@ -211,8 +257,42 @@ export function TuiApp({
     projectRoot,
     config: config as unknown,
     onExit,
-    callbacks: callbacks as unknown,
+    callbacks: wrappedCallbacks as unknown,
   };
+
+  // Poll daemon-state.json every second for top-right chrome stats
+  const [daemonStats, setDaemonStats] = useState<DaemonStats | undefined>(undefined);
+  useEffect(() => {
+    const ACTIVE = new Set(["installing", "running", "resolving_conflict"]);
+    const poll = () => {
+      const stateFile = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
+      if (!existsSync(stateFile)) {
+        setDaemonStats(undefined);
+        return;
+      }
+      try {
+        const data = JSON.parse(readFileSync(stateFile, "utf8"));
+        const running = (data.agents ?? []).filter((a: any) => ACTIVE.has(a.status)).length;
+        const polledMax = data.scheduler?.maxConcurrent ?? 4;
+
+        // If override matches polled value, clear the override
+        if (maxConcurrentOverride !== null && polledMax === maxConcurrentOverride) {
+          setMaxConcurrentOverride(null);
+        }
+
+        setDaemonStats({
+          running,
+          maxConcurrent: maxConcurrentOverride ?? polledMax,
+          schedulerStatus: data.scheduler?.status ?? "unknown",
+        });
+      } catch {
+        // non-fatal
+      }
+    };
+    poll();
+    const id = setInterval(poll, 1000);
+    return () => clearInterval(id);
+  }, [projectRoot, maxConcurrentOverride]);
 
   // Resolve initial screen — explicit prop wins, then skipSplash flag
   const resolvedInitialScreen: string =
@@ -232,6 +312,8 @@ export function TuiApp({
           ...questPickerProps,
         } as Record<string, unknown>),
       durationMs: splashDurationMs,
+      projectRoot,
+      config: config as unknown,
     };
   }
 
@@ -245,27 +327,33 @@ export function TuiApp({
     onboarding: OnboardingScreen,
   };
 
+  const { rows, columns } = useTerminalSize();
+
   return (
-    <ThemeContext.Provider value={theme}>
-      <I18nContext.Provider value={tFn}>
-        <DashboardStoreContext.Provider value={emptyDashStore}>
-          <EscMenuProvider onNavigate={handleEscNavigate}>
-            <ChromeLayout
-              screenName="woco"
-              daemonConnected={daemonConnected}
-              locale={config.tui?.locale ?? "en"}
-            >
-              <ScreenRouter
-                screens={screens}
-                initialScreen={resolvedInitialScreen}
-                initialProps={resolvedInitialProps}
+    <Box width={columns} height={rows}>
+      <ThemeContext.Provider value={theme}>
+        <I18nContext.Provider value={tFn}>
+          <DashboardStoreContext.Provider value={emptyDashStore}>
+            <EscMenuProvider onNavigate={handleEscNavigate}>
+              <ChromeLayout
+                screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
+                daemonConnected={daemonConnected}
+                daemonStats={daemonStats}
+                locale={config.tui?.locale ?? "en"}
               >
-                <NavWire navRef={navRef} />
-              </ScreenRouter>
-            </ChromeLayout>
-          </EscMenuProvider>
-        </DashboardStoreContext.Provider>
-      </I18nContext.Provider>
-    </ThemeContext.Provider>
+                <ScreenRouter
+                  screens={screens}
+                  initialScreen={resolvedInitialScreen}
+                  initialProps={resolvedInitialProps}
+                  onScreenChange={setCurrentScreenKey}
+                >
+                  <NavWire navRef={navRef} />
+                </ScreenRouter>
+              </ChromeLayout>
+            </EscMenuProvider>
+          </DashboardStoreContext.Provider>
+        </I18nContext.Provider>
+      </ThemeContext.Provider>
+    </Box>
   );
 }

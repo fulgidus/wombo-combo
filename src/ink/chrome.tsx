@@ -19,6 +19,22 @@
 
 import React, { createContext, useContext, type ReactNode } from "react";
 import { Box, Text } from "ink";
+import { useTerminalSize } from "./use-terminal-size";
+
+// ---------------------------------------------------------------------------
+// Live daemon stats — shown in top-right chrome at all times
+// ---------------------------------------------------------------------------
+
+export type SchedulerStatus = "running" | "idle" | "paused" | "draining" | "stopping" | "shutdown";
+
+export interface DaemonStats {
+  /** Agents currently in installing/running/resolving_conflict state. */
+  running: number;
+  /** Max concurrency setting. */
+  maxConcurrent: number;
+  /** Scheduler status string (running | idle | paused | stopping | …). */
+  schedulerStatus: SchedulerStatus;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,25 +84,67 @@ export interface ChromeTopBarProps {
   daemonConnected: boolean;
   /** Optional live wave summary. Omit when no wave is running. */
   waveSummary?: WaveSummary;
+  /** Live daemon agent/scheduler stats, polled from daemon-state.json. */
+  daemonStats?: DaemonStats;
 }
+
+const SCHEDULER_STATUS_UI: Record<SchedulerStatus, { color: string, label: string, labelShort: string }> = {
+  running: {
+    color: "green",
+    label: "▶ Running",
+    labelShort: "▶",
+  },
+  idle: {
+    color: "gray",
+    label: "💤 Idle",
+    labelShort: "💤",
+  },
+  paused: {
+    color: "yellow",
+    label: "⏸ Paused",
+    labelShort: "⏸",
+
+  },
+  draining: {
+    color: "yellow",
+    label: "⏳ Draining",
+    labelShort: "⏳",
+  },
+  stopping: {
+    color: "yellow",
+    label: "⏹ Stopping",
+    labelShort: "⏹",
+  },
+  shutdown: {
+    color: "red",
+    label: "💀 Shutdown",
+    labelShort: "💀",
+  },
+};
 
 /**
  * Fixed top status bar.
  *
- * Layout: [app name] [screen name]    [wave summary]  [daemon status]
+ * Layout: [app name] [screen name]    [⚙ N/max  status  ⬤ connected]
  */
 export function ChromeTopBar({
   screenName,
   daemonConnected,
   waveSummary,
+  daemonStats,
 }: ChromeTopBarProps): React.ReactElement {
   const customTitle = useChromTitle();
   const displayName = customTitle ?? screenName;
+
+  const statusColor = daemonStats
+    ? (SCHEDULER_STATUS_UI[daemonStats.schedulerStatus]?.color ?? "white")
+    : (daemonConnected ? "green" : "red");
 
   return (
     <Box
       flexDirection="row"
       justifyContent="space-between"
+      width="100%"
       paddingX={1}
       borderStyle="single"
       borderBottom={false}
@@ -96,14 +154,12 @@ export function ChromeTopBar({
     >
       {/* Left: app name + screen */}
       <Box flexDirection="row" gap={1}>
-        <Text bold color="cyan">
-          woco
-        </Text>
+        <Text bold>Home</Text>
         <Text dimColor>›</Text>
         <Text bold>{displayName}</Text>
       </Box>
 
-      {/* Center: wave summary */}
+      {/* Center: wave summary (legacy, only shown when explicitly set) */}
       {waveSummary && (
         <Box flexDirection="row" gap={1}>
           <Text color="blue">●{waveSummary.running}</Text>
@@ -112,12 +168,22 @@ export function ChromeTopBar({
         </Box>
       )}
 
-      {/* Right: daemon connection indicator */}
-      <Box>
+      {/* Right: live agent count + scheduler status + connection dot */}
+      <Box flexDirection="row" gap={1}>
+        {daemonStats ? (
+          <>
+            <Text color={daemonStats.running > 0 ? "greenBright" : "gray"}>
+              ⧥ {daemonStats.running}/{daemonStats.maxConcurrent === 0 ? "∞" : daemonStats.maxConcurrent}
+            </Text>
+            <Text dimColor>│</Text>
+            <Text color={statusColor}>{SCHEDULER_STATUS_UI[daemonStats.schedulerStatus]?.label ?? daemonStats.schedulerStatus}</Text>
+            <Text dimColor>│</Text>
+          </>
+        ) : null}
         {daemonConnected ? (
-          <Text color="green">⬤ connected</Text>
+          <Text color="greenBright">⬤ connected</Text>
         ) : (
-          <Text color="red">⬤ offline</Text>
+          <Text color="red">⬤ unreachable</Text>
         )}
       </Box>
     </Box>
@@ -156,6 +222,7 @@ export function ChromeBottomBar({
     <Box
       flexDirection="row"
       justifyContent="space-between"
+      width="100%"
       paddingX={1}
     >
       {/* Keybind hints */}
@@ -195,6 +262,8 @@ export interface ChromeLayoutProps {
   daemonConnected: boolean;
   /** Optional wave summary for the top bar. */
   waveSummary?: WaveSummary;
+  /** Live daemon agent/scheduler stats for the top-right corner. */
+  daemonStats?: DaemonStats;
   /** Screen-specific keybind hints for the bottom bar. */
   contextHints?: KeybindHint[];
   /** Active locale code for the bottom bar icon strip. */
@@ -216,16 +285,20 @@ export function ChromeLayout({
   screenName,
   daemonConnected,
   waveSummary,
+  daemonStats,
   contextHints,
   locale,
   children,
 }: ChromeLayoutProps): React.ReactElement {
+  const { rows } = useTerminalSize();
+
   return (
-    <Box flexDirection="column" height="100%">
+    <Box flexDirection="column" width="100%" height={rows}>
       <ChromeTopBar
         screenName={screenName}
         daemonConnected={daemonConnected}
         waveSummary={waveSummary}
+        daemonStats={daemonStats}
       />
       <Box flexDirection="column" flexGrow={1}>
         {children}

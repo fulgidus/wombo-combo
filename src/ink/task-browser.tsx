@@ -20,11 +20,13 @@
  *   └───────────────────────────────────────────────────────┘
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import type { Task } from "../lib/tasks";
 import type { UsageTotals } from "../lib/token-usage";
 import type { SortField } from "../lib/tui-session";
+import type { DaemonAgentState } from "../daemon/protocol";
+import type { AgentStatus } from "../lib/state";
 import { formatTokenCount, formatCost } from "./usage-overlay";
 import {
   TASK_STATUS_COLORS,
@@ -32,6 +34,19 @@ import {
   TASK_PRIORITY_COLORS,
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
+
+function agentStatusColor(status: AgentStatus): string {
+  switch (status) {
+    case "running": return "cyan";
+    case "installing": return "yellow";
+    case "completed": case "verified": return "blue";
+    case "merged": return "green";
+    case "failed": return "red";
+    case "resolving_conflict": return "magenta";
+    case "retry": return "yellow";
+    default: return "gray";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,6 +102,8 @@ export interface TaskBrowserViewProps {
   questTitle?: string;
   /** Whether a wave is currently running. */
   hasRunningWave?: boolean;
+  /** Live agent states from daemon-state.json, keyed by featureId (task id). */
+  agentStates?: Map<string, DaemonAgentState>;
 
   // Callbacks
   onSelectionChange: (index: number) => void;
@@ -102,8 +119,13 @@ export interface TaskBrowserViewProps {
   onSwitchToMonitor?: () => void;
   onErrand?: () => void;
   onArchiveDone?: () => void;
+  onDeleteCurrent?: () => void;
   onWishlist?: () => void;
   onUsage?: () => void;
+  onEdit?: () => void;
+  onRetry?: () => void;
+  /** When false, keyboard input is disabled (e.g. while an overlay is open). */
+  isActive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,22 +156,14 @@ function Header({
   hasRunningWave?: boolean;
 }): React.ReactElement {
   return (
-    <Box flexDirection="column" height={3}>
+    <Box flexDirection="column" height={2}>
       <Box>
-        <Text bold>wombo-combo</Text>
         {hasRunningWave && (
           <>
-            <Text> </Text>
             <Text bold color="yellow">⚡ WAVE RUNNING</Text>
+            <Text dimColor>  |  </Text>
           </>
         )}
-        <Text> </Text>
-        {questTitle ? (
-          <Text color="magenta">▶ {questTitle}</Text>
-        ) : (
-          <Text color="cyan">Task Browser</Text>
-        )}
-        <Text dimColor>  |  </Text>
         <Text>{totalTaskCount}</Text>
         <Text> tasks</Text>
         {hideDone && (
@@ -160,18 +174,23 @@ function Header({
           </>
         )}
         <Text dimColor>  |  </Text>
-        <Text color="green">{selectedCount}</Text>
-        <Text> selected</Text>
+        <Text color="green">{readyCount}</Text>
+        <Text> ready</Text>
+        <Text dimColor>  |  </Text>
+        <Text>{doneCount}</Text>
+        <Text dimColor> done</Text>
+        {selectedCount > 0 && (
+          <>
+            <Text dimColor>  |  </Text>
+            <Text color="cyan">{selectedCount}</Text>
+            <Text> selected</Text>
+          </>
+        )}
       </Box>
       <Box>
-        <Text color="green">{doneCount}</Text>
-        <Text> done  </Text>
-        <Text color="cyan">{readyCount}</Text>
-        <Text> planned</Text>
-        <Text dimColor>  |  </Text>
-        <Text>Sort: </Text>
-        <Text color="yellow">{sortBy}</Text>
-        <Text dimColor>  |  </Text>
+        <Text dimColor>Sort: </Text>
+        <Text color="yellow">{sortBy.padEnd(10)}</Text>
+        <Text dimColor> | </Text>
         <Text>Concurrency: </Text>
         <Text color="yellow">{maxConcurrent === 0 ? "∞" : String(maxConcurrent)}</Text>
       </Box>
@@ -183,10 +202,12 @@ function TaskListItem({
   node,
   isSelected,
   isChecked,
+  agentState,
 }: {
   node: TaskNode;
   isSelected: boolean;
   isChecked: boolean;
+  agentState?: DaemonAgentState;
 }): React.ReactElement {
   const { task, depth, depsReady } = node;
 
@@ -211,9 +232,39 @@ function TaskListItem({
   // Indent based on depth
   const indent = "  ".repeat(depth);
 
-  // Status
-  const sColor = TASK_STATUS_COLORS[task.status] ?? "white";
-  const sAbbr = TASK_STATUS_ABBREV[task.status] ?? task.status.slice(0, 4).toUpperCase();
+  // Status — show agent status if agent is active (not in final states)
+  let sColor: string;
+  let sAbbr: string;
+  const finalStates = new Set(["merged", "failed"]);
+  if (agentState && !finalStates.has(agentState.status)) {
+    sColor = agentStatusColor(agentState.status);
+    switch (agentState.status) {
+      case "queued": sAbbr = "QUEUED"; break;
+      case "installing": sAbbr = "SETUP"; break;
+      case "running": sAbbr = "AGENT"; break;
+      case "completed": sAbbr = "VERIF"; break;
+      case "resolving_conflict": sAbbr = "MERGE"; break;
+      case "retry": sAbbr = "RETRY"; break;
+      case "verified": sAbbr = "VERIF"; break;
+      case "merged": sAbbr = "DONE"; break;
+      case "failed": sAbbr = "FAIL"; break;
+    }
+  } else if (agentState && agentState.status === "merged") {
+    sColor = "green";
+    sAbbr = "DONE";
+  } else if (agentState && agentState.status === "failed") {
+    sColor = "red";
+    sAbbr = "FAIL";
+  } else {
+    sColor = TASK_STATUS_COLORS[task.status] ?? "white";
+    sAbbr = TASK_STATUS_ABBREV[task.status] ?? task.status.slice(0, 4).toUpperCase();
+  }
+
+  // Activity hint (truncated, shown when agent is running)
+  const activityHint =
+    agentState?.status === "running" && agentState.activity
+      ? agentState.activity.slice(0, 20)
+      : null;
 
   // Priority
   const pColor = TASK_PRIORITY_COLORS[task.priority] ?? "white";
@@ -229,10 +280,13 @@ function TaskListItem({
       <Text color={readyColor}>{readyIcon}</Text>
       <Text> </Text>
       <Text>{task.id}</Text>
+      {activityHint && (
+        <Text dimColor> {activityHint}</Text>
+      )}
       <Text> </Text>
       <Text color={pColor}>{pAbbr}</Text>
       <Text> </Text>
-      <Text color={sColor}>{sAbbr}</Text>
+      <Text color={sColor} bold={agentState?.status === "running"}>{sAbbr}</Text>
     </Text>
   );
 }
@@ -240,9 +294,11 @@ function TaskListItem({
 function TaskDetail({
   node,
   usage,
+  agentState,
 }: {
   node: TaskNode;
   usage?: UsageTotals;
+  agentState?: DaemonAgentState;
 }): React.ReactElement {
   const { task, streamId, depth, dependedOnBy, depsReady } = node;
   const sColor = TASK_STATUS_COLORS[task.status] ?? "white";
@@ -334,6 +390,45 @@ function TaskDetail({
           ))}
         </>
       )}
+
+      {/* Agent section */}
+      {agentState && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold color="cyan">── Agent ──</Text>
+          <Box flexDirection="row" gap={1}>
+            <Text dimColor>status</Text>
+            <Text color={agentStatusColor(agentState.status)}>{agentState.status}</Text>
+            {agentState.retries > 0 && <Text color="yellow"> (retry {agentState.retries}/{agentState.maxRetries})</Text>}
+          </Box>
+          {agentState.activity && (
+            <Box>
+              <Text dimColor>doing  </Text>
+              <Text color="cyan" wrap="truncate-end">{agentState.activity}</Text>
+            </Box>
+          )}
+          {agentState.error && (
+            <Box>
+              <Text dimColor>error  </Text>
+              <Text color="red" wrap="wrap">{agentState.error.slice(0, 120)}</Text>
+            </Box>
+          )}
+          {agentState.tokenUsage && (
+            <Box flexDirection="row" gap={1}>
+              <Text dimColor>tokens </Text>
+              <Text>{agentState.tokenUsage.inputTokens + agentState.tokenUsage.outputTokens}</Text>
+              {agentState.tokenUsage.totalCost > 0 && (
+                <Text dimColor>(${agentState.tokenUsage.totalCost.toFixed(4)})</Text>
+              )}
+            </Box>
+          )}
+          {agentState.startedAt && (
+            <Box>
+              <Text dimColor>since  </Text>
+              <Text dimColor>{new Date(agentState.startedAt).toLocaleTimeString()}</Text>
+            </Box>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -344,6 +439,7 @@ function StatusBar({
   hasRunningWave,
   hasBack,
   hasErrand,
+  hasEdit,
   questId,
 }: {
   selectedCount: number;
@@ -351,7 +447,8 @@ function StatusBar({
   hasRunningWave?: boolean;
   hasBack?: boolean;
   hasErrand?: boolean;
-  questId?: boolean;
+  hasEdit?: boolean;
+  questId?: boolean; // unused but kept for future use
 }): React.ReactElement {
   return (
     <Box flexDirection="column" height={3}>
@@ -376,6 +473,9 @@ function StatusBar({
         <Text dimColor>X</Text>
         <Text> archive done</Text>
         <Text>  </Text>
+        <Text dimColor>Shift+X</Text>
+        <Text> remove task</Text>
+        <Text>  </Text>
         <Text dimColor>C</Text>
         <Text> concurrency</Text>
         {hasErrand && (
@@ -388,6 +488,17 @@ function StatusBar({
         <Text>  </Text>
         <Text dimColor>W</Text>
         <Text> wishlist</Text>
+        <Text>  </Text>
+        {hasEdit && (
+          <>
+            <Text>  </Text>
+            <Text dimColor>R</Text>
+            <Text> edit</Text>
+          </>
+        )}
+        <Text>  </Text>
+        <Text dimColor>T</Text>
+        <Text> retry</Text>
         <Text>  </Text>
         <Text dimColor>U</Text>
         <Text> usage</Text>
@@ -405,13 +516,13 @@ function StatusBar({
         {hasBack && (
           <>
             <Text>  </Text>
-            <Text dimColor>Esc</Text>
+            <Text dimColor>B/←</Text>
             <Text> back</Text>
           </>
         )}
         <Text>  </Text>
         <Text dimColor>Q</Text>
-        <Text> {questId ? "back" : "quit"}</Text>
+        <Text> quit</Text>
       </Box>
       <Box>
         {selectedCount > 0 ? (
@@ -452,6 +563,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     taskUsage,
     questTitle,
     hasRunningWave,
+    agentStates,
     onSelectionChange,
     onToggle,
     onToggleStream,
@@ -465,8 +577,12 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     onSwitchToMonitor,
     onErrand,
     onArchiveDone,
+    onDeleteCurrent,
     onWishlist,
     onUsage,
+    onEdit,
+    onRetry,
+    isActive = true,
   } = props;
 
   // Keyboard handling
@@ -489,8 +605,8 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
       return;
     }
 
-    // Escape — back
-    if (key.escape) {
+    // Back — b or Left Arrow (Escape is reserved for the global ESC menu)
+    if (input === "b" || key.leftArrow) {
       onBack?.();
       return;
     }
@@ -510,7 +626,10 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     if (input === "e") { onErrand?.(); return; }
     if (input === "w") { onWishlist?.(); return; }
     if (input === "u") { onUsage?.(); return; }
+    if (input === "r") { onEdit?.(); return; }
+    if (input === "t") { onRetry?.(); return; }
     if (input === "x") { onArchiveDone?.(); return; }
+    if (key.delete || input === "X") { onDeleteCurrent?.(); return; }
     if (input === "+" || input === "=") { onChangePriority(-1); return; }
     if (input === "-") { onChangePriority(1); return; }
 
@@ -523,7 +642,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
       }
       return;
     }
-  });
+  }, { isActive });
 
   // Derived values
   const selectedCount = selectedIds.size;
@@ -539,8 +658,26 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
   // Fill the entire terminal height for fullscreen rendering
   const { rows } = useTerminalSize();
 
+  // Scrolling viewport: chrome-top(1) + inner-header(3) + inner-statusbar(3) + chrome-bottom(1) + borders(2) = 10
+  const listHeight = Math.max(1, rows - 10);
+
+  // When the list needs scrolling, always reserve 2 rows for indicators so
+  // the viewport size is stable and the scroll-offset formula stays correct.
+  const fitsWithoutScroll = nodes.length <= listHeight;
+  const visibleCount = fitsWithoutScroll ? nodes.length : Math.max(1, listHeight - 2);
+
+  const scrollOffset = useMemo(() => {
+    if (fitsWithoutScroll) return 0;
+    const ideal = selectedIndex - Math.floor(visibleCount / 2);
+    return Math.max(0, Math.min(ideal, nodes.length - visibleCount));
+  }, [selectedIndex, nodes.length, visibleCount, fitsWithoutScroll]);
+
+  const canScrollUp = scrollOffset > 0;
+  const canScrollDown = scrollOffset + visibleCount < nodes.length;
+  const visibleNodes = nodes.slice(scrollOffset, scrollOffset + visibleCount);
+
   return (
-    <Box flexDirection="column" width="100%" height={rows}>
+    <Box flexDirection="column" width="100%" flexGrow={1}>
       {/* Header */}
       <Header
         totalTaskCount={totalTaskCount}
@@ -559,14 +696,19 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
       <Box flexGrow={1}>
         {/* Task list (left pane, 60%) */}
         <Box flexDirection="column" width="60%" borderStyle="single" borderColor="gray">
-          {nodes.map((node, i) => (
+          {canScrollUp && <Text dimColor>  ▲ {scrollOffset} more above</Text>}
+          {visibleNodes.map((node, i) => (
             <TaskListItem
               key={node.task.id}
               node={node}
-              isSelected={selectedIndex === i}
+              isSelected={selectedIndex === scrollOffset + i}
               isChecked={node.task.status === "planned"}
+              agentState={agentStates?.get(node.task.id)}
             />
           ))}
+          {canScrollDown && (
+            <Text dimColor>  ▼ {nodes.length - scrollOffset - visibleNodes.length} more below</Text>
+          )}
           {nodes.length === 0 && (
             <Text dimColor>  No tasks found</Text>
           )}
@@ -578,6 +720,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
             <TaskDetail
               node={selectedNode}
               usage={selectedTaskUsage}
+              agentState={agentStates?.get(selectedNode.task.id)}
             />
           ) : (
             <Text dimColor>No task selected</Text>
@@ -592,6 +735,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
         hasRunningWave={hasRunningWave}
         hasBack={!!onBack}
         hasErrand={!!onErrand}
+        hasEdit={!!onEdit}
         questId={!!questTitle}
       />
     </Box>

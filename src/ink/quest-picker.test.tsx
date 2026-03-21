@@ -92,7 +92,7 @@ function defaultProps(overrides: Partial<QuestPickerViewProps> = {}): QuestPicke
 describe("QuestPickerView (static rendering)", () => {
   test("renders header with quest count", () => {
     const output = renderToString(<QuestPickerView {...defaultProps()} />);
-    expect(output).toContain("Quest Picker");
+    expect(output).toContain("quest");
     expect(output).toContain("1");
   });
 
@@ -140,8 +140,8 @@ describe("QuestPickerView (static rendering)", () => {
       <QuestPickerView {...defaultProps({ quests: [] })} />
     );
     expect(output).toContain("All Tasks");
-    // Should still render header
-    expect(output).toContain("Quest Picker");
+    // Should still render header with count
+    expect(output).toContain("0");
   });
 
   test("shows detail pane for All Tasks when selectedIndex is 0", () => {

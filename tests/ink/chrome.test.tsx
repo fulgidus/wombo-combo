@@ -62,7 +62,7 @@ describe("ChromeTopBar", () => {
     const out = renderToString(
       <ChromeTopBar screenName="Dashboard" daemonConnected={true} />
     );
-    expect(out).toContain("woco");
+    expect(out).toContain("Home");
   });
 
   test("renders current screen name", () => {

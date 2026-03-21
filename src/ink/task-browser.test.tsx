@@ -104,7 +104,7 @@ function defaultProps(overrides: Partial<TaskBrowserViewProps> = {}): TaskBrowse
 describe("TaskBrowserView (static rendering)", () => {
   test("renders header with task count", () => {
     const output = renderToString(<TaskBrowserView {...defaultProps()} />);
-    expect(output).toContain("Task Browser");
+    expect(output).toContain("tasks");
     expect(output).toContain("1");
   });
 
