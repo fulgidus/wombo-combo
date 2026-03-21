@@ -1,0 +1,20 @@
+id: fake-test2-56-mn0bg5lw
+title: Setup CI pipeline (3)
+description: FAKE_SLEEP_MS=1008 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test2-40-mn0bg5lg
+  - fake-test2-50-mn0bg5lq
+effort: PT24M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

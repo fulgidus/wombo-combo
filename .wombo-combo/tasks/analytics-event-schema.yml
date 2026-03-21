@@ -1,10 +1,9 @@
 id: analytics-event-schema
 quest: agent-analytics
 title: Define analytics event schema and TypeScript types
-description: "Design AgentAnalyticsEvent union type covering: task_started,
-  task_completed, task_failed, build_passed, build_failed, merge_completed,
-  retry_triggered. Each event has timestamp, taskId, questId, agentType,
-  durationMs, tokenUsage."
+description: "Design AgentAnalyticsEvent union type covering: task_started, task_completed, task_failed, build_passed,
+  build_failed, merge_completed, retry_triggered. Each event has timestamp, taskId, questId, agentType, durationMs,
+  tokenUsage."
 status: backlog
 completion: 0
 difficulty: easy

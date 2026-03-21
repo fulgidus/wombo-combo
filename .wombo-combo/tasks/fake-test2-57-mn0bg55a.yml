@@ -1,0 +1,20 @@
+id: fake-test2-57-mn0bg55a
+title: Implement retry logic (3)
+description: FAKE_SLEEP_MS=950 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - fake-test2-50-mn0bg553
+  - fake-test2-36-mn0bg54p
+effort: PT50M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

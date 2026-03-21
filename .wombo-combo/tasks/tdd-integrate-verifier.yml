@@ -1,9 +1,8 @@
 id: tdd-integrate-verifier
 quest: tdd-baseline
 title: Wire baseline diff into verifier.ts / tdd-verifier.ts
-description: "Replace the current 'zero failures required' check in verifier.ts
-  with the delta-based check from tdd-diff-reporter. Add a config flag
-  tdd.baselineMode: 'strict' | 'delta' | 'off'. Update VerificationResult to
+description: "Replace the current 'zero failures required' check in verifier.ts with the delta-based check from
+  tdd-diff-reporter. Add a config flag tdd.baselineMode: 'strict' | 'delta' | 'off'. Update VerificationResult to
   include baseline diff summary."
 status: backlog
 completion: 0

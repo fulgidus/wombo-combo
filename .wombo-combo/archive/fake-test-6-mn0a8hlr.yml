@@ -1,0 +1,19 @@
+id: fake-test-6-mn0a8hlr
+title: Refactor authentication module
+description: FAKE_SLEEP_MS=896 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-2-mn0a8hln
+effort: PT50M
+started_at: 2026-03-21T12:08:33.963Z
+ended_at: 2026-03-21T12:08:44.399Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

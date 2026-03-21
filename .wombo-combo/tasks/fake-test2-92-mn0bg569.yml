@@ -1,0 +1,20 @@
+id: fake-test2-92-mn0bg569
+title: Add structured logging (4)
+description: FAKE_SLEEP_MS=1024 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test2-53-mn0bg556
+  - fake-test2-88-mn0bg565
+effort: PT54M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

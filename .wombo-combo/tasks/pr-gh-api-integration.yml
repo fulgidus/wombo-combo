@@ -1,9 +1,8 @@
 id: pr-gh-api-integration
 quest: auto-pr-changelog
 title: GitHub API integration for PR creation (via gh CLI or REST)
-description: Implement src/lib/github.ts wrapping 'gh pr create' (fallback to
-  REST API via GITHUB_TOKEN). Detect GitHub remote URL, check auth, handle
-  missing gh gracefully with a clear error message.
+description: Implement src/lib/github.ts wrapping 'gh pr create' (fallback to REST API via GITHUB_TOKEN). Detect GitHub
+  remote URL, check auth, handle missing gh gracefully with a clear error message.
 status: backlog
 completion: 0
 difficulty: medium

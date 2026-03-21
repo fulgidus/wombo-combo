@@ -1,0 +1,19 @@
+id: fake-test2-66-mn0bg5m6
+title: Implement rate limiting (3)
+description: FAKE_SLEEP_MS=866 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test2-25-mn0bg5l1
+effort: PT55M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

@@ -1,10 +1,9 @@
 id: replay-recorder
 quest: session-replay
 title: Record agent session events to structured JSONL
-description: "In agent-runner.ts, capture a ReplayEvent stream: prompt_sent,
-  tool_called, tool_result, text_output, file_changed, command_run — each with
-  timestamp and durationMs. Write to .wombo-combo/replays/<feature-id>.jsonl.
-  Keep append-only so partial replays are recoverable."
+description: "In agent-runner.ts, capture a ReplayEvent stream: prompt_sent, tool_called, tool_result, text_output,
+  file_changed, command_run — each with timestamp and durationMs. Write to .wombo-combo/replays/<feature-id>.jsonl. Keep
+  append-only so partial replays are recoverable."
 status: backlog
 completion: 0
 difficulty: hard

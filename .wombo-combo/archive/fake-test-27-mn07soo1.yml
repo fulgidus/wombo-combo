@@ -1,0 +1,19 @@
+id: fake-test-27-mn07soo1
+title: Update dependency versions (2)
+description: FAKE_SLEEP_MS=907 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-9-mn07sonj
+effort: PT17M
+started_at: 2026-03-21T11:03:48.604Z
+ended_at: 2026-03-21T11:03:59.339Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

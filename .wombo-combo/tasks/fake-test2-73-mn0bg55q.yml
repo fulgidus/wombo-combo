@@ -1,0 +1,19 @@
+id: fake-test2-73-mn0bg55q
+title: Implement feature flag system (3)
+description: FAKE_SLEEP_MS=1078 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on:
+  - fake-test2-15-mn0bg544
+effort: PT58M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

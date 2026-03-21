@@ -1,0 +1,20 @@
+id: fake-test-8-mn0a8hlt
+title: Add health check endpoint
+description: FAKE_SLEEP_MS=852 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-test-4-mn0a8hlp
+  - fake-test-7-mn0a8hls
+effort: PT32M
+started_at: 2026-03-21T12:08:57.140Z
+ended_at: 2026-03-21T12:09:08.854Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

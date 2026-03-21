@@ -1,0 +1,20 @@
+id: fake-test2-35-mn0bg5lb
+title: Fix flaky integration test (2)
+description: FAKE_SLEEP_MS=1033 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-test2-13-mn0bg5kp
+  - fake-test2-26-mn0bg5l2
+effort: PT36M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

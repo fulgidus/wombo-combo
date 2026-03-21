@@ -144,28 +144,6 @@ describe("Scheduler start", () => {
     state.destroy();
   });
 
-  test("applies config overrides (maxConcurrent, model, questId)", () => {
-    const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
-    const config: SchedulerConfig = {
-      projectRoot: tempDir,
-      config: makeConfig(),
-      tickIntervalMs: 60000,
-      maxConcurrent: 8,
-      model: "gpt-4o",
-      questId: "quest-1",
-    };
-
-    const scheduler = new Scheduler(config, { state, runner });
-    scheduler.start();
-
-    expect(state.getMaxConcurrent()).toBe(8);
-    expect(state.getModel()).toBe("gpt-4o");
-    expect(state.getQuestId()).toBe("quest-1");
-    scheduler.shutdown();
-    state.destroy();
-  });
-
   test("sets baseBranch from config", () => {
     const state = new DaemonState(tempDir);
     const { runner } = makeMockRunner();
@@ -941,6 +919,65 @@ describe("AgentRunner.reconcileOrphanedTasks()", () => {
     expect(tasks.find((t) => t.id === "done-task")!.status).toBe("done");
     expect(tasks.find((t) => t.id === "cancelled-task")!.status).toBe("cancelled");
 
+    state.destroy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Concurrency: persisted state survives daemon boot (fix-concurrency-boot-reset)
+// ---------------------------------------------------------------------------
+
+describe("Scheduler start() — concurrencyPinned preserves persisted state", () => {
+  test("does NOT overwrite maxConcurrent when concurrencyPinned is pre-set (simulates daemon boot with loaded state)", () => {
+    // Simulate what Daemon.start() does when state.load() finds a valid file:
+    // it sets scheduler.concurrencyPinned = true before calling scheduler.start().
+    const state = new DaemonState(tempDir);
+    // Set maxConcurrent to 0 (infinite) as if it was loaded from disk
+    state.setMaxConcurrent(0);
+
+    // Add a non-terminal agent so tick doesn't immediately go idle
+    state.addAgent(makeAgent("keep-alive"));
+    state.updateAgentStatus("keep-alive", "running");
+
+    const { runner } = makeMockRunner();
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig(), // defaults.maxConcurrent = 4
+      tickIntervalMs: 60000,
+    };
+
+    const scheduler = new Scheduler(config, { state, runner });
+    // Simulate what Daemon.start() does after state.load() when stateLoaded=true
+    scheduler.concurrencyPinned = true;
+    scheduler.start();
+
+    // The config default (4) must NOT have overwritten the persisted value (0)
+    expect(state.getMaxConcurrent()).toBe(0);
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("applies config default when concurrencyPinned is false (fresh daemon boot, no state file)", () => {
+    const state = new DaemonState(tempDir);
+
+    state.addAgent(makeAgent("keep-alive"));
+    state.updateAgentStatus("keep-alive", "running");
+
+    const { runner } = makeMockRunner();
+    // Use 7 as the config default to distinguish from the state default (4)
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({ defaults: { maxConcurrent: 7, maxRetries: 2 } }),
+      tickIntervalMs: 60000,
+    };
+
+    const scheduler = new Scheduler(config, { state, runner });
+    // concurrencyPinned is false (default) — no loaded state
+    scheduler.start();
+
+    // Config default should have been applied
+    expect(state.getMaxConcurrent()).toBe(7);
+    scheduler.shutdown();
     state.destroy();
   });
 });

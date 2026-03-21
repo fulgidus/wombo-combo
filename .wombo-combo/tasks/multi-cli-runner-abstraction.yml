@@ -1,10 +1,9 @@
 id: multi-cli-runner-abstraction
 quest: multi-cli-support
 title: Abstract AgentRunner to pluggable provider interface
-description: "Extract the claude-code-specific invocation logic from
-  agent-runner.ts into a ClaudeCodeProvider class. Define IAgentProvider
-  interface with run(task, worktree, opts): AgentResult. Refactor scheduler to
-  pass the selected provider to the runner."
+description: "Extract the claude-code-specific invocation logic from agent-runner.ts into a ClaudeCodeProvider class.
+  Define IAgentProvider interface with run(task, worktree, opts): AgentResult. Refactor scheduler to pass the selected
+  provider to the runner."
 status: backlog
 completion: 0
 difficulty: hard

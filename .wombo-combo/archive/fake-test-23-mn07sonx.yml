@@ -1,0 +1,19 @@
+id: fake-test-23-mn07sonx
+title: Refactor authentication module
+description: FAKE_SLEEP_MS=969 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-14-mn07sono
+effort: PT30M
+started_at: 2026-03-21T11:01:48.008Z
+ended_at: 2026-03-21T11:01:59.132Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

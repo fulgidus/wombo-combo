@@ -1,9 +1,8 @@
 id: pr-description-builder
 quest: auto-pr-changelog
 title: Build structured PR description from wave/merge data
-description: "Generate PR body: ## Summary (from task title+desc), ## Changes
-  (file diff stats per agent), ## Test Results (from build verification output),
-  ## Token Usage. Support mustache template override in config."
+description: "Generate PR body: ## Summary (from task title+desc), ## Changes (file diff stats per agent), ## Test
+  Results (from build verification output), ## Token Usage. Support mustache template override in config."
 status: backlog
 completion: 0
 difficulty: medium

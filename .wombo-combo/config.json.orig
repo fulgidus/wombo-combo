@@ -1,0 +1,67 @@
+{
+    "devMode": true,
+    "tasksDir": "tasks",
+    "archiveDir": "archive",
+    "baseBranch": "main",
+    "build": {
+        "command": "bun run build",
+        "timeout": 300000,
+        "artifactDir": "dist"
+    },
+    "install": {
+        "command": "bun install",
+        "timeout": 120000
+    },
+    "git": {
+        "branchPrefix": "feature/",
+        "worktreePrefix": "wt-wombo-",
+        "remote": "origin",
+        "mergeStrategy": "--no-ff"
+    },
+    "agent": {
+        "bin": null,
+        "name": "generalist-agent",
+        "configFiles": [
+            ".opencode/",
+            "opencode.json",
+            "AGENTS.md"
+        ],
+        "tmuxPrefix": "wombo-combo"
+    },
+    "portless": {
+        "enabled": true,
+        "bin": null,
+        "proxyPort": 1355,
+        "https": true
+    },
+    "backup": {
+        "maxBackups": 5
+    },
+    "defaults": {
+        "maxConcurrent": 20,
+        "maxRetries": 2
+    },
+    "browser": {
+        "enabled": false,
+        "bin": null,
+        "headless": true,
+        "testCommand": null,
+        "launchTimeout": 30000,
+        "testTimeout": 60000,
+        "defaultViewport": {
+            "width": 1280,
+            "height": 720
+        }
+    },
+    "agentRegistry": {
+        "mode": "auto",
+        "source": "msitarzewski/agency-agents",
+        "cacheDir": "agents-cache"
+    },
+    "tdd": {
+        "enabled": true,
+        "testCommand": "bun test",
+        "strictTdd": true,
+        "testTimeout": 120000
+    }
+}

@@ -1,0 +1,19 @@
+id: fake-test2-15-mn0bg544
+title: Optimize database queries
+description: FAKE_SLEEP_MS=855 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-test2-4-mn0bg53t
+effort: PT50M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

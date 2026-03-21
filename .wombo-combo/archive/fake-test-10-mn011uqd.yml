@@ -1,0 +1,20 @@
+id: fake-test-10-mn011uqd
+title: Implement caching layer
+description: FAKE_SLEEP_MS=1017 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-7-mn011uqa
+  - fake-test-4-mn011uq7
+effort: PT17M
+started_at: 2026-03-21T07:50:13.032Z
+ended_at: 2026-03-21T07:51:21.488Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

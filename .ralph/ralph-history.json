@@ -1,0 +1,39 @@
+{
+  "iterations": [
+    {
+      "iteration": 1,
+      "startedAt": "2026-03-21T13:54:23.115Z",
+      "endedAt": "2026-03-21T13:59:31.268Z",
+      "durationMs": 304964,
+      "agent": "opencode",
+      "model": "",
+      "toolsUsed": {},
+      "filesModified": [
+        ".github/prompts/",
+        ".github/skills/",
+        ".opencode/command/",
+        ".opencode/skills/",
+        ".ralph/",
+        "openspec/changes/archive/2026-03-21-fix-concurrency-boot-reset/",
+        "openspec/specs/infinite-concurrency-burst/",
+        "openspec/specs/safe-tmp-worktree-placement/",
+        "openspec/specs/scheduler-concurrency-accounting/"
+      ],
+      "exitCode": 0,
+      "completionDetected": false,
+      "errors": [
+        "+   console.error('State flush failed:', err);",
+        "\u001b[91m\u001b[1mError: \u001b[0mThe edit tool was called with invalid arguments: ["
+      ]
+    }
+  ],
+  "totalDurationMs": 304964,
+  "struggleIndicators": {
+    "repeatedErrors": {
+      "+   console.error('State flush failed:', err);": 1,
+      "\u001b[91m\u001b[1mError: \u001b[0mThe edit tool was called with invalid arguments: [": 1
+    },
+    "noProgressIterations": 0,
+    "shortIterations": 0
+  }
+}

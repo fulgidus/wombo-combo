@@ -1,9 +1,8 @@
 id: team-task-ownership
 quest: team-collab
 title: Track task ownership to prevent duplicate work
-description: "Add optional owner field to task files. When scheduler picks a
-  task, write owner: <developer-id>. Block other daemons from picking owned
-  tasks. Release ownership on task completion or daemon shutdown."
+description: "Add optional owner field to task files. When scheduler picks a task, write owner: <developer-id>. Block
+  other daemons from picking owned tasks. Release ownership on task completion or daemon shutdown."
 status: backlog
 completion: 0
 difficulty: medium

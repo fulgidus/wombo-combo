@@ -1,0 +1,19 @@
+id: fake-test-22-mn07sowg
+title: Add health check endpoint
+description: FAKE_SLEEP_MS=1064 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-6-mn07sow0
+effort: PT57M
+started_at: 2026-03-21T11:04:30.520Z
+ended_at: 2026-03-21T11:04:41.446Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,9 +1,8 @@
 id: tdd-config-options
 quest: tdd-baseline
 title: Add tdd config block (mode, threshold, exclude patterns)
-description: "Extend WomboConfig with a tdd block: baselineMode,
-  regressionThreshold (allow up to N new failures), excludePatterns. Document in
-  config schema and validate on load."
+description: "Extend WomboConfig with a tdd block: baselineMode, regressionThreshold (allow up to N new failures),
+  excludePatterns. Document in config schema and validate on load."
 status: backlog
 completion: 0
 difficulty: easy

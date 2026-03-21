@@ -1,9 +1,8 @@
 id: dashboard-data-model
 quest: dashboard-realtime
 title: Define dashboard state model and live-poll hooks
-description: "Define DashboardState type: agents[], waveSummary, tokenBudget,
-  recentEvents[]. Implement useDashboardState() hook that polls
-  daemon-state.json + analytics.jsonl at 1s interval. Feed into all dashboard
+description: "Define DashboardState type: agents[], waveSummary, tokenBudget, recentEvents[]. Implement
+  useDashboardState() hook that polls daemon-state.json + analytics.jsonl at 1s interval. Feed into all dashboard
   sub-components."
 status: backlog
 completion: 0

@@ -1,0 +1,13 @@
+{
+  "active": true,
+  "iteration": 1,
+  "minIterations": 1,
+  "maxIterations": 0,
+  "completionPromise": "COMPLETE",
+  "tasksMode": false,
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "prompt": "read the previous convo about the issue and try to fix the bug once and for all: ",
+  "startedAt": "2026-03-21T13:54:19.880Z",
+  "model": "",
+  "agent": "opencode"
+}

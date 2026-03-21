@@ -1,0 +1,20 @@
+id: fake-test-9-mn0a8hlu
+title: Extract shared utilities
+description: FAKE_SLEEP_MS=1024 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test-5-mn0a8hlq
+  - fake-test-3-mn0a8hlo
+effort: PT21M
+started_at: 2026-03-21T12:08:17.543Z
+ended_at: 2026-03-21T12:08:28.737Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

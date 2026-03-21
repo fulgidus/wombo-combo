@@ -1,9 +1,8 @@
 id: analytics-cmd
 quest: agent-analytics
 title: Add 'woco analytics' CLI command with filtering and display
-description: Implement 'woco analytics [--quest <id>] [--since <date>] [--format
-  table|json]' that shows per-task stats, totals, and trend indicators. Include
-  'woco analytics summary' for a quick overview.
+description: Implement 'woco analytics [--quest <id>] [--since <date>] [--format table|json]' that shows per-task stats,
+  totals, and trend indicators. Include 'woco analytics summary' for a quick overview.
 status: backlog
 completion: 0
 difficulty: medium

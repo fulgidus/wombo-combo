@@ -1,0 +1,20 @@
+id: fake-test2-96-mn0bg5n0
+title: Fix memory leak in worker (4)
+description: FAKE_SLEEP_MS=1052 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - fake-test2-82-mn0bg5mm
+  - fake-test2-50-mn0bg5lq
+effort: PT55M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

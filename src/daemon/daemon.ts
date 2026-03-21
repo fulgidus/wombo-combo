@@ -186,6 +186,12 @@ export class Daemon {
     // No manual cmd:start needed — the scheduler wakes on every tick and
     // picks any tasks whose status is "planned" and whose deps are met.
     //
+    // If persisted daemon state was loaded from disk, the user's last-set
+    // maxConcurrent is already in state.  Mark concurrencyPinned so the
+    // scheduler's start() does NOT overwrite it with the config default.
+    if (this.state.stateLoaded) {
+      this.scheduler.concurrencyPinned = true;
+    }
     // First reconcile any tasks that were left "in_progress" by a previous
     // daemon run that crashed or was killed — reset them to "planned" so the
     // scheduler can pick them up again.

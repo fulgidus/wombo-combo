@@ -1,0 +1,18 @@
+id: fake-test-12-mn07sonm
+title: Implement caching layer
+description: FAKE_SLEEP_MS=914 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on: []
+effort: PT18M
+started_at: 2026-03-21T10:59:13.239Z
+ended_at: 2026-03-21T10:59:23.835Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,20 @@
+id: fake-test2-93-mn0bg56a
+title: Extract shared utilities (4)
+description: FAKE_SLEEP_MS=1080 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on:
+  - fake-test2-7-mn0bg53w
+  - fake-test2-27-mn0bg54g
+effort: PT53M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

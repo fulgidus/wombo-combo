@@ -1,9 +1,8 @@
 id: analytics-emit-events
 quest: agent-analytics
 title: Emit analytics events from scheduler and agent runner
-description: Instrument src/daemon/scheduler.ts and src/agents/agent-runner.ts
-  to emit analytics events at key lifecycle points. Write to
-  .wombo-combo/analytics.jsonl (append-only, newline-delimited JSON).
+description: Instrument src/daemon/scheduler.ts and src/agents/agent-runner.ts to emit analytics events at key lifecycle
+  points. Write to .wombo-combo/analytics.jsonl (append-only, newline-delimited JSON).
 status: backlog
 completion: 0
 difficulty: medium

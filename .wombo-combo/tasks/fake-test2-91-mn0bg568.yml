@@ -1,0 +1,20 @@
+id: fake-test2-91-mn0bg568
+title: Implement caching layer (4)
+description: FAKE_SLEEP_MS=1038 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - fake-test2-85-mn0bg562
+  - fake-test2-72-mn0bg55p
+effort: PT33M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

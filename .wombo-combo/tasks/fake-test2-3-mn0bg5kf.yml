@@ -1,0 +1,19 @@
+id: fake-test2-3-mn0bg5kf
+title: Add health check endpoint
+description: FAKE_SLEEP_MS=766 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - fake-test2-2-mn0bg5ke
+effort: PT40M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

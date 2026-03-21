@@ -1,0 +1,18 @@
+id: fake-test-9-mn011uqc
+title: Update test fixtures
+description: FAKE_SLEEP_MS=1049 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on: []
+effort: PT50M
+started_at: 2026-03-21T07:50:28.631Z
+ended_at: 2026-03-21T07:52:18.346Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

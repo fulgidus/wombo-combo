@@ -1,10 +1,8 @@
 id: changelog-conventional-parser
 quest: auto-pr-changelog
 title: Parse conventional commits into CHANGELOG entries
-description: Implement a conventional commit parser
-  (feat/fix/chore/refactor/docs/perf) that groups commits since last tag. Output
-  structured ChangelogEntry[]. Handle breaking changes (!), scopes, and
-  multi-line bodies.
+description: Implement a conventional commit parser (feat/fix/chore/refactor/docs/perf) that groups commits since last
+  tag. Output structured ChangelogEntry[]. Handle breaking changes (!), scopes, and multi-line bodies.
 status: backlog
 completion: 0
 difficulty: medium

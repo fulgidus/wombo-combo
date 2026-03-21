@@ -1,9 +1,8 @@
 id: analytics-query-layer
 quest: agent-analytics
 title: Build query/aggregation layer over analytics.jsonl
-description: "Implement src/lib/analytics.ts with: loadEvents(),
-  filterByQuest(), filterByDateRange(), aggregateByTask() returning p50/p95/mean
-  for duration and tokens. Used by both CLI and dashboard."
+description: "Implement src/lib/analytics.ts with: loadEvents(), filterByQuest(), filterByDateRange(), aggregateByTask()
+  returning p50/p95/mean for duration and tokens. Used by both CLI and dashboard."
 status: backlog
 completion: 0
 difficulty: medium

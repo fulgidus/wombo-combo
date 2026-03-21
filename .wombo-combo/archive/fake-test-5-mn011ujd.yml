@@ -1,0 +1,19 @@
+id: fake-test-5-mn011ujd
+title: Setup CI pipeline
+description: FAKE_SLEEP_MS=883 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-2-mn011uja
+effort: PT53M
+started_at: 2026-03-21T07:50:25.140Z
+ended_at: 2026-03-21T07:52:03.112Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

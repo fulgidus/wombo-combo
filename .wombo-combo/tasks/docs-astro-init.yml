@@ -1,9 +1,8 @@
 id: docs-astro-init
 quest: docs-starlight
 title: Initialize Astro + Starlight site in docs/
-description: Run create-astro with Starlight template into docs/. Configure site
-  title, logo, social links. Add docs/ to .gitignore exceptions. Verify local
-  dev server starts.
+description: Run create-astro with Starlight template into docs/. Configure site title, logo, social links. Add docs/ to
+  .gitignore exceptions. Verify local dev server starts.
 status: backlog
 completion: 0
 difficulty: easy

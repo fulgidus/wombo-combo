@@ -1,0 +1,20 @@
+id: fake-test2-69-mn0bg55m
+title: Create deployment script (3)
+description: FAKE_SLEEP_MS=705 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test2-34-mn0bg54n
+  - fake-test2-18-mn0bg547
+effort: PT52M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

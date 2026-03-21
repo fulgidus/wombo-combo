@@ -1,9 +1,8 @@
 id: release-cmd
 quest: auto-pr-changelog
 title: Add 'woco release' command (version bump + changelog + tag + PR)
-description: "Implement 'woco release [patch|minor|major]' that: bumps
-  package.json version, updates CHANGELOG.md, commits, creates git tag, pushes,
-  and opens a PR. Dry-run by default, --confirm to execute."
+description: "Implement 'woco release [patch|minor|major]' that: bumps package.json version, updates CHANGELOG.md,
+  commits, creates git tag, pushes, and opens a PR. Dry-run by default, --confirm to execute."
 status: backlog
 completion: 0
 difficulty: medium

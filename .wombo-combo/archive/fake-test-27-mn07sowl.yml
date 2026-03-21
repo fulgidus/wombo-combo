@@ -1,0 +1,19 @@
+id: fake-test-27-mn07sowl
+title: Create deployment script (2)
+description: FAKE_SLEEP_MS=994 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - fake-test-20-mn07sowe
+effort: PT55M
+started_at: 2026-03-21T11:04:50.936Z
+ended_at: 2026-03-21T11:05:02.073Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

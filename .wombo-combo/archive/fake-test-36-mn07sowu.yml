@@ -1,0 +1,20 @@
+id: fake-test-36-mn07sowu
+title: Refactor routing logic (2)
+description: FAKE_SLEEP_MS=1032 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-12-mn07sow6
+  - fake-test-11-mn07sow5
+effort: PT52M
+started_at: 2026-03-21T11:03:22.042Z
+ended_at: 2026-03-21T11:03:34.474Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

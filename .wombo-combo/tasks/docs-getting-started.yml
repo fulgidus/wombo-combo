@@ -1,9 +1,8 @@
 id: docs-getting-started
 quest: docs-starlight
 title: Write getting started and installation guide
-description: "Cover: prerequisites, installation (npm/bun global), init, first
-  quest, first wave. Include annotated screenshots or terminal recordings
-  (asciinema). Link to config reference."
+description: "Cover: prerequisites, installation (npm/bun global), init, first quest, first wave. Include annotated
+  screenshots or terminal recordings (asciinema). Link to config reference."
 status: backlog
 completion: 0
 difficulty: easy

@@ -1,9 +1,8 @@
 id: docs-command-reference
 quest: docs-starlight
 title: Auto-generate command reference from COMMAND_REGISTRY
-description: Write a build script (docs/scripts/gen-commands.ts) that imports
-  COMMAND_REGISTRY, walks all commands/subcommands, and emits MDX pages under
-  docs/src/content/docs/commands/. Run as part of Astro build.
+description: Write a build script (docs/scripts/gen-commands.ts) that imports COMMAND_REGISTRY, walks all
+  commands/subcommands, and emits MDX pages under docs/src/content/docs/commands/. Run as part of Astro build.
 status: backlog
 completion: 0
 difficulty: medium

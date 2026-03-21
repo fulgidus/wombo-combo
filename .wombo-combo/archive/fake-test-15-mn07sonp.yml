@@ -1,0 +1,19 @@
+id: fake-test-15-mn07sonp
+title: Review security vulnerabilities
+description: FAKE_SLEEP_MS=1036 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: high
+depends_on:
+  - fake-test-10-mn07sonk
+effort: PT40M
+started_at: 2026-03-21T10:59:32.558Z
+ended_at: 2026-03-21T10:59:43.394Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

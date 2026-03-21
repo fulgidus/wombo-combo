@@ -1,9 +1,8 @@
 id: replay-index
 quest: session-replay
 title: Maintain replay index for listing and lookup
-description: Maintain .wombo-combo/replays/_index.json mapping featureId →
-  {path, startedAt, completedAt, taskTitle, status, eventCount}. Update on
-  recorder write and on merge/fail. Enables 'woco replay list'.
+description: Maintain .wombo-combo/replays/_index.json mapping featureId → {path, startedAt, completedAt, taskTitle,
+  status, eventCount}. Update on recorder write and on merge/fail. Enables 'woco replay list'.
 status: backlog
 completion: 0
 difficulty: easy

@@ -1,10 +1,8 @@
 id: multi-cli-providers-cmd
 quest: multi-cli-support
 title: Add 'woco providers list' command showing provider status
-description: "Implement 'woco providers list' showing each configured provider:
-  binary path (found/missing), auth status (env set/missing), rate-limit status,
-  tasks completed this session, estimated cost. Use toon output for TUI
-  display."
+description: "Implement 'woco providers list' showing each configured provider: binary path (found/missing), auth status
+  (env set/missing), rate-limit status, tasks completed this session, estimated cost. Use toon output for TUI display."
 status: backlog
 completion: 0
 difficulty: easy

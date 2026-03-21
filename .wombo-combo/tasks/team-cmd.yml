@@ -1,9 +1,8 @@
 id: team-cmd
 quest: team-collab
 title: Add 'woco team' subcommand for team visibility
-description: Implement 'woco team list' showing online developers and their
-  active waves. 'woco team tasks' shows all tasks with owner annotations. 'woco
-  team sync' does a git fetch + merge of .wombo-combo/ changes.
+description: Implement 'woco team list' showing online developers and their active waves. 'woco team tasks' shows all
+  tasks with owner annotations. 'woco team sync' does a git fetch + merge of .wombo-combo/ changes.
 status: backlog
 completion: 0
 difficulty: easy

@@ -1,9 +1,8 @@
 id: docs-github-pages-ci
 quest: docs-starlight
 title: Add GitHub Actions workflow to deploy docs to GitHub Pages
-description: Create .github/workflows/docs.yml that builds the Astro site and
-  deploys to gh-pages on push to main. Add README badge. Configure custom domain
-  hook if needed.
+description: Create .github/workflows/docs.yml that builds the Astro site and deploys to gh-pages on push to main. Add
+  README badge. Configure custom domain hook if needed.
 status: backlog
 completion: 0
 difficulty: easy

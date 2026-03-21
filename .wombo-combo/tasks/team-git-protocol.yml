@@ -1,9 +1,8 @@
 id: team-git-protocol
 quest: team-collab
 title: Design git-native team coordination protocol
-description: "Define the protocol: shared .wombo-combo/team/ dir tracked in git,
-  JSON presence files per developer (developer-<name>.json with active waves,
-  locked tasks, last seen). Document conflict resolution rules for concurrent
+description: "Define the protocol: shared .wombo-combo/team/ dir tracked in git, JSON presence files per developer
+  (developer-<name>.json with active waves, locked tasks, last seen). Document conflict resolution rules for concurrent
   edits to tasks/ and quests/."
 status: backlog
 completion: 0

@@ -1,0 +1,18 @@
+id: fake-test-23-mn0a8hm8
+title: Review security vulnerabilities
+description: FAKE_SLEEP_MS=964 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: medium
+depends_on: []
+effort: PT54M
+started_at: 2026-03-21T12:08:01.234Z
+ended_at: 2026-03-21T12:08:13.036Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

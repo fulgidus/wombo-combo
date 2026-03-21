@@ -1,0 +1,18 @@
+id: fake-test-35-mn07sowt
+title: Add unit tests for parser (2)
+description: FAKE_SLEEP_MS=875 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: high
+depends_on: []
+effort: PT36M
+started_at: 2026-03-21T10:58:41.326Z
+ended_at: 2026-03-21T10:58:52.084Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

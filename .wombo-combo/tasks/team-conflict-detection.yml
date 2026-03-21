@@ -1,9 +1,8 @@
 id: team-conflict-detection
 quest: team-collab
 title: Detect and warn on conflicting waves across developers
-description: Before launching a wave on branch X, check presence files for other
-  active waves touching the same branch or quest. Warn the user with developer
-  names and suggest coordination. Non-blocking (warn only, don't prevent).
+description: Before launching a wave on branch X, check presence files for other active waves touching the same branch
+  or quest. Warn the user with developer names and suggest coordination. Non-blocking (warn only, don't prevent).
 status: backlog
 completion: 0
 difficulty: medium

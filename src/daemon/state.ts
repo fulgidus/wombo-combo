@@ -87,6 +87,13 @@ export class DaemonState {
   private dirty = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * True when a valid daemon-state.json was found and successfully loaded.
+   * Used by Daemon.start() to pre-pin concurrency so the first scheduler.start()
+   * does not overwrite the user's persisted maxConcurrent with the config default.
+   */
+  stateLoaded = false;
+
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
     this.scheduler = DaemonState.defaultSchedulerState();
@@ -111,6 +118,7 @@ export class DaemonState {
       for (const agent of parsed.agents) {
         this.agents.set(agent.featureId, agent);
       }
+      this.stateLoaded = true;
     } catch {
       // Corrupted state file — start fresh
     }

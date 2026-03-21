@@ -1,9 +1,8 @@
 id: tdd-snapshot-baseline
 quest: tdd-baseline
 title: Capture test baseline on main before worktree checkout
-description: Before the agent worktree is created, run the detected test suite
-  on main and serialise results (pass/fail per test, counts) into
-  .wombo-combo/baselines/<feature-id>.json. Called by the scheduler pre-launch.
+description: Before the agent worktree is created, run the detected test suite on main and serialise results (pass/fail
+  per test, counts) into .wombo-combo/baselines/<feature-id>.json. Called by the scheduler pre-launch.
 status: backlog
 completion: 0
 difficulty: medium

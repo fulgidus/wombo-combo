@@ -1,0 +1,20 @@
+id: fake-test2-99-mn0bg56g
+title: Refactor authentication module (4)
+description: FAKE_SLEEP_MS=738 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: high
+depends_on:
+  - fake-test2-65-mn0bg55i
+  - fake-test2-15-mn0bg544
+effort: PT43M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

@@ -1,9 +1,8 @@
 id: docs-config-reference
 quest: docs-starlight
 title: Write configuration reference (all config.json fields)
-description: Document every field in WomboConfig with type, default, and
-  examples. Auto-generate schema table from TypeScript types where possible.
-  Include tdd, tui, agents, git sections.
+description: Document every field in WomboConfig with type, default, and examples. Auto-generate schema table from
+  TypeScript types where possible. Include tdd, tui, agents, git sections.
 status: backlog
 completion: 0
 difficulty: easy

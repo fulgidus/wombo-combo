@@ -1,9 +1,8 @@
 id: dashboard-status-panel
 quest: dashboard-realtime
 title: Running/done/failed/queued status panel with counts
-description: Build a <StatusPanel> component showing live agent counts and wave
-  progress bar. Use theme colors for status indicators. Show ETA based on avg
-  task duration from analytics.
+description: Build a <StatusPanel> component showing live agent counts and wave progress bar. Use theme colors for
+  status indicators. Show ETA based on avg task duration from analytics.
 status: backlog
 completion: 0
 difficulty: medium

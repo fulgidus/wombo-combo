@@ -1,9 +1,8 @@
 id: multi-cli-task-routing
 quest: multi-cli-support
 title: "Task-to-provider routing: per-task agent field + round-robin"
-description: "Scheduler selects provider per task: use task.agent if set, else
-  match task tags against provider capabilities, else round-robin across
-  available providers. Respect per-provider rate limits and active slot counts."
+description: "Scheduler selects provider per task: use task.agent if set, else match task tags against provider
+  capabilities, else round-robin across available providers. Respect per-provider rate limits and active slot counts."
 status: backlog
 completion: 0
 difficulty: medium

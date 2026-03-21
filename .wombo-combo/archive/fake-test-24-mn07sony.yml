@@ -1,0 +1,20 @@
+id: fake-test-24-mn07sony
+title: Add health check endpoint
+description: FAKE_SLEEP_MS=910 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - fake-test-14-mn07sono
+  - fake-test-11-mn07sonl
+effort: PT41M
+started_at: 2026-03-21T11:04:00.304Z
+ended_at: 2026-03-21T11:04:12.204Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

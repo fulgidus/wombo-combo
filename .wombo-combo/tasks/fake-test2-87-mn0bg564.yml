@@ -1,0 +1,19 @@
+id: fake-test2-87-mn0bg564
+title: Add error handling middleware (4)
+description: FAKE_SLEEP_MS=1073 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test2-71-mn0bg55o
+effort: PT46M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

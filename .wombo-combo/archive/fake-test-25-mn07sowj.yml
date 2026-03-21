@@ -1,0 +1,18 @@
+id: fake-test-25-mn07sowj
+title: Add pagination support
+description: FAKE_SLEEP_MS=1031 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT51M
+started_at: 2026-03-21T11:00:33.575Z
+ended_at: 2026-03-21T11:00:45.515Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

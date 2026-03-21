@@ -1,0 +1,20 @@
+id: fake-test-44-mn07sooi
+title: Refactor routing logic (2)
+description: FAKE_SLEEP_MS=925 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test-14-mn07sono
+  - fake-test-5-mn07sonf
+effort: PT39M
+started_at: 2026-03-21T11:01:40.499Z
+ended_at: 2026-03-21T11:01:51.469Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

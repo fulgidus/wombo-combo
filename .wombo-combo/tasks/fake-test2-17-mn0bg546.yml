@@ -1,0 +1,19 @@
+id: fake-test2-17-mn0bg546
+title: Add structured logging
+description: FAKE_SLEEP_MS=715 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - fake-test2-16-mn0bg545
+effort: PT21M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

@@ -1,0 +1,20 @@
+id: fake-test2-40-mn0bg5lg
+title: Add pagination support (2)
+description: FAKE_SLEEP_MS=811 Random deps across tasks (~30% density).
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test2-16-mn0bg5ks
+  - fake-test2-33-mn0bg5l9
+effort: PT36M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test2

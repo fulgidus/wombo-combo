@@ -1,0 +1,19 @@
+id: fake-test-18-mn07sowc
+title: Extract shared utilities
+description: FAKE_SLEEP_MS=970 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-5-mn07sovz
+effort: PT44M
+started_at: 2026-03-21T11:03:01.001Z
+ended_at: 2026-03-21T11:03:12.608Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

@@ -1,0 +1,19 @@
+id: fake-test-18-mn0a8hm3
+title: Update dependency versions
+description: FAKE_SLEEP_MS=874 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on:
+  - fake-test-15-mn0a8hm0
+effort: PT17M
+started_at: 2026-03-21T12:09:02.166Z
+ended_at: 2026-03-21T12:09:13.123Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

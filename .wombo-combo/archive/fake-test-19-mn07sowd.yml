@@ -1,0 +1,20 @@
+id: fake-test-19-mn07sowd
+title: Fix memory leak in worker
+description: FAKE_SLEEP_MS=997 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-test-4-mn07sovy
+  - fake-test-6-mn07sow0
+effort: PT33M
+started_at: 2026-03-21T11:04:25.236Z
+ended_at: 2026-03-21T11:04:37.610Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

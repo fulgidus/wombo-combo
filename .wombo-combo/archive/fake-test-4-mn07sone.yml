@@ -1,0 +1,19 @@
+id: fake-test-4-mn07sone
+title: Implement feature flag system
+description: FAKE_SLEEP_MS=988 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-test-3-mn07sond
+effort: PT52M
+started_at: 2026-03-21T11:01:27.932Z
+ended_at: 2026-03-21T11:01:39.420Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test

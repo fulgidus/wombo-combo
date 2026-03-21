@@ -1,10 +1,8 @@
 id: multi-cli-fallback-chain
 quest: multi-cli-support
 title: Provider fallback chain on failure or rate-limit
-description: "If a provider fails (non-zero exit, timeout) or hits its rate
-  limit, retry on the next configured provider before marking the task as
-  failed. Log provider switches. Config: fallbackChain: ['claude', 'gemini'] per
-  provider."
+description: "If a provider fails (non-zero exit, timeout) or hits its rate limit, retry on the next configured provider
+  before marking the task as failed. Log provider switches. Config: fallbackChain: ['claude', 'gemini'] per provider."
 status: backlog
 completion: 0
 difficulty: medium

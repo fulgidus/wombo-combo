@@ -1,0 +1,19 @@
+id: fake-test-16-mn011uqj
+title: Review security vulnerabilities
+description: FAKE_SLEEP_MS=796 Random deps across tasks (~30% density).
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-test-14-mn011uqh
+effort: PT29M
+started_at: 2026-03-21T07:50:16.039Z
+ended_at: 2026-03-21T07:51:28.821Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: test
