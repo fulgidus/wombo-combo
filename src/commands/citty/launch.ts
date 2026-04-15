@@ -42,6 +42,7 @@ export interface ParsedLaunchArgs {
   baseBranch?: string;
   maxRetries?: number;
   noTui: boolean;
+  noUi: boolean;
   autoPush: boolean;
   agent?: string;
   questId?: string;
@@ -80,6 +81,7 @@ export function parseLaunchArgs(args: Record<string, any>): ParsedLaunchArgs {
       ? parseInt(args.maxRetries, 10)
       : undefined,
     noTui: args.noTui ?? false,
+    noUi: args.noUi ?? false,
     autoPush: args.autoPush ?? false,
     agent: args.agent ?? undefined,
     questId: args.quest ?? undefined,
@@ -170,6 +172,11 @@ export const launchCommand = defineCommand({
       description: "Disable TUI dashboard, use plain console output",
       required: false,
     },
+    noUi: {
+      type: "boolean",
+      description: "Run woco in pure CLI mode (skip Ink UI)",
+      required: false,
+    },
     autoPush: {
       type: "boolean",
       description: "Automatically push branches after merge",
@@ -254,6 +261,7 @@ export const launchCommand = defineCommand({
       baseBranch: parsed.baseBranch ?? config.baseBranch,
       maxRetries: parsed.maxRetries ?? config.defaults.maxRetries,
       noTui: parsed.noTui,
+      noUi: parsed.noUi,
       autoPush: parsed.autoPush,
       outputFmt: parsed.outputFmt,
       agent: parsed.agent,
@@ -261,6 +269,10 @@ export const launchCommand = defineCommand({
     };
 
     try {
+      if (opts.noUi) {
+        // Apply --no-tui to logic if --no-ui is set
+        opts.noTui = true;
+      }
       await cmdLaunch(opts);
     } catch (err: any) {
       outputError(fmt, err.message);
