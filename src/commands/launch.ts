@@ -175,7 +175,7 @@ async function tryDaemonLaunch(
     });
 
     // Step 4: wait for work to finish (or user to quit)
-    if (!opts.noTui) {
+    if (!opts.noUi && !opts.noTui) {
       // TUI mode — open the daemon monitor
       const { InkDaemonTUI } = await import("../ink/run-daemon-monitor");
       if (fmt === "text") console.log("Launching daemon monitor TUI...\n");
@@ -515,6 +515,7 @@ export interface LaunchCommandOptions {
   baseBranch: string;
   maxRetries: number;
   noTui: boolean;
+  noUi?: boolean;
   autoPush: boolean;
   // Agent selection
   /** CLI override: use this local agent definition for all launched tasks */

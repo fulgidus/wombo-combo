@@ -28,6 +28,8 @@ export interface GlobalFlags {
   output?: OutputFormat;
   /** Help was requested */
   help: boolean;
+  /** Headless mode enabled (skip Ink UI) */
+  noUi: boolean;
 }
 
 export interface ExtractResult {
@@ -55,6 +57,7 @@ export function extractGlobalFlags(args: string[]): ExtractResult {
     dev: false,
     force: false,
     help: false,
+    noUi: false,
   };
   const remaining: string[] = [];
 
@@ -67,6 +70,9 @@ export function extractGlobalFlags(args: string[]): ExtractResult {
         break;
       case "--force":
         flags.force = true;
+        break;
+      case "--no-ui":
+        flags.noUi = true;
         break;
       case "-h":
       case "--help":

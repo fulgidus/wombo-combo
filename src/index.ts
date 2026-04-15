@@ -147,6 +147,9 @@ async function main(): Promise<void> {
     if (globalFlags.force && !cittyArgs.includes("--force")) {
       cittyArgs.push("--force");
     }
+    if (globalFlags.noUi && !cittyArgs.includes("--no-ui")) {
+      cittyArgs.push("--no-ui");
+    }
 
     await runCittyCommand(command, cittyArgs);
     return;
