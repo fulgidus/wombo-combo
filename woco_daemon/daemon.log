@@ -1,0 +1,15 @@
+
+21:41:15.731 [info] [Application] Starting Wombo-Combo BEAM Daemon...
+
+21:41:15.741 [info] [UdsServer] Listening on /tmp/woco_daemon.sock
+
+21:41:24.916 [debug] [InactivityMonitor] Client connected: #Port<0.7>
+
+21:41:24.917 [debug] [UdsServer] Received: PING
+
+
+21:42:11.528 [notice] SIGTERM received - shutting down
+
+
+21:42:11.538 [notice] SIGTERM received - shutting down
+
