@@ -18,7 +18,7 @@
  */
 
 import type { Task, TaskStatus, Priority, Difficulty } from "./tasks";
-import type { AgentState, WaveState } from "./state";
+import type { SchedulerState, DaemonAgentState } from "../daemon/protocol";
 import type { AgentHistoryRecord, WaveHistoryRecord } from "./history";
 import {
   TOON_STATUS_ENCODE,
@@ -209,19 +209,23 @@ export function renderTaskShow(
 // ---------------------------------------------------------------------------
 
 /**
- * Render wave status in TOON format.
+ * Render daemon session status in TOON format.
  *
  * Fields: feature_id|agent_status|exit_code|retries|started_at
  *
  * Also emits a summary header line:
- *   #WAVE wave_id|agent_count|active|completed|failed
+ *   #WAVE session_started_at|agent_count|active|completed|failed
  */
-export function renderStatus(state: WaveState): string {
+export function renderStatus(snapshot: {
+  scheduler: SchedulerState;
+  agents: DaemonAgentState[];
+}): string {
+  const { scheduler, agents } = snapshot;
   const lines: string[] = [];
 
   // Summary line
   const counts: Record<string, number> = {};
-  for (const a of state.agents) {
+  for (const a of agents) {
     counts[a.status] = (counts[a.status] ?? 0) + 1;
   }
 
@@ -230,8 +234,8 @@ export function renderStatus(state: WaveState): string {
   const failed = counts["failed"] ?? 0;
 
   lines.push(`#WAVE ${row(
-    state.wave_id,
-    state.agents.length,
+    encodeNullable(scheduler.startedAt),
+    agents.length,
     active,
     completed,
     failed,
@@ -242,15 +246,15 @@ export function renderStatus(state: WaveState): string {
     "feature_id", "agent_status", "exit_code", "retries", "started_at",
   ]));
 
-  for (const a of state.agents) {
+  for (const a of agents) {
     // Determine exit code: build_passed === true -> 0, false -> 1, null -> empty
-    const exitCode = a.build_passed === true ? "0" : a.build_passed === false ? "1" : "";
+    const exitCode = a.buildPassed === true ? "0" : a.buildPassed === false ? "1" : "";
     lines.push(row(
-      a.feature_id,
+      a.featureId,
       a.status,
       exitCode,
       a.retries,
-      encodeNullable(a.started_at),
+      encodeNullable(a.startedAt),
     ));
   }
 
@@ -402,17 +406,11 @@ export function renderAbort(result: {
   feature_id: string;
   previous_status: string;
   new_status: string;
-  mux_killed: boolean;
-  process_killed: boolean;
-  requeued: boolean;
 }): string {
   const lines: string[] = [];
   lines.push(`fid:${result.feature_id}`);
   lines.push(`prev:${result.previous_status}`);
   lines.push(`new:${result.new_status}`);
-  lines.push(`mux:${encodeBool(result.mux_killed)}`);
-  lines.push(`proc:${encodeBool(result.process_killed)}`);
-  lines.push(`rq:${encodeBool(result.requeued)}`);
   return lines.join("\n");
 }
 
@@ -426,16 +424,16 @@ export function renderAbort(result: {
  * Uses key:value pairs for summary data.
  */
 export function renderCleanup(result: {
-  mux_sessions_killed?: number;
+  daemon_stopped?: boolean;
   worktrees_removed?: number;
+  daemon_state_removed?: boolean;
+  daemon_pid_removed?: boolean;
   state_removed?: boolean;
   logs_removed?: boolean;
   remaining_branches?: string[];
   history_preserved?: boolean;
   // dry-run fields
   dry_run?: boolean;
-  mux_sessions?: string[];
-  mux_sessions_count?: number;
   worktrees?: string[];
   worktrees_count?: number;
   files_to_remove?: string[];
@@ -444,11 +442,7 @@ export function renderCleanup(result: {
 
   if (result.dry_run) {
     lines.push(`dry:1`);
-    lines.push(`mux:${result.mux_sessions_count ?? 0}`);
     lines.push(`wt:${result.worktrees_count ?? 0}`);
-    if (result.mux_sessions && result.mux_sessions.length > 0) {
-      lines.push(`mux_list:${encodeArray(result.mux_sessions)}`);
-    }
     if (result.worktrees && result.worktrees.length > 0) {
       lines.push(`wt_list:${encodeArray(result.worktrees)}`);
     }
@@ -456,53 +450,16 @@ export function renderCleanup(result: {
       lines.push(`files:${encodeArray(result.files_to_remove)}`);
     }
   } else {
-    lines.push(`mux:${result.mux_sessions_killed ?? 0}`);
+    lines.push(`daemon:${encodeBool(result.daemon_stopped ?? false)}`);
     lines.push(`wt:${result.worktrees_removed ?? 0}`);
+    lines.push(`dst:${encodeBool(result.daemon_state_removed ?? false)}`);
+    lines.push(`dpid:${encodeBool(result.daemon_pid_removed ?? false)}`);
     lines.push(`st:${encodeBool(result.state_removed ?? false)}`);
     lines.push(`logs:${encodeBool(result.logs_removed ?? false)}`);
     if (result.remaining_branches && result.remaining_branches.length > 0) {
       lines.push(`branches:${encodeArray(result.remaining_branches)}`);
     }
     lines.push(`hist:${encodeBool(result.history_preserved ?? false)}`);
-  }
-
-  return lines.join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// Merge Renderer
-// ---------------------------------------------------------------------------
-
-/**
- * Render merge results in TOON format.
- *
- * Fields: feature_id|branch|status|error
- */
-export function renderMerge(result: {
-  wave_id: string;
-  base_branch: string;
-  merged?: number;
-  failed?: number;
-  agents: Array<{ feature_id: string; branch: string; status?: string; error?: string | null }>;
-  // dry-run fields
-  dry_run?: boolean;
-  count?: number;
-  auto_push?: boolean;
-}): string {
-  const lines: string[] = [];
-
-  if (result.dry_run) {
-    lines.push(`#DRY wave:${result.wave_id}|base:${result.base_branch}|count:${result.count ?? 0}|push:${encodeBool(result.auto_push ?? false)}`);
-    lines.push(fieldsHeader(["feature_id", "branch"]));
-    for (const a of result.agents) {
-      lines.push(row(a.feature_id, a.branch));
-    }
-  } else {
-    lines.push(`#MERGE wave:${result.wave_id}|base:${result.base_branch}|merged:${result.merged}|failed:${result.failed}`);
-    lines.push(fieldsHeader(["feature_id", "branch", "status", "error"]));
-    for (const a of result.agents) {
-      lines.push(row(a.feature_id, a.branch, a.status, encodeNullable(a.error)));
-    }
   }
 
   return lines.join("\n");
@@ -521,7 +478,6 @@ export function renderRetry(result: {
   feature_id: string;
   mode?: string;
   status?: string;
-  mux_session?: string;
   pid?: number | null;
   // dry-run fields
   dry_run?: boolean;
@@ -544,9 +500,6 @@ export function renderRetry(result: {
     lines.push(`fid:${result.feature_id}`);
     lines.push(`mode:${result.mode ?? ""}`);
     lines.push(`st:${result.status ?? ""}`);
-    if (result.mux_session) {
-      lines.push(`mux:${result.mux_session}`);
-    }
     if (result.pid !== undefined && result.pid !== null) {
       lines.push(`pid:${result.pid}`);
     }
@@ -594,12 +547,11 @@ export function renderLaunchDryRun(result: {
   base_branch: string;
   max_concurrent: number;
   model: string | null;
-  interactive: boolean;
   selected: Array<{ id: string; title: string; priority: string; difficulty: string; effort: string }>;
 }): string {
   const lines: string[] = [];
 
-  lines.push(`#LAUNCH dry:1|base:${result.base_branch}|max:${result.max_concurrent}|model:${encodeNullable(result.model)}|interactive:${encodeBool(result.interactive)}`);
+  lines.push(`#LAUNCH dry:1|base:${result.base_branch}|max:${result.max_concurrent}|model:${encodeNullable(result.model)}`);
   lines.push(fieldsHeader(["id", "priority", "difficulty", "effort", "title"]));
 
   for (const f of result.selected) {

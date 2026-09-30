@@ -47,6 +47,8 @@ export interface SchedulerConfig {
   initialMaxConcurrent?: number;
   /** Override model */
   model?: string | null;
+  /** Override the agent definition for all launched tasks (CLI --agent) */
+  agentOverride?: string;
 }
 
 export interface SchedulerDeps {
@@ -80,6 +82,10 @@ export class Scheduler {
   constructor(config: SchedulerConfig, deps: SchedulerDeps) {
     this.config = config;
     this.deps = deps;
+
+    // Session-scoped CLI --agent override: applied to every task this
+    // scheduler submits (null when unset = use each task's own agent field).
+    this.deps.runner.setAgentOverride(config.agentOverride ?? null);
   }
 
   // -------------------------------------------------------------------------

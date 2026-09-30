@@ -6,7 +6,7 @@
  * utility functions from the three neo-blessed TUI classes.
  */
 
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 
 // ---------------------------------------------------------------------------
 // Quest Status Display Maps

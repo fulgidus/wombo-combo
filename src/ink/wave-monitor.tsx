@@ -24,7 +24,7 @@
 
 import React from "react";
 import { Box, Text, useInput } from "ink";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 import type { ActivityEntry } from "../lib/monitor";
 import { formatTokenCount, formatCost } from "./usage-overlay";
 import {

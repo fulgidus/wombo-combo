@@ -1,25 +1,20 @@
 /**
- * cleanup.ts — Remove all wave-related resources.
+ * cleanup.ts — Remove all session-related resources.
  *
  * Usage: woco cleanup
  *
- * Kills tmux sessions, removes worktrees, removes state and log files.
+ * Stops the daemon if running, removes worktrees, removes daemon session
+ * state (daemon-state.json, daemon.pid), legacy wave state and log files.
  *
  * NOTE: .wombo-combo/history/ is intentionally NOT removed by cleanup.
- * Wave history records are meant to survive cleanup for retrospective
+ * Session history records are meant to survive cleanup for retrospective
  * analysis. See src/lib/history.ts.
  *
- * ## Process Lifecycle (audit: wave-detach-audit)
+ * ## Process Lifecycle
  *
- * Cleanup kills tmux sessions via `killAllMuxSessions()`, which
- * terminates interactive agents running in tmux. Headless agents are
- * NOT explicitly killed here because cleanup assumes the parent process
- * (launch/resume) has already exited — and since headless agents are
- * spawned with `detached: false`, they die when the parent exits.
- *
- * If cleanup is run while a wave is still active (agents still running),
- * the tmux sessions will be killed but any headless agents
- * would have already died with their parent process.
+ * Cleanup stops the daemon via `stopDaemon()` (SIGTERM, then SIGKILL) if a
+ * daemon is running for this project. Daemon agents are headless child
+ * processes of the daemon, so they die with it.
  */
 
 import { existsSync, unlinkSync, rmSync } from "node:fs";
@@ -27,9 +22,8 @@ import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR } from "../config";
-import { killAllMuxSessions, listMuxSessions } from "../lib/launcher";
 import { cleanupAllWorktrees, listWomboWorktrees, worktreesDir, isWorktreesDirEmpty } from "../lib/worktree";
-import { output, outputMessage, type OutputFormat } from "../lib/output";
+import { output, type OutputFormat } from "../lib/output";
 import { renderCleanup } from "../lib/toon";
 
 export interface CleanupOptions {
@@ -43,17 +37,11 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
   const { projectRoot, config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
+  const daemonStatePath = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
+  const daemonPidPath = resolve(projectRoot, WOMBO_DIR, "daemon.pid");
+
   // Dry-run: show what would be cleaned up without doing it
   if (opts.dryRun) {
-    // List tmux sessions that would be killed
-    let matchingSessions: string[] = [];
-    try {
-      const sessions = listMuxSessions(config);
-      matchingSessions = sessions;
-    } catch {
-      // no mux server running
-    }
-
     // List worktrees that would be removed (using safe filtering)
     let matchingWorktrees: { path: string }[] = [];
     try {
@@ -65,13 +53,13 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
     const statePath = resolve(projectRoot, WOMBO_DIR, "state.json");
     const logDir = resolve(projectRoot, WOMBO_DIR, "logs");
     const filesToRemove: string[] = [];
+    if (existsSync(daemonStatePath)) filesToRemove.push(".wombo-combo/daemon-state.json");
+    if (existsSync(daemonPidPath)) filesToRemove.push(".wombo-combo/daemon.pid");
     if (existsSync(statePath)) filesToRemove.push(".wombo-combo/state.json");
     if (existsSync(logDir)) filesToRemove.push(".wombo-combo/logs/");
 
     const dryRunResult = {
       dry_run: true,
-      mux_sessions: matchingSessions,
-      mux_sessions_count: matchingSessions.length,
       worktrees: matchingWorktrees.map((wt) => wt.path),
       worktrees_count: matchingWorktrees.length,
       worktrees_dir: worktreesDir(projectRoot),
@@ -80,10 +68,6 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
 
     output(fmt, dryRunResult, () => {
       console.log("\n[dry-run] Would perform the following cleanup:\n");
-      console.log(`  tmux sessions to kill: ${matchingSessions.length}`);
-      for (const s of matchingSessions) {
-        console.log(`    ${s}`);
-      }
       console.log(`  worktrees to remove: ${matchingWorktrees.length}`);
       for (const wt of matchingWorktrees) {
         console.log(`    ${wt.path}`);
@@ -92,6 +76,9 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
       for (const f of filesToRemove) {
         console.log(`  Would remove: ${f}`);
       }
+      if (existsSync(daemonPidPath)) {
+        console.log("  Would stop the daemon if running");
+      }
     }, () => {
       console.log(renderCleanup(dryRunResult));
     });
@@ -99,8 +86,17 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
     return;
   }
 
-  // Kill tmux sessions
-  const killed = killAllMuxSessions(config);
+  // Stop the daemon if running (best effort — cleanup continues on failure)
+  let daemonStopped = false;
+  try {
+    const { getDaemonStatus, stopDaemon } = await import("../daemon/launcher");
+    if (getDaemonStatus(projectRoot).running) {
+      stopDaemon(projectRoot);
+      daemonStopped = true;
+    }
+  } catch {
+    // daemon module unavailable or stop failed — nothing more to do
+  }
 
   // Remove worktrees
   const removed = cleanupAllWorktrees(projectRoot, config);
@@ -118,7 +114,17 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
     }
   } catch {}
 
-  // Remove state file
+  // Remove daemon session artifacts
+  const daemonStateRemoved = existsSync(daemonStatePath);
+  if (daemonStateRemoved) {
+    unlinkSync(daemonStatePath);
+  }
+  const daemonPidRemoved = existsSync(daemonPidPath);
+  if (daemonPidRemoved) {
+    unlinkSync(daemonPidPath);
+  }
+
+  // Remove legacy wave state file (pre-daemon leftovers)
   const statePath = resolve(projectRoot, WOMBO_DIR, "state.json");
   const stateRemoved = existsSync(statePath);
   if (stateRemoved) {
@@ -141,10 +147,12 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
   const wtDirPath = worktreesDir(projectRoot);
 
   const result = {
-    mux_sessions_killed: killed,
+    daemon_stopped: daemonStopped,
     worktrees_removed: removed,
     worktrees_dir: wtDirPath,
     worktrees_dir_empty: wtDirEmpty,
+    daemon_state_removed: daemonStateRemoved,
+    daemon_pid_removed: daemonPidRemoved,
     state_removed: stateRemoved,
     logs_removed: logsRemoved,
     remaining_branches: remainingBranches,
@@ -153,7 +161,9 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
 
   output(fmt, result, () => {
     console.log("\n--- wombo-combo: Cleanup ---\n");
-    console.log(`Killed ${killed} tmux session(s)`);
+    if (daemonStopped) {
+      console.log("Stopped daemon");
+    }
     console.log(`Removed ${removed} worktree(s)`);
 
     if (wtDirEmpty) {
@@ -167,13 +177,15 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
       console.log('Use "git branch -D <branch>" to remove manually.');
     }
 
+    if (daemonStateRemoved) console.log("Removed .wombo-combo/daemon-state.json");
+    if (daemonPidRemoved) console.log("Removed .wombo-combo/daemon.pid");
     if (stateRemoved) console.log("Removed .wombo-combo/state.json");
     if (logsRemoved) console.log("Removed .wombo-combo/logs/");
 
     console.log("\nCleanup complete.");
 
     if (historyPreserved) {
-      console.log("Note: .wombo-combo/history/ is preserved. Use 'woco history' to view past waves.");
+      console.log("Note: .wombo-combo/history/ is preserved. Use 'woco history' to view past sessions.");
     }
   }, () => {
     console.log(renderCleanup(result));

@@ -9,7 +9,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 import type { ActivityEntry } from "../lib/monitor";
 import {
   WaveMonitorView,

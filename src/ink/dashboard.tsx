@@ -30,7 +30,7 @@
 import React, { createContext, useContext } from "react";
 import { Box, Text } from "ink";
 import { t } from "./i18n";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 
 // ---------------------------------------------------------------------------
 // DashboardStore type

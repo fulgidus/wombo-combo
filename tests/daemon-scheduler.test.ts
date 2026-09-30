@@ -69,6 +69,9 @@ function makeMockRunner() {
       killAll: async () => { calls.push({ method: "killAll", args: [] }); },
       cancelAgent: (...args: any[]) => calls.push({ method: "cancelAgent", args }),
       reapDeadProcesses: () => calls.push({ method: "reapDeadProcesses", args: [] }),
+      setAgentOverride: (...args: any[]) => calls.push({ method: "setAgentOverride", args }),
+      setAutoPush: (...args: any[]) => calls.push({ method: "setAutoPush", args }),
+      setMaxRetries: (...args: any[]) => calls.push({ method: "setMaxRetries", args }),
     } as any,
   };
 }

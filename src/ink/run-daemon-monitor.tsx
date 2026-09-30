@@ -39,7 +39,7 @@ import React, {
 import { render as inkRender, type Instance as InkInstance } from "ink";
 import { WaveMonitorView, type AgentInfo, type AgentCounts } from "./wave-monitor";
 import { QuestionPopupView } from "./question-popup";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 import type { ActivityEntry } from "../lib/monitor";
 import type { WomboConfig } from "../config";
 import type { HitlQuestion } from "../lib/hitl-channel";

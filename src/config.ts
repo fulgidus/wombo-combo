@@ -66,8 +66,6 @@ export interface WomboConfig {
     name: string;
     /** Config files/dirs to copy into worktrees */
     configFiles: string[];
-    /** Session name prefix for tmux sessions */
-    tmuxPrefix: string;
   };
   /** Portless integration for localhost server testing */
   portless: {
@@ -228,7 +226,6 @@ export const DEFAULT_CONFIG: WomboConfig = {
     bin: null,
     name: "generalist-agent",
     configFiles: [".opencode/", "opencode.json", "AGENTS.md"],
-    tmuxPrefix: "wombo-combo",
   },
   portless: {
     enabled: true,

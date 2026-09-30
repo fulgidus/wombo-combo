@@ -26,7 +26,7 @@ import type { Task } from "../lib/tasks";
 import type { UsageTotals } from "../lib/token-usage";
 import type { SortField } from "../lib/tui-session";
 import type { DaemonAgentState } from "../daemon/protocol";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 import { formatTokenCount, formatCost } from "./usage-overlay";
 import {
   TASK_STATUS_COLORS,

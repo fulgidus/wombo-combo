@@ -18,8 +18,6 @@ import { describeCommand } from "./describe";
 import { extractGlobalFlags, type GlobalFlags } from "./global-flags";
 import { initCommand } from "./init";
 import { statusCommand } from "./status";
-import { verifyCommand } from "./verify";
-import { mergeCommand } from "./merge";
 import { abortCommand } from "./abort";
 import { cleanupCommand } from "./cleanup";
 import { historyCommand } from "./history";
@@ -55,10 +53,6 @@ const CITTY_COMMANDS = new Set([
     "i",          // alias for init
     "status",
     "s",          // alias for status
-    "verify",
-    "v",          // alias for verify
-    "merge",
-    "m",          // alias for merge
     "abort",
     "a",          // alias for abort
     "cleanup",
@@ -208,16 +202,6 @@ export async function runCittyCommand(
         case "status":
         case "s":
             await runCommand(statusCommand, { rawArgs });
-            break;
-
-        case "verify":
-        case "v":
-            await runCommand(verifyCommand, { rawArgs });
-            break;
-
-        case "merge":
-        case "m":
-            await runCommand(mergeCommand, { rawArgs });
             break;
 
         case "abort":

@@ -8,7 +8,7 @@
  * Flags:
  *   Selection: --top-priority, --quickest-wins, --priority, --difficulty,
  *              --tasks/--features, --all-ready
- *   Launch:    --max-concurrent, --model/-m, --interactive, --dry-run,
+ *   Launch:    --max-concurrent, --model/-m, --dry-run,
  *              --base-branch, --max-retries, --no-tui, --auto-push,
  *              --agent, --quest, --browser
  *   Output:    --output/-o
@@ -37,7 +37,6 @@ export interface ParsedLaunchArgs {
   // Launch
   maxConcurrent?: number;
   model?: string;
-  interactive: boolean;
   dryRun: boolean;
   baseBranch?: string;
   maxRetries?: number;
@@ -74,7 +73,6 @@ export function parseLaunchArgs(args: Record<string, any>): ParsedLaunchArgs {
       ? parseInt(args.maxConcurrent, 10)
       : undefined,
     model: args.model ?? undefined,
-    interactive: args.interactive ?? false,
     dryRun: args.dryRun ?? false,
     baseBranch: args.baseBranch ?? undefined,
     maxRetries: args.maxRetries
@@ -145,11 +143,6 @@ export const launchCommand = defineCommand({
       type: "string",
       alias: "m",
       description: "AI model to use for agents",
-      required: false,
-    },
-    interactive: {
-      type: "boolean",
-      description: "Launch agents in interactive (multiplexer) mode",
       required: false,
     },
     dryRun: {
@@ -256,7 +249,6 @@ export const launchCommand = defineCommand({
       allReady: parsed.allReady,
       maxConcurrent: parsed.maxConcurrent ?? config.defaults.maxConcurrent,
       model: parsed.model,
-      interactive: parsed.interactive,
       dryRun: parsed.dryRun,
       baseBranch: parsed.baseBranch ?? config.baseBranch,
       maxRetries: parsed.maxRetries ?? config.defaults.maxRetries,

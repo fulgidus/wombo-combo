@@ -8,7 +8,7 @@
  * Args:
  *   <feature-id>  — positional: ID of the failed agent to retry
  * Flags:
- *   --model/-m, --interactive, --dry-run, --output/-o
+ *   --model/-m, --dry-run, --output/-o
  */
 
 import { defineCommand } from "citty";
@@ -25,7 +25,6 @@ import { cmdRetry, type RetryCommandOptions } from "../retry";
 export interface ParsedRetryArgs {
   featureId?: string;
   model?: string;
-  interactive: boolean;
   dryRun: boolean;
   outputFmt?: OutputFormat;
 }
@@ -39,7 +38,6 @@ export function parseRetryArgs(args: Record<string, any>): ParsedRetryArgs {
   return {
     featureId: args.featureId ?? undefined,
     model: args.model ?? undefined,
-    interactive: args.interactive ?? false,
     dryRun: args.dryRun ?? false,
     outputFmt: args.output
       ? resolveOutputFormat(args.output)
@@ -66,11 +64,6 @@ export const retryCommand = defineCommand({
       type: "string",
       alias: "m",
       description: "AI model to use for the retried agent",
-      required: false,
-    },
-    interactive: {
-      type: "boolean",
-      description: "Launch agent in interactive (multiplexer) mode",
       required: false,
     },
     dryRun: {
@@ -130,7 +123,6 @@ export const retryCommand = defineCommand({
       config,
       featureId: parsed.featureId,
       model: parsed.model,
-      interactive: parsed.interactive,
       dryRun: parsed.dryRun,
       outputFmt: parsed.outputFmt,
     };

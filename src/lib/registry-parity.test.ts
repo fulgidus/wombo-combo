@@ -149,11 +149,6 @@ describe("COMMAND_REGISTRY is backed by BRIDGE_REGISTRY", () => {
       expect(names).toContain("--quest");
     });
 
-    test("merge has --model flag", () => {
-      const cmd = BRIDGE_REGISTRY.find((c) => c.name === "merge")!;
-      expect(cmd.flags.map((f) => f.name)).toContain("--model");
-    });
-
     test("retry has --dev flag", () => {
       const cmd = BRIDGE_REGISTRY.find((c) => c.name === "retry")!;
       expect(cmd.flags.map((f) => f.name)).toContain("--dev");
@@ -222,7 +217,7 @@ describe("COMMAND_REGISTRY is backed by BRIDGE_REGISTRY", () => {
 
   describe("findCommandDef delegates to findBridgeCommandDef", () => {
     const testNames = [
-      "init", "launch", "resume", "status", "verify", "merge", "retry",
+      "init", "launch", "resume", "status", "retry",
       "cleanup", "history", "usage", "abort", "upgrade", "logs", "tasks",
       "help", "version", "describe", "quest", "genesis", "wishlist", "completion",
       "tasks list", "tasks add", "tasks set-status", "tasks check", "tasks archive",

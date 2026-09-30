@@ -1,15 +1,14 @@
 /**
- * ui.ts — Terminal dashboard for wave status display.
+ * ui.ts — Terminal dashboard for daemon status display.
  *
  * Responsibilities:
- *   - Render a live status table of all agents in a wave
+ *   - Render a live status table of all agents in a daemon session
  *   - Show progress indicators, timing, retry counts
  *   - Color-coded status output
- *   - Summary statistics
  */
 
-import type { WaveState, AgentState, AgentStatus } from "./state";
-import { agentCounts, areAgentDepsReady } from "./state";
+import type { SchedulerState, DaemonAgentState } from "../daemon/protocol";
+import type { AgentStatus } from "../daemon/agent-status";
 import { formatDuration, parseDurationMinutes } from "./tasks";
 
 // ---------------------------------------------------------------------------
@@ -89,36 +88,36 @@ function elapsed(startedAt: string | null): string {
   return `${hours}h${remMins}m`;
 }
 
+/** Snapshot view of a daemon session (live via client or read from disk). */
+export interface DaemonSnapshotView {
+  scheduler: SchedulerState;
+  agents: DaemonAgentState[];
+}
+
 // ---------------------------------------------------------------------------
 // Table Rendering
 // ---------------------------------------------------------------------------
 
 /**
- * Render the full wave status dashboard to stdout.
+ * Render the full daemon session status dashboard to stdout.
  */
-export function renderDashboard(state: WaveState): string {
+export function renderDashboard(snapshot: DaemonSnapshotView): string {
+  const { scheduler, agents } = snapshot;
   const lines: string[] = [];
 
   // Header
   lines.push("");
   lines.push(
-    `${BOLD}wombo-combo${RESET} ${DIM}${state.wave_id}${RESET}`
+    `${BOLD}wombo-combo${RESET} ${DIM}${scheduler.startedAt ?? "daemon"}${RESET}`
   );
   lines.push(
-    `${DIM}Base: ${state.base_branch} | Concurrency: ${state.max_concurrent} | Mode: ${state.interactive ? "interactive" : "headless"}${RESET}`
+    `${DIM}Base: ${scheduler.baseBranch} | Concurrency: ${scheduler.maxConcurrent} | Scheduler: ${scheduler.status}${RESET}`
   );
-  if (state.model) {
-    lines.push(`${DIM}Model: ${state.model}${RESET}`);
+  if (scheduler.model) {
+    lines.push(`${DIM}Model: ${scheduler.model}${RESET}`);
   }
-  if (state.schedule_plan) {
-    const { streams, merge_gates } = state.schedule_plan;
-    const chainCount = streams.filter((s) => s.length > 1).length;
-    lines.push(
-      `${DIM}Scheduling: ${streams.length} stream(s)` +
-      (chainCount > 0 ? `, ${chainCount} chain(s)` : "") +
-      (merge_gates.length > 0 ? `, ${merge_gates.length} merge gate(s)` : "") +
-      `${RESET}`
-    );
+  if (scheduler.questId) {
+    lines.push(`${DIM}Quest: ${scheduler.questId}${RESET}`);
   }
   lines.push("");
 
@@ -135,7 +134,7 @@ export function renderDashboard(state: WaveState): string {
   lines.push("-".repeat(95));
 
   // Agent rows
-  for (const agent of state.agents) {
+  for (const agent of agents) {
     const statusColor = STATUS_COLORS[agent.status];
     const icon = STATUS_ICONS[agent.status];
 
@@ -152,10 +151,10 @@ export function renderDashboard(state: WaveState): string {
       activityText = "build passed";
     } else if (agent.status === "merged") {
       activityText = agent.branch;
-    } else if (agent.status === "queued" && agent.depends_on.length > 0) {
+    } else if (agent.status === "queued" && agent.dependsOn.length > 0) {
       // Show what this queued agent is waiting for
-      const unsatisfied = agent.depends_on.filter((depId) => {
-        const dep = state.agents.find((a) => a.feature_id === depId);
+      const unsatisfied = agent.dependsOn.filter((depId) => {
+        const dep = agents.find((a) => a.featureId === depId);
         return dep && dep.status !== "verified" && dep.status !== "merged";
       });
       if (unsatisfied.length > 0) {
@@ -167,14 +166,14 @@ export function renderDashboard(state: WaveState): string {
 
     const row = [
       colorize(pad(`[${icon}]`, 3), statusColor),
-      pad(agent.feature_id, 30),
+      pad(agent.featureId, 30),
       colorize(pad(agent.status, 12), statusColor),
       (agent.status === "running" ? FG.cyan : DIM) + pad(activityText, 30) + RESET,
       padLeft(
-        agent.retries > 0 ? `${agent.retries}/${agent.max_retries}` : "-",
+        agent.retries > 0 ? `${agent.retries}/${agent.maxRetries}` : "-",
         8
       ),
-      padLeft(elapsed(agent.started_at), 8),
+      padLeft(elapsed(agent.startedAt), 8),
     ].join(" ");
 
     lines.push(row);
@@ -182,9 +181,13 @@ export function renderDashboard(state: WaveState): string {
 
   // Summary
   lines.push("-".repeat(95));
-  const counts = agentCounts(state);
-  const summaryParts: string[] = [];
+  const counts: Record<AgentStatus, number> = {
+    queued: 0, installing: 0, running: 0, completed: 0, verified: 0,
+    failed: 0, merged: 0, retry: 0, resolving_conflict: 0,
+  };
+  for (const agent of agents) counts[agent.status]++;
 
+  const summaryParts: string[] = [];
   if (counts.queued > 0)
     summaryParts.push(colorize(`${counts.queued} queued`, FG.gray));
   if (counts.installing > 0)
@@ -205,39 +208,6 @@ export function renderDashboard(state: WaveState): string {
     summaryParts.push(colorize(`${counts.resolving_conflict} resolving`, FG.cyan));
 
   lines.push(summaryParts.join(" | "));
-
-  // Show merge gate status if applicable
-  if (state.schedule_plan && state.schedule_plan.merge_gates.length > 0) {
-    const gateParts: string[] = [];
-    for (const gate of state.schedule_plan.merge_gates) {
-      const gateAgent = state.agents.find((a) => a.feature_id === gate.feature_id);
-      if (!gateAgent) continue;
-
-      if (gateAgent.status === "queued") {
-        const waitingOn = gate.wait_for.filter((depId) => {
-          const dep = state.agents.find((a) => a.feature_id === depId);
-          return dep && dep.status !== "verified" && dep.status !== "merged";
-        });
-        if (waitingOn.length > 0) {
-          gateParts.push(
-            `${DIM}⊘ ${gate.feature_id} gate: waiting for ${waitingOn.join(", ")}${RESET}`
-          );
-        } else {
-          gateParts.push(
-            colorize(`⊙ ${gate.feature_id} gate: ready`, FG.green)
-          );
-        }
-      } else {
-        gateParts.push(
-          colorize(`⊙ ${gate.feature_id} gate: ${gateAgent.status}`, STATUS_COLORS[gateAgent.status])
-        );
-      }
-    }
-    if (gateParts.length > 0) {
-      lines.push(`${DIM}Merge Gates:${RESET} ${gateParts.join(" | ")}`);
-    }
-  }
-
   lines.push("");
 
   return lines.join("\n");
@@ -246,41 +216,8 @@ export function renderDashboard(state: WaveState): string {
 /**
  * Print the dashboard to stdout.
  */
-export function printDashboard(state: WaveState): void {
-  console.log(renderDashboard(state));
-}
-
-/**
- * Print a single-line status update for a feature.
- */
-export function printAgentUpdate(
-  agent: AgentState,
-  message: string
-): void {
-  const statusColor = STATUS_COLORS[agent.status];
-  const icon = STATUS_ICONS[agent.status];
-  console.log(
-    `${colorize(`[${icon}]`, statusColor)} ${pad(agent.feature_id, 28)} ${message}`
-  );
-}
-
-/**
- * Print a compact summary.
- */
-export function printSummary(state: WaveState): void {
-  const counts = agentCounts(state);
-  const total = state.agents.length;
-  const done = counts.verified + counts.merged;
-  console.log(
-    `\n${BOLD}Wave ${state.wave_id}${RESET}: ${done}/${total} done, ${counts.running} running, ${counts.failed} failed, ${counts.queued} queued`
-  );
-}
-
-/**
- * Clear the terminal screen.
- */
-export function clearScreen(): void {
-  process.stdout.write("\x1b[2J\x1b[H");
+export function printDashboard(snapshot: DaemonSnapshotView): void {
+  console.log(renderDashboard(snapshot));
 }
 
 /**

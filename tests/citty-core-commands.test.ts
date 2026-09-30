@@ -2,8 +2,8 @@
  * citty-core-commands.test.ts — Tests for citty command definitions.
  *
  * TDD: These tests verify that the citty command definitions for
- * init, status, verify, merge, abort, cleanup, history, logs, usage,
- * upgrade, and completion work correctly, including:
+ * init, status, abort, cleanup, history, logs, usage, upgrade, and
+ * completion work correctly, including:
  *   - Command metadata is correct
  *   - Args/flags are properly defined with correct types
  *   - Commands are registered in the citty router
@@ -74,92 +74,6 @@ describe("citty status command", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Verify command tests
-// ---------------------------------------------------------------------------
-
-describe("citty verify command", () => {
-  test("verifyCommand is a valid citty CommandDef", async () => {
-    const { verifyCommand } = await import("../src/commands/citty/verify");
-    expect(verifyCommand).toBeDefined();
-    expect(verifyCommand.meta).toBeDefined();
-    expect(verifyCommand.run).toBeDefined();
-  });
-
-  test("verifyCommand has correct meta name", async () => {
-    const { verifyCommand } = await import("../src/commands/citty/verify");
-    const meta = await resolveValue(verifyCommand.meta!);
-    expect(meta.name).toBe("verify");
-  });
-
-  test("verifyCommand has feature-id positional arg", async () => {
-    const { verifyCommand } = await import("../src/commands/citty/verify");
-    const args = await resolveValue(verifyCommand.args!);
-    expect(args).toBeDefined();
-    expect(args.featureId).toBeDefined();
-    expect(args.featureId.type).toBe("positional");
-    expect(args.featureId.required).toBe(false);
-  });
-
-  test("verifyCommand has browser, skip-tests, strict-tdd flags", async () => {
-    const { verifyCommand } = await import("../src/commands/citty/verify");
-    const args = await resolveValue(verifyCommand.args!);
-    expect(args.browser).toBeDefined();
-    expect(args.browser.type).toBe("boolean");
-    expect(args.skipTests).toBeDefined();
-    expect(args.skipTests.type).toBe("boolean");
-    expect(args.strictTdd).toBeDefined();
-    expect(args.strictTdd.type).toBe("boolean");
-  });
-
-  test("verifyCommand has model and output flags", async () => {
-    const { verifyCommand } = await import("../src/commands/citty/verify");
-    const args = await resolveValue(verifyCommand.args!);
-    expect(args.model).toBeDefined();
-    expect(args.model.type).toBe("string");
-    expect(args.output).toBeDefined();
-    expect(args.output.type).toBe("string");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Merge command tests
-// ---------------------------------------------------------------------------
-
-describe("citty merge command", () => {
-  test("mergeCommand is a valid citty CommandDef", async () => {
-    const { mergeCommand } = await import("../src/commands/citty/merge");
-    expect(mergeCommand).toBeDefined();
-    expect(mergeCommand.meta).toBeDefined();
-    expect(mergeCommand.run).toBeDefined();
-  });
-
-  test("mergeCommand has correct meta name", async () => {
-    const { mergeCommand } = await import("../src/commands/citty/merge");
-    const meta = await resolveValue(mergeCommand.meta!);
-    expect(meta.name).toBe("merge");
-  });
-
-  test("mergeCommand has feature-id positional arg", async () => {
-    const { mergeCommand } = await import("../src/commands/citty/merge");
-    const args = await resolveValue(mergeCommand.args!);
-    expect(args.featureId).toBeDefined();
-    expect(args.featureId.type).toBe("positional");
-    expect(args.featureId.required).toBe(false);
-  });
-
-  test("mergeCommand has auto-push, dry-run, model flags", async () => {
-    const { mergeCommand } = await import("../src/commands/citty/merge");
-    const args = await resolveValue(mergeCommand.args!);
-    expect(args.autoPush).toBeDefined();
-    expect(args.autoPush.type).toBe("boolean");
-    expect(args.dryRun).toBeDefined();
-    expect(args.dryRun.type).toBe("boolean");
-    expect(args.model).toBeDefined();
-    expect(args.model.type).toBe("string");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Abort command tests
 // ---------------------------------------------------------------------------
 
@@ -185,11 +99,11 @@ describe("citty abort command", () => {
     expect(args.featureId.required).toBe(true);
   });
 
-  test("abortCommand has requeue flag", async () => {
+  test("abortCommand has output flag", async () => {
     const { abortCommand } = await import("../src/commands/citty/abort");
     const args = await resolveValue(abortCommand.args!);
-    expect(args.requeue).toBeDefined();
-    expect(args.requeue.type).toBe("boolean");
+    expect(args.output).toBeDefined();
+    expect(args.output.type).toBe("string");
   });
 });
 
@@ -380,8 +294,6 @@ describe("citty router — core commands", () => {
     const { isCittyCommand } = await import("../src/commands/citty/router");
     expect(isCittyCommand("init")).toBe(true);
     expect(isCittyCommand("status")).toBe(true);
-    expect(isCittyCommand("verify")).toBe(true);
-    expect(isCittyCommand("merge")).toBe(true);
     expect(isCittyCommand("abort")).toBe(true);
     expect(isCittyCommand("cleanup")).toBe(true);
     expect(isCittyCommand("history")).toBe(true);
@@ -425,8 +337,6 @@ describe("citty router — core commands", () => {
     // Common aliases from schema
     expect(isCittyCommand("i")).toBe(true);   // init
     expect(isCittyCommand("s")).toBe(true);   // status
-    expect(isCittyCommand("v")).toBe(true);   // verify
-    expect(isCittyCommand("m")).toBe(true);   // merge
     expect(isCittyCommand("a")).toBe(true);   // abort
     expect(isCittyCommand("c")).toBe(true);   // cleanup
     expect(isCittyCommand("h")).toBe(true);   // history

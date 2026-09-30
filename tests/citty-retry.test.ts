@@ -64,13 +64,6 @@ describe("citty retry command args", () => {
     expect(args.model.alias).toBe("m");
   });
 
-  test("defines --interactive as boolean arg", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
-    const args = await resolveValue(retryCommand.args!);
-    expect(args.interactive).toBeDefined();
-    expect(args.interactive.type).toBe("boolean");
-  });
-
   test("defines --dry-run as boolean arg", async () => {
     const { retryCommand } = await import("../src/commands/citty/retry.js");
     const args = await resolveValue(retryCommand.args!);
@@ -95,7 +88,6 @@ describe("parseRetryArgs", () => {
   test("parses minimal args with defaults", async () => {
     const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
     const result = parseRetryArgs({});
-    expect(result.interactive).toBe(false);
     expect(result.dryRun).toBe(false);
   });
 
@@ -109,12 +101,6 @@ describe("parseRetryArgs", () => {
     const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
     const result = parseRetryArgs({ model: "gpt-4" });
     expect(result.model).toBe("gpt-4");
-  });
-
-  test("parses --interactive flag", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
-    const result = parseRetryArgs({ interactive: true });
-    expect(result.interactive).toBe(true);
   });
 
   test("parses --dry-run flag", async () => {
@@ -134,13 +120,11 @@ describe("parseRetryArgs", () => {
     const result = parseRetryArgs({
       featureId: "feat-auth",
       model: "anthropic/claude-sonnet-4-20250514",
-      interactive: true,
       dryRun: true,
       output: "toon",
     });
     expect(result.featureId).toBe("feat-auth");
     expect(result.model).toBe("anthropic/claude-sonnet-4-20250514");
-    expect(result.interactive).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.outputFmt).toBe("toon");
   });

@@ -27,8 +27,6 @@ import { launchCommand } from "../commands/citty/launch";
 import { resumeCommand } from "../commands/citty/resume";
 import { retryCommand } from "../commands/citty/retry";
 import { statusCommand } from "../commands/citty/status";
-import { verifyCommand } from "../commands/citty/verify";
-import { mergeCommand } from "../commands/citty/merge";
 import { abortCommand } from "../commands/citty/abort";
 import { cleanupCommand } from "../commands/citty/cleanup";
 import { historyCommand } from "../commands/citty/history";
@@ -127,22 +125,14 @@ const ENTRIES: RegistryEntry[] = [
         allReady: { description: "Select all features whose dependencies are met", default: false },
         maxConcurrent: { type: "number", description: "Max agents running in parallel" },
         model: { description: "Model to use (e.g., anthropic/claude-sonnet-4-20250514)" },
-        interactive: { description: "Use tmux TUI mode instead of headless", default: false },
         dryRun: { description: "Show what would be launched without launching", default: false },
         noTui: { description: "Headless mode without neo-blessed TUI", default: false },
         autoPush: { description: "Push base branch to remote after all merges", default: false },
         baseBranch: { description: "Base branch (default: from config)" },
         maxRetries: { type: "number", description: "Max retries per agent" },
-        browser: { description: "Enable browser-based verification after build passes", default: false },
-        skipTests: { description: "Skip running tests during TDD verification", default: false },
-        strictTdd: { description: "Strict TDD mode: fail verification if new files are missing tests", default: false },
+        browser: { description: "Enable browser-based verification for launched agents", default: false },
         dev: { description: "Enable developer mode (hidden TUI features like fake task seeding)", default: false },
       },
-      extraFlags: [
-        { name: "--features", description: "Select specific features by comma-separated IDs (alias for --tasks)", type: "string" },
-        { name: "--skip-tests", description: "Skip running tests during TDD verification", type: "boolean", default: false },
-        { name: "--strict-tdd", description: "Strict TDD mode: fail verification if new files are missing tests", type: "boolean", default: false },
-      ],
     },
   },
 
@@ -158,11 +148,7 @@ const ENTRIES: RegistryEntry[] = [
       flagOverrides: {
         maxConcurrent: { type: "number", description: "Max agents running in parallel" },
         model: { description: "Model to use" },
-        interactive: { description: "Use tmux TUI mode", default: false },
         noTui: { description: "Headless mode without neo-blessed TUI", default: false },
-        autoPush: { description: "Push base branch to remote after merges", default: false },
-        baseBranch: { description: "Base branch override" },
-        maxRetries: { type: "number", description: "Max retries per agent" },
         dev: { description: "Enable developer mode (hidden TUI features)", default: false },
       },
     },
@@ -180,47 +166,6 @@ const ENTRIES: RegistryEntry[] = [
     },
   },
 
-  // --- verify -------------------------------------------------------------
-  {
-    cittyCmd: verifyCommand,
-    meta: {
-      summary: "Run build verification on completed agents",
-      aliases: ["v"],
-      mutating: true,
-      supportsDryRun: false,
-      completionSummary: "Build verification",
-      positionalOverrides: {
-        featureId: { description: "Specific feature to verify (optional)" },
-      },
-      flagOverrides: {
-        model: { description: "Model to use for verification" },
-        maxRetries: { type: "number", description: "Max retries" },
-        browser: { description: "Enable browser-based verification after build passes", default: false },
-        skipTests: { description: "Skip running tests during TDD verification", default: false },
-        strictTdd: { description: "Strict TDD mode: fail verification if new files are missing tests", default: false },
-      },
-    },
-  },
-
-  // --- merge --------------------------------------------------------------
-  {
-    cittyCmd: mergeCommand,
-    meta: {
-      summary: "Merge verified branches into the base branch",
-      aliases: ["m"],
-      mutating: true,
-      supportsDryRun: true,
-      completionSummary: "Merge branches",
-      positionalOverrides: {
-        featureId: { description: "Specific feature to merge (optional)" },
-      },
-      flagOverrides: {
-        autoPush: { description: "Push base branch to remote after merge", default: false },
-        dryRun: { description: "Show what would be merged without merging", default: false },
-      },
-    },
-  },
-
   // --- retry --------------------------------------------------------------
   {
     cittyCmd: retryCommand,
@@ -234,7 +179,6 @@ const ENTRIES: RegistryEntry[] = [
       },
       flagOverrides: {
         model: { description: "Model to use" },
-        interactive: { description: "Use tmux TUI mode", default: false },
         dryRun: { description: "Show what would be retried without retrying", default: false },
       },
     },
@@ -244,12 +188,12 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: cleanupCommand,
     meta: {
-      summary: "Remove all wave worktrees and tmux sessions",
+      summary: "Remove worktrees and session artifacts",
       aliases: ["c"],
       mutating: true,
       supportsDryRun: true,
       completionSummary: "Remove worktrees",
-      description: "Kills tmux sessions, removes worktrees, removes state and log files.",
+      description: "Stops the daemon, removes worktrees, removes session state and log files.",
       flagOverrides: {
         dryRun: { description: "Show what would be cleaned up without removing", default: false },
       },
@@ -267,7 +211,7 @@ const ENTRIES: RegistryEntry[] = [
       completionSummary: "View past waves",
       description:
         "Wave history is auto-exported when a wave completes. Records are stored " +
-        "separately from .wombo-combo/state.json and survive cleanup. Use without arguments " +
+        "separately from .wombo-combo/daemon-state.json and survive cleanup. Use without arguments " +
         "to list all waves, or pass a wave ID to see detailed results.",
       positionalOverrides: {
         waveId: { name: "wave-id", description: "Specific wave ID to show details for (optional)" },
@@ -307,14 +251,10 @@ const ENTRIES: RegistryEntry[] = [
       supportsDryRun: false,
       completionSummary: "Kill running agent",
       description:
-        "Kills the tmux session and agent process for a specific feature, then " +
-        "marks the agent as failed. Use --requeue to return the feature to the " +
-        "queue instead of marking it failed.",
+        "Cancels the agent via the daemon, marking it as failed. " +
+        "Use 'woco retry <feature-id>' to re-queue it afterwards.",
       positionalOverrides: {
         featureId: { description: "Feature ID of the agent to abort" },
-      },
-      flagOverrides: {
-        requeue: { description: "Return the feature to queued instead of marking it failed", default: false },
       },
     },
   },

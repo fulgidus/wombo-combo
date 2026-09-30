@@ -20,7 +20,7 @@
  */
 
 import { createContext, useContext } from "react";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "../daemon/agent-status";
 
 // ---------------------------------------------------------------------------
 // ThemeTokens

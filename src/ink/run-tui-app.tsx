@@ -20,7 +20,6 @@
  *   quest-picker   → QuestPickerScreen
  *   task-browser   → TaskBrowserScreen
  *   daemon-monitor → DaemonMonitorScreen
- *   wave-monitor   → WaveMonitorScreen
  *   settings       → SettingsScreen
  *   onboarding     → OnboardingScreen
  *
@@ -61,7 +60,6 @@ import type { ErrandSpec } from "../lib/errand-planner";
 import { QuestPickerScreen } from "./run-quest-picker";
 import { TaskBrowserScreen } from "./run-task-browser";
 import { DaemonMonitorScreen } from "./run-daemon-monitor";
-import { WaveMonitorScreen } from "./run-wave-monitor";
 import { OnboardingScreen } from "./onboarding/run-onboarding";
 
 // ---------------------------------------------------------------------------
@@ -203,7 +201,6 @@ export function TuiApp({
     "quest-picker": "Quest Picker",
     "task-browser": "Task Browser",
     "daemon-monitor": "Daemon Monitor",
-    "wave-monitor": "Wave Monitor",
     settings: "Settings",
     onboarding: "Setup",
   };
@@ -322,7 +319,6 @@ export function TuiApp({
     "quest-picker": QuestPickerScreen,
     "task-browser": TaskBrowserScreen,
     "daemon-monitor": DaemonMonitorScreen,
-    "wave-monitor": WaveMonitorScreen,
     settings: SettingsScreen,
     onboarding: OnboardingScreen,
   };

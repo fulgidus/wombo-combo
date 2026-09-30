@@ -27,7 +27,6 @@ import { render as inkRender } from "ink";
 import React from "react";
 import type { WomboConfig } from "../config";
 import { ensureTasksFile } from "../lib/tasks";
-import { loadState } from "../lib/state";
 import { loadTUISession, saveTUISession } from "../lib/tui-session";
 import type { ProposedTask } from "../lib/quest-planner";
 import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner";

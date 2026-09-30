@@ -251,8 +251,8 @@ export class DaemonClient {
   }
 
   /** Retry a failed agent. */
-  retryAgent(featureId: string): number {
-    return this.sendCommand("cmd:retry-agent", { featureId });
+  retryAgent(featureId: string, model?: string): number {
+    return this.sendCommand("cmd:retry-agent", { featureId, model });
   }
 
   /** Cancel an agent. */

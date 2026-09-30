@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { resolve } from "node:path";
 import { WOMBO_DIR } from "../config";
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "./agent-status";
 import type {
   DaemonAgentState,
   SchedulerState,

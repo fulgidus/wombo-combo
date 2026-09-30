@@ -26,6 +26,7 @@ import type { SchedulerConfig } from "./scheduler";
 import { AgentRunner } from "./agent-runner";
 import type { AgentRunnerConfig } from "./agent-runner";
 import { submitAnswer, getPendingQuestions } from "../lib/hitl-channel";
+import { exportDaemonHistory } from "../lib/history";
 import { isDaemonRunning } from "./pid-utils";
 import {
   DEFAULT_WS_PORT,
@@ -118,11 +119,18 @@ export class Daemon {
   /** State change listener unsubscribe fn. */
   private unsubscribeState: (() => void) | null = null;
 
+  /** Unique session ID used as the history wave_id. */
+  private readonly sessionId: string;
+
+  /** Write-once guard for history export at shutdown. */
+  private historyWritten = false;
+
   constructor(opts: DaemonOptions = {}) {
     this.projectRoot = resolve(opts.projectRoot ?? process.cwd());
     this.port = opts.port ?? DEFAULT_WS_PORT;
     this.idleTimeoutMs = opts.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     this.verbose = opts.verbose ?? false;
+    this.sessionId = `daemon-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 
     // Load config
     this.config = loadConfig(this.projectRoot);
@@ -207,6 +215,9 @@ export class Daemon {
   /** Graceful shutdown: stop scheduler, drain agents, close server, clean up. */
   async shutdown(reason: string, force = false): Promise<void> {
     this.log("info", `Shutting down: ${reason} (force=${force})`);
+
+    // Persist session history before tearing down (write-once).
+    this.writeHistoryOnce();
 
     // Broadcast shutdown event to clients
     this.broadcast("evt:shutdown", { reason, forced: force });
@@ -408,9 +419,14 @@ export class Daemon {
         this.scheduler.skipTask((payload as CommandMap["cmd:skip-task"]).taskId);
         break;
 
-      case "cmd:retry-agent":
-        this.scheduler.retryAgent((payload as CommandMap["cmd:retry-agent"]).featureId);
+      case "cmd:retry-agent": {
+        const retryPayload = payload as CommandMap["cmd:retry-agent"];
+        if (retryPayload.model !== undefined) {
+          this.state.setModel(retryPayload.model);
+        }
+        this.scheduler.retryAgent(retryPayload.featureId);
         break;
+      }
 
       case "cmd:cancel-agent":
         this.scheduler.cancelAgent((payload as CommandMap["cmd:cancel-agent"]).featureId);
@@ -483,6 +499,17 @@ export class Daemon {
   }
 
   private handleStart(payload: CommandMap["cmd:start"]): void {
+    // Session-scoped CLI flags (apply on every start, filter or not)
+    if (payload.autoPush !== undefined) {
+      this.runner.setAutoPush(payload.autoPush);
+    }
+    if (payload.maxRetries !== undefined) {
+      this.runner.setMaxRetries(payload.maxRetries);
+    }
+    if (payload.baseBranch !== undefined) {
+      this.state.setBaseBranch(payload.baseBranch);
+    }
+
     // Apply overrides from the start command
     if (payload.maxConcurrent !== undefined) {
       this.state.setMaxConcurrent(payload.maxConcurrent);
@@ -513,6 +540,7 @@ export class Daemon {
         maxConcurrent: payload.maxConcurrent,
         initialMaxConcurrent: currentMax,
         model: payload.model,
+        agentOverride: payload.agentOverride,
       };
       this.scheduler.shutdown();
       this.scheduler = new Scheduler(schedConfig, {
@@ -523,6 +551,9 @@ export class Daemon {
     } else {
       // No filter constraints — just ensure scheduler is running
       // (it auto-starts on daemon boot, but may have been paused/stopped)
+      if (payload.agentOverride !== undefined) {
+        this.runner.setAgentOverride(payload.agentOverride);
+      }
       const status = this.state.getSchedulerStatus();
       if (status === "paused") {
         this.scheduler.resume();
@@ -672,7 +703,48 @@ export class Daemon {
   private onStateEvent: StateListener = (eventType, payload) => {
     this.broadcastRaw(eventType, payload);
     this.resetIdleTimer();
+
+    // Session completion: all agents terminal + scheduler idle → persist
+    // history immediately (don't wait for the idle-timeout shutdown).
+    this.checkSessionComplete();
   };
+
+  /**
+   * Export session history exactly once when every agent is terminal and the
+   * scheduler is idle. Keeps `woco history` populated without waiting for
+   * daemon shutdown.
+   */
+  private checkSessionComplete(): void {
+    if (this.historyWritten) return;
+    if (this.state.getAllAgents().length === 0) return;
+    if (!this.state.allComplete()) return;
+    if (this.state.getSchedulerStatus() !== "idle") return;
+    this.writeHistoryOnce();
+  }
+
+  /** Write-once history export for the current daemon session. */
+  private writeHistoryOnce(): void {
+    if (this.historyWritten) return;
+    const agents = this.state.getAllAgents();
+    if (agents.length === 0) return;
+
+    try {
+      const sched = this.state.getSchedulerState();
+      const path = exportDaemonHistory(this.projectRoot, {
+        waveId: this.sessionId,
+        baseBranch: sched.baseBranch,
+        startedAt: sched.startedAt ?? new Date().toISOString(),
+        model: sched.model,
+        maxConcurrent: sched.maxConcurrent,
+        agents,
+      });
+      this.log("info", `Session history exported to ${path}`);
+      this.historyWritten = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[daemon] failed to export session history: ${msg}`);
+    }
+  }
 
   /** Broadcast a typed event to all connected clients. */
   private broadcast<T extends EventType>(type: T, payload: EventMap[T]): void {

@@ -1,11 +1,10 @@
 /**
- * launcher.ts — Process spawning and tmux session management.
+ * launcher.ts — Process spawning for headless agent runs.
  *
  * Responsibilities:
  *   - Launch agent in headless mode (agent run --format json)
- *   - Launch agent in interactive mode (tmux session with TUI)
  *   - Resume sessions for auto-retry
- *   - Manage tmux sessions (create, list, kill)
+ *   - Launch conflict-resolver agents
  *
  * ## Agent Process Lifecycle (audit: wave-detach-audit)
  *
@@ -17,28 +16,17 @@
  *   - `stdio` is `["pipe", "pipe", "pipe"]` — stdout is piped for JSON event
  *     parsing by ProcessMonitor. This further ties the child to the parent.
  *   - **Consequence**: If the parent is killed (SIGKILL, crash, OOM), headless
- *     agents die immediately with no state saved. The SIGINT/SIGTERM handlers
- *     in launch.ts and resume.ts mitigate this for graceful shutdowns by
- *     calling `monitor.killAll()` and `saveState()` before exiting.
- *   - **Recovery**: `woco resume` detects dead-but-productive agents (worktree
- *     exists with commits) and runs build verification on their output, or
- *     re-launches agents that died without producing code.
- *
- * **Interactive mode** (`launchInteractive`):
- *   - Agents run inside tmux sessions, which are independent of the
- *     parent process. They survive parent death naturally.
- *   - The `process` field in LaunchResult is `null as any` — no direct
- *     ChildProcess handle exists. PID is obtained via `tmuxGetPanePid()`.
+ *     agents die immediately with no state saved.
+ *   - **Recovery**: the daemon re-queues agents that died without producing
+ *     code, and runs build verification on dead-but-productive agents
+ *     (worktree exists with commits).
  *
  * **Design rationale for `detached: false`**:
  *   Headless agents MUST have their stdout piped to the parent for real-time
  *   JSON event parsing (session ID extraction, completion detection, activity
  *   tracking). Using `detached: true` + `unref()` would allow agents to
  *   outlive the parent, but the piped stdio streams would break when the
- *   parent exits, potentially causing agent crashes or lost output. The
- *   current design trades survivability for reliable monitoring. If agent
- *   persistence across parent restarts is needed, the interactive (tmux)
- *   mode should be used instead.
+ *   parent exits, potentially causing agent crashes or lost output.
  */
 
 import { spawn, execSync, type ChildProcess } from "node:child_process";
@@ -46,17 +34,6 @@ import { writeFileSync, unlinkSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import type { WomboConfig } from "../config";
 import { resolveAgentBin } from "../config";
-import {
-  ensureTmux,
-  tmuxNewSession,
-  tmuxHasSession,
-  tmuxKillSession,
-  tmuxListSessions,
-  tmuxGetPanePid,
-  tmuxLoadBuffer,
-  tmuxPasteBuffer,
-  tmuxSendKeys,
-} from "./tmux";
 import { portlessEnv } from "./portless";
 import { hitlDir } from "./hitl-channel";
 import { resolve, dirname, join, basename } from "node:path";
@@ -131,7 +108,6 @@ export interface LaunchOptions {
   featureId: string;
   prompt: string;
   model?: string;
-  interactive?: boolean;
   config: WomboConfig;
   /** Override the agent name (for specialized agents from the registry) */
   agentName?: string;
@@ -147,7 +123,6 @@ export interface RetryOptions {
   sessionId: string;
   buildErrors: string;
   model?: string;
-  interactive?: boolean;
   config: WomboConfig;
   /** HITL mode for this agent (from quest or config) */
   hitlMode?: string;
@@ -160,20 +135,6 @@ export interface RetryOptions {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Get the tmux session name for a feature.
- */
-function tmuxSessionName(featureId: string, config: WomboConfig): string {
-  return `${config.agent.tmuxPrefix}-${featureId}`;
-}
-
-/**
- * Ensure tmux is available for this config.
- */
-function checkTmux(): void {
-  ensureTmux();
-}
 
 function runSilent(cmd: string): string {
   try {
@@ -493,178 +454,8 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
 }
 
 // ---------------------------------------------------------------------------
-// Interactive (tmux) Launch
+// Process Utilities
 // ---------------------------------------------------------------------------
-
-/**
- * Launch agent in a tmux session for interactive use.
- *
- * Unlike headless mode, the agent runs inside a tmux session that is
- * fully independent of the parent process. The session survives parent death,
- * SIGINT, and crashes. The trade-off is that there is no direct ChildProcess
- * handle — monitoring is limited to checking the pane PID and session existence.
- *
- * The returned `process` field is `null as any` because the agent is managed
- * by tmux, not by Node's child_process module.
- */
-export function launchInteractive(opts: LaunchOptions): LaunchResult {
-  const agentBin = resolveAgentBin(opts.config);
-  const agentType = detectAgentType(agentBin);
-  checkTmux();
-  const sessionName = tmuxSessionName(opts.featureId, opts.config);
-
-  // Kill existing session if any
-  killMuxSession(opts.featureId, opts.config);
-
-  // Build the agent command to run inside the tmux session.
-  // Include portless env vars so any server started in the session
-  // is routed through the portless proxy.
-  const pEnv = portlessEnv(opts.featureId, opts.config);
-  const envPrefix = Object.entries(pEnv)
-    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-    .join(" ");
-
-  // Agent-type-specific CLI arg construction:
-  //
-  // opencode TUI: `opencode [project]`
-  //   - Path is a POSITIONAL argument (NOT --dir, which is only for `run`)
-  //   - Supports --agent, --model, --session, --continue
-  //
-  // claude TUI: `claude`
-  //   - Has NO --dir flag at all — uses the cwd of the process
-  //   - The cwd is set by tmuxNewSession's cwd parameter
-  //   - Supports --agent, --model, --resume, --continue
-  //
-  const ocArgs = [agentBin];
-
-  if (agentType === "opencode" || agentType === "unknown") {
-    // opencode: project path is a positional argument
-    ocArgs.push(JSON.stringify(opts.worktreePath));
-  }
-  // claude: no path arg needed — tmuxNewSession sets cwd to worktreePath
-
-  // Pass agent name if specified (specialized agent from registry or per-task override)
-  if (opts.agentName) {
-    ocArgs.push("--agent", JSON.stringify(opts.agentName));
-  }
-
-  if (opts.model) {
-    ocArgs.push("--model", JSON.stringify(opts.model));
-  }
-
-  const tmuxCmd = envPrefix ? `${envPrefix} ${ocArgs.join(" ")}` : ocArgs.join(" ");
-
-  // Create a detached session running the agent
-  // Note: cwd is set to worktreePath — this handles claude's path requirement
-  // and also provides a sensible fallback cwd for opencode.
-  tmuxNewSession(sessionName, opts.worktreePath, tmuxCmd);
-
-  // Send the prompt as initial message after a brief delay
-  setTimeout(() => {
-    try {
-      const tmpFile = `/tmp/woco-prompt-${opts.featureId}.txt`;
-      writeFileSync(tmpFile, opts.prompt);
-      tmuxLoadBuffer(tmpFile);
-      tmuxPasteBuffer(sessionName);
-      tmuxSendKeys(sessionName, "Enter");
-      try { unlinkSync(tmpFile); } catch {}
-    } catch (err: any) {
-      // If prompt sending fails, user can type manually — but log it so
-      // debugging "why didn't my agent get the prompt?" isn't a mystery
-      console.warn(`[launcher] Failed to send prompt to tmux session ${sessionName}: ${err?.message ?? err}`);
-    }
-  }, 3000);
-
-  // Get the PID of the pane process
-  const panePid = tmuxGetPanePid(sessionName);
-
-  return {
-    pid: panePid,
-    process: null as any, // No direct process handle in tmux mode
-  };
-}
-
-/**
- * Resume an interactive session with retry message.
- */
-export function retryInteractive(opts: RetryOptions): LaunchResult {
-  checkTmux();
-  const sessionName = tmuxSessionName(opts.featureId, opts.config);
-
-  const exists = muxSessionExists(opts.featureId, opts.config);
-
-  if (exists) {
-    const retryMsg = `The build failed. Fix these errors:\n${opts.buildErrors}`;
-    const tmpFile = `/tmp/woco-retry-${opts.featureId}.txt`;
-    writeFileSync(tmpFile, retryMsg);
-    tmuxLoadBuffer(tmpFile);
-    tmuxPasteBuffer(sessionName);
-    tmuxSendKeys(sessionName, "Enter");
-    try { unlinkSync(tmpFile); } catch {}
-
-    const panePid = tmuxGetPanePid(sessionName);
-
-    return {
-      pid: panePid,
-      process: null as any,
-    };
-  }
-
-  // Session doesn't exist — launch a new interactive session
-  return launchInteractive({
-    worktreePath: opts.worktreePath,
-    featureId: opts.featureId,
-    prompt: `Continue from session ${opts.sessionId}. The build failed:\n${opts.buildErrors}\n\nFix all errors and verify the build passes.`,
-    model: opts.model,
-    interactive: true,
-    config: opts.config,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Tmux Session Management
-// ---------------------------------------------------------------------------
-
-/**
- * Check if a tmux session exists for a feature.
- */
-export function muxSessionExists(
-  featureId: string,
-  config: WomboConfig
-): boolean {
-  const sessionName = tmuxSessionName(featureId, config);
-  return tmuxHasSession(sessionName);
-}
-
-/**
- * Kill a tmux session for a feature.
- */
-export function killMuxSession(
-  featureId: string,
-  config: WomboConfig
-): void {
-  const sessionName = tmuxSessionName(featureId, config);
-  tmuxKillSession(sessionName);
-}
-
-/**
- * List all woco-related tmux sessions.
- */
-export function listMuxSessions(config: WomboConfig): string[] {
-  const sessions = tmuxListSessions();
-  return sessions.filter((s: string) => s.startsWith(config.agent.tmuxPrefix + "-"));
-}
-
-/**
- * Kill all woco-related tmux sessions.
- */
-export function killAllMuxSessions(config: WomboConfig): number {
-  const sessions = listMuxSessions(config);
-  for (const s of sessions) {
-    tmuxKillSession(s);
-  }
-  return sessions.length;
-}
 
 /**
  * Check if a process is still running by PID.

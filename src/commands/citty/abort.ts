@@ -21,11 +21,6 @@ export const abortCommand = defineCommand({
       description: "Feature ID of the agent to abort",
       required: true,
     },
-    requeue: {
-      type: "boolean",
-      description: "Return the feature to queued instead of marking it failed",
-      required: false,
-    },
     output: {
       type: "string",
       alias: "o",
@@ -46,7 +41,6 @@ export const abortCommand = defineCommand({
       projectRoot,
       config,
       featureId: args.featureId,
-      requeue: args.requeue,
       outputFmt: resolveOutputFormat(args.output),
     });
   },

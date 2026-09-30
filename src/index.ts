@@ -19,13 +19,10 @@
  *   woco launch --tasks "feat-a,feat-b"
  *   woco launch --all-ready
  *   woco launch ... --max-concurrent 3 --model "anthropic/claude-sonnet-4-20250514"
- *   woco launch ... --interactive
  *   woco resume                                       (alias: r)
  *   woco status                                       (alias: s)
- *   woco verify [feature-id]                          (alias: v)
- *   woco merge [feature-id]                           (alias: m)
  *   woco retry <feature-id>                           (alias: re)
- *   woco abort <feature-id> [--requeue] [--output json]  (alias: a)
+ *   woco abort <feature-id> [--output json]           (alias: a)
  *   woco logs <feature-id> [--tail N] [--follow]      (alias: lo)
  *   woco cleanup                                      (alias: c)
  *   woco history [wave-id] [--output json]            (alias: h)
@@ -55,7 +52,6 @@
 
 import { resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { loadState, saveState } from "./lib/state";
 
 // ---------------------------------------------------------------------------
 // Dev-mode guard: warn if running the global binary inside the wombo-combo repo
@@ -178,20 +174,12 @@ process.on("uncaughtException", (err) => {
 
   console.error(`\n[FATAL] Uncaught exception: ${err.message}`);
   console.error(err.stack);
-  try {
-    const state = loadState(process.cwd());
-    if (state) saveState(process.cwd(), state);
-  } catch {}
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason: any) => {
   console.error(`\n[FATAL] Unhandled rejection: ${reason?.message || reason}`);
   if (reason?.stack) console.error(reason.stack);
-  try {
-    const state = loadState(process.cwd());
-    if (state) saveState(process.cwd(), state);
-  } catch {}
   process.exit(1);
 });
 

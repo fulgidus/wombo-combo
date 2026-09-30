@@ -22,7 +22,7 @@ import {
   renameSync,
 } from "node:fs";
 import { resolve, basename } from "node:path";
-import type { WaveState, AgentState, AgentStatus } from "./state";
+import type { AgentStatus } from "../daemon/agent-status";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,32 +103,53 @@ function ensureHistoryDir(projectRoot: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Export Wave State → History Record
+// Export Daemon Session → History Record
 // ---------------------------------------------------------------------------
 
+/** Structural subset of the daemon's internal agent state needed for history. */
+export interface HistoryAgentSource {
+  featureId: string;
+  branch: string;
+  status: AgentStatus;
+  retries: number;
+  maxRetries: number;
+  buildPassed: boolean | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  error: string | null;
+  buildOutput?: string | null;
+}
+
 /**
- * Convert a WaveState to a WaveHistoryRecord for persistence.
+ * Convert a completed daemon session to a WaveHistoryRecord for persistence.
  */
-export function waveStateToHistory(state: WaveState): WaveHistoryRecord {
-  const agents: AgentHistoryRecord[] = state.agents.map((agent) => {
-    const durationMs = computeDuration(agent.started_at, agent.completed_at);
+export function daemonSessionToHistory(session: {
+  waveId: string;
+  baseBranch: string;
+  startedAt: string;
+  model: string | null;
+  maxConcurrent: number;
+  agents: HistoryAgentSource[];
+}): WaveHistoryRecord {
+  const agents: AgentHistoryRecord[] = session.agents.map((agent) => {
+    const durationMs = computeDuration(agent.startedAt, agent.completedAt);
     const hadConflict =
       agent.status === "resolving_conflict" ||
       (agent.error != null && agent.error.toLowerCase().includes("conflict"));
 
     return {
-      feature_id: agent.feature_id,
+      feature_id: agent.featureId,
       branch: agent.branch,
       status: agent.status,
       retries: agent.retries,
-      max_retries: agent.max_retries,
-      build_passed: agent.build_passed,
-      started_at: agent.started_at,
-      completed_at: agent.completed_at,
+      max_retries: agent.maxRetries,
+      build_passed: agent.buildPassed,
+      started_at: agent.startedAt,
+      completed_at: agent.completedAt,
       duration_ms: durationMs,
       error: agent.error,
       had_merge_conflict: hadConflict,
-      build_output: agent.build_passed === false ? agent.build_output : null,
+      build_output: agent.buildPassed === false ? agent.buildOutput ?? null : null,
     };
   });
 
@@ -145,13 +166,13 @@ export function waveStateToHistory(state: WaveState): WaveHistoryRecord {
   );
 
   return {
-    wave_id: state.wave_id,
-    base_branch: state.base_branch,
-    started_at: state.started_at,
+    wave_id: session.waveId,
+    base_branch: session.baseBranch,
+    started_at: session.startedAt,
     exported_at: new Date().toISOString(),
-    model: state.model,
-    max_concurrent: state.max_concurrent,
-    interactive: state.interactive,
+    model: session.model,
+    max_concurrent: session.maxConcurrent,
+    interactive: false,
     summary: {
       total: agents.length,
       succeeded,
@@ -189,16 +210,16 @@ export function saveHistory(
 }
 
 /**
- * Export the current wave state to history. This is the main entry point
- * called when a wave completes.
+ * Export the current daemon session state to history. This is the main entry
+ * point called when a daemon session completes.
  *
  * Returns the path to the saved history file.
  */
-export function exportWaveHistory(
+export function exportDaemonHistory(
   projectRoot: string,
-  state: WaveState
+  session: Parameters<typeof daemonSessionToHistory>[0]
 ): string {
-  const record = waveStateToHistory(state);
+  const record = daemonSessionToHistory(session);
   const filePath = saveHistory(projectRoot, record);
   return filePath;
 }

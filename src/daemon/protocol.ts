@@ -8,7 +8,7 @@
  * The protocol is versioned so future changes can be detected.
  */
 
-import type { AgentStatus } from "../lib/state";
+import type { AgentStatus } from "./agent-status";
 
 // ---------------------------------------------------------------------------
 // Protocol version
@@ -53,6 +53,14 @@ export interface CmdStart {
   model?: string;
   /** Optional: specific task IDs to run (empty = auto-pick) */
   taskIds?: string[];
+  /** Optional: override the agent definition for all launched tasks (CLI --agent) */
+  agentOverride?: string;
+  /** Optional: push the base branch to origin after merges (CLI --auto-push) */
+  autoPush?: boolean;
+  /** Optional: override max retries per agent (CLI --max-retries) */
+  maxRetries?: number;
+  /** Optional: override the base branch tasks fork from (CLI --base-branch) */
+  baseBranch?: string;
 }
 
 /** Pause the scheduler — no new tasks will be picked up. Running agents continue. */
@@ -85,6 +93,8 @@ export interface CmdPauseAgent {
 /** Retry a failed agent. */
 export interface CmdRetryAgent {
   featureId: string;
+  /** Optional: override the session model before relaunching */
+  model?: string;
 }
 
 /** Cancel a queued or running agent. */

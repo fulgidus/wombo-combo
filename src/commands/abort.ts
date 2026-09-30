@@ -1,24 +1,14 @@
 /**
- * abort.ts — Kill a single running agent without nuking the entire wave.
+ * abort.ts — Kill a single running agent without nuking the entire session.
  *
- * Usage: woco abort <feature-id> [--requeue] [--output json]
+ * Usage: woco abort <feature-id> [--output json]
  *
- * Kills the tmux session (if any) and the agent process, then updates
- * wave state to mark the agent as "failed" (default) or "queued"
- * (if --requeue is passed, returning it to the queue for retry).
+ * Asks the daemon to cancel the agent: the daemon kills the agent process
+ * and marks it as "failed". Use `woco retry <feature-id>` afterwards to
+ * re-queue a failed agent.
  */
 
 import type { WomboConfig } from "../config";
-import {
-  loadState,
-  saveState,
-  updateAgent,
-  type AgentState,
-} from "../lib/state";
-import {
-  killMuxSession,
-  isProcessRunning,
-} from "../lib/launcher";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderAbort } from "../lib/toon";
 
@@ -30,8 +20,6 @@ export interface AbortCommandOptions {
   projectRoot: string;
   config: WomboConfig;
   featureId: string;
-  /** Return the feature to "queued" instead of marking it "failed" */
-  requeue?: boolean;
   outputFmt: OutputFormat;
 }
 
@@ -40,100 +28,58 @@ export interface AbortCommandOptions {
 // ---------------------------------------------------------------------------
 
 export async function cmdAbort(opts: AbortCommandOptions): Promise<void> {
-  const { projectRoot, config, featureId, outputFmt } = opts;
+  const { projectRoot, featureId, outputFmt: fmt } = opts;
 
-  // Load wave state
-  const state = loadState(projectRoot);
-  if (!state) {
-    outputError(outputFmt, "No active wave. Nothing to abort.");
-    return; // unreachable — helps TypeScript narrow
-  }
+  // Dynamic imports — keep the daemon client out of the synchronous
+  // require() chain used by schema.ts / citty-registry.ts.
+  const { ensureDaemonRunning } = await import("../daemon/launcher");
+  const { DaemonClient } = await import("../daemon/client");
 
-  // Find the agent
-  const agent = state.agents.find((a: AgentState) => a.feature_id === featureId);
-  if (!agent) {
-    outputError(
-      outputFmt,
-      `Agent not found for feature: ${featureId}. Use 'woco status' to see active agents.`
-    );
-    return; // unreachable — helps TypeScript narrow
-  }
+  await ensureDaemonRunning(projectRoot);
 
-  // Only abort agents that are actually active (running, installing, queued, resolving_conflict)
-  const abortable = new Set(["running", "installing", "queued", "resolving_conflict"]);
-  if (!abortable.has(agent.status)) {
-    outputError(
-      outputFmt,
-      `Agent ${featureId} is not in an abortable state (current: ${agent.status}). ` +
-        `Only running, installing, queued, or resolving_conflict agents can be aborted.`
-    );
-    return; // unreachable — helps TypeScript narrow
-  }
-
-  // 1. Kill the tmux session (if any)
-  let muxKilled = false;
+  const client = new DaemonClient({ clientId: "abort", autoReconnect: false });
   try {
-    killMuxSession(featureId, config);
-    muxKilled = true;
-  } catch {
-    // Session may not exist — that's fine
-  }
+    await client.connect();
+    const snapshot = await client.requestState(5_000);
+    const agent = snapshot.agents.find((a) => a.featureId === featureId);
 
-  // 2. Kill the process by PID (if any and still running)
-  let processKilled = false;
-  if (agent.pid && isProcessRunning(agent.pid)) {
-    try {
-      process.kill(agent.pid, "SIGTERM");
-      processKilled = true;
-    } catch {
-      // Process may have already exited
+    if (!agent) {
+      outputError(
+        fmt,
+        `Agent not found for feature: ${featureId}. Use 'woco status' to see active agents.`
+      );
+      return; // unreachable — helps TypeScript narrow
     }
-  }
 
-  // 3. Update wave state
-  const newStatus = opts.requeue ? "queued" : "failed";
-  const updates: Partial<AgentState> = {
-    status: newStatus as AgentState["status"],
-    error: opts.requeue ? null : "Aborted by user",
-    completed_at: opts.requeue ? null : new Date().toISOString(),
-  };
-
-  // If requeuing, reset retry-related fields so the agent gets a fresh start
-  if (opts.requeue) {
-    updates.retries = 0;
-    updates.build_passed = null;
-    updates.build_output = null;
-    updates.started_at = null;
-    updates.completed_at = null;
-    updates.activity = null;
-    updates.activity_updated_at = null;
-  }
-
-  updateAgent(state, featureId, updates);
-  saveState(projectRoot, state);
-
-  // 4. Output result
-  const result = {
-    feature_id: featureId,
-    previous_status: agent.status,
-    new_status: newStatus,
-    mux_killed: muxKilled,
-    process_killed: processKilled,
-    requeued: !!opts.requeue,
-  };
-
-  output(outputFmt, result, () => {
-    console.log(`\nAborted agent: ${featureId}`);
-    console.log(`  Previous status: ${agent.status}`);
-    console.log(`  New status: ${newStatus}`);
-    if (muxKilled) console.log(`  Killed tmux session: ${config.agent.tmuxPrefix}-${featureId}`);
-    if (processKilled) console.log(`  Killed process: PID ${agent.pid}`);
-    if (opts.requeue) {
-      console.log(`  Feature returned to queue for retry.`);
-    } else {
-      console.log(`  Feature marked as failed.`);
+    // Only abort agents that are actually active (running, installing, queued, resolving_conflict)
+    const abortable = new Set(["running", "installing", "queued", "resolving_conflict"]);
+    if (!abortable.has(agent.status)) {
+      outputError(
+        fmt,
+        `Agent ${featureId} is not in an abortable state (current: ${agent.status}). ` +
+          `Only running, installing, queued, or resolving_conflict agents can be aborted.`
+      );
+      return; // unreachable — helps TypeScript narrow
     }
-  }, () => {
-    console.log(renderAbort(result));
-  });
+
+    // The daemon kills the process and marks the agent failed
+    client.cancelAgent(featureId);
+
+    const result = {
+      feature_id: featureId,
+      previous_status: agent.status,
+      new_status: "failed",
+    };
+
+    output(fmt, result, () => {
+      console.log(`\nAborted agent: ${featureId}`);
+      console.log(`  Previous status: ${agent.status}`);
+      console.log(`  New status: failed`);
+      console.log(`  Use \`woco retry ${featureId}\` to re-queue it.`);
+    }, () => {
+      console.log(renderAbort(result));
+    });
+  } finally {
+    try { client.disconnect(); } catch { /* best-effort */ }
+  }
 }

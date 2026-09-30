@@ -116,13 +116,6 @@ describe("citty launch command args — launch options", () => {
     expect(args.model.alias).toBe("m");
   });
 
-  test("defines --interactive as boolean arg", async () => {
-    const { launchCommand } = await import("../src/commands/citty/launch.js");
-    const args = await resolveValue(launchCommand.args!);
-    expect(args.interactive).toBeDefined();
-    expect(args.interactive.type).toBe("boolean");
-  });
-
   test("defines --dry-run as boolean arg", async () => {
     const { launchCommand } = await import("../src/commands/citty/launch.js");
     const args = await resolveValue(launchCommand.args!);
@@ -196,7 +189,6 @@ describe("parseLaunchArgs", () => {
   test("parses minimal args with defaults", async () => {
     const { parseLaunchArgs } = await import("../src/commands/citty/launch.js");
     const result = parseLaunchArgs({});
-    expect(result.interactive).toBe(false);
     expect(result.dryRun).toBe(false);
     expect(result.noTui).toBe(false);
     expect(result.autoPush).toBe(false);
@@ -257,12 +249,6 @@ describe("parseLaunchArgs", () => {
     expect(result.model).toBe("anthropic/claude-sonnet-4-20250514");
   });
 
-  test("parses --interactive flag", async () => {
-    const { parseLaunchArgs } = await import("../src/commands/citty/launch.js");
-    const result = parseLaunchArgs({ interactive: true });
-    expect(result.interactive).toBe(true);
-  });
-
   test("parses --dry-run flag", async () => {
     const { parseLaunchArgs } = await import("../src/commands/citty/launch.js");
     const result = parseLaunchArgs({ dryRun: true });
@@ -318,7 +304,6 @@ describe("parseLaunchArgs", () => {
       allReady: true,
       maxConcurrent: "2",
       model: "gpt-4",
-      interactive: true,
       dryRun: true,
       baseBranch: "develop",
       maxRetries: "5",
@@ -333,7 +318,6 @@ describe("parseLaunchArgs", () => {
     expect(result.allReady).toBe(true);
     expect(result.maxConcurrent).toBe(2);
     expect(result.model).toBe("gpt-4");
-    expect(result.interactive).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.baseBranch).toBe("develop");
     expect(result.maxRetries).toBe(5);

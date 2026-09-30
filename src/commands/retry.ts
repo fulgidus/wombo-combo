@@ -1,57 +1,23 @@
 /**
- * retry.ts — Retry a specific failed agent.
+ * retry.ts — Retry a specific failed agent via the daemon.
  *
- * Usage: woco retry <feature-id> [--interactive] [--model <model>] [--output json]
+ * Usage: woco retry <feature-id> [--model <model>] [--output json] [--dry-run]
  *
- * Resets the agent's retry count and re-launches it. Can launch in either
- * headless mode (default) or interactive (tmux) mode.
- *
- * ## Process Lifecycle (audit: wave-detach-audit)
- *
- * When `--interactive` is NOT set, the retried agent is launched via
- * `launchSingleHeadless()`, which spawns with `detached: false` and piped
- * stdio. The agent is a child of this retry command process and dies when
- * the retry command exits. Since retry runs a one-shot launch (no monitoring
- * loop), the agent must complete within the process lifetime.
- *
- * When `--interactive` IS set, the agent runs in a tmux session
- * that survives after the retry command exits.
+ * Asks the daemon to reset the agent's retry count and re-launch it. The
+ * daemon owns the process lifecycle; this command blocks until the retried
+ * agent reaches a terminal state (matching the legacy one-shot semantics).
  */
 
 import type { WomboConfig } from "../config";
-import { loadFeatures, type Feature } from "../lib/tasks";
-import {
-  loadState,
-  saveState,
-  updateAgent,
-} from "../lib/state";
-import { worktreeReady } from "../lib/worktree";
-import { generatePrompt, type QuestPromptContext } from "../lib/prompt";
-import { launchInteractive } from "../lib/launcher";
-import { ProcessMonitor } from "../lib/monitor";
-import { launchSingleHeadless } from "./launch";
 import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
 import { renderRetry } from "../lib/toon";
-import {
-  resolveAgentForTask,
-  isSpecializedAgent,
-  writeAgentToWorktree,
-  type AgentResolution,
-} from "../lib/agent-registry";
-import { patchImportedAgent, renderGeneralistAgent } from "../lib/templates";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
-import { resolveQuestConfig, type QuestHitlMode } from "../lib/quest";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import type { DaemonAgentState } from "../daemon/protocol";
 
 export interface RetryCommandOptions {
   projectRoot: string;
   config: WomboConfig;
   featureId: string;
   model?: string;
-  interactive: boolean;
   dryRun?: boolean;
   outputFmt?: OutputFormat;
 }
@@ -61,7 +27,7 @@ export interface RetryCommandOptions {
 // ---------------------------------------------------------------------------
 
 export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
-  const { projectRoot, config } = opts;
+  const { projectRoot } = opts;
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId) {
@@ -69,181 +35,114 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     return; // unreachable — outputError calls process.exit
   }
 
-  const state = loadState(projectRoot);
-  if (!state) {
-    outputMessage(fmt, "No active wave.", { wave_id: null });
-    return;
-  }
+  // Dynamic imports — keep the daemon client out of the synchronous
+  // require() chain used by schema.ts / citty-registry.ts.
+  const { ensureDaemonRunning } = await import("../daemon/launcher");
+  const { DaemonClient } = await import("../daemon/client");
 
-  const agent = state.agents.find((a) => a.feature_id === opts.featureId);
-  if (!agent) {
-    outputError(fmt, `Agent not found for feature: ${opts.featureId}`);
-    return; // unreachable
-  }
+  await ensureDaemonRunning(projectRoot);
 
-  if (agent.status !== "failed") {
-    outputError(
-      fmt,
-      `Agent ${opts.featureId} is not in failed state (current: ${agent.status})`
-    );
-    return; // unreachable
-  }
+  const client = new DaemonClient({ clientId: "retry", autoReconnect: false });
+  try {
+    await client.connect();
+    const snapshot = await client.requestState(5_000);
+    const agent = snapshot.agents.find((a) => a.featureId === opts.featureId);
 
-  // Dry-run: show what would be retried without doing it
-  if (opts.dryRun) {
-    const dryRunResult = {
-      dry_run: true,
-      feature_id: opts.featureId,
-      current_status: agent.status,
-      retries_so_far: agent.retries,
-      worktree: agent.worktree,
-      mode: opts.interactive ? "interactive" : "headless",
-      model: opts.model ?? null,
-    };
-
-    output(fmt, dryRunResult, () => {
-      console.log(`\n[dry-run] Would retry agent: ${opts.featureId}`);
-      console.log(`  Current status: ${agent.status}`);
-      console.log(`  Retries so far: ${agent.retries}`);
-      console.log(`  Worktree: ${agent.worktree}`);
-      console.log(`  Mode: ${opts.interactive ? "interactive (multiplexer)" : "headless"}`);
-      if (opts.model) console.log(`  Model: ${opts.model}`);
-    }, () => {
-      console.log(renderRetry(dryRunResult));
-    });
-    return;
-  }
-
-  // Reset retry count and re-run
-  updateAgent(state, agent.feature_id, {
-    status: "queued",
-    retries: 0,
-    error: null,
-    build_passed: null,
-    build_output: null,
-    completed_at: null,
-  });
-  saveState(projectRoot, state);
-
-  const data = loadFeatures(projectRoot, config);
-  const feature = data.tasks.find((f: Feature) => f.id === opts.featureId);
-  if (!feature) {
-    outputError(fmt, `Feature ${opts.featureId} not found in ${config.tasksDir}`);
-    return; // unreachable
-  }
-
-  // Re-resolve specialized agent from registry if agent_type was set
-  let agentResolution: AgentResolution | undefined;
-  const agentName = agent.agent_name ?? undefined;
-
-  if (agent.agent_type && config.agentRegistry.mode !== "disabled") {
-    try {
-      const resolution = await resolveAgentForTask(feature, config, projectRoot);
-      if (isSpecializedAgent(resolution)) {
-        agentResolution = resolution;
-      }
-    } catch (err: any) {
-      if (fmt === "text") console.log(`  WARN: agent resolution failed for ${opts.featureId}, using cached agent name: ${err.message}`);
+    if (!agent) {
+      outputError(fmt, `Agent not found for feature: ${opts.featureId}`);
+      return; // unreachable
     }
-  }
 
-  // Reconstruct quest context from wave state (if quest-scoped)
-  let questContext: QuestPromptContext | undefined;
-  let effectiveConfig = config;
-  let hitlMode: string | undefined;
-  if (state.quest_id) {
-    const quest = loadQuest(projectRoot, state.quest_id);
-    if (quest) {
-      effectiveConfig = resolveQuestConfig(config, quest);
-      hitlMode = quest.hitlMode;
-      const knowledge = loadQuestKnowledge(projectRoot, state.quest_id);
-      questContext = {
-        questId: quest.id,
-        goal: quest.goal,
-        addedConstraints: quest.constraints.add ?? [],
-        addedForbidden: quest.constraints.ban ?? [],
-        knowledge,
+    if (agent.status !== "failed") {
+      outputError(
+        fmt,
+        `Agent ${opts.featureId} is not in failed state (current: ${agent.status})`
+      );
+      return; // unreachable
+    }
+
+    // Dry-run: show what would be retried without doing it
+    if (opts.dryRun) {
+      const dryRunResult = {
+        dry_run: true,
+        feature_id: opts.featureId,
+        current_status: agent.status,
+        retries_so_far: agent.retries,
+        worktree: agent.worktree,
+        mode: "headless (daemon)",
+        model: opts.model ?? null,
       };
+
+      output(fmt, dryRunResult, () => {
+        console.log(`\n[dry-run] Would retry agent: ${opts.featureId}`);
+        console.log(`  Current status: ${agent.status}`);
+        console.log(`  Retries so far: ${agent.retries}`);
+        console.log(`  Worktree: ${agent.worktree}`);
+        console.log(`  Mode: headless (daemon manages the process)`);
+        if (opts.model) console.log(`  Model: ${opts.model}`);
+      }, () => {
+        console.log(renderRetry(dryRunResult));
+      });
+      return;
     }
+
+    // Ask the daemon to retry (resets retries and re-launches)
+    client.retryAgent(opts.featureId, opts.model);
+    if (fmt === "text") {
+      console.log(`Retry requested for ${opts.featureId}. Waiting for completion...\n`);
+    }
+
+    // Wait for the retried agent to reach a terminal state
+    const finalAgent = await waitForAgentTerminal(client, opts.featureId, fmt);
+    if (!finalAgent) {
+      outputError(fmt, `Daemon stopped responding while retrying ${opts.featureId}.`);
+      return; // unreachable
+    }
+
+    if (fmt === "text") {
+      if (finalAgent.status === "failed") {
+        console.log(`\n${opts.featureId}: retry failed — ${finalAgent.error ?? "unknown error"}`);
+      } else {
+        console.log(`\n${opts.featureId}: retry finished with status "${finalAgent.status}".`);
+      }
+    }
+  } finally {
+    try { client.disconnect(); } catch { /* best-effort */ }
   }
+}
 
-  if (opts.interactive) {
-    // Write specialized agent to worktree if applicable
-    if (agentResolution && isSpecializedAgent(agentResolution)) {
-      try {
-        const patchedContent = patchImportedAgent(agentResolution.rawContent, effectiveConfig, projectRoot, hitlMode as QuestHitlMode | undefined);
-        writeAgentToWorktree(agent.worktree, agentResolution.name, patchedContent);
-      } catch {
-        // Non-fatal — agent will fall back to default
-      }
-    } else if (hitlMode && hitlMode !== "yolo") {
-      try {
-        const hitlAwareContent = renderGeneralistAgent(effectiveConfig, projectRoot, hitlMode as QuestHitlMode);
-        writeAgentToWorktree(agent.worktree, effectiveConfig.agent.name, hitlAwareContent);
-      } catch {
-        // Non-fatal — agent will use default
-      }
+/**
+ * Poll the daemon until the given agent reaches a terminal status
+ * (merged/completed/failed) or the daemon stops responding.
+ */
+async function waitForAgentTerminal(
+  client: { requestState(timeoutMs?: number): Promise<{ agents: DaemonAgentState[] }> },
+  featureId: string,
+  fmt: OutputFormat,
+  pollMs = 3_000,
+): Promise<DaemonAgentState | null> {
+  const TERMINAL = new Set(["merged", "completed", "failed"]);
+  let polls = 0;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    await new Promise((r) => setTimeout(r, pollMs));
+    polls++;
+
+    let snapshot;
+    try {
+      snapshot = await client.requestState(5_000);
+    } catch {
+      return null; // daemon stopped responding
     }
 
-    const prompt = generatePrompt(feature, agent.base_branch ?? state.base_branch, effectiveConfig, questContext, hitlMode as QuestHitlMode | undefined);
-    launchInteractive({
-      worktreePath: agent.worktree,
-      featureId: feature.id,
-      prompt,
-      model: opts.model,
-      interactive: true,
-      config: effectiveConfig,
-      agentName,
-    });
+    const agent = snapshot.agents.find((a) => a.featureId === featureId);
+    if (!agent) return null;
 
-    updateAgent(state, agent.feature_id, {
-      status: "running",
-      started_at: new Date().toISOString(),
-    });
-    saveState(projectRoot, state);
+    if (TERMINAL.has(agent.status)) return agent;
 
-    output(fmt, {
-      feature_id: opts.featureId,
-      mode: "interactive",
-      status: "running",
-      mux_session: `${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`,
-    }, () => {
-      console.log(`Retrying ${opts.featureId} in tmux session ${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`);
-    }, () => {
-      console.log(renderRetry({
-        feature_id: opts.featureId,
-        mode: "interactive",
-        status: "running",
-        mux_session: `${effectiveConfig.agent.tmuxPrefix}-${opts.featureId}`,
-      }));
-    });
-  } else {
-    // Build agent resolutions map for launchSingleHeadless
-    let agentResolutions: Map<string, AgentResolution> | undefined;
-    if (agentResolution) {
-      agentResolutions = new Map([[opts.featureId, agentResolution]]);
+    if (fmt === "text" && polls % 4 === 0) {
+      console.log(`[daemon] ${featureId}: ${agent.status} (retry ${agent.retries}/${agent.maxRetries})`);
     }
-
-    const monitor = new ProcessMonitor(projectRoot);
-    await launchSingleHeadless(projectRoot, state, agent, feature, monitor, effectiveConfig, opts.model, agentResolutions, questContext, hitlMode);
-
-    // Re-read agent after launch to get PID
-    const updatedAgent = state.agents.find((a) => a.feature_id === opts.featureId);
-
-    output(fmt, {
-      feature_id: opts.featureId,
-      mode: "headless",
-      status: updatedAgent?.status ?? "running",
-      pid: updatedAgent?.pid ?? null,
-    }, () => {
-      console.log(`Retrying ${opts.featureId} in headless mode`);
-    }, () => {
-      console.log(renderRetry({
-        feature_id: opts.featureId,
-        mode: "headless",
-        status: updatedAgent?.status ?? "running",
-        pid: updatedAgent?.pid ?? null,
-      }));
-    });
   }
 }

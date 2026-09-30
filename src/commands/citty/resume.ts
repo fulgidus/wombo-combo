@@ -6,8 +6,7 @@
  * `src/commands/resume.ts`.
  *
  * Flags:
- *   --max-concurrent, --model/-m, --interactive, --no-tui, --auto-push,
- *   --base-branch, --max-retries, --output/-o
+ *   --max-concurrent, --model/-m, --no-tui, --output/-o
  */
 
 import { defineCommand } from "citty";
@@ -24,11 +23,7 @@ import { cmdResume, type ResumeCommandOptions } from "../resume";
 export interface ParsedResumeArgs {
   maxConcurrent?: number;
   model?: string;
-  interactive: boolean;
   noTui: boolean;
-  autoPush: boolean;
-  baseBranch?: string;
-  maxRetries?: number;
   outputFmt?: OutputFormat;
 }
 
@@ -43,13 +38,7 @@ export function parseResumeArgs(args: Record<string, any>): ParsedResumeArgs {
       ? parseInt(args.maxConcurrent, 10)
       : undefined,
     model: args.model ?? undefined,
-    interactive: args.interactive ?? false,
     noTui: args.noTui ?? false,
-    autoPush: args.autoPush ?? false,
-    baseBranch: args.baseBranch ?? undefined,
-    maxRetries: args.maxRetries
-      ? parseInt(args.maxRetries, 10)
-      : undefined,
     outputFmt: args.output
       ? resolveOutputFormat(args.output)
       : undefined,
@@ -77,29 +66,9 @@ export const resumeCommand = defineCommand({
       description: "AI model to use for agents",
       required: false,
     },
-    interactive: {
-      type: "boolean",
-      description: "Launch agents in interactive (multiplexer) mode",
-      required: false,
-    },
     noTui: {
       type: "boolean",
       description: "Disable TUI dashboard, use plain console output",
-      required: false,
-    },
-    autoPush: {
-      type: "boolean",
-      description: "Automatically push branches after merge",
-      required: false,
-    },
-    baseBranch: {
-      type: "string",
-      description: "Base branch to create feature branches from",
-      required: false,
-    },
-    maxRetries: {
-      type: "string",
-      description: "Maximum number of retries per agent",
       required: false,
     },
     output: {
@@ -147,11 +116,7 @@ export const resumeCommand = defineCommand({
       config,
       maxConcurrent: parsed.maxConcurrent,
       model: parsed.model,
-      interactive: parsed.interactive,
       noTui: parsed.noTui,
-      autoPush: parsed.autoPush,
-      baseBranch: parsed.baseBranch,
-      maxRetries: parsed.maxRetries,
       outputFmt: parsed.outputFmt,
     };
 

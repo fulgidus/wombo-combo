@@ -23,8 +23,6 @@ describe("BRIDGE_REGISTRY", () => {
     expect(names).toContain("launch");
     expect(names).toContain("resume");
     expect(names).toContain("status");
-    expect(names).toContain("verify");
-    expect(names).toContain("merge");
     expect(names).toContain("retry");
     expect(names).toContain("cleanup");
     expect(names).toContain("history");

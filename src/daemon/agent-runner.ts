@@ -47,6 +47,7 @@ import {
   abortRebase,
   cleanupRebaseBranch,
   finalizeRebase,
+  pushBaseBranch,
 } from "../lib/merger";
 import type { Tier25Result } from "../lib/conflict-hunks";
 import { buildDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
@@ -130,6 +131,14 @@ export class AgentRunner {
   private config: WomboConfig;
   private state: DaemonState;
   private monitor: ProcessMonitor;
+
+  /** Session-scoped agent-name override (CLI --agent). null = use task.agent. */
+  private agentOverride: string | null = null;
+
+  /** Auto-push the base branch to origin after merges (CLI --auto-push). */
+  private autoPush = false;
+
+  private maxRetriesOverride: number | null = null;
 
   /** Stagger delay between concurrent launch starts (ms). */
   private static readonly LAUNCH_STAGGER_MS = 250;
@@ -252,6 +261,21 @@ export class AgentRunner {
   // Task submission (called by Scheduler)
   // -------------------------------------------------------------------------
 
+  /** Set a session-scoped agent-name override (CLI --agent parity). */
+  setAgentOverride(name: string | null): void {
+    this.agentOverride = name;
+  }
+
+  /** Enable auto-push of the base branch after successful merges (CLI --auto-push). */
+  setAutoPush(enabled: boolean): void {
+    this.autoPush = enabled;
+  }
+
+  /** Set a session-scoped max-retries override (CLI --max-retries parity). */
+  setMaxRetries(n: number | null): void {
+    this.maxRetriesOverride = n;
+  }
+
   /** Submit a new task for execution. Creates agent state, worktree, and launches. */
   submitTask(task: Task): void {
     const config = this.config;
@@ -265,10 +289,10 @@ export class AgentRunner {
       branch,
       baseBranch,
       worktree: wt,
-      maxRetries: config.defaults.maxRetries,
+      maxRetries: this.maxRetriesOverride ?? config.defaults.maxRetries,
       dependsOn: task.depends_on,
       dependedOnBy: this.findDependents(task.id),
-      agentName: task.agent ?? null,
+      agentName: this.agentOverride ?? task.agent ?? null,
       agentType: task.agent_type ?? null,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
     });
@@ -346,11 +370,17 @@ export class AgentRunner {
         }
       }
 
-      // Write agent definition if using a specialized agent
+      // Write agent definition if using a specialized agent. The session
+      // override (CLI --agent) is persisted onto the agent state, so apply it
+      // to the task copy used for agent resolution and prompt generation.
+      const effectiveTask = agent.agentName
+        ? ({ ...task, agent: agent.agentName } as Task)
+        : task;
+
       if (agent.agentName) {
         try {
           const agentDefs = await prepareAgentDefinitions(
-            [task],
+            [effectiveTask],
             this.config,
             this.projectRoot
           );
@@ -371,7 +401,7 @@ export class AgentRunner {
 
       // Generate prompt
       const prompt = generatePrompt(
-        task as Feature,
+        effectiveTask as Feature,
         agent.baseBranch,
         this.config,
         questContext,
@@ -628,6 +658,14 @@ export class AgentRunner {
       } catch {
         // Stale worktrees waste disk space but aren't fatal
       }
+    }
+
+    // Auto-push the base branch to origin if requested (fire-and-forget).
+    if (this.autoPush) {
+      pushBaseBranch(this.projectRoot, agent.baseBranch, this.config).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[daemon] auto-push of ${agent.baseBranch} failed: ${msg}`);
+      });
     }
   }
 
