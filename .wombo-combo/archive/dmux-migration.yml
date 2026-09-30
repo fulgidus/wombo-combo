@@ -23,3 +23,4 @@ references: []
 notes:
   - "2026-03-12: User requirement. dmux is faster and more resource-efficient than tmux."
 subtasks: []
+paths: []

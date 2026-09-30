@@ -38,3 +38,4 @@ notes:
     launchResolverAndRetryMerge with retry loop up to maxRetries+1."
   - "merge.ts: Rewritten to use attemptMerge() from launch.ts. Loads features for conflict resolution prompt."
 subtasks: []
+paths: []

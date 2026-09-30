@@ -30,3 +30,4 @@ notes:
   - "2026-03-11: Feature created. Package is already installable from GitHub; this adds proper release artifacts and
     changelogs."
 subtasks: []
+paths: []

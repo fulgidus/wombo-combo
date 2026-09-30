@@ -28,3 +28,4 @@ references:
 notes:
   - "2026-03-11: Feature created. Current install path is `bun install -g github:fulgidus/wombo`."
 subtasks: []
+paths: []

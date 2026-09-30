@@ -26,3 +26,4 @@ notes:
   - '2026-03-11: Feature created. package.json already has "start": "bun src/index.ts" but agents need a dev alias and a
     documented constraint.'
 subtasks: []
+paths: []

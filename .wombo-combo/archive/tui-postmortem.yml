@@ -24,3 +24,4 @@ references: []
 notes:
   - "2026-03-12: Implemented in tui.ts (markWaveComplete/waitForQuit), launch.ts (dumpFailedAgentLogs), and resume.ts."
 subtasks: []
+paths: []

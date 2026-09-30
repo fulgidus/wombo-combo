@@ -22,3 +22,4 @@ references: []
 notes:
   - "2026-03-12: Found during codebase audit. User suggested 'woco version' / 'woco -v' as the fix."
 subtasks: []
+paths: []

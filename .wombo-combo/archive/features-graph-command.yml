@@ -24,3 +24,4 @@ references:
 notes:
   - "2026-03-12: Implemented. buildMermaidSource filters to connected nodes only, orphans shown as compact summary."
 subtasks: []
+paths: []

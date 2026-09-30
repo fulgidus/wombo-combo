@@ -17,3 +17,4 @@ references: []
 notes:
   - "Test: echo 'features: not-an-array' > .features.yml && bun dev features list"
 subtasks: []
+paths: []

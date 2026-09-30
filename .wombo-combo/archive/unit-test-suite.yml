@@ -29,3 +29,4 @@ notes:
   - "2026-03-12: Created after cleanup bug destroyed the project root. Tests would have caught the .includes() vs
     .startsWith() issue."
 subtasks: []
+paths: []

@@ -17,3 +17,4 @@ references: []
 notes:
   - "Test: bun dev features add x Title --priority invalid → should error"
 subtasks: []
+paths: []

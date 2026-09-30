@@ -19,3 +19,4 @@ references: []
 notes:
   - "2026-03-12: Found during codebase audit. Same root cause as the cleanup-destroys-project bug."
 subtasks: []
+paths: []
