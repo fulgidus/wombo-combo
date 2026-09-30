@@ -9,3 +9,4 @@ dist/
 *.tmp
 *.bak
 .wombo-combo/daemon-state.json
+.wombo-combo/daemon.pid

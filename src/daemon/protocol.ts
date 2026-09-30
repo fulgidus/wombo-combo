@@ -324,6 +324,13 @@ export interface DaemonAgentState {
   error: string | null;
   effortEstimateMs: number | null;
   streamIndex: number | null;
+  /**
+   * Scheduler-computed: true when scoped schedule-plan members exist after
+   * this task in its execution stream (non-terminal chain member). Survives
+   * the dependedOnBy-scan-at-submit-time gap, where successors are not yet in
+   * daemon state when the predecessor is submitted.
+   */
+  hasChainSuccessor?: boolean;
   dependsOn: string[];
   dependedOnBy: string[];
   agentName: string | null;

@@ -95,6 +95,8 @@ export class Daemon {
   private state: DaemonState;
   private scheduler: Scheduler;
   private runner: AgentRunner;
+  /** True once a cmd:start session has been requested (guards watcher auto-start). */
+  private sessionStarted = false;
 
   private server: ReturnType<typeof Bun.serve> | null = null;
   private clients: Map<string, ConnectedClient> = new Map();
@@ -190,26 +192,22 @@ export class Daemon {
     // Register signal handlers
     this.registerSignalHandlers();
 
-    // Auto-start the scheduler: continuously picks up planned tasks.
-    // No manual cmd:start needed — the scheduler wakes on every tick and
-    // picks any tasks whose status is "planned" and whose deps are met.
-    //
-    // If persisted daemon state was loaded from disk, the user's last-set
-    // maxConcurrent is already in state.  Mark concurrencyPinned so the
-    // scheduler's start() does NOT overwrite it with the config default.
-    if (this.state.stateLoaded) {
-      this.scheduler.concurrencyPinned = true;
-    }
-    // First reconcile any tasks that were left "in_progress" by a previous
-    // daemon run that crashed or was killed — reset them to "planned" so the
-    // scheduler can pick them up again.
+    // NOTE: the scheduler is deliberately NOT auto-started here. It starts
+    // only when a client sends cmd:start (launch/resume), which carries the
+    // session scope (taskIds/questId) and overrides (agent, model,
+    // concurrency). An unscoped auto-start would race the first cmd:start
+    // and pick up unrelated planned tasks from the store.
+
+    // Reconcile tasks that were left "in_progress" by a previous daemon run
+    // that crashed or was killed — reset them to "planned" so a future scoped
+    // session can pick them up. Harmless for tasks outside a session scope:
+    // the scheduler only ever submits tasks matching the cmd:start scope.
     this.runner.reconcileOrphanedTasks();
     // Re-trigger the merge pipeline for any agents that were left in "verified"
     // state (completed but not yet merged) by a previous daemon run.
     this.runner.reconcileVerifiedAgents();
-    this.scheduler.start();
 
-    this.log("info", "Daemon ready");
+    this.log("info", "Daemon ready (scheduler idle — waiting for cmd:start)");
   }
 
   /** Graceful shutdown: stop scheduler, drain agents, close server, clean up. */
@@ -480,12 +478,12 @@ export class Daemon {
       return;
     }
 
-    // Re-key the clients map from the internal UUID to the user-provided
-    // clientId so that sendTo() can look it up by the new ID.
-    const oldId = client.clientId;
-    this.clients.delete(oldId);
+    // Keep the clients map keyed by the STABLE internal ws.data.id — the
+    // message handler always looks up by that id, so re-keying here (an old
+    // "fix" for sendTo) made every post-handshake command unreachable.
+    // client.clientId still becomes the user-provided id; sendTo() resolves
+    // either id space.
     client.clientId = payload.clientId;
-    this.clients.set(client.clientId, client);
     client.handshaked = true;
 
     this.sendTo(client.clientId, "evt:handshake-ack", {
@@ -499,6 +497,9 @@ export class Daemon {
   }
 
   private handleStart(payload: CommandMap["cmd:start"]): void {
+    // A real session has been requested — the tasks watcher may now
+    // auto-(re)start the scheduler when it goes idle again.
+    this.sessionStarted = true;
     // Session-scoped CLI flags (apply on every start, filter or not)
     if (payload.autoPush !== undefined) {
       this.runner.setAutoPush(payload.autoPush);
@@ -549,8 +550,7 @@ export class Daemon {
       });
       this.scheduler.start();
     } else {
-      // No filter constraints — just ensure scheduler is running
-      // (it auto-starts on daemon boot, but may have been paused/stopped)
+      // No filter constraints — resume/continue the current session
       if (payload.agentOverride !== undefined) {
         this.runner.setAgentOverride(payload.agentOverride);
       }
@@ -618,7 +618,11 @@ export class Daemon {
         this.tasksNudgeTimer = setTimeout(() => {
           this.tasksNudgeTimer = null;
           const status = this.state.getSchedulerStatus();
-          if (status === "idle" || status === "shutdown") {
+          // Only start the scheduler for a session that was actually started
+          // via cmd:start. A fresh boot has an unscoped scheduler — letting
+          // the watcher start it would pick up unrelated planned tasks from
+          // the store (including files just written by boot reconciliation).
+          if (this.sessionStarted && (status === "idle" || status === "shutdown")) {
             this.scheduler.start();
           }
           this.scheduler.nudge();
@@ -767,13 +771,16 @@ export class Daemon {
     }
   }
 
-  /** Send a typed event to a specific client. */
+  /** Send a typed event to a specific client. Accepts the internal
+   *  connection id or the post-handshake user-provided clientId. */
   private sendTo<T extends EventType>(
     clientId: string,
     type: T,
     payload: EventMap[T]
   ): void {
-    const client = this.clients.get(clientId);
+    const client =
+      this.clients.get(clientId) ??
+      [...this.clients.values()].find((c) => c.clientId === clientId);
     if (!client) return;
 
     const seq = ++this.eventSeq;

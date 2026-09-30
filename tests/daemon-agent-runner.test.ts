@@ -241,3 +241,79 @@ describe("AgentRunner launch stagger queue", () => {
     expect(spyLog[0].skipStagger).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Chain worktree sharing: submitTask ctx + merge deferral
+// ---------------------------------------------------------------------------
+
+describe("AgentRunner chain ctx and merge deferral", () => {
+  let tempDir: string;
+  let state: DaemonState;
+  let runner: AgentRunner;
+
+  beforeEach(() => {
+    tempDir = makeTempDir();
+    state = new DaemonState(tempDir);
+    runner = new AgentRunner({ projectRoot: tempDir, config: makeConfig() }, state);
+  });
+
+  test("submitTask threads sharedWorktree/streamIndex/hasChainSuccessor into agent state", () => {
+    runner.submitTask(makeTask("chain-a"), {
+      sharedWorktree: "/shared/wt",
+      streamIndex: 2,
+      hasChainSuccessor: true,
+    });
+
+    const agent = state.getAgent("chain-a");
+    expect(agent).toBeDefined();
+    expect(agent?.worktree).toBe("/shared/wt");
+    expect(agent?.streamIndex).toBe(2);
+    expect(agent?.hasChainSuccessor).toBe(true);
+
+    // Default ctx: no sharing, no successor
+    runner.submitTask(makeTask("solo"));
+    const solo = state.getAgent("solo");
+    expect(solo?.worktree).not.toBe("/shared/wt");
+    expect(solo?.streamIndex).toBeNull();
+    expect(solo?.hasChainSuccessor).toBe(false);
+  });
+
+  test("non-terminal chain member defers merge; terminal member merges", async () => {
+    const sharedWt = join(tempDir, ".wombo-combo", "chain-wt");
+
+    // chain-a: fake agent, non-terminal member (scheduler flagged)
+    runner.submitTask(makeTask("chain-a", FAKE_AGENT_SENTINEL), {
+      sharedWorktree: sharedWt,
+      streamIndex: 0,
+      hasChainSuccessor: true,
+    });
+    // chain-b: fake agent, terminal member (same shared worktree)
+    runner.submitTask(
+      { ...makeTask("chain-b", FAKE_AGENT_SENTINEL), depends_on: ["chain-a"] },
+      { sharedWorktree: sharedWt, streamIndex: 0, hasChainSuccessor: false }
+    );
+
+    let merges = 0;
+    (runner as unknown as { attemptMerge: () => Promise<void> }).attemptMerge =
+      async () => {
+        merges++;
+      };
+
+    const verification = runner as unknown as {
+      handleBuildVerification: (featureId: string) => Promise<void>;
+    };
+
+    // chain-a verifies but must NOT merge — it has a chain successor
+    await verification.handleBuildVerification("chain-a");
+    const a = state.getAgent("chain-a");
+    expect(a?.status).toBe("verified");
+    expect(a?.activity).toContain("deferring merge");
+    expect(merges).toBe(0);
+
+    // chain-b is the terminal — it merges (carrying the chain work)
+    await verification.handleBuildVerification("chain-b");
+    const b = state.getAgent("chain-b");
+    expect(b?.status).toBe("verified");
+    expect(merges).toBe(1);
+  });
+});

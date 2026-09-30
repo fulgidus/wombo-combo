@@ -15,8 +15,9 @@
 import type { WomboConfig } from "../config";
 import { loadFeatures, selectFeatures, sortByPriorityThenEffort, areDependenciesMet, getDoneTaskIds } from "../lib/tasks";
 import type { Task, FeaturesFile } from "../lib/tasks";
-import { buildDepGraph, validateDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
+import { buildDepGraph, validateDepGraph, buildSchedulePlan, getStreamForFeature } from "../lib/dependency-graph";
 import type { DepGraph, SchedulePlan } from "../lib/dependency-graph";
+import { worktreePath } from "../lib/worktree";
 import type { DaemonState, InternalAgentState } from "./state";
 import type { AgentRunner } from "./agent-runner";
 
@@ -442,8 +443,70 @@ export class Scheduler {
     this.submittedTasks.add(task.id);
     this.deps.state.getSchedulerState().totalProcessed++;
 
-    // Delegate to the runner to handle worktree creation, prompt gen, and launch
-    this.deps.runner.submitTask(task);
+    // Delegate to the runner to handle worktree creation, prompt gen, and launch.
+    // Chain context tells the runner which worktree to share when this task is
+    // a non-head member of a dependency chain (see getChainContext).
+    this.deps.runner.submitTask(task, this.getChainContext(task.id));
+  }
+
+  // -------------------------------------------------------------------------
+  // Chain context (worktree sharing for dependency chains)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Compute the chain context for a task: which worktree it should share and
+   * which stream it belongs to.
+   *
+   * Tasks that form a linear dependency chain (per the schedule plan) run
+   * sequentially in the SAME worktree — the chain head's worktree. This lets
+   * each successor branch off the predecessor's tip (carrying all chain work)
+   * instead of forking a fresh worktree from base, and lets the chain terminal
+   * merge everything in one merge.
+   *
+   * When a taskIds scope is set, only scoped tasks participate in sharing —
+   * the stream is re-rooted at the first scoped member.
+   */
+  private getChainContext(taskId: string): {
+    sharedWorktree?: string;
+    streamIndex?: number;
+    hasChainSuccessor?: boolean;
+  } {
+    const plan = this.schedulePlan;
+    if (!plan) return {};
+
+    const streamIdx = getStreamForFeature(plan, taskId);
+    if (streamIdx === -1) return {};
+
+    const stream = plan.streams[streamIdx];
+    if (!stream || stream.featureIds.length <= 1) {
+      return { streamIndex: streamIdx >= 0 ? streamIdx : undefined, hasChainSuccessor: false };
+    }
+
+    // Restrict to scoped tasks (only the selected set participates in sharing)
+    const scope = this.config.taskIds?.length ? new Set(this.config.taskIds) : null;
+    const members = scope
+      ? stream.featureIds.filter((id) => scope.has(id))
+      : stream.featureIds;
+
+    const pos = members.indexOf(taskId);
+    if (pos === -1) return { streamIndex: streamIdx, hasChainSuccessor: false };
+
+    // Non-terminal member of the scoped stream: a successor will reuse this
+    // agent's worktree, so this agent must defer its merge to the terminal.
+    const hasChainSuccessor = pos < members.length - 1;
+
+    if (pos === 0) {
+      // Head owns the worktree path; successors share it via their own ctx.
+      return { streamIndex: streamIdx, hasChainSuccessor };
+    }
+
+    // Non-head chain member: share the head member's worktree
+    const head = members[0];
+    return {
+      sharedWorktree: worktreePath(this.config.projectRoot, head, this.config.config),
+      streamIndex: streamIdx,
+      hasChainSuccessor,
+    };
   }
 
   // -------------------------------------------------------------------------

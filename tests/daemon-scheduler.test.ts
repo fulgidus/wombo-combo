@@ -29,6 +29,7 @@ import { Scheduler } from "../src/daemon/scheduler";
 import type { SchedulerConfig, SchedulerDeps } from "../src/daemon/scheduler";
 import type { WomboConfig } from "../src/config";
 import { AgentRunner } from "../src/daemon/agent-runner";
+import { worktreePath } from "../src/lib/worktree";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,10 +133,10 @@ describe("Scheduler start", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
-      config: makeConfig(),
+      config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }),
       tickIntervalMs: 60000, // very long so tick doesn't auto-fire
     };
 
@@ -149,7 +150,7 @@ describe("Scheduler start", () => {
 
   test("sets baseBranch from config", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ baseBranch: "develop" }),
@@ -166,10 +167,10 @@ describe("Scheduler start", () => {
 
   test("does not start if already running", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
-      config: makeConfig(),
+      config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }),
       tickIntervalMs: 60000,
     };
 
@@ -192,9 +193,9 @@ describe("Scheduler start", () => {
 describe("Scheduler pause / resume", () => {
   test("pause sets status to paused", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -211,9 +212,9 @@ describe("Scheduler pause / resume", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -230,9 +231,9 @@ describe("Scheduler pause / resume", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -251,9 +252,9 @@ describe("Scheduler pause / resume", () => {
 describe("Scheduler stop", () => {
   test("sets status to stopping", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -274,7 +275,7 @@ describe("Scheduler kill", () => {
     const state = new DaemonState(tempDir);
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -294,9 +295,9 @@ describe("Scheduler kill", () => {
 describe("Scheduler shutdown", () => {
   test("sets status to shutdown", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -321,7 +322,7 @@ describe("Scheduler tick behavior", () => {
 
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
 
@@ -352,7 +353,7 @@ describe("Scheduler tick behavior", () => {
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
       // Pass maxConcurrent: 1 explicitly so start() sets it before ticking
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000, maxConcurrent: 1 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000, maxConcurrent: 1 },
       { state, runner }
     );
     scheduler.start();
@@ -374,7 +375,7 @@ describe("Scheduler tick behavior", () => {
 
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -399,7 +400,7 @@ describe("Scheduler tick behavior", () => {
     const scheduler = new Scheduler(
       // maxConcurrent: 1 — but both agents are already queued-ready,
       // so both should be launched (they've already been allocated slots)
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000, maxConcurrent: 2 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000, maxConcurrent: 2 },
       { state, runner }
     );
     scheduler.start();
@@ -418,7 +419,7 @@ describe("Scheduler tick behavior", () => {
 
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -447,7 +448,7 @@ describe("Scheduler tick behavior", () => {
     const state = new DaemonState(tempDir);
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -466,9 +467,9 @@ describe("Scheduler tick behavior", () => {
 describe("Scheduler external signals", () => {
   test("pinTask delegates to state.pinTask", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -485,9 +486,9 @@ describe("Scheduler external signals", () => {
     const state = new DaemonState(tempDir);
     state.addAgent(makeAgent("skip-me"));
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
 
@@ -506,9 +507,9 @@ describe("Scheduler external signals", () => {
     state.updateAgentStatus("retry-me", "running");
     state.updateAgentStatus("retry-me", "failed");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
 
@@ -523,9 +524,9 @@ describe("Scheduler external signals", () => {
 
   test("setConcurrency updates max concurrent", () => {
     const state = new DaemonState(tempDir);
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
     scheduler.start();
@@ -543,7 +544,7 @@ describe("Scheduler external signals", () => {
 
     const { runner, calls } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
 
@@ -561,9 +562,9 @@ describe("Scheduler external signals", () => {
     state.addAgent(makeAgent("child", { dependsOn: ["parent"] }));
     state.updateAgentStatus("parent", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const scheduler = new Scheduler(
-      { projectRoot: tempDir, config: makeConfig(), tickIntervalMs: 60000 },
+      { projectRoot: tempDir, config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), tickIntervalMs: 60000 },
       { state, runner }
     );
 
@@ -656,7 +657,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ defaults: { maxConcurrent: 6, maxRetries: 2 } }),
@@ -675,7 +676,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ defaults: { maxConcurrent: 4, maxRetries: 2 } }),
@@ -703,7 +704,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ defaults: { maxConcurrent: 4, maxRetries: 2 } }),
@@ -729,7 +730,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     // Original scheduler: user pins to infinite (0)
     const config: SchedulerConfig = {
       projectRoot: tempDir,
@@ -766,7 +767,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const rebuilt: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ defaults: { maxConcurrent: 3, maxRetries: 2 } }),
@@ -787,7 +788,7 @@ describe("Scheduler concurrency pinning", () => {
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
       config: makeConfig({ defaults: { maxConcurrent: 7, maxRetries: 2 } }),
@@ -816,7 +817,7 @@ describe("Scheduler concurrency pinning", () => {
     const { runner, calls } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
-      config: makeConfig(),
+      config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }),
       tickIntervalMs: 60000,
       maxConcurrent: 0,
     };
@@ -942,10 +943,10 @@ describe("Scheduler start() — concurrencyPinned preserves persisted state", ()
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     const config: SchedulerConfig = {
       projectRoot: tempDir,
-      config: makeConfig(), // defaults.maxConcurrent = 4
+      config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }), // defaults.maxConcurrent = 4
       tickIntervalMs: 60000,
     };
 
@@ -966,7 +967,7 @@ describe("Scheduler start() — concurrencyPinned preserves persisted state", ()
     state.addAgent(makeAgent("keep-alive"));
     state.updateAgentStatus("keep-alive", "running");
 
-    const { runner } = makeMockRunner();
+    const { calls, runner } = makeMockRunner();
     // Use 7 as the config default to distinguish from the state default (4)
     const config: SchedulerConfig = {
       projectRoot: tempDir,
@@ -980,6 +981,226 @@ describe("Scheduler start() — concurrencyPinned preserves persisted state", ()
 
     // Config default should have been applied
     expect(state.getMaxConcurrent()).toBe(7);
+    scheduler.shutdown();
+    state.destroy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chain context from schedule plan
+// ---------------------------------------------------------------------------
+
+describe("Chain context from schedule plan", () => {
+  /** Write a planned task file into the temp project's task store. */
+  function writeTaskYml(dir: string, id: string, dependsOn: string[] = []): void {
+    const tasksDir = join(dir, ".wombo-combo", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    const deps =
+      dependsOn.length > 0
+        ? `depends_on:\n${dependsOn.map((d) => `  - "${d}"`).join("\n")}`
+        : "depends_on: []";
+    writeFileSync(
+      join(tasksDir, `${id}.yml`),
+      [
+        `id: "${id}"`,
+        `title: "${id}"`,
+        `description: ""`,
+        `status: "planned"`,
+        `completion: 0`,
+        `difficulty: "medium"`,
+        `priority: "medium"`,
+        deps,
+        `effort: "PT1H"`,
+        `started_at: null`,
+        `ended_at: null`,
+        `constraints: []`,
+        `forbidden: []`,
+        `references: []`,
+        `notes: []`,
+        `subtasks: []`,
+        "",
+      ].join("\n")
+    );
+  }
+
+  function ctxFor(
+    calls: Array<{ method: string; args: unknown[] }>,
+    featureId: string
+  ): { sharedWorktree?: string; streamIndex?: number; hasChainSuccessor?: boolean } | undefined {
+    const call = calls.find(
+      (c) =>
+        c.method === "submitTask" &&
+        (c.args[0] as { id: string } | undefined)?.id === featureId
+    );
+    return call?.args[1] as
+      | { sharedWorktree?: string; streamIndex?: number; hasChainSuccessor?: boolean }
+      | undefined;
+  }
+
+  test("head of a scoped chain gets streamIndex only; non-heads share the head worktree", () => {
+    writeTaskYml(tempDir, "chain-a");
+    writeTaskYml(tempDir, "chain-b", ["chain-a"]);
+    writeTaskYml(tempDir, "chain-c", ["chain-b"]);
+
+    const state = new DaemonState(tempDir);
+    // Pre-verify the two predecessors so all three tasks are dep-satisfied
+    // on the first tick (daemon verified counts as satisfied).
+    state.addAgent(makeAgent("chain-a"));
+    state.updateAgentStatus("chain-a", "verified");
+    state.addAgent(makeAgent("chain-b"));
+    state.updateAgentStatus("chain-b", "verified");
+    state.setMaxConcurrent(0);
+
+    const { calls, runner } = makeMockRunner();
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({
+        tasksDir: "tasks",
+        archiveDir: "archive",
+        // Large concurrency budget: pre-verified chain members count as
+        // "active", so a small default would starve the submission slots.
+        defaults: { maxConcurrent: 10, maxRetries: 2 },
+      }),
+      taskIds: ["chain-a", "chain-b", "chain-c"],
+      tickIntervalMs: 60000,
+    };
+    const scheduler = new Scheduler(config, { state, runner });
+    scheduler.start();
+
+    const headCtx = ctxFor(calls, "chain-a");
+    expect(headCtx).toBeDefined();
+    expect(headCtx?.sharedWorktree).toBeUndefined();
+    expect(headCtx?.streamIndex).toBe(0);
+    // Head is a non-terminal member → must defer its merge to the terminal
+    expect(headCtx?.hasChainSuccessor).toBe(true);
+
+    const sharedWt = worktreePath(tempDir, "chain-a", config.config);
+    const bCtx = ctxFor(calls, "chain-b");
+    expect(bCtx).toBeDefined();
+    expect(bCtx?.sharedWorktree).toBe(sharedWt);
+    expect(bCtx?.streamIndex).toBe(0);
+    expect(bCtx?.hasChainSuccessor).toBe(true);
+
+    const cCtx = ctxFor(calls, "chain-c");
+    expect(cCtx).toBeDefined();
+    expect(cCtx?.sharedWorktree).toBe(sharedWt);
+    expect(cCtx?.streamIndex).toBe(0);
+    // Terminal member merges everything itself
+    expect(cCtx?.hasChainSuccessor).toBe(false);
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("unscoped disk chain shares the head worktree the same way", () => {
+    writeTaskYml(tempDir, "chain-a");
+    writeTaskYml(tempDir, "chain-b", ["chain-a"]);
+
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("chain-a"));
+    state.updateAgentStatus("chain-a", "verified");
+    state.setMaxConcurrent(0);
+
+    const { calls, runner } = makeMockRunner();
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({
+        tasksDir: "tasks",
+        archiveDir: "archive",
+        // Large concurrency budget: pre-verified chain members count as
+        // "active", so a small default would starve the submission slots.
+        defaults: { maxConcurrent: 10, maxRetries: 2 },
+      }),
+      tickIntervalMs: 60000,
+    };
+    const scheduler = new Scheduler(config, { state, runner });
+    scheduler.start();
+
+    const sharedWt = worktreePath(tempDir, "chain-a", config.config);
+    const headCtx = ctxFor(calls, "chain-a");
+    expect(headCtx?.sharedWorktree).toBeUndefined();
+    expect(headCtx?.hasChainSuccessor).toBe(true);
+    const bCtx = ctxFor(calls, "chain-b");
+    expect(bCtx?.sharedWorktree).toBe(sharedWt);
+    // Two-member chain: b is the terminal
+    expect(bCtx?.hasChainSuccessor).toBe(false);
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("solo tasks get no sharedWorktree (own stream)", () => {
+    writeTaskYml(tempDir, "solo-1");
+    writeTaskYml(tempDir, "solo-2");
+
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+
+    const { calls, runner } = makeMockRunner();
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({
+        tasksDir: "tasks",
+        archiveDir: "archive",
+        // Large concurrency budget: pre-verified chain members count as
+        // "active", so a small default would starve the submission slots.
+        defaults: { maxConcurrent: 10, maxRetries: 2 },
+      }),
+      taskIds: ["solo-1", "solo-2"],
+      tickIntervalMs: 60000,
+    };
+    const scheduler = new Scheduler(config, { state, runner });
+    scheduler.start();
+
+    const ctx1 = ctxFor(calls, "solo-1");
+    const ctx2 = ctxFor(calls, "solo-2");
+    expect(ctx1).toBeDefined();
+    expect(ctx2).toBeDefined();
+    expect(ctx1?.sharedWorktree).toBeUndefined();
+    expect(ctx2?.sharedWorktree).toBeUndefined();
+    // Independent tasks must not land in the same stream
+    expect(ctx1?.streamIndex).not.toBe(ctx2?.streamIndex);
+    // Solo tasks have no successors — no merge deferral
+    expect(ctx1?.hasChainSuccessor).toBe(false);
+    expect(ctx2?.hasChainSuccessor).toBe(false);
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("dep-blocked chain: only the head is submitted on the first tick", () => {
+    writeTaskYml(tempDir, "chain-a");
+    writeTaskYml(tempDir, "chain-b", ["chain-a"]);
+    writeTaskYml(tempDir, "chain-c", ["chain-b"]);
+
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+
+    const { calls, runner } = makeMockRunner();
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({
+        tasksDir: "tasks",
+        archiveDir: "archive",
+        // Large concurrency budget: pre-verified chain members count as
+        // "active", so a small default would starve the submission slots.
+        defaults: { maxConcurrent: 10, maxRetries: 2 },
+      }),
+      taskIds: ["chain-a", "chain-b", "chain-c"],
+      tickIntervalMs: 60000,
+    };
+    const scheduler = new Scheduler(config, { state, runner });
+    scheduler.start();
+
+    const submits = calls.filter((c) => c.method === "submitTask");
+    expect(submits.length).toBe(1);
+    expect((submits[0].args[0] as { id: string }).id).toBe("chain-a");
+    // Head knows a successor is coming, even though it is not submitted yet
+    expect(
+      (submits[0].args[1] as { hasChainSuccessor?: boolean } | undefined)
+        ?.hasChainSuccessor
+    ).toBe(true);
+
     scheduler.shutdown();
     state.destroy();
   });

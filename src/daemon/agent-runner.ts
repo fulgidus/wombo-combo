@@ -20,7 +20,7 @@ import type { WomboConfig, MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { saveTaskToStore } from "../lib/task-store";
-import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree } from "../lib/worktree";
+import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree, worktreeExists } from "../lib/worktree";
 import { launchHeadless, retryHeadless, launchConflictResolver, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
 import type { LaunchResult } from "../lib/launcher";
 import { ProcessMonitor } from "../lib/monitor";
@@ -276,11 +276,20 @@ export class AgentRunner {
     this.maxRetriesOverride = n;
   }
 
-  /** Submit a new task for execution. Creates agent state, worktree, and launches. */
-  submitTask(task: Task): void {
+  /**
+   * Submit a new task for execution. Creates agent state, worktree, and launches.
+   *
+   * @param ctx chain context from the scheduler's schedule plan: non-head
+   * members of a dependency stream share the stream head's worktree, so the
+   * chain runs sequentially in one worktree and merges once at the terminal.
+   */
+  submitTask(
+    task: Task,
+    ctx?: { sharedWorktree?: string; streamIndex?: number; hasChainSuccessor?: boolean },
+  ): void {
     const config = this.config;
     const branch = featureBranchName(task.id, config);
-    const wt = worktreePath(this.projectRoot, task.id, config);
+    const wt = ctx?.sharedWorktree ?? worktreePath(this.projectRoot, task.id, config);
     const baseBranch = this.resolveBaseBranch(task);
 
     const agentState = createDaemonAgentState({
@@ -294,6 +303,8 @@ export class AgentRunner {
       dependedOnBy: this.findDependents(task.id),
       agentName: this.agentOverride ?? task.agent ?? null,
       agentType: task.agent_type ?? null,
+      streamIndex: ctx?.streamIndex ?? null,
+      hasChainSuccessor: ctx?.hasChainSuccessor ?? false,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
     });
 
@@ -343,13 +354,44 @@ export class AgentRunner {
         saveTaskToStore(this.projectRoot, this.config, taskOnDisk);
       }
 
-      // Create worktree
-      const wt = await createWorktree(
-        this.projectRoot,
-        featureId,
-        agent.baseBranch,
-        this.config
-      );
+      // Create the worktree. Chain members (dependent tasks that share a
+      // stream head's worktree) reuse the predecessor's worktree and branch
+      // from its tip via `git checkout -B` so the chain accumulates work
+      // instead of forking fresh from base.
+      const depAgent = (agent.dependsOn ?? [])
+        .map((depId) => this.state.getAgent(depId))
+        .find((dep) => dep && dep.worktree === agent.worktree);
+      // NOTE: worktreeExists (valid git worktree), not worktreeReady —
+      // fake agents skip dependency installs, so node_modules may be absent
+      // while the worktree is perfectly reusable for branch continuity.
+      const isChainReuse =
+        depAgent !== undefined && worktreeExists(agent.worktree);
+
+      let wt: string;
+      if (isChainReuse) {
+        try {
+          execSync(`git checkout -B "${agent.branch}"`, {
+            cwd: agent.worktree,
+            stdio: "pipe",
+          });
+          wt = agent.worktree;
+        } catch {
+          // Branch continuity failed — fall back to a fresh worktree from base
+          wt = await createWorktree(
+            this.projectRoot,
+            featureId,
+            agent.baseBranch,
+            this.config
+          );
+        }
+      } else {
+        wt = await createWorktree(
+          this.projectRoot,
+          featureId,
+          agent.baseBranch,
+          this.config
+        );
+      }
       this.state.updateAgent(featureId, { worktree: wt });
 
       // Install dependencies (skip for fake-agent — it has no deps)
@@ -446,6 +488,26 @@ export class AgentRunner {
   // Build verification
   // -------------------------------------------------------------------------
 
+  /**
+   * True when a dependent task shares this agent's worktree — i.e. this agent
+   * is a non-terminal member of an execution chain. Chain members defer their
+   * merge to the chain terminal, whose branch tip carries all chain work.
+   */
+  private hasChainSuccessor(featureId: string): boolean {
+    const agent = this.state.getAgent(featureId);
+    if (!agent) return false;
+    // Scheduler-computed flag (primary): dependable in the incremental
+    // submission flow where successors are not yet in daemon state when the
+    // predecessor is created, so dependedOnBy would be empty.
+    if (agent.hasChainSuccessor === true) return true;
+    // Fallback for flows that bypass the scheduler (retry, recovery): scan
+    // daemon state for a dependent sharing this agent's worktree.
+    return (agent.dependedOnBy ?? []).some((succId) => {
+      const succ = this.state.getAgent(succId);
+      return succ !== undefined && succ.worktree === agent.worktree;
+    });
+  }
+
   private async handleBuildVerification(featureId: string): Promise<void> {
     const agent = this.state.getAgent(featureId);
     if (!agent) return;
@@ -454,6 +516,10 @@ export class AgentRunner {
     if (agent.agentName === FAKE_AGENT_SENTINEL) {
       agent.buildPassed = true;
       this.state.updateAgentStatus(featureId, "verified", "Build skipped (fake-agent)");
+      if (this.hasChainSuccessor(featureId)) {
+        this.state.updateAgentActivity(featureId, "chain member — deferring merge to chain terminal");
+        return;
+      }
       await this.attemptMerge(featureId);
       return;
     }
@@ -473,6 +539,12 @@ export class AgentRunner {
           passed: true,
           output: result.combinedErrorSummary || undefined,
         });
+
+        // Chain members defer their merge to the chain terminal
+        if (this.hasChainSuccessor(featureId)) {
+          this.state.updateAgentActivity(featureId, "chain member — deferring merge to chain terminal");
+          return;
+        }
 
         // Attempt merge
         await this.attemptMerge(featureId);
@@ -646,11 +718,13 @@ export class AgentRunner {
     }
 
     // Clean up worktree — but preserve it if downstream agents in the same
-    // chain share this worktree.
-    const hasChainSuccessor = agent.dependedOnBy.some((depId) => {
-      const depAgent = this.state.getAgent(depId);
-      return depAgent && depAgent.worktree === agent.worktree;
-    });
+    // chain share this worktree (scheduler flag or live state scan).
+    const hasChainSuccessor =
+      agent.hasChainSuccessor === true ||
+      agent.dependedOnBy.some((depId) => {
+        const depAgent = this.state.getAgent(depId);
+        return depAgent && depAgent.worktree === agent.worktree;
+      });
 
     if (!hasChainSuccessor) {
       try {

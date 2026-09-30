@@ -59,7 +59,7 @@ import type { SchedulerStatus } from "../daemon/protocol";
 async function delegateToDaemon(
   projectRoot: string,
   opts: LaunchCommandOptions,
-  selected: Feature[],
+  taskIds: string[],
   fmt: OutputFormat,
 ): Promise<void> {
   // Dynamic imports to avoid pulling ink's top-level await into the
@@ -76,7 +76,6 @@ async function delegateToDaemon(
     await client.connect();
 
     // Step 3: send cmd:start
-    const taskIds = selected.map((f) => f.id);
     if (fmt === "text") {
       console.log(`Delegating ${taskIds.length} task(s) to daemon...`);
     }
@@ -129,6 +128,7 @@ export async function waitForDaemonCompletion(
   const POLL_MS = 5_000;
   const DASHBOARD_INTERVAL = 3; // Print dashboard every N polls (15s)
   let polls = 0;
+  let stateFailures = 0;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -138,9 +138,16 @@ export async function waitForDaemonCompletion(
     let snapshot;
     try {
       snapshot = await client.requestState(5_000);
+      stateFailures = 0;
     } catch {
-      // Daemon not responding — bail out (caller will fall through)
-      throw new Error("Daemon stopped responding");
+      // Transient failures happen when the daemon's event loop is busy
+      // (synchronous git/install work). Only give up after several
+      // consecutive failures — the daemon is really gone then.
+      stateFailures++;
+      if (stateFailures >= 3) {
+        throw new Error("Daemon stopped responding");
+      }
+      continue;
     }
 
     const { scheduler, agents } = snapshot;
@@ -647,6 +654,38 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   }
 
   // ---------------------------------------------------------------------------
+  // Daemon scope: selected tasks + transitive dependents
+  // ---------------------------------------------------------------------------
+  // Dependents are not "ready" at selection time, but the daemon's scheduler
+  // launches them as their dependencies complete. The scope must include the
+  // whole DAG so a single launch completes it end-to-end without operator
+  // intervention.
+  const scopeSet = new Set(selected.map((f) => f.id));
+  const dependentsOf = new Map<string, string[]>(); // dep id -> dependent ids
+  for (const t of data.tasks) {
+    for (const dep of t.depends_on ?? []) {
+      const list = dependentsOf.get(dep) ?? [];
+      list.push(t.id);
+      dependentsOf.set(dep, list);
+    }
+  }
+  const launchScopeIds = [...scopeSet];
+  for (let i = 0; i < launchScopeIds.length; i++) {
+    for (const dependent of dependentsOf.get(launchScopeIds[i]) ?? []) {
+      if (!scopeSet.has(dependent)) {
+        scopeSet.add(dependent);
+        launchScopeIds.push(dependent);
+      }
+    }
+  }
+  if (fmt === "text" && launchScopeIds.length > selected.length) {
+    console.log(
+      `Daemon scope: ${launchScopeIds.length} task(s) ` +
+      `(selected + ${launchScopeIds.length - selected.length} dependent(s) pending dependencies)`
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Dependency graph analysis
   // ---------------------------------------------------------------------------
   const depGraph = buildDepGraph(selected, data.tasks);
@@ -758,7 +797,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   // worktrees, processes, verification, merging, and state persistence.
   // ---------------------------------------------------------------------------
   try {
-    await delegateToDaemon(projectRoot, opts, selected, fmt);
+    await delegateToDaemon(projectRoot, opts, launchScopeIds, fmt);
   } catch (err: any) {
     fail(`Failed to launch via daemon: ${err?.message ?? err}`);
   }
