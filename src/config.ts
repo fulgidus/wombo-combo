@@ -102,6 +102,12 @@ export interface WomboConfig {
   devMode: boolean;
   /** TUI appearance configuration */
   tui: TuiConfig;
+  /** Per-task model routing: task weight → model (undefined entry = session model) */
+  modelRouting?: {
+    light?: string | null;
+    medium?: string | null;
+    heavy?: string | null;
+  };
 }
 
 /** Configuration for browser-based verification and testing */

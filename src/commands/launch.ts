@@ -15,6 +15,7 @@ import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
 import { loadFeatures, selectFeatures } from "../lib/tasks";
+import { computeTaskWeight, resolveTaskModel } from "../lib/task-weight";
 import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
 import { branchExists, questBranchExists, createQuestBranch } from "../lib/worktree";
 import type { QuestPromptContext } from "../lib/prompt";
@@ -731,6 +732,8 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
         priority: f.priority,
         difficulty: f.difficulty,
         effort: f.effort,
+        weight: computeTaskWeight(f),
+        model: resolveTaskModel(f, config.modelRouting, opts.model ?? null),
       })),
       schedule_plan: schedulePlan ? {
         streams: schedulePlan.streams.map((s) => s.featureIds),
@@ -747,6 +750,14 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
     output(fmt, dryRunResult, () => {
       console.log("Dry run — not launching agents.");
+      if (config.modelRouting) {
+        for (const f of selected) {
+          const model = resolveTaskModel(f, config.modelRouting, opts.model ?? null);
+          console.log(
+            `  ${f.id}: weight=${computeTaskWeight(f)} model=${model ?? "(agent default)"}`
+          );
+        }
+      }
       const scopeTasks = data.tasks.filter((t) => scopeSet.has(t.id));
       if (scopeTasks.some((t) => (t.paths ?? []).length > 0)) {
         console.log(formatScopePartitions(scopePartitions(scopeTasks)));

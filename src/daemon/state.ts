@@ -597,6 +597,7 @@ export function createDaemonAgentState(opts: {
   dependedOnBy?: string[];
   streamIndex?: number | null;
   hasChainSuccessor?: boolean;
+  model?: string | null;
   agentName?: string | null;
   agentType?: string | null;
   effortEstimateMs?: number | null;
@@ -621,6 +622,7 @@ export function createDaemonAgentState(opts: {
     effortEstimateMs: opts.effortEstimateMs ?? null,
     streamIndex: opts.streamIndex ?? null,
     hasChainSuccessor: opts.hasChainSuccessor ?? false,
+    model: opts.model ?? null,
     dependsOn: opts.dependsOn ?? [],
     dependedOnBy: opts.dependedOnBy ?? [],
     agentName: opts.agentName ?? null,

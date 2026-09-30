@@ -19,6 +19,7 @@ import { execSync } from "node:child_process";
 import type { WomboConfig, MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
+import { resolveTaskModel } from "../lib/task-weight";
 import { saveTaskToStore } from "../lib/task-store";
 import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree, worktreeExists } from "../lib/worktree";
 import { launchHeadless, retryHeadless, launchConflictResolver, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
@@ -292,6 +293,11 @@ export class AgentRunner {
     const wt = ctx?.sharedWorktree ?? worktreePath(this.projectRoot, task.id, config);
     const baseBranch = this.resolveBaseBranch(task);
 
+    // Per-task model routing: the weight-class table (config.modelRouting)
+    // wins over the session model so heavy tasks get capable models and
+    // light tasks don't waste them.
+    const model = resolveTaskModel(task, config.modelRouting, this.state.getModel());
+
     const agentState = createDaemonAgentState({
       featureId: task.id,
       taskTitle: task.title,
@@ -305,6 +311,7 @@ export class AgentRunner {
       agentType: task.agent_type ?? null,
       streamIndex: ctx?.streamIndex ?? null,
       hasChainSuccessor: ctx?.hasChainSuccessor ?? false,
+      model,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
     });
 
@@ -457,7 +464,7 @@ export class AgentRunner {
         worktreePath: wt,
         featureId,
         prompt,
-        model: this.state.getModel() ?? undefined,
+        model: agent.model ?? this.state.getModel() ?? undefined,
         config: this.config,
         agentName: agent.agentName ?? undefined,
         hitlMode,
@@ -1333,7 +1340,7 @@ export class AgentRunner {
         featureId,
         sessionId: agent.sessionId,
         buildErrors: agent.error ?? "Previous attempt failed",
-        model: this.state.getModel() ?? undefined,
+        model: agent.model ?? this.state.getModel() ?? undefined,
         config: this.config,
       });
 

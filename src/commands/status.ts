@@ -123,6 +123,7 @@ function agentToJson(agent: DaemonAgentState): Record<string, unknown> {
     agent_name: agent.agentName,
     agent_type: agent.agentType,
     stream_index: agent.streamIndex,
+    model: agent.model ?? null,
     depends_on: agent.dependsOn,
   };
 }

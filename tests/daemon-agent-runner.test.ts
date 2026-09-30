@@ -278,6 +278,40 @@ describe("AgentRunner chain ctx and merge deferral", () => {
     expect(solo?.hasChainSuccessor).toBe(false);
   });
 
+  test("submitTask resolves per-task model from the routing table", () => {
+    const routingRunner = new AgentRunner(
+      {
+        projectRoot: tempDir,
+        config: makeConfig({
+          modelRouting: { light: "glm-4-flash", heavy: "claude-opus-4" },
+        }),
+      },
+      state
+    );
+
+    // trivial+low+PT15M → light → glm-4-flash
+    routingRunner.submitTask({
+      ...makeTask("light-task"),
+      difficulty: "trivial",
+      priority: "low",
+      effort: "PT15M",
+    });
+    // very_hard+critical+P2D → heavy → claude-opus-4
+    routingRunner.submitTask({
+      ...makeTask("heavy-task"),
+      difficulty: "very_hard",
+      priority: "critical",
+      effort: "P2D",
+    });
+
+    expect(state.getAgent("light-task")?.model).toBe("glm-4-flash");
+    expect(state.getAgent("heavy-task")?.model).toBe("claude-opus-4");
+
+    // No routing table → null (session model applies at launch time)
+    routingRunner.submitTask(makeTask("unrouted-task"));
+    expect(state.getAgent("unrouted-task")?.model).toBeNull();
+  });
+
   test("non-terminal chain member defers merge; terminal member merges", async () => {
     const sharedWt = join(tempDir, ".wombo-combo", "chain-wt");
 

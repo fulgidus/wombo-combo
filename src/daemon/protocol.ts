@@ -331,6 +331,8 @@ export interface DaemonAgentState {
    * daemon state when the predecessor is submitted.
    */
   hasChainSuccessor?: boolean;
+  /** Per-task resolved model (weight-routed); null = session model applies */
+  model?: string | null;
   dependsOn: string[];
   dependedOnBy: string[];
   agentName: string | null;
