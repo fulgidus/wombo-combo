@@ -89,11 +89,6 @@ function serverBroadcast(type: EventType, payload: any, seq = 1): void {
   }
 }
 
-// Use a random high port to avoid collisions
-function getRandomPort(): number {
-  return 30000 + Math.floor(Math.random() * 20000);
-}
-
 // ---------------------------------------------------------------------------
 // Setup / teardown
 // ---------------------------------------------------------------------------
@@ -101,8 +96,10 @@ function getRandomPort(): number {
 beforeEach(() => {
   serverReceived = [];
   serverSockets = new Set();
-  testPort = getRandomPort();
-  server = startTestServer(testPort);
+  // Bind to port 0 so the OS assigns a free port — random high ports
+  // collide with in-use ports and make Bun.serve throw in beforeEach.
+  server = startTestServer(0);
+  testPort = server.port;
 });
 
 afterEach(() => {
@@ -168,10 +165,13 @@ describe("DaemonClient connection", () => {
   // The connect() promise now correctly rejects when onclose fires before
   // the handshake completes (the onclose handler calls reject()).
   test("connect rejects if no server responds", async () => {
-    const deadPort = getRandomPort();
+    // Stop the test server and reuse its just-freed port: it is guaranteed
+    // to have no listener now, unlike a random port which may collide.
+    server?.stop(true);
+    server = null;
     const client = new DaemonClient({
       clientId: "test",
-      port: deadPort,
+      port: testPort,
       autoReconnect: false,
       connectTimeoutMs: 500,
     });

@@ -7,8 +7,8 @@
  *
  * Covers:
  *   - WaveMonitorShell and DaemonMonitorShell are exported from their modules
- *   - WaveMonitorShell renders "woco" chrome (ChromeTopBar) in output
- *   - DaemonMonitorShell renders "woco" chrome in output
+ *   - WaveMonitorShell renders "Home" chrome (ChromeTopBar) in output
+ *   - DaemonMonitorShell renders "Home" chrome in output
  *   - WaveMonitorShell accepts skipSplash prop to land directly on content
  *   - getStableStdin is no longer the default stdin source in InkDaemonTUI
  *     (TuiSession/getStdin is used instead)
@@ -105,11 +105,11 @@ describe("run-daemon-monitor exports DaemonMonitorShell", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WaveMonitorShell renders ChromeLayout chrome ("woco" in output)
+// WaveMonitorShell renders ChromeLayout chrome ("Home" in output)
 // ---------------------------------------------------------------------------
 
 describe("WaveMonitorShell renders chrome", () => {
-  test("renders 'woco' from ChromeTopBar", async () => {
+  test("renders 'Home' from ChromeTopBar", async () => {
     const { WaveMonitorShell } = (await import("../../src/ink/run-wave-monitor")) as any;
 
     const output = renderToString(
@@ -128,10 +128,10 @@ describe("WaveMonitorShell renders chrome", () => {
       })
     );
 
-    expect(output).toContain("woco");
+    expect(output).toContain("Home");
   });
 
-  test("renders splash screen initially (contains 'woco' logo text)", async () => {
+  test("renders splash screen initially (block-art logo)", async () => {
     const { WaveMonitorShell } = (await import("../../src/ink/run-wave-monitor")) as any;
 
     const output = renderToString(
@@ -150,8 +150,10 @@ describe("WaveMonitorShell renders chrome", () => {
       })
     );
 
-    // SplashScreen renders logo lines with "woco" or "wombo"
-    expect(output.toLowerCase()).toMatch(/woco|wombo/);
+    // SplashScreen renders the WOMBO/COMBO block art deterministically
+    // (the tagline is random, so assert on the logo glyphs, not text)
+    expect(output).toContain("██");
+    expect(output).toContain("⚡");
   });
 
   test("skipSplash=true lands directly on WaveMonitorView", async () => {
@@ -183,7 +185,7 @@ describe("WaveMonitorShell renders chrome", () => {
 // ---------------------------------------------------------------------------
 
 describe("DaemonMonitorShell renders chrome", () => {
-  test("renders 'woco' from ChromeTopBar", async () => {
+  test("renders 'Home' from ChromeTopBar", async () => {
     const { DaemonMonitorShell } = (await import("../../src/ink/run-daemon-monitor")) as any;
 
     const output = renderToString(
@@ -199,7 +201,7 @@ describe("DaemonMonitorShell renders chrome", () => {
       })
     );
 
-    expect(output).toContain("woco");
+    expect(output).toContain("Home");
   });
 
   test("skipSplash=true renders DaemonMonitorAdapter content directly", async () => {

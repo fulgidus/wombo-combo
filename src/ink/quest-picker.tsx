@@ -51,7 +51,7 @@ export interface QuestPickerViewProps {
   quests: QuestSummary[];
   /** Total number of tasks across all quests. */
   totalTaskCount: number;
-  /** Currently selected index (0 = "All Tasks", 1+ = quest). */
+  /** Currently selected index (0 = "All Tasks", 1 = "Errands", 2+ = quest). */
   selectedIndex: number;
   /** Called when Enter/Space is pressed on the selected item. */
   onSelect: (questId: string | null) => void;

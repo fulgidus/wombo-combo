@@ -45,8 +45,8 @@ describe("EscMenu rendering", () => {
     const output = renderToString(
       React.createElement(EscMenu, { open: true, onClose: () => {}, onNavigate: () => {} })
     );
-    // Should show "Menu" (from EN_STRINGS["menu.title"])
-    expect(output).toContain("Menu");
+    // The title is ASCII block art spelling "MENU" (not plain text)
+    expect(output).toContain("███╗");
   });
 
   test("EscMenu renders 'Return to app' item", async () => {

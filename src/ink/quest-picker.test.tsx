@@ -153,7 +153,7 @@ describe("QuestPickerView (static rendering)", () => {
 
   test("shows quest detail when selectedIndex points to a quest", () => {
     const output = renderToString(
-      <QuestPickerView {...defaultProps({ selectedIndex: 1 })} />
+      <QuestPickerView {...defaultProps({ selectedIndex: 2 })} />
     );
     expect(output).toContain("Test Quest");
     expect(output).toContain("active");
@@ -172,7 +172,7 @@ describe("QuestPickerView (static rendering)", () => {
     });
     const output = renderToString(
       <QuestPickerView
-        {...defaultProps({ selectedIndex: 1, questUsage: usage })}
+        {...defaultProps({ selectedIndex: 2, questUsage: usage })}
       />
     );
     expect(output).toContain("Token Usage");
@@ -181,14 +181,14 @@ describe("QuestPickerView (static rendering)", () => {
 
   test("renders quest goal in detail pane", () => {
     const output = renderToString(
-      <QuestPickerView {...defaultProps({ selectedIndex: 1 })} />
+      <QuestPickerView {...defaultProps({ selectedIndex: 2 })} />
     );
     expect(output).toContain("A test goal");
   });
 
   test("renders branch info in detail pane", () => {
     const output = renderToString(
-      <QuestPickerView {...defaultProps({ selectedIndex: 1 })} />
+      <QuestPickerView {...defaultProps({ selectedIndex: 2 })} />
     );
     expect(output).toContain("quest/test-quest");
   });
@@ -204,7 +204,7 @@ describe("QuestPickerView (static rendering)", () => {
       }),
     });
     const output = renderToString(
-      <QuestPickerView {...defaultProps({ quests: [summary], selectedIndex: 1 })} />
+      <QuestPickerView {...defaultProps({ quests: [summary], selectedIndex: 2 })} />
     );
     expect(output).toContain("Must use TypeScript");
     expect(output).toContain("No jQuery");

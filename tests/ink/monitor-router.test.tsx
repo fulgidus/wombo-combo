@@ -146,8 +146,9 @@ describe("WaveMonitorShell uses ScreenRouter", () => {
       })
     );
 
-    // SplashScreen shows the wombo/combo logo text
-    expect(output.toLowerCase()).toMatch(/wombo|combo/);
+    // SplashScreen shows the block-art logo (tagline text is random)
+    expect(output).toContain("██");
+    expect(output).toContain("⚡");
   });
 
   test("WaveMonitorShell renders chrome (Home label in top bar)", async () => {

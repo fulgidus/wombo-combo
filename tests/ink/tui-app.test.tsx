@@ -139,7 +139,7 @@ describe("TuiApp renders splash when skipSplash=false", () => {
     expect(output.length).toBeGreaterThan(0);
   });
 
-  test("shows splash screen content (wombo/combo logo)", async () => {
+  test("shows splash screen content (block-art logo)", async () => {
     const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
 
     const output = renderToString(
@@ -152,7 +152,9 @@ describe("TuiApp renders splash when skipSplash=false", () => {
       })
     );
 
-    expect(output.toLowerCase()).toMatch(/wombo|combo/);
+    // SplashScreen shows the block-art logo (tagline text is random)
+    expect(output).toContain("██");
+    expect(output).toContain("⚡");
   });
 
   test("renders chrome (Home label in top bar visible alongside splash)", async () => {
