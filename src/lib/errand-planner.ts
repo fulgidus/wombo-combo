@@ -202,8 +202,6 @@ export async function runErrandPlanner(
     "json",
     "--agent",
     agentName,
-    "--dir",
-    projectRoot,
     "--title",
     `woco: errand`,
   ];
@@ -217,6 +215,7 @@ export async function runErrandPlanner(
   const child = spawn(agentBin, args, {
     stdio: ["pipe", "pipe", "pipe"],
     detached: false,
+    cwd: projectRoot,
     env: {
       ...process.env,
       OPENCODE_DIR: projectRoot,

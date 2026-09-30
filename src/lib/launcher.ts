@@ -46,8 +46,8 @@ import { resolve, dirname, join, basename } from "node:path";
  * Supported agent CLI types. Each has different CLI argument syntax:
  *
  * - **opencode**: TUI via `opencode [project]` (positional path),
- *   headless via `opencode run --dir PATH --format json`.
- *   `--dir` is ONLY valid on the `run` subcommand.
+ *   headless via `opencode run --format json` (operates on spawn cwd —
+ *   v2 removed the --dir flag; the built-in fake agent still parses it).
  *
  * - **claude**: TUI via `claude` (uses cwd, no path flag),
  *   headless via `claude -p --output-format stream-json`.
@@ -283,7 +283,9 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
 
   // Agent-type-specific headless CLI construction:
   //
-  // opencode: `opencode run --format json --agent NAME --dir PATH --title TITLE PROMPT`
+  // opencode: `opencode run --format json --agent NAME --title TITLE PROMPT`
+  //           (operates on the spawn cwd — v2 dropped the --dir flag;
+  //            the built-in fake agent still parses --dir itself)
   // claude:   `claude -p --output-format stream-json --agent NAME PROMPT`
   //           (uses cwd for directory, set via spawn options)
   //
@@ -299,9 +301,11 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
       "run",
       "--format", "json",
       "--agent", opts.agentName ?? opts.config.agent.name,
-      "--dir", opts.worktreePath,
       "--title", makeAgentTitle(opts.featureId),
     );
+    if (isFake) {
+      args.push("--dir", opts.worktreePath);
+    }
   }
 
   if (opts.model) {
@@ -309,7 +313,7 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
   }
 
   const child = spawnWithPrompt(agentBin, args, opts.prompt, {
-    cwd: agentType === "claude" ? opts.worktreePath : undefined,
+    cwd: opts.worktreePath,
     env: agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot),
   });
 
@@ -340,9 +344,9 @@ export function retryHeadless(opts: RetryOptions): LaunchResult {
 
   // Agent-type-specific retry CLI construction:
   //
-  // opencode: `opencode run --format json --session ID --continue --dir PATH MSG`
+  // opencode: `opencode run --format json --session ID --continue MSG`
   // claude:   `claude -p --output-format stream-json --resume ID --continue MSG`
-  //           (uses cwd for directory)
+  //           (both operate on the spawn cwd)
   //
   if (agentType === "claude") {
     args.push(
@@ -352,14 +356,16 @@ export function retryHeadless(opts: RetryOptions): LaunchResult {
       "--continue",
     );
   } else {
-    // opencode / unknown / fake-agent
+    // opencode / unknown / fake-agent (opencode v2 operates on spawn cwd)
     args.push(
       "run",
       "--format", "json",
       "--session", opts.sessionId,
       "--continue",
-      "--dir", opts.worktreePath,
     );
+    if (isFake) {
+      args.push("--dir", opts.worktreePath);
+    }
   }
 
   if (opts.model) {
@@ -367,7 +373,7 @@ export function retryHeadless(opts: RetryOptions): LaunchResult {
   }
 
   const child = spawnWithPrompt(agentBin, args, retryMessage, {
-    cwd: agentType === "claude" ? opts.worktreePath : undefined,
+    cwd: opts.worktreePath,
     env: agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot),
   });
 
@@ -417,9 +423,9 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
 
   // Agent-type-specific conflict resolver CLI:
   //
-  // opencode: `opencode run --format json --agent NAME --dir PATH --title TITLE PROMPT`
+  // opencode: `opencode run --format json --agent NAME --title TITLE PROMPT`
   // claude:   `claude -p --output-format stream-json --agent NAME PROMPT`
-  //
+  //           (both operate on the spawn cwd)
   const args: string[] = [];
 
   if (agentType === "claude") {
@@ -433,7 +439,6 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
       "run",
       "--format", "json",
       "--agent", agentName,
-      "--dir", opts.worktreePath,
       "--title", makeAgentTitle(`conflict-resolve-${opts.featureId}`),
     );
   }
@@ -443,7 +448,7 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
   }
 
   const child = spawnWithPrompt(agentBin, args, opts.prompt, {
-    cwd: agentType === "claude" ? opts.worktreePath : undefined,
+    cwd: opts.worktreePath,
     env: agentEnv(opts.worktreePath, opts.featureId, opts.config),
   });
 

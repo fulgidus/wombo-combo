@@ -578,7 +578,6 @@ export async function runQuestPlanner(
     "run",
     "--format", "json",
     "--agent", agentName,
-    "--dir", projectRoot,
     "--title", `woco: plan ${quest.id}`,
   ];
 
@@ -591,6 +590,7 @@ export async function runQuestPlanner(
   const child = spawn(agentBin, args, {
     stdio: ["pipe", "pipe", "pipe"],
     detached: false,
+    cwd: projectRoot,
     env: {
       ...process.env,
       OPENCODE_DIR: projectRoot,

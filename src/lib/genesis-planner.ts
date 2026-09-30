@@ -495,7 +495,6 @@ export async function runGenesisPlanner(
     "run",
     "--format", "json",
     "--agent", agentName,
-    "--dir", projectRoot,
     "--title", "woco: genesis",
   ];
 
@@ -508,6 +507,7 @@ export async function runGenesisPlanner(
   const child = spawn(agentBin, args, {
     stdio: ["pipe", "pipe", "pipe"],
     detached: false,
+    cwd: projectRoot,
     env: {
       ...process.env,
       OPENCODE_DIR: projectRoot,

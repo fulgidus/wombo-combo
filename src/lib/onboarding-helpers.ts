@@ -259,7 +259,6 @@ export async function runLlmSynthesis(
       "run",
       "--format", "json",
       "--agent", "genesis-planner-agent",
-      "--dir", projectRoot,
       "--title", "woco: onboarding synthesis",
       prompt,
     ];
@@ -267,6 +266,7 @@ export async function runLlmSynthesis(
     const child = spawn(agentBin, args, {
       stdio: ["pipe", "pipe", "pipe"],
       detached: false,
+      cwd: projectRoot,
       env: {
         ...process.env,
         OPENCODE_DIR: projectRoot,
