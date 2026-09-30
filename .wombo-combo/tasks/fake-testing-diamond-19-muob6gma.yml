@@ -1,0 +1,20 @@
+id: fake-testing-diamond-19-muob6gma
+title: Update test fixtures
+description: FAKE_SLEEP_MS=939 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT26M
+started_at: 2026-09-30T16:26:06.201Z
+ended_at: 2026-09-30T16:27:39.580Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

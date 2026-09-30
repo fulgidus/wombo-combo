@@ -1,0 +1,40 @@
+id: analytics-tui-view
+title: Render Aggregated Analytics In Ink
+description: |
+  Create src/ink/analytics-overlay.tsx with a declarative Modal-based
+  AnalyticsOverlayView accepting shared summaries, grouped entries,
+  grouping, selection, diagnostics, and callbacks.
+  Show execution outcomes, successful completion duration, full token
+  totals, retries, weighted build pass rate, additions/deletions, sample
+  counts, and partial or unavailable usage coverage.
+  Support task, quest, wave, agent, and model grouping; Tab cycles
+  grouping, arrows or j/k navigate, and Escape/u/U closes.
+  Add rendering and interaction tests in analytics-overlay.test.tsx
+  using existing Ink stream and renderToString patterns.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - analytics-aggregation
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Keep filesystem loading and aggregation outside the view.
+  - Handle empty data, missing measurements, long labels, and bounded visible rows.
+  - Use existing Modal, theme, and suitable formatting helpers.
+  - Preserve existing usage-overlay exports and token-detail displays.
+forbidden:
+  - Do not modify parent adapters or router wiring.
+  - Do not add dependencies or reintroduce neo-blessed.
+references:
+  - src/ink/usage-overlay.tsx
+  - src/ink/usage-overlay.test.tsx
+  - src/ink/modal.tsx
+  - src/ink/theme.ts
+  - src/lib/analytics-summary.ts
+notes:
+  - Own analytics-overlay.tsx and analytics-overlay.test.tsx.
+subtasks: []
+quest: agent-analytics

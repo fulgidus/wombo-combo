@@ -1,13 +1,13 @@
 id: headless-test-01
 title: Headless Test 01
 description: ""
-status: in_progress
+status: backlog
 completion: 0
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: 2026-04-15T17:35:46.174Z
+started_at: null
 ended_at: null
 constraints: []
 forbidden: []

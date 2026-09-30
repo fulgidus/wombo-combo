@@ -1,0 +1,39 @@
+id: analytics-git-metrics
+title: Measure Execution Scoped Line Changes
+description: |
+  Create src/lib/analytics-git.ts with read-only helpers that capture
+  HEAD and calculate committed additions/deletions between immutable
+  baseline and completion commits.
+  Parse git diff --numstat -z output, including renames, binary files,
+  and unusual filenames. Exclude runtime analytics, usage, state,
+  history, logs, and evaluation artifacts.
+  Return nullable measurements and diagnostics when refs or git are
+  unavailable. Test temporary local repositories, sequential chain
+  members, unrelated movement of the base branch, and empty diffs.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Use argument-array subprocess calls rather than shell interpolation.
+  - Each chain member must use its own starting HEAD.
+  - Lines changed means additions plus deletions; binary entries contribute no fabricated counts.
+  - Measure committed changes only and document that limitation.
+  - Use immutable refs rather than the current moving base branch.
+forbidden:
+  - Do not mutate refs, the index, or worktree contents.
+  - Do not modify worktree.ts, merger.ts, or analytics.ts.
+references:
+  - src/daemon/agent-runner.ts
+  - src/lib/worktree.ts
+  - src/lib/merger.ts
+  - tests/worktree.test.ts
+notes:
+  - Own src/lib/analytics-git.ts and tests/analytics-git.test.ts.
+  - Define a standalone helper result contract; storage integration belongs to build tracking.
+subtasks: []
+quest: agent-analytics

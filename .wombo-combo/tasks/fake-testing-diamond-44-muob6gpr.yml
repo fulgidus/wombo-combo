@@ -1,0 +1,20 @@
+id: fake-testing-diamond-44-muob6gpr
+title: Create deployment script (2)
+description: FAKE_SLEEP_MS=1022 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: hard
+priority: low
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT44M
+started_at: 2026-09-30T16:32:38.999Z
+ended_at: 2026-09-30T16:34:16.648Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

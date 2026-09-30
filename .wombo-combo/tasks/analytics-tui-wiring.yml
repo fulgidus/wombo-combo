@@ -1,0 +1,45 @@
+id: analytics-tui-wiring
+title: Expose Analytics From Task Browser
+description: |
+  Wire TaskBrowserApp's existing onUsage/u action in
+  src/ink/run-task-browser.tsx to AnalyticsOverlayView.
+  Load persisted analytics on opening and refresh at a bounded interval
+  only while visible. Keep grouping and selection in the adapter and
+  clamp selection after refresh.
+  Match browser scope: undefined/null questId means all executions,
+  empty string means unquested errands, and a nonempty questId means
+  that historically recorded quest. Do not limit analytics to currently
+  active questTaskIds.
+  Disable underlying browser input while open and restore it on close.
+  Add tests/ink/analytics-browser.test.tsx covering access, refresh,
+  grouping, scoping, input isolation, close, and interval cleanup.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - analytics-tui-view
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - The overlay must work without a connected daemon.
+  - Do not load analytics during every render.
+  - Use recorded quest attribution so archived or removed tasks remain represented.
+  - Restore browser selection and preserve editor and task-token interactions.
+  - Clear refresh timers on close and unmount.
+forbidden:
+  - Do not introduce a WebSocket analytics protocol.
+  - Do not modify the analytics view, store, or summary contract.
+  - Do not change unrelated dashboard, monitor, or quest-picker screens.
+references:
+  - src/ink/run-task-browser.tsx
+  - src/ink/task-browser.tsx
+  - src/ink/run-tui-app.tsx
+  - src/ink/analytics-overlay.tsx
+  - tests/ink
+notes:
+  - Own run-task-browser.tsx and tests/ink/analytics-browser.test.tsx.
+  - TaskBrowserView already dispatches onUsage for u and exposes isActive.
+subtasks: []
+quest: agent-analytics

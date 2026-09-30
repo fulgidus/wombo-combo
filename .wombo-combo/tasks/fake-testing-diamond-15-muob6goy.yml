@@ -1,0 +1,20 @@
+id: fake-testing-diamond-15-muob6goy
+title: Optimize database queries
+description: FAKE_SLEEP_MS=985 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT17M
+started_at: 2026-09-30T16:24:55.145Z
+ended_at: 2026-09-30T16:26:28.084Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

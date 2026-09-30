@@ -1,0 +1,45 @@
+id: analytics-store
+title: Define Durable Agent Analytics Storage
+description: |
+  Create src/lib/analytics.ts with versioned AgentAnalyticsRecord types
+  and an AnalyticsStore that atomically upserts one JSON snapshot per
+  execution under .wombo-combo/analytics/.
+  Define execution, wave, task, quest, agent, and model identity;
+  lifecycle outcome; independent first-start and successful-verification
+  timestamps; duration in milliseconds; cumulative retry count; complete
+  UsageTotals; usage coverage; build attempts and passes; nullable
+  additions/deletions; immutable baseline and measured HEAD identifiers;
+  measurement phase; and snapshot revision.
+  Provide load, lookup, upsert, and diagnostic contracts. Include all
+  metadata needed by lifecycle and measurement tasks now, so consumers
+  do not need concurrent edits to this module.
+  Add tests/analytics-store.test.ts and ignore analytics in .gitignore.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Store data in the project root, never an agent worktree.
+  - Upserts must not increase execution counts; repeated task executions remain distinct.
+  - Use safe generated filenames, unique temporary files, and atomic replacement.
+  - Reject stale revisions so delayed writes cannot overwrite newer snapshots.
+  - Validate records; return diagnostics for malformed or unsupported files while loading valid records.
+  - Missing storage returns empty data; unknown measurements remain null.
+forbidden:
+  - Do not change usage.jsonl or history formats.
+  - Do not introduce dependencies or modify tracked quest/task artifacts.
+references:
+  - src/lib/token-usage.ts
+  - src/lib/token-collector.ts
+  - src/lib/history.ts
+  - src/config.ts
+  - .gitignore
+notes:
+  - Own src/lib/analytics.ts, tests/analytics-store.test.ts, and .gitignore.
+  - Document units, outcome semantics, coverage, and revision handling beside exported types.
+subtasks: []
+quest: agent-analytics

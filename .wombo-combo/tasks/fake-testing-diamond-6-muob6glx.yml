@@ -1,0 +1,20 @@
+id: fake-testing-diamond-6-muob6glx
+title: Implement feature flag system
+description: FAKE_SLEEP_MS=1106 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT15M
+started_at: 2026-09-30T16:23:22.101Z
+ended_at: 2026-09-30T16:24:46.197Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

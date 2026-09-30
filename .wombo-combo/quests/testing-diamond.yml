@@ -1,0 +1,19 @@
+id: testing-diamond
+title: testing diamond
+goal: "Fake quest: testing diamond"
+status: active
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/testing-diamond
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-09-30T16:17:25.748Z
+updated_at: 2026-09-30T16:48:37.765Z
+started_at: 2026-09-30T16:17:25.748Z
+ended_at: null
+notes: []

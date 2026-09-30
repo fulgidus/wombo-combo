@@ -1,13 +1,13 @@
 id: stress-test-02
 title: Stress Test 02
 description: ""
-status: in_progress
+status: backlog
 completion: 0
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: 2026-04-15T17:41:09.343Z
+started_at: null
 ended_at: null
 constraints: []
 forbidden: []

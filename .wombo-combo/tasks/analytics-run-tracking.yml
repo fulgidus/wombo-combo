@@ -1,0 +1,60 @@
+id: analytics-run-tracking
+title: Persist Agent Lifecycle And Usage
+description: |
+  Integrate AnalyticsStore into AgentRunner, Daemon, and DaemonState.
+  Pass the daemon sessionId through AgentRunnerConfig as wave context.
+  Persist optional internal analytics metadata and explicitly strip it
+  in DaemonState.toClientAgent.
+  Allocate execution identity on submission and snapshot task.quest and
+  resolved agent/model. Register TokenCollector context before attaching
+  each process. Accumulate every UsageTotals field from onUsage without
+  writing usage.jsonl again.
+  Persist independent first-start time, ordinary retries, successful
+  verification time, and subsequent merge or failure outcomes.
+  Observe status changes and add internal pre-removal hooks covering
+  removeAgent, clearCompleted, and reset. Capture cancellation, downstream
+  cancellation, reaping, launch errors, and shutdown interruption.
+  Restore existing snapshots before startup reconciliation; preserve
+  execution and wave identity for recovery. A user-requested rerun of a
+  finished execution starts a new execution even when its state object
+  is reused and its retries counter resets.
+  Add tests/analytics-lifecycle.test.ts.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - analytics-store
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Ordinary retries preserve identity, first-start time, and accumulated metrics.
+  - New submissions and explicit reruns of finished executions receive new identities.
+  - Process status completed is intermediate, not successful task completion.
+  - Queued cancellations must not acquire invented duration or usage measurements.
+  - Persist incrementally, including work accepted after the daemon first becomes idle.
+  - Analytics failures must be observable without blocking execution.
+  - Flush before teardown and prevent late callbacks from corrupting interrupted snapshots.
+  - Older daemon state without analytics metadata must remain loadable.
+forbidden:
+  - Do not gate persistence on historyWritten or duplicate usage.jsonl records.
+  - Do not change scheduler concurrency, terminal-status semantics, or WebSocket protocol.
+  - Do not add build counters or git measurement integration in this task.
+  - Do not modify analytics.ts.
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/daemon.ts
+  - src/daemon/state.ts
+  - src/daemon/scheduler.ts
+  - src/lib/monitor.ts
+  - src/lib/token-collector.ts
+  - tests/daemon-agent-runner.test.ts
+  - tests/daemon-state.test.ts
+notes:
+  - Own lifecycle edits in agent-runner.ts, daemon.ts, state.ts, and the new lifecycle test.
+  - Internal removal observers need not become client protocol events.
+  - Existing startedAt and completedAt are unsuitable as analytics completion timestamps.
+  - PID-only recovery cannot guarantee full token coverage; report that limitation.
+subtasks: []
+quest: agent-analytics

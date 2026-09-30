@@ -1,0 +1,45 @@
+id: analytics-usage-command
+title: Extend Usage Command With Analytics
+description: |
+  Add opt-in --analytics mode to src/commands/usage.ts and its citty
+  definition. Support --by task|quest|wave|agent|model, exact --task,
+  --quest, and --wave filters, and existing date/output options.
+  Use AnalyticsStore and shared summaries for total and grouped output.
+  Display completion duration, full token totals, retries, weighted
+  build pass rate, changed lines, sample counts, and coverage warnings.
+  Produce the same structured summary through JSON and TOON.
+  Update src/lib/citty-registry.ts metadata so help, describe, and
+  completion expose the new flags and grouping values.
+  Add tests/analytics-usage-command.test.ts.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - analytics-aggregation
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Without --analytics, preserve legacy token-only behavior and JSON shapes.
+  - Reject analytics-only options outside analytics mode.
+  - Validate grouping values separately for each mode.
+  - Render unavailable measurements explicitly, not as zero or 100 percent.
+  - Use src/lib/output.ts for machine-readable output without ANSI contamination.
+  - Preserve the us alias and show storage diagnostics without polluting structured stdout.
+forbidden:
+  - Do not add a separate analytics command or hand-maintained schema registry.
+  - Do not modify token collection, storage, or shared aggregation.
+references:
+  - src/commands/usage.ts
+  - src/commands/citty/usage.ts
+  - src/lib/citty-registry.ts
+  - src/lib/schema.ts
+  - src/lib/output.ts
+  - tests/citty-commands.test.ts
+  - src/lib/registry-parity.test.ts
+notes:
+  - Own both usage command files, citty-registry.ts, and the new command test.
+  - Registry enums can advertise the union of groupings; runtime validation remains mode-specific.
+subtasks: []
+quest: agent-analytics

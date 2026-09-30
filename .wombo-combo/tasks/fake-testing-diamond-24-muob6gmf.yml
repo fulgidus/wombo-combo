@@ -1,0 +1,20 @@
+id: fake-testing-diamond-24-muob6gmf
+title: Clean up unused imports
+description: FAKE_SLEEP_MS=1068 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT37M
+started_at: 2026-09-30T16:27:39.813Z
+ended_at: 2026-09-30T16:29:16.153Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

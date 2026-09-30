@@ -1,0 +1,20 @@
+id: fake-testing-diamond-29-muob6gmk
+title: Add health check endpoint (2)
+description: FAKE_SLEEP_MS=979 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT46M
+started_at: 2026-09-30T16:23:19.125Z
+ended_at: 2026-09-30T16:23:48.654Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

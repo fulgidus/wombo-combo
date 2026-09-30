@@ -1,0 +1,42 @@
+id: analytics-aggregation
+title: Aggregate Metrics Across Agent Executions
+description: |
+  Create src/lib/analytics-summary.ts with pure filtering, deduplication,
+  grouping, and aggregation over analytics snapshots.
+  Support task, quest, wave, agent, and model grouping; inclusive
+  since/until ranges; exact task/quest/wave filters; and explicit
+  unquested execution filtering for the errands browser.
+  Return execution and outcome counts, successful completion duration
+  totals and means, retry totals, full token totals, coverage counts,
+  build attempts/passes/pass rate, and added/deleted/changed lines.
+  Include eligible sample counts for nullable metrics. Add deterministic
+  tests/analytics-summary.test.ts.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - analytics-store
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Build pass rate is total passes divided by total attempts, not an average of percentages.
+  - Means and rates without eligible samples must be null.
+  - Completion duration ends at successful verification and excludes later merge waiting.
+  - Interrupted and never-started executions do not contribute successful duration samples.
+  - Filter dates by first execution start; reject invalid or reversed ranges.
+  - Deduplicate execution IDs using the newest revision.
+  - Distinguish missing usage from observed zero usage and expose partial coverage.
+forbidden:
+  - Do not modify storage or existing token aggregation.
+  - Do not reconstruct historical quest membership from current task files.
+references:
+  - src/lib/analytics.ts
+  - src/lib/token-usage.ts
+  - src/lib/history.ts
+notes:
+  - Own src/lib/analytics-summary.ts and tests/analytics-summary.test.ts.
+  - Export one serializable summary contract for CLI and TUI.
+subtasks: []
+quest: agent-analytics

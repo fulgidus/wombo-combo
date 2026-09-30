@@ -1,0 +1,20 @@
+id: fake-testing-diamond-67-muob6gqe
+title: Implement caching layer (3)
+description: FAKE_SLEEP_MS=1012 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT19M
+started_at: 2026-09-30T16:30:59.044Z
+ended_at: 2026-09-30T16:32:33.222Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

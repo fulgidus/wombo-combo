@@ -1,0 +1,20 @@
+id: fake-testing-diamond-2-muob6glt
+title: Migrate to new schema
+description: FAKE_SLEEP_MS=1135 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT55M
+started_at: 2026-09-30T16:23:20.591Z
+ended_at: 2026-09-30T16:24:06.520Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

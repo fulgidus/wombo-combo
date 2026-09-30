@@ -1,0 +1,20 @@
+id: fake-testing-diamond-20-muob6gp3
+title: Implement rate limiting
+description: FAKE_SLEEP_MS=1220 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT28M
+started_at: 2026-09-30T16:26:19.471Z
+ended_at: 2026-09-30T16:27:54.602Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

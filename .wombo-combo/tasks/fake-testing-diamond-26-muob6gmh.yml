@@ -1,0 +1,20 @@
+id: fake-testing-diamond-26-muob6gmh
+title: Add pagination support (2)
+description: FAKE_SLEEP_MS=1260 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: hard
+priority: high
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT35M
+started_at: 2026-09-30T16:23:15.359Z
+ended_at: 2026-09-30T16:23:30.080Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

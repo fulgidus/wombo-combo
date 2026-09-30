@@ -19,7 +19,7 @@
     "mergeStrategy": "--no-ff"
   },
   "agent": {
-    "bin": null,
+    "bin": "/usr/bin/opencode",
     "name": "generalist-agent",
     "configFiles": [
       ".opencode/",

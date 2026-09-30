@@ -1,10 +1,9 @@
 id: dashboard-realtime
 title: Real-time Dashboard with Graphs
-goal: "Add a rich TUI dashboard screen with live-updating graphs and status.
-  Show: agent throughput over time (sparklines), token usage per quest,
-  running/done/failed counts, estimated time remaining, and recent activity
-  feed. Accessible from the chrome and as a dedicated screen."
-status: draft
+goal: "Add a rich TUI dashboard screen with live-updating graphs and status. Show: agent throughput over time
+  (sparklines), token usage per quest, running/done/failed counts, estimated time remaining, and recent activity feed.
+  Accessible from the chrome and as a dedicated screen."
+status: planning
 priority: medium
 difficulty: hard
 depends_on:
@@ -17,7 +16,7 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-03-20T00:09:01.935Z
-updated_at: 2026-03-20T00:09:01.935Z
+updated_at: 2026-09-30T16:49:06.446Z
 started_at: null
 ended_at: null
 notes: []

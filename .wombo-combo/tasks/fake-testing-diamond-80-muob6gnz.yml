@@ -1,0 +1,97 @@
+id: fake-testing-diamond-80-muob6gnz
+title: Add telemetry hooks (4)
+description: FAKE_SLEEP_MS=903 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - fake-testing-diamond-2-muob6glt
+  - fake-testing-diamond-3-muob6glu
+  - fake-testing-diamond-4-muob6glv
+  - fake-testing-diamond-5-muob6glw
+  - fake-testing-diamond-6-muob6glx
+  - fake-testing-diamond-7-muob6gly
+  - fake-testing-diamond-8-muob6glz
+  - fake-testing-diamond-9-muob6gm0
+  - fake-testing-diamond-10-muob6gm1
+  - fake-testing-diamond-11-muob6gm2
+  - fake-testing-diamond-12-muob6gm3
+  - fake-testing-diamond-13-muob6gm4
+  - fake-testing-diamond-14-muob6gm5
+  - fake-testing-diamond-15-muob6gm6
+  - fake-testing-diamond-16-muob6gm7
+  - fake-testing-diamond-17-muob6gm8
+  - fake-testing-diamond-18-muob6gm9
+  - fake-testing-diamond-19-muob6gma
+  - fake-testing-diamond-20-muob6gmb
+  - fake-testing-diamond-21-muob6gmc
+  - fake-testing-diamond-22-muob6gmd
+  - fake-testing-diamond-23-muob6gme
+  - fake-testing-diamond-24-muob6gmf
+  - fake-testing-diamond-25-muob6gmg
+  - fake-testing-diamond-26-muob6gmh
+  - fake-testing-diamond-27-muob6gmi
+  - fake-testing-diamond-28-muob6gmj
+  - fake-testing-diamond-29-muob6gmk
+  - fake-testing-diamond-30-muob6gml
+  - fake-testing-diamond-31-muob6gmm
+  - fake-testing-diamond-32-muob6gmn
+  - fake-testing-diamond-33-muob6gmo
+  - fake-testing-diamond-34-muob6gmp
+  - fake-testing-diamond-35-muob6gmq
+  - fake-testing-diamond-36-muob6gmr
+  - fake-testing-diamond-37-muob6gms
+  - fake-testing-diamond-38-muob6gmt
+  - fake-testing-diamond-39-muob6gmu
+  - fake-testing-diamond-40-muob6gmv
+  - fake-testing-diamond-41-muob6gmw
+  - fake-testing-diamond-42-muob6gmx
+  - fake-testing-diamond-43-muob6gmy
+  - fake-testing-diamond-44-muob6gmz
+  - fake-testing-diamond-45-muob6gn0
+  - fake-testing-diamond-46-muob6gn1
+  - fake-testing-diamond-47-muob6gn2
+  - fake-testing-diamond-48-muob6gn3
+  - fake-testing-diamond-49-muob6gn4
+  - fake-testing-diamond-50-muob6gn5
+  - fake-testing-diamond-51-muob6gn6
+  - fake-testing-diamond-52-muob6gn7
+  - fake-testing-diamond-53-muob6gn8
+  - fake-testing-diamond-54-muob6gn9
+  - fake-testing-diamond-55-muob6gna
+  - fake-testing-diamond-56-muob6gnb
+  - fake-testing-diamond-57-muob6gnc
+  - fake-testing-diamond-58-muob6gnd
+  - fake-testing-diamond-59-muob6gne
+  - fake-testing-diamond-60-muob6gnf
+  - fake-testing-diamond-61-muob6gng
+  - fake-testing-diamond-62-muob6gnh
+  - fake-testing-diamond-63-muob6gni
+  - fake-testing-diamond-64-muob6gnj
+  - fake-testing-diamond-65-muob6gnk
+  - fake-testing-diamond-66-muob6gnl
+  - fake-testing-diamond-67-muob6gnm
+  - fake-testing-diamond-68-muob6gnn
+  - fake-testing-diamond-69-muob6gno
+  - fake-testing-diamond-70-muob6gnp
+  - fake-testing-diamond-71-muob6gnq
+  - fake-testing-diamond-72-muob6gnr
+  - fake-testing-diamond-73-muob6gns
+  - fake-testing-diamond-74-muob6gnt
+  - fake-testing-diamond-75-muob6gnu
+  - fake-testing-diamond-76-muob6gnv
+  - fake-testing-diamond-77-muob6gnw
+  - fake-testing-diamond-78-muob6gnx
+  - fake-testing-diamond-79-muob6gny
+effort: PT41M
+started_at: 2026-09-30T16:33:09.537Z
+ended_at: 2026-09-30T16:34:47.555Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

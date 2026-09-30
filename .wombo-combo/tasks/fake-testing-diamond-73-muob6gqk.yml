@@ -1,0 +1,20 @@
+id: fake-testing-diamond-73-muob6gqk
+title: Fix flaky integration test (3)
+description: FAKE_SLEEP_MS=1088 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT51M
+started_at: 2026-09-30T16:32:59.305Z
+ended_at: 2026-09-30T16:34:37.650Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

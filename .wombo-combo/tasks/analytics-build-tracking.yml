@@ -1,0 +1,53 @@
+id: analytics-build-tracking
+title: Capture Build Results And Diff Metrics
+description: |
+  Extend AgentRunner after lifecycle tracking merges. Capture baseline
+  HEAD after worktree preparation and before the first agent process.
+  Preserve it across ordinary retries.
+  Count runFullVerification's build result using result.build.passed,
+  independently of overallPassed. Count each runBuild invocation in
+  runTier3, runTier35, and runTier4 exactly once.
+  Measure committed changes at successful verification before emitting
+  verified, because successors can immediately reuse the shared worktree.
+  Preserve predecessor measurements through deferred merge and rescue.
+  Capture best-effort diffs before failure, reaping, or cleanup.
+  For tier-four reset, capture a replacement baseline after reset and
+  measure the replacement implementation after its commit and before
+  merge cleanup. Label that measurement phase without changing the
+  original successful-verification duration.
+  Mark usage coverage partial whenever an unmonitored conflict resolver
+  is launched. Add tests/analytics-measurements.test.ts.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - analytics-run-tracking
+  - analytics-git-metrics
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Fake-agent verification contributes zero actual build attempts.
+  - A passing build followed by failing browser or TDD verification still counts as a build pass.
+  - Measure each chain member before its successor advances the worktree.
+  - Persist measurements before deleting branches or worktrees.
+  - Do not replace a valid measurement with null when later git access fails.
+  - Build invocation exceptions must remain observable and must not fabricate passes.
+  - Unknown git results remain null with diagnostics.
+forbidden:
+  - Do not change verification criteria or conflict escalation behavior.
+  - Do not attach conflict resolvers to normal completion callbacks.
+  - Do not modify analytics.ts, analytics-summary.ts, or existing history.
+references:
+  - src/daemon/agent-runner.ts
+  - src/lib/analytics.ts
+  - src/lib/analytics-git.ts
+  - src/lib/verifier.ts
+  - src/lib/monitor.ts
+notes:
+  - Own follow-up agent-runner.ts edits and tests/analytics-measurements.test.ts.
+  - Serialized after lifecycle tracking because both tasks modify AgentRunner.
+  - Keep ordinary verified diffs fixed; do not remeasure against a base changed by conflict integration.
+subtasks: []
+quest: agent-analytics

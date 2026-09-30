@@ -1,0 +1,20 @@
+id: fake-testing-diamond-3-muob6glu
+title: Fix memory leak in worker
+description: FAKE_SLEEP_MS=1276 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT40M
+started_at: 2026-09-30T16:28:13.596Z
+ended_at: 2026-09-30T16:29:51.971Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

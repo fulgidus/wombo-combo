@@ -1,0 +1,20 @@
+id: fake-testing-diamond-58-muob6gnd
+title: Extract shared utilities (3)
+description: FAKE_SLEEP_MS=1160 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - fake-testing-diamond-1-muob6gls
+effort: PT19M
+started_at: 2026-09-30T16:30:54.762Z
+ended_at: 2026-09-30T16:32:29.048Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

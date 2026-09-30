@@ -1,0 +1,50 @@
+id: analytics-regression
+title: Verify Analytics Retention And Compatibility
+description: |
+  Add tests/analytics-integration.test.ts and isolated fixtures covering
+  multiple daemon sessions, work accepted after initial idle, repeated
+  task executions, ordinary retries, explicit reruns, restart recovery,
+  chain attribution, cancellation, and cleanup retention.
+  Assert token snapshots do not duplicate usage.jsonl entries and
+  build rate differs correctly from overall verification success.
+  Exercise analytics CLI formats and legacy usage compatibility.
+  Document storage, metric definitions, coverage limitations, grouping
+  and filtering examples, and TUI access in README.md.
+  Run typecheck, targeted tests, the full test suite, and build.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - analytics-build-tracking
+  - analytics-usage-command
+  - analytics-tui-wiring
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Use temporary local roots and controlled processes; never launch paid agents or require remote services.
+  - Analytics must survive normal cleanup separately from disposable daemon state.
+  - Use bun dev for local CLI verification.
+  - Run bun run build with a 300000ms timeout.
+  - Report pre-existing failures separately from analytics regressions.
+  - Document that historical usage/history is not automatically backfilled.
+forbidden:
+  - Do not modify tracked quest/task artifacts or publish a release.
+  - Do not invent missing historical measurements.
+  - Do not broadly refactor implementation files owned by other tasks.
+references:
+  - src/commands/cleanup.ts
+  - src/daemon/daemon.ts
+  - src/lib/analytics.ts
+  - src/commands/usage.ts
+  - tests/token-tracking.test.ts
+  - tests/dev-mode-integration.test.ts
+  - README.md
+  - package.json
+notes:
+  - Own integration tests, new fixtures, and README.md.
+  - Cleanup currently deletes specific runtime paths, not the entire .wombo-combo directory; add a retention guard test.
+  - Make a minimal cleanup.ts fix only if retention tests expose a problem.
+subtasks: []
+quest: agent-analytics

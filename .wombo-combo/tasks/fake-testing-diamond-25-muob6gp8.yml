@@ -1,0 +1,20 @@
+id: fake-testing-diamond-25-muob6gp8
+title: Review security vulnerabilities
+description: FAKE_SLEEP_MS=997 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: trivial
+priority: medium
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT51M
+started_at: 2026-09-30T16:29:36.426Z
+ended_at: 2026-09-30T16:31:12.335Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []

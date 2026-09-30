@@ -1,0 +1,20 @@
+id: fake-testing-diamond-2-muob6gol
+title: Update dependency versions
+description: FAKE_SLEEP_MS=1244 Tasks fan out then converge on a sink.
+status: done
+completion: 100
+difficulty: hard
+priority: high
+depends_on:
+  - fake-testing-diamond-1-muob6gok
+effort: PT41M
+started_at: 2026-09-30T16:24:20.728Z
+ended_at: 2026-09-30T16:25:51.127Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+agent: fake-agent
+quest: testing-diamond
+paths: []
