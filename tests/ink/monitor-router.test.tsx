@@ -183,6 +183,74 @@ describe("DaemonMonitorScreen export", () => {
 
     expect(typeof output).toBe("string");
   });
+
+  test("DaemonMonitorScreen renders LIVE agents from DashboardStoreContext (not frozen props)", async () => {
+    const { DaemonMonitorScreen } = (await import("../../src/ink/run-daemon-monitor")) as any;
+    const { ScreenRouter } = await import("../../src/ink/router");
+    const { DashboardStoreContext } = await import("../../src/ink/dashboard");
+    const { ThemeContext, getTheme } = await import("../../src/ink/theme");
+    const { I18nContext, getLocaleT } = await import("../../src/ink/i18n");
+
+    const theme = getTheme("default");
+    const tFn = getLocaleT("en");
+    // Live dash store: one agent. The screen receives EMPTY frozen props via
+    // initialProps — before the live-context fix, ScreenRouter froze the
+    // splash-time (empty) props and the monitor showed "No agents" forever.
+    const liveDashStore = {
+      agents: [
+        {
+          id: "ctx-live-agent",
+          status: "running",
+          activity: "Installing dependencies...",
+          startedAt: new Date().toISOString(),
+          retries: 0,
+          effortEstimateMs: 60_000,
+          buildPassed: null,
+          buildOutput: null,
+        },
+      ],
+      running: 1,
+      done: 0,
+      failed: 0,
+      total: 1,
+      scheduler: { status: "running", baseBranch: "main", model: null, questId: null },
+      allComplete: false,
+      pendingQuestions: [],
+    };
+
+    const screens = { monitor: DaemonMonitorScreen };
+    const output = renderToString(
+      React.createElement(
+        ThemeContext.Provider,
+        { value: theme },
+        React.createElement(
+          I18nContext.Provider,
+          { value: tFn },
+          React.createElement(
+            DashboardStoreContext.Provider,
+            { value: liveDashStore },
+            React.createElement(ScreenRouter, {
+              screens,
+              initialScreen: "monitor",
+              initialProps: {
+                client: new StubDaemonClient(),
+                projectRoot: "/tmp",
+                config: makeMinimalConfig(),
+                onQuit: () => {},
+                onQuitAfterComplete: () => {},
+                // Frozen props are deliberately EMPTY — data must come from context
+                agents: [],
+                scheduler: null,
+              },
+            })
+          )
+        )
+      )
+    );
+
+    expect(output).toContain("ctx-live-agent");
+    expect(output).not.toContain("No agents");
+  });
 });
 
 // ---------------------------------------------------------------------------

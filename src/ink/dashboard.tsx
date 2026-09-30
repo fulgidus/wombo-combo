@@ -31,16 +31,29 @@ import React, { createContext, useContext } from "react";
 import { Box, Text } from "ink";
 import { t } from "./i18n";
 import type { AgentStatus } from "../daemon/agent-status";
+import type { SchedulerState } from "../daemon/protocol";
+import type { HitlQuestion } from "../lib/hitl-channel";
 
 // ---------------------------------------------------------------------------
 // DashboardStore type
 // ---------------------------------------------------------------------------
 
-/** A single agent row displayed in the dashboard. */
+/**
+ * A single agent row displayed in the dashboard. The optional detail fields
+ * carry everything the daemon monitor's WaveMonitorView needs, so the
+ * monitor screen can render LIVE data from DashboardStoreContext instead of
+ * ScreenRouter-frozen props.
+ */
 export interface DashboardAgent {
   id: string;
   status: AgentStatus;
   branch?: string;
+  activity?: string | null;
+  startedAt?: string | null;
+  retries?: number;
+  effortEstimateMs?: number | null;
+  buildPassed?: boolean | null;
+  buildOutput?: string | null;
 }
 
 /** The live wave state fed into DashboardStoreContext. */
@@ -50,6 +63,12 @@ export interface DashboardStore {
   done: number;
   failed: number;
   total: number;
+  /** Live scheduler state (optional — daemon monitor reads it for the header). */
+  scheduler?: SchedulerState | null;
+  /** Whether all agents are in terminal states (optional — live completion). */
+  allComplete?: boolean;
+  /** Pending HITL questions rebuilt from the last snapshot (optional). */
+  pendingQuestions?: HitlQuestion[];
 }
 
 const DEFAULT_STORE: DashboardStore = {

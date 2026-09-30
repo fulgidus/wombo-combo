@@ -67,6 +67,7 @@ import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
 import {
   DashboardStoreContext,
+  useDashboardStore,
   type DashboardStore,
   type DashboardAgent,
 } from "./dashboard";
@@ -141,6 +142,12 @@ function buildDashStore(store: DaemonStore): DashboardStore {
   const agents: DashboardAgent[] = store.agents.map((a) => ({
     id: a.featureId,
     status: a.status,
+    activity: a.activity,
+    startedAt: a.startedAt,
+    retries: a.retries,
+    effortEstimateMs: a.effortEstimateMs,
+    buildPassed: a.buildPassed,
+    buildOutput: a.error,
   }));
   let running = 0;
   let done = 0;
@@ -156,6 +163,9 @@ function buildDashStore(store: DaemonStore): DashboardStore {
     done,
     failed,
     total: agents.length,
+    scheduler: store.scheduler,
+    allComplete: store.allComplete,
+    pendingQuestions: store.pendingQuestions,
   };
 }
 
@@ -452,21 +462,44 @@ function DaemonMonitorAdapter({
   const [answerText, setAnswerText] = useState("");
   // Local copy of pending questions synced from parent
   const [pendingQuestions, setPendingQuestions] = useState<HitlQuestion[]>(pendingQuestionsProp);
+
+  // LIVE data path: the shell re-renders on every daemon event and refreshes
+  // DashboardStoreContext. ScreenRouter freezes props at push/replace time,
+  // so frozen props (empty at splash-mount) would leave the monitor showing
+  // "No agents" forever. Read live values from context, falling back to
+  // frozen props for standalone renders (tests) without the provider.
+  const dash = useDashboardStore();
+  const liveInfos: AgentInfo[] = (dash.agents.length > 0
+    ? dash.agents
+    : agents.map((a) => ({
+        id: a.featureId,
+        status: a.status,
+        activity: a.activity,
+        startedAt: a.startedAt,
+        retries: a.retries,
+        effortEstimateMs: a.effortEstimateMs,
+        buildPassed: a.buildPassed,
+        buildOutput: a.error,
+      }))
+  ).map((d) => ({
+    featureId: d.id,
+    status: d.status,
+    activity: d.activity ?? null,
+    startedAt: d.startedAt ?? null,
+    retries: d.retries ?? 0,
+    effortEstimateMs: d.effortEstimateMs ?? null,
+    buildPassed: d.buildPassed ?? null,
+    buildOutput: d.buildOutput ?? null,
+  }));
+  const liveScheduler = dash.scheduler ?? scheduler;
+  const liveComplete = dash.allComplete ?? allComplete;
+
   useEffect(() => {
-    setPendingQuestions(pendingQuestionsProp);
-  }, [pendingQuestionsProp]);
+    setPendingQuestions(dash.pendingQuestions ?? pendingQuestionsProp);
+  }, [dash.pendingQuestions, pendingQuestionsProp]);
 
   // Build AgentInfo array from daemon agent state
-  const agentInfos: AgentInfo[] = agents.map((a) => ({
-    featureId: a.featureId,
-    status: a.status,
-    activity: a.activity,
-    startedAt: a.startedAt,
-    retries: a.retries,
-    effortEstimateMs: a.effortEstimateMs,
-    buildPassed: a.buildPassed,
-    buildOutput: a.error,
-  }));
+  const agentInfos: AgentInfo[] = liveInfos;
 
   // Agent counts
   const counts: AgentCounts = {
@@ -480,12 +513,12 @@ function DaemonMonitorAdapter({
     retry: 0,
     resolving_conflict: 0,
   };
-  for (const a of agents) {
+  for (const a of liveInfos) {
     counts[a.status] = (counts[a.status] ?? 0) + 1;
   }
 
   // Activity log for selected agent
-  const selectedAgent = agents[selectedIndex];
+  const selectedAgent = liveInfos[selectedIndex];
   const activityLog = selectedAgent
     ? activityLogs.get(selectedAgent.featureId) ?? []
     : [];
@@ -502,12 +535,12 @@ function DaemonMonitorAdapter({
 
   // Callbacks
   const handleQuit = useCallback(() => {
-    if (allComplete) {
+    if (liveComplete) {
       onQuitAfterComplete();
     } else {
       onQuit();
     }
-  }, [allComplete, onQuitAfterComplete, onQuit]);
+  }, [liveComplete, onQuitAfterComplete, onQuit]);
 
   const handleRetry = useCallback(() => {
     if (!selectedAgent) return;
@@ -649,15 +682,15 @@ function DaemonMonitorAdapter({
   return (
     <>
       <WaveMonitorView
-        waveId={scheduler?.questId ?? "daemon"}
-        baseBranch={scheduler?.baseBranch ?? "main"}
+        waveId={liveScheduler?.questId ?? "daemon"}
+        baseBranch={liveScheduler?.baseBranch ?? "main"}
         interactive={false}
-        model={scheduler?.model ?? null}
+        model={liveScheduler?.model ?? null}
         agents={agentInfos}
         counts={counts}
         selectedIndex={selectedIndex}
         autoScroll={autoScroll}
-        waveComplete={allComplete}
+        waveComplete={liveComplete}
         activityLog={activityLog}
         systemMessages={systemMessages}
         totalTokens={totalTokens > 0 ? totalTokens : undefined}
