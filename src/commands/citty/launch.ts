@@ -78,8 +78,11 @@ export function parseLaunchArgs(args: Record<string, any>): ParsedLaunchArgs {
     maxRetries: args.maxRetries
       ? parseInt(args.maxRetries, 10)
       : undefined,
-    noTui: args.noTui ?? false,
-    noUi: args.noUi ?? false,
+    // citty 0.2 negation: `--no-tui` parses to `tui: false` (the arg named
+    // "tui"), never to `noTui`. Accept both spellings; raw-object callers
+    // (tests) use camelCase, real CLI runs produce tui/ui.
+    noTui: args.noTui ?? args.tui === false,
+    noUi: args.noUi ?? args.ui === false,
     autoPush: args.autoPush ?? false,
     agent: args.agent ?? undefined,
     questId: args.quest ?? undefined,
@@ -160,14 +163,16 @@ export const launchCommand = defineCommand({
       description: "Maximum number of retries per agent",
       required: false,
     },
-    noTui: {
+    tui: {
       type: "boolean",
-      description: "Disable TUI dashboard, use plain console output",
+      default: true,
+      description: "TUI dashboard (default on); pass --no-tui for plain console output",
       required: false,
     },
-    noUi: {
+    ui: {
       type: "boolean",
-      description: "Run woco in pure CLI mode (skip Ink UI)",
+      default: true,
+      description: "Ink UI (default on); pass --no-ui for pure CLI mode",
       required: false,
     },
     autoPush: {

@@ -38,7 +38,8 @@ export function parseResumeArgs(args: Record<string, any>): ParsedResumeArgs {
       ? parseInt(args.maxConcurrent, 10)
       : undefined,
     model: args.model ?? undefined,
-    noTui: args.noTui ?? false,
+    // citty 0.2 negation: `--no-tui` parses to `tui: false`. Accept both.
+    noTui: args.noTui ?? args.tui === false,
     outputFmt: args.output
       ? resolveOutputFormat(args.output)
       : undefined,
@@ -66,9 +67,10 @@ export const resumeCommand = defineCommand({
       description: "AI model to use for agents",
       required: false,
     },
-    noTui: {
+    tui: {
       type: "boolean",
-      description: "Disable TUI dashboard, use plain console output",
+      default: true,
+      description: "TUI dashboard (default on); pass --no-tui for plain console output",
       required: false,
     },
     output: {

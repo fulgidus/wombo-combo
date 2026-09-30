@@ -137,11 +137,12 @@ describe("citty launch command args — launch options", () => {
     expect(args.maxRetries.type).toBe("string");
   });
 
-  test("defines --no-tui as boolean arg", async () => {
+  test("defines --no-tui as boolean negation of tui (default true)", async () => {
     const { launchCommand } = await import("../src/commands/citty/launch.js");
     const args = await resolveValue(launchCommand.args!);
-    expect(args.noTui).toBeDefined();
-    expect(args.noTui.type).toBe("boolean");
+    expect(args.tui).toBeDefined();
+    expect(args.tui.type).toBe("boolean");
+    expect(args.tui.default).toBe(true);
   });
 
   test("defines --auto-push as boolean arg", async () => {

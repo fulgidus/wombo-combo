@@ -63,11 +63,12 @@ describe("citty resume command args", () => {
     expect(args.model.alias).toBe("m");
   });
 
-  test("defines --no-tui as boolean arg", async () => {
+  test("defines --no-tui as boolean negation of tui (default true)", async () => {
     const { resumeCommand } = await import("../src/commands/citty/resume.js");
     const args = await resolveValue(resumeCommand.args!);
-    expect(args.noTui).toBeDefined();
-    expect(args.noTui.type).toBe("boolean");
+    expect(args.tui).toBeDefined();
+    expect(args.tui.type).toBe("boolean");
+    expect(args.tui.default).toBe(true);
   });
 
   test("defines --output / -o as string arg", async () => {
