@@ -548,6 +548,7 @@ export function renderLaunchDryRun(result: {
   max_concurrent: number;
   model: string | null;
   selected: Array<{ id: string; title: string; priority: string; difficulty: string; effort: string }>;
+  scope_partitions?: string[][];
 }): string {
   const lines: string[] = [];
 
@@ -562,6 +563,15 @@ export function renderLaunchDryRun(result: {
       encodeDuration(f.effort),
       f.title,
     ));
+  }
+
+  if (result.scope_partitions && result.scope_partitions.length > 0) {
+    lines.push(`#SCOPE groups:${result.scope_partitions.length}`);
+    for (const group of result.scope_partitions) {
+      lines.push(group.length > 1
+        ? `SEQ ${group.join("→")}`
+        : `PAR ${group[0]}`);
+    }
   }
 
   return lines.join("\n");

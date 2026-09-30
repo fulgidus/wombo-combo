@@ -101,6 +101,13 @@ export interface Task {
    * prerequisite quest.
    */
   quest?: string;
+  /**
+   * Optional file paths this task intends to touch (directories or files,
+   * relative to the project root). Used by the scheduler for collision-
+   * minimizing steering: tasks with overlapping scopes run sequentially,
+   * tasks with disjoint scopes run in parallel. See src/lib/file-scopes.ts.
+   */
+  paths?: string[];
 }
 
 /**

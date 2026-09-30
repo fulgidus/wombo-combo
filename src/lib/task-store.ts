@@ -218,6 +218,7 @@ export function deleteTaskFile(dir: string, taskId: string): void {
 
 function normalizeTask(t: Task): void {
   t.depends_on = t.depends_on ?? [];
+  t.paths = t.paths ?? [];
   t.constraints = t.constraints ?? [];
   t.forbidden = t.forbidden ?? [];
   t.references = t.references ?? [];

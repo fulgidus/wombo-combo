@@ -18,6 +18,8 @@ import type { Task, FeaturesFile } from "../lib/tasks";
 import { buildDepGraph, validateDepGraph, buildSchedulePlan, getStreamForFeature } from "../lib/dependency-graph";
 import type { DepGraph, SchedulePlan } from "../lib/dependency-graph";
 import { worktreePath } from "../lib/worktree";
+import { pathsOverlap } from "../lib/file-scopes";
+import { TERMINAL_STATUSES } from "./state";
 import type { DaemonState, InternalAgentState } from "./state";
 import type { AgentRunner } from "./agent-runner";
 
@@ -70,6 +72,13 @@ export class Scheduler {
 
   /** Set of task IDs already submitted to the runner (prevent double-launch). */
   private submittedTasks = new Set<string>();
+
+  /**
+   * Declared file scopes (task.paths) per task id, refreshed each tick from
+   * the disk load. Used to defer candidates whose scopes overlap active or
+   * just-submitted work (collision-minimizing steering).
+   */
+  private taskPaths = new Map<string, string[]>();
 
   /**
    * Whether concurrency has been explicitly set this daemon session.
@@ -303,6 +312,7 @@ export class Scheduler {
   private getCandidateTasks(): Task[] {
     try {
       const data = loadFeatures(this.config.projectRoot, this.config.config);
+      this.taskPaths = new Map(data.tasks.map((t) => [t.id, t.paths ?? []]));
 
       // Build the set of "satisfied" dependency IDs.
       // This is the union of:
@@ -394,6 +404,17 @@ export class Scheduler {
     // 1. Pinned tasks first (from either pool)
     const pinnedTasks = state.getSchedulerState().pinnedTasks;
 
+    // File scopes claimed by work that is active or about to launch.
+    // Candidates whose declared paths overlap a claim are deferred to a
+    // later tick (collision-minimizing steering — see lib/file-scopes.ts).
+    const claimedPaths: string[][] = state
+      .getAllAgents()
+      .filter(
+        (a) => a.status !== "queued" && !TERMINAL_STATUSES.has(a.status)
+      )
+      .map((a) => this.taskPaths.get(a.featureId) ?? [])
+      .filter((p) => p.length > 0);
+
     for (const pinnedId of pinnedTasks) {
       if (remaining <= 0) break;
 
@@ -401,6 +422,8 @@ export class Scheduler {
       const queuedAgent = readyQueued.find((a) => a.featureId === pinnedId);
       if (queuedAgent) {
         result.push({ type: "queued-agent", featureId: pinnedId });
+        const pinnedPaths = this.taskPaths.get(pinnedId);
+        if (pinnedPaths && pinnedPaths.length > 0) claimedPaths.push(pinnedPaths);
         readyQueued = readyQueued.filter((a) => a.featureId !== pinnedId);
         state.unpinTask(pinnedId); // Consume the pin
         remaining--;
@@ -411,6 +434,8 @@ export class Scheduler {
       const candidateTask = candidateTasks.find((t) => t.id === pinnedId);
       if (candidateTask) {
         result.push({ type: "new-task", task: candidateTask });
+        const pinnedPaths = this.taskPaths.get(pinnedId);
+        if (pinnedPaths && pinnedPaths.length > 0) claimedPaths.push(pinnedPaths);
         candidateTasks = candidateTasks.filter((t) => t.id !== pinnedId);
         state.unpinTask(pinnedId);
         remaining--;
@@ -421,12 +446,28 @@ export class Scheduler {
     for (const agent of readyQueued) {
       if (remaining <= 0) break;
       result.push({ type: "queued-agent", featureId: agent.featureId });
+      const agentPaths = this.taskPaths.get(agent.featureId);
+      if (agentPaths && agentPaths.length > 0) claimedPaths.push(agentPaths);
       remaining--;
     }
 
-    // 3. New candidate tasks from disk
+    // 3. New candidate tasks from disk — scope-aware. Tasks without
+    // declared paths are never scope-deferred (steering is opt-in).
     for (const task of candidateTasks) {
       if (remaining <= 0) break;
+      const taskPaths = task.paths ?? [];
+      if (taskPaths.length > 0) {
+        const conflict = claimedPaths.find((q) => pathsOverlap(taskPaths, q));
+        if (conflict) {
+          // Defer: an overlapping agent is already running or was submitted
+          // earlier in this pass. The task stays a candidate for later ticks.
+          console.log(
+            `[scheduler] deferring ${task.id}: file scope overlaps active work (${conflict.join(", ")})`
+          );
+          continue;
+        }
+        claimedPaths.push(taskPaths);
+      }
       result.push({ type: "new-task", task });
       remaining--;
     }

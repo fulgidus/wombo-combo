@@ -15,6 +15,7 @@ import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
 import { loadFeatures, selectFeatures } from "../lib/tasks";
+import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
 import { branchExists, questBranchExists, createQuestBranch } from "../lib/worktree";
 import type { QuestPromptContext } from "../lib/prompt";
 import { syncQuestBranch } from "../lib/merger";
@@ -739,10 +740,17 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
         })),
         topological_order: schedulePlan.topologicalOrder,
       } : null,
+      scope_partitions: scopePartitions(
+        data.tasks.filter((t) => scopeSet.has(t.id))
+      ),
     };
 
     output(fmt, dryRunResult, () => {
       console.log("Dry run — not launching agents.");
+      const scopeTasks = data.tasks.filter((t) => scopeSet.has(t.id));
+      if (scopeTasks.some((t) => (t.paths ?? []).length > 0)) {
+        console.log(formatScopePartitions(scopePartitions(scopeTasks)));
+      }
     }, () => {
       console.log(renderLaunchDryRun(dryRunResult));
     });

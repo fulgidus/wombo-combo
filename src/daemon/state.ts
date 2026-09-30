@@ -55,7 +55,7 @@ const STATE_FILE = "daemon-state.json";
 const STATE_VERSION = 1;
 
 // Terminal statuses — agents in these states won't be scheduled
-const TERMINAL_STATUSES: ReadonlySet<AgentStatus> = new Set([
+export const TERMINAL_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "completed",
   "failed",
   "merged",

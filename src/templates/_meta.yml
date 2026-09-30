@@ -40,6 +40,12 @@
 #                                  .opencode/agents/<agent>.md. When omitted,
 #                                  defaults to the config's agent.name
 #                                  (typically "generalist-agent").
+#   paths       : list[string]  — Optional file paths this task will touch
+#                                  (dirs or files, relative to repo root).
+#                                  Steering: tasks with overlapping paths run
+#                                  sequentially; disjoint paths run in
+#                                  parallel (collision-minimizing scheduler).
+#                                  Omit when unknown — no steering is applied.
 #
 # =============================================================================
 

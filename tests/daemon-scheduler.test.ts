@@ -1205,3 +1205,160 @@ describe("Chain context from schedule plan", () => {
     state.destroy();
   });
 });
+
+// ---------------------------------------------------------------------------
+// File-scope steering (collision-minimizing parallelism)
+// ---------------------------------------------------------------------------
+
+describe("File-scope steering", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = makeTempDir();
+  });
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /** Write a planned task file with optional depends_on and paths. */
+  function writeScopedTask(
+    dir: string,
+    id: string,
+    opts: { dependsOn?: string[]; paths?: string[] } = {}
+  ): void {
+    const tasksDir = join(dir, ".wombo-combo", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    const dependsOn = opts.dependsOn ?? [];
+    const deps =
+      dependsOn.length > 0
+        ? `depends_on:\n${dependsOn.map((d) => `  - "${d}"`).join("\n")}`
+        : "depends_on: []";
+    const paths = opts.paths ?? [];
+    const pathsYml =
+      paths.length > 0
+        ? `paths:\n${paths.map((p) => `  - "${p}"`).join("\n")}`
+        : "paths: []";
+    writeFileSync(
+      join(tasksDir, `${id}.yml`),
+      [
+        `id: "${id}"`,
+        `title: "${id}"`,
+        `description: ""`,
+        `status: "planned"`,
+        `completion: 0`,
+        `difficulty: "medium"`,
+        `priority: "medium"`,
+        deps,
+        pathsYml,
+        `effort: "PT1H"`,
+        `started_at: null`,
+        `ended_at: null`,
+        `constraints: []`,
+        `forbidden: []`,
+        `references: []`,
+        `notes: []`,
+        `subtasks: []`,
+        "",
+      ].join("\n")
+    );
+  }
+
+  function submittedIds(calls: Array<{ method: string; args: unknown[] }>): string[] {
+    return calls
+      .filter((c) => c.method === "submitTask")
+      .map((c) => (c.args[0] as { id: string }).id);
+  }
+
+  function makeScopeScheduler(
+    state: DaemonState,
+    runner: { submitTask: (...args: unknown[]) => void } & Record<string, unknown>,
+    taskIds: string[],
+    tickIntervalMs = 60000
+  ): Scheduler {
+    const config: SchedulerConfig = {
+      projectRoot: tempDir,
+      config: makeConfig({
+        tasksDir: "tasks",
+        archiveDir: "archive",
+        defaults: { maxConcurrent: 10, maxRetries: 2 },
+      }),
+      taskIds,
+      tickIntervalMs,
+    };
+    return new Scheduler(config, { state, runner: runner as never });
+  }
+
+  test("overlapping scopes are serialized; disjoint scope stays parallel", () => {
+    writeScopedTask(tempDir, "scope-a", { paths: ["src"] });
+    writeScopedTask(tempDir, "scope-b", { paths: ["src/lib"] });
+    writeScopedTask(tempDir, "docs-task", { paths: ["docs"] });
+
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+    const { calls, runner } = makeMockRunner();
+    const scheduler = makeScopeScheduler(state, runner as never, [
+      "scope-a",
+      "scope-b",
+      "docs-task",
+    ]);
+    scheduler.start();
+
+    // scope-b overlaps scope-a ("src" is an ancestor of "src/lib") → deferred.
+    // docs-task is disjoint → parallel with scope-a.
+    const ids = submittedIds(calls);
+    expect(ids).toContain("scope-a");
+    expect(ids).toContain("docs-task");
+    expect(ids).not.toContain("scope-b");
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("deferred task submits after the conflicting agent reaches a terminal state", async () => {
+    writeScopedTask(tempDir, "scope-a", { paths: ["src"] });
+    writeScopedTask(tempDir, "scope-b", { paths: ["src/lib"] });
+
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+    const { calls, runner } = makeMockRunner();
+    const scheduler = makeScopeScheduler(state, runner as never, [
+      "scope-a",
+      "scope-b",
+    ], 30);
+    scheduler.start();
+
+    // First tick: only scope-a (scope-b deferred)
+    expect(submittedIds(calls)).toEqual(["scope-a"]);
+
+    // scope-a completes (merged = terminal) → its scope claim is released
+    state.addAgent(makeAgent("scope-a"));
+    state.updateAgentStatus("scope-a", "merged");
+
+    // Wait for interval ticks to pick scope-b up
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    expect(submittedIds(calls)).toEqual(["scope-a", "scope-b"]);
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("tasks without declared paths are never scope-deferred", () => {
+    writeScopedTask(tempDir, "plain-a");
+    writeScopedTask(tempDir, "plain-b");
+
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+    const { calls, runner } = makeMockRunner();
+    const scheduler = makeScopeScheduler(state, runner as never, [
+      "plain-a",
+      "plain-b",
+    ]);
+    scheduler.start();
+
+    expect(submittedIds(calls)).toEqual(["plain-a", "plain-b"]);
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+});
