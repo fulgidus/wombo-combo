@@ -26,6 +26,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
+import { stripAnsi } from "./ansi";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -152,9 +153,10 @@ describe("TuiApp renders splash when skipSplash=false", () => {
       })
     );
 
-    // SplashScreen shows the block-art logo (tagline text is random)
-    expect(output).toContain("██");
-    expect(output).toContain("⚡");
+    // SplashScreen shows the block-art logo (tagline text is random);
+    // strip ANSI — colored terminals wrap every glyph in its own escape
+    expect(stripAnsi(output)).toContain("██");
+    expect(stripAnsi(output)).toContain("⚡");
   });
 
   test("renders chrome (Home label in top bar visible alongside splash)", async () => {

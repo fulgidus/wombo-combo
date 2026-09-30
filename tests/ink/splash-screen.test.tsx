@@ -16,6 +16,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
+import { stripAnsi } from "./ansi";
 
 describe("splash-screen module exports", () => {
   test("exports SplashScreen, SPLASH_TEXTS", async () => {
@@ -50,9 +51,10 @@ describe("SplashScreen rendering", () => {
         durationMs: 0,
       })
     );
-    // The logo uses ASCII block art — check for the ⚡ divider and block chars
-    expect(output).toContain("⚡");
-    expect(output).toContain("██");
+    // The logo uses ASCII block art — check for the ⚡ divider and block
+    // chars; strip ANSI — colored terminals wrap every glyph in its own escape
+    expect(stripAnsi(output)).toContain("⚡");
+    expect(stripAnsi(output)).toContain("██");
   });
 
   test("renders tagline from SPLASH_TEXTS", async () => {

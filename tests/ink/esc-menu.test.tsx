@@ -18,6 +18,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
+import { stripAnsi } from "./ansi";
 import { PassThrough } from "node:stream";
 import { render } from "ink";
 
@@ -45,8 +46,9 @@ describe("EscMenu rendering", () => {
     const output = renderToString(
       React.createElement(EscMenu, { open: true, onClose: () => {}, onNavigate: () => {} })
     );
-    // The title is ASCII block art spelling "MENU" (not plain text)
-    expect(output).toContain("███╗");
+    // The title is ASCII block art spelling "MENU" (not plain text);
+    // strip ANSI — colored terminals wrap every glyph in its own escape
+    expect(stripAnsi(output)).toContain("███╗");
   });
 
   test("EscMenu renders 'Return to app' item", async () => {
