@@ -168,6 +168,8 @@ function Header({
             <Text dimColor>  │  </Text>
           </>
         )}
+        <Text dimColor>{waveId}</Text>
+        <Text dimColor>  │  </Text>
         <Text>Base: </Text>
         <Text color="cyan">{baseBranch}</Text>
         <Text dimColor>  │  </Text>

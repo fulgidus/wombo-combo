@@ -186,6 +186,13 @@ function Header({
             <Text> selected</Text>
           </>
         )}
+        {questTitle && (
+          <>
+            <Text dimColor>  |  </Text>
+            <Text>Quest: </Text>
+            <Text color="cyan">{questTitle}</Text>
+          </>
+        )}
       </Box>
       <Box>
         <Text dimColor>Sort: </Text>
@@ -451,7 +458,7 @@ function StatusBar({
   questId?: boolean; // unused but kept for future use
 }): React.ReactElement {
   return (
-    <Box flexDirection="column" height={3}>
+    <Box flexDirection="column">
       <Box flexWrap="wrap">
         <Text bold>Keys:</Text>
         <Text>  </Text>
