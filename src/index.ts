@@ -26,6 +26,7 @@
  *   woco logs <feature-id> [--tail N] [--follow]      (alias: lo)
  *   woco cleanup                                      (alias: c)
  *   woco history [wave-id] [--output json]            (alias: h)
+ *   woco eval [wave-id] [--output json]               Score a completed session
  *   woco usage [--by <key>] [--since <date>] [--until <date>] [--format table|json]  (alias: us)
  *   woco tasks list [--status <s>] [--priority <p>]   (alias: t ls)
  *   woco tasks add <id> <title> [options]             (alias: t a)

@@ -161,6 +161,33 @@ describe("citty history command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Eval command tests
+// ---------------------------------------------------------------------------
+
+describe("citty eval command", () => {
+  test("evalCommand is a valid citty CommandDef", async () => {
+    const { evalCommand } = await import("../src/commands/citty/eval");
+    expect(evalCommand).toBeDefined();
+    expect(evalCommand.meta).toBeDefined();
+    expect(evalCommand.run).toBeDefined();
+  });
+
+  test("evalCommand has correct meta name", async () => {
+    const { evalCommand } = await import("../src/commands/citty/eval");
+    const meta = await resolveValue(evalCommand.meta!);
+    expect(meta.name).toBe("eval");
+  });
+
+  test("evalCommand has optional wave-id positional arg", async () => {
+    const { evalCommand } = await import("../src/commands/citty/eval");
+    const args = await resolveValue(evalCommand.args!);
+    expect(args.waveId).toBeDefined();
+    expect(args.waveId.type).toBe("positional");
+    expect(args.waveId.required).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Logs command tests
 // ---------------------------------------------------------------------------
 

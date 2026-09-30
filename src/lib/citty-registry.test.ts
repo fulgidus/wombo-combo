@@ -26,6 +26,7 @@ describe("BRIDGE_REGISTRY", () => {
     expect(names).toContain("retry");
     expect(names).toContain("cleanup");
     expect(names).toContain("history");
+    expect(names).toContain("eval");
     expect(names).toContain("usage");
     expect(names).toContain("abort");
     expect(names).toContain("upgrade");

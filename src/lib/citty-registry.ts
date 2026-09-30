@@ -30,6 +30,7 @@ import { statusCommand } from "../commands/citty/status";
 import { abortCommand } from "../commands/citty/abort";
 import { cleanupCommand } from "../commands/citty/cleanup";
 import { historyCommand } from "../commands/citty/history";
+import { evalCommand } from "../commands/citty/eval";
 import { logsCommand } from "../commands/citty/logs";
 import { usageCommand } from "../commands/citty/usage";
 import { upgradeCommand } from "../commands/citty/upgrade";
@@ -215,6 +216,27 @@ const ENTRIES: RegistryEntry[] = [
         "to list all waves, or pass a wave ID to see detailed results.",
       positionalOverrides: {
         waveId: { name: "wave-id", description: "Specific wave ID to show details for (optional)" },
+      },
+    },
+  },
+
+  // --- eval ---------------------------------------------------------------
+  {
+    cittyCmd: evalCommand,
+    meta: {
+      summary: "Score a completed session (weighting/routing/steering/flow)",
+      aliases: [],
+      mutating: false,
+      supportsDryRun: false,
+      completionSummary: "Score session quality",
+      description:
+        "Reads the auto-exported history record for a session, correlates it with " +
+        "the task store, and scores task weighting (planner estimates vs observed " +
+        "outcome), model routing, file-scope steering, and flow. Persists a " +
+        "comparable report to .wombo-combo/evals/<wave-id>.json. Defaults to the " +
+        "most recent session when no wave ID is given.",
+      positionalOverrides: {
+        waveId: { name: "wave-id", description: "Wave ID to score (defaults to the most recent session)" },
       },
     },
   },

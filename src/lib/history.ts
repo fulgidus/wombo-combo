@@ -49,6 +49,8 @@ export interface AgentHistoryRecord {
   had_merge_conflict: boolean;
   /** Build output summary (only for failed builds) */
   build_output: string | null;
+  /** Per-task resolved model (weight-routed); null/absent = session model */
+  model?: string | null;
 }
 
 export interface WaveHistoryRecord {
@@ -118,6 +120,8 @@ export interface HistoryAgentSource {
   completedAt: string | null;
   error: string | null;
   buildOutput?: string | null;
+  /** Per-task resolved model (weight-routed); null = session model applies */
+  model?: string | null;
 }
 
 /**
@@ -150,6 +154,7 @@ export function daemonSessionToHistory(session: {
       error: agent.error,
       had_merge_conflict: hadConflict,
       build_output: agent.buildPassed === false ? agent.buildOutput ?? null : null,
+      model: agent.model ?? null,
     };
   });
 

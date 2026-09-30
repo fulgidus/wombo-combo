@@ -21,6 +21,7 @@ import { statusCommand } from "./status";
 import { abortCommand } from "./abort";
 import { cleanupCommand } from "./cleanup";
 import { historyCommand } from "./history";
+import { evalCommand } from "./eval";
 import { logsCommand } from "./logs";
 import { usageCommand } from "./usage";
 import { upgradeCommand } from "./upgrade";
@@ -59,6 +60,7 @@ const CITTY_COMMANDS = new Set([
     "c",          // alias for cleanup
     "history",
     "h",          // alias for history
+    "eval",
     "logs",
     "lo",         // alias for logs
     "usage",
@@ -217,6 +219,10 @@ export async function runCittyCommand(
         case "history":
         case "h":
             await runCommand(historyCommand, { rawArgs });
+            break;
+
+        case "eval":
+            await runCommand(evalCommand, { rawArgs });
             break;
 
         case "logs":

@@ -20,6 +20,7 @@
 import type { Task, TaskStatus, Priority, Difficulty } from "./tasks";
 import type { SchedulerState, DaemonAgentState } from "../daemon/protocol";
 import type { AgentHistoryRecord, WaveHistoryRecord } from "./history";
+import type { ScoreReport } from "./eval-score";
 import {
   TOON_STATUS_ENCODE,
   TOON_PRIORITY_ENCODE,
@@ -352,6 +353,43 @@ export function renderHistoryDetail(rec: WaveHistoryRecord): string {
       a.duration_ms ?? "",
       a.build_passed === null ? "" : encodeBool(a.build_passed),
       encodeNullable(a.error?.split("\n")[0]?.slice(0, 60) ?? null),
+    ));
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Render an eval score report in TOON format.
+ *
+ * Emits component scores then per-task weighting details.
+ */
+export function renderEval(report: ScoreReport): string {
+  const lines: string[] = [];
+
+  const ns = (n: number | null): string => (n === null ? "" : String(n));
+  lines.push(`#EVAL ${row(
+    report.wave_id,
+    ns(report.overall),
+  )}`);
+  lines.push(row(
+    `weighting:${ns(report.weighting.score)}`,
+    `routing:${ns(report.routing.score)}`,
+    `steering:${ns(report.steering.score)}`,
+    `flow:${ns(report.flow.score)}`,
+  ));
+
+  lines.push(fieldsHeader([
+    "feature_id", "weight", "estimated_ms", "observed_ms", "model",
+  ]));
+
+  for (const d of report.weighting.details) {
+    lines.push(row(
+      d.feature_id,
+      d.weight,
+      d.estimated_ms === null ? "" : String(d.estimated_ms),
+      d.observed_ms === null ? "" : String(d.observed_ms),
+      encodeNullable(d.model),
     ));
   }
 

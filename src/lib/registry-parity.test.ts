@@ -219,6 +219,7 @@ describe("COMMAND_REGISTRY is backed by BRIDGE_REGISTRY", () => {
     const testNames = [
       "init", "launch", "resume", "status", "retry",
       "cleanup", "history", "usage", "abort", "upgrade", "logs", "tasks",
+      "eval",
       "help", "version", "describe", "quest", "genesis", "wishlist", "completion",
       "tasks list", "tasks add", "tasks set-status", "tasks check", "tasks archive",
       "tasks show", "tasks graph", "tasks set-priority", "tasks set-difficulty",

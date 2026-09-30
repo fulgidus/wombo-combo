@@ -4,6 +4,7 @@ dist/
 .wombo-combo/state.json
 .wombo-combo/logs/
 .wombo-combo/history/
+.wombo-combo/evals/
 .wombo-combo/tui-session.json
 .wombo-combo/usage.jsonl
 *.tmp
