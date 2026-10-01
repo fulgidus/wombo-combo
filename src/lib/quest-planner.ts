@@ -599,12 +599,46 @@ export async function runQuestPlanner(
 
   child.stdin?.end();
 
-  // Collect all stdout
+  // Transcript log for this quest — persisted across runs
+  const logPath = resolve(projectRoot, ".wombo-combo", "logs", `planner-${quest.id}.log`);
+  const fs = require("node:fs");
+  // Ensure the logs directory exists
+  const logDir = resolve(projectRoot, ".wombo-combo", "logs");
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+  let transcriptFd: any = null;
+  try {
+    transcriptFd = fs.openSync(logPath, "w");
+  } catch {
+    transcriptFd = null;
+  }
+
+  // Stream planner stdout into chunks + transcript + live progress
   const chunks: Buffer[] = [];
   let stderrText = "";
 
   child.stdout?.on("data", (chunk: Buffer) => {
     chunks.push(chunk);
+    // Append to transcript log line by line
+    if (transcriptFd !== null) {
+      const lines = chunk.toString().split("\n");
+      for (const line of lines) {
+        if (line) {
+          try {
+            fs.appendSync(transcriptFd, line + "\n");
+          } catch {
+            // Best-effort logging; continue without crashing
+          }
+        }
+      }
+    }
+    // Provide live progress updates from the JSON event stream
+    const textSoFar = Buffer.concat(chunks).toString("utf-8");
+    const summary = liveSummaryFromEvents(textSoFar);
+    if (summary) {
+      onProgress(summary);
+    }
   });
 
   child.stderr?.on("data", (chunk: Buffer) => {
@@ -648,7 +682,8 @@ export async function runQuestPlanner(
 
   const rawOutput = Buffer.concat(chunks).toString("utf-8");
 
-  onProgress("Parsing planner output...");
+  // Final progress update
+  onProgress(liveSummaryFromEvents(rawOutput));
 
   if (exitCode === -1) {
     return {
@@ -745,6 +780,25 @@ function extractTextFromJsonEvents(rawOutput: string): string {
   }
 
   return textParts.join("");
+}
+
+/** Extract a short live summary from the raw planner output (streamed JSON events). */
+function liveSummaryFromEvents(rawOutput: string): string {
+  const lines = rawOutput.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const event = JSON.parse(trimmed);
+      if (event.type === "text" && event.part?.text) {
+        return event.part.text.slice(0, 60).trim();
+      }
+    } catch {
+      // Not JSON — first non-empty line as rough summary
+      return trimmed.slice(0, 60).trim();
+    }
+  }
+  return "";
 }
 
 // ---------------------------------------------------------------------------
