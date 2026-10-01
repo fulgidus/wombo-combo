@@ -1,0 +1,45 @@
+id: baseline-store-diff
+title: Persist Baselines And Detect Regressions
+description: |
+  Create src/lib/test-baseline.ts defining TestBaseline and
+  TestBaselineComparison, plus validated load/save and pure comparison
+  functions. Store versioned runtime snapshots at
+  .wombo-combo/baselines/<quest-id>/tests.json under the canonical project
+  root. Include quest ID, source branch, pinned commit SHA, capture time,
+  effective test command, timeout, parser format, and structured results.
+  Write atomically and distinguish missing, corrupt, and incompatible data.
+  Compare test identities and outcomes: unchanged baseline failures are
+  allowed; new failures and previously passing tests becoming failed,
+  skipped, or missing block verification. Report fixed baseline failures
+  separately. Removed or skipped baseline failures must be visible rather
+  than reported as fixes.
+  Add tests/test-baseline.test.ts and ignore the runtime directory.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - structured-test-results
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Expose reusable types and functions for capture, verification, and daemon integration.
+  - Fail closed for incomplete runs, unsupported failing output, and incompatible metadata.
+  - Successful unstructured commands remain compatible with legacy zero-failure verification.
+  - Handle YAML-independent JSON validation and duplicate test occurrences.
+  - Use canonical project storage rather than task-worktree copies.
+forbidden:
+  - Do not accept regressions using aggregate failure counts alone.
+  - Do not persist snapshots in tracked quest definitions or knowledge files.
+  - Do not execute tests or modify daemon and verifier modules.
+references:
+  - src/lib/test-runner.ts
+  - src/lib/worktree.ts
+  - src/config.ts
+  - .gitignore
+notes:
+  - Use resolveCanonicalProjectRoot to share snapshots across linked worktrees.
+  - The snapshot is immutable for a quest execution; retries must not redefine its accepted failures.
+subtasks: []
+quest: tdd-baseline

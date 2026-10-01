@@ -1,0 +1,38 @@
+id: structured-test-results
+title: Capture Comparable Test Results
+description: |
+  Extend src/lib/test-runner.ts with structured per-test outcomes and
+  explicit execution/completeness metadata. Identify tests by normalized
+  repository-relative file path plus full suite/test name, preserving
+  duplicate occurrences rather than collapsing distinct cases.
+  Initially support Bun test output with realistic fixtures. Preserve
+  existing count parsing and command execution behavior for other runners,
+  but mark unsupported or incomplete output as non-comparable.
+  Distinguish completed assertion failures from timeout, signal, buffer
+  overflow, command-not-found, and test loading/runtime errors.
+  Add coverage in tests/test-runner.test.ts and dedicated output fixtures.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Keep existing TestRunResult consumers and fixtures source-compatible through additive optional fields.
+  - Normalize ANSI codes, worktree roots, path separators, and timing noise.
+  - Require complete, consistent per-test results before permitting failure exemptions.
+  - Test real Bun output containing nested suites, duplicate names, skips, and failures.
+forbidden:
+  - Do not equate a nonzero exit code with completed assertion failures.
+  - Do not change configured test commands or add runner dependencies.
+  - Do not modify baseline, verifier, daemon, or prompt modules.
+references:
+  - src/lib/test-runner.ts
+  - tests/test-runner.test.ts
+  - src/lib/tdd-verifier.ts
+notes:
+  - Current parsing provides counts only; counts cannot detect one old failure being replaced by one new failure.
+subtasks: []
+quest: tdd-baseline

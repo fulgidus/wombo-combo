@@ -1,0 +1,44 @@
+id: baseline-acceptance-tests
+title: Prove Dirty Main Quest Compatibility
+description: |
+  Add tests/tdd-baseline-integration.test.ts using disposable repositories
+  and actual Bun test subprocesses. Create main with a pre-existing failing
+  test, capture its baseline, and verify a branch with that same failure is
+  accepted. Then replace the old failure with a different failure while
+  keeping the failure count unchanged and prove verification rejects it.
+  Cover fixing old failures, regressing a passing test, skipping/removing
+  passing tests, capture isolation from dirty checkout changes, snapshot
+  reuse after main advances, and blocking infrastructure failures.
+  Document snapshot location, supported output, immutable lifecycle,
+  fail-closed behavior, and non-quest fallback in
+  docs/tdd-baseline.md. Run targeted tests, typecheck, and build.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - daemon-baseline-lifecycle
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Use real structured runner output, not only mocked summary counts.
+  - Keep intentionally failing fixture projects outside repository test discovery.
+  - Clean up all test-owned worktrees and subprocesses.
+  - Run bun run build with a 300000ms timeout.
+  - Report unrelated existing failures separately from regressions introduced by this quest.
+forbidden:
+  - Do not repair unrelated main test failures.
+  - Do not modify production modules or earlier tasks' test files.
+  - Do not use the globally installed wombo binary.
+references:
+  - src/lib/test-baseline.ts
+  - src/lib/test-baseline-capture.ts
+  - src/lib/tdd-verifier.ts
+  - src/lib/verifier.ts
+  - tests/daemon-test-baseline.test.ts
+  - package.json
+notes:
+  - Use bun test, bun run typecheck, and bun run build; CLI checks use bun dev.
+subtasks: []
+quest: tdd-baseline

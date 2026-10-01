@@ -1,0 +1,56 @@
+id: daemon-baseline-lifecycle
+title: Gate Quest Agents On Baselines
+description: |
+  Integrate capture and verification in src/daemon/agent-runner.ts.
+  Resolve quest context from each task's quest field and effective config
+  via resolveQuestConfig. Before launching a real TDD-enabled quest agent,
+  await ensureQuestTestBaseline and attach the baseline summary to its
+  prompt. Apply the same prerequisite to session-reusing retries and
+  requeued launches; expose capture activity and actionable failure state.
+  During handleBuildVerification, load the established snapshot and pass it
+  to runFullVerification with the matching effective test config and
+  agent.baseBranch for test detection. Missing or invalid established
+  snapshots must block verification rather than be recaptured from modified
+  branches. Reuse persisted snapshots after daemon restart and prevent
+  cross-quest leakage when session scope changes.
+  Add tests/daemon-test-baseline.test.ts for these lifecycle paths.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - capture-main-baseline
+  - baseline-aware-verification
+  - baseline-agent-guidance
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - No real quest coding agent may spawn before a valid snapshot is persisted.
+  - Cover CLI, auto-detected quest, and TUI launches through the shared AgentRunner seam.
+  - Use task.quest rather than mutable session quest ID to select the baseline.
+  - Preserve fake-agent bypass, unquested launches, launch staggering, and chain behavior.
+  - Retries and resumes reuse the original snapshot even after main advances.
+  - Respect quest-level test command, enabled flag, and timeout overrides consistently.
+forbidden:
+  - Do not add baseline capture only to cmdLaunch; that misses direct daemon/TUI entry paths.
+  - Do not modify scheduler, protocol, or state persistence schemas unnecessarily.
+  - Do not broaden merge-conflict build-only checks into a separate verification redesign.
+  - Do not modify modules owned by prerequisite tasks.
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/daemon.ts
+  - src/daemon/scheduler.ts
+  - src/lib/quest.ts
+  - src/lib/quest-store.ts
+  - src/lib/test-baseline-capture.ts
+  - src/lib/verifier.ts
+  - src/commands/launch.ts
+  - src/commands/resume.ts
+  - src/commands/retry.ts
+  - tests/daemon-agent-runner.test.ts
+notes:
+  - doLaunch currently leaves questContext undefined, and handleBuildVerification uses project config directly.
+  - handleRetry can spawn directly using a session ID, bypassing doLaunch.
+subtasks: []
+quest: tdd-baseline

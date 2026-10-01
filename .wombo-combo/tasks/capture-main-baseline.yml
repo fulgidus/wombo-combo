@@ -1,0 +1,47 @@
+id: capture-main-baseline
+title: Snapshot Tests In Isolated Worktrees
+description: |
+  Create src/lib/test-baseline-capture.ts with ensureQuestTestBaseline,
+  accepting project root, quest identity, quest.baseBranch, and effective
+  config. On first real launch, resolve the source branch to a commit SHA,
+  create a unique detached temporary worktree outside the project, install
+  dependencies using the configured install command, and run the configured
+  test command with tdd.testTimeout. Persist only a valid completed snapshot.
+  Reuse a compatible existing snapshot across launches and restarts without
+  rerunning tests or refreshing it when main advances.
+  Deduplicate concurrent capture requests for the same canonical project
+  and quest. Always clean up the temporary Git worktree and filesystem
+  directory, including installation and execution failures.
+  Add tests/test-baseline-capture.test.ts using disposable Git repositories.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - baseline-store-diff
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Capture quest.baseBranch, normally main, never the evolving quest or task branch.
+  - Do not run baseline tests in the user's dirty checkout.
+  - Permit completed, comparable pre-existing assertion failures.
+  - Reject corrupt or incompatible existing snapshots with an actionable diagnostic.
+  - Use argument-safe Git execution and configured install/test timeouts.
+  - Disabled TDD must not create a snapshot or run commands.
+forbidden:
+  - Do not reset branches, stash user changes, or modify the main checkout.
+  - Do not use createWorktree with a synthetic task ID; it creates/reset feature branches.
+  - Do not silently regenerate an established baseline after failure.
+  - Do not modify test-baseline.ts or daemon modules.
+references:
+  - src/lib/test-baseline.ts
+  - src/lib/test-runner.ts
+  - src/lib/worktree.ts
+  - src/lib/merger.ts
+  - src/config.ts
+notes:
+  - Reuse installDeps where suitable without copying dirty application source.
+  - Keep temporary-worktree ownership explicit so cleanup removes only capture-owned resources.
+subtasks: []
+quest: tdd-baseline

@@ -1,0 +1,43 @@
+id: baseline-aware-verification
+title: Verify Tests Against Quest Baselines
+description: |
+  Extend TddVerificationOptions and FullVerificationOptions with an optional
+  TestBaseline. Thread it through runFullVerification into
+  runTddVerification, passing config.tdd.testTimeout to runTests.
+  Replace the absolute testRun.passed gate with baseline comparison when
+  a valid baseline is supplied. Preserve the raw process result and expose
+  an optional comparison in TddVerificationResult.
+  Update summaries, renderTddVerificationReport, and
+  extractTddErrorSummary to distinguish accepted existing failures, fixes,
+  regressions, and comparison/execution errors. Retry diagnostics must
+  identify new regressions rather than demand repairs to every old failure.
+  Extend tests/tdd-verifier.test.ts and add focused full-pipeline tests.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - baseline-store-diff
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Without a baseline, preserve the existing absolute-success behavior.
+  - Keep build and browser gates unchanged.
+  - Keep disabled TDD, --skip-tests, and strict missing-test enforcement unchanged.
+  - Never turn execution failures or malformed baseline data into successful verification.
+  - Accepted baseline failures must not populate combinedErrorSummary as blocking errors.
+forbidden:
+  - Do not mutate the baseline or reinterpret TestRunResult.passed.
+  - Do not perform capture or filesystem baseline discovery inside the verifier.
+  - Do not modify daemon or prompt files.
+references:
+  - src/lib/tdd-verifier.ts
+  - src/lib/verifier.ts
+  - src/lib/test-baseline.ts
+  - tests/tdd-verifier.test.ts
+notes:
+  - Current runTddVerification ignores the configured test timeout.
+  - Use optional result fields so existing skipped-result literals remain valid.
+subtasks: []
+quest: tdd-baseline

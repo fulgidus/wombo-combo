@@ -1,0 +1,37 @@
+id: baseline-agent-guidance
+title: Align Agent Instructions With Baselines
+description: |
+  Add an optional testBaseline summary to QuestPromptContext in
+  src/lib/prompt.ts, containing source branch, commit SHA, and accepted
+  failing test identities. When supplied, render a bounded baseline section
+  and replace absolute all-tests-green language with no-new-regressions
+  requirements while retaining the red-green-refactor cycle.
+  Update the injected TDD block in src/lib/templates.ts so specialized
+  agents defer to a supplied quest baseline and otherwise require all tests
+  to pass. Cover default and baseline-aware prompts in tests/prompt.test.ts
+  and add tests/tdd-baseline-templates.test.ts.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Keep the baseline summary optional and independent of filesystem access.
+  - Require new tests to pass and prohibit hiding failures by skipping or deleting tests.
+  - Retain zero-failure requirements when no baseline is supplied.
+  - Bound failure-list output and state when entries were omitted.
+forbidden:
+  - Do not weaken TDD discipline or strict test-detection requirements.
+  - Do not modify daemon, verifier, or baseline modules.
+references:
+  - src/lib/prompt.ts
+  - src/lib/templates.ts
+  - tests/prompt.test.ts
+notes:
+  - Both generalist prompts and imported specialized-agent definitions currently demand absolute all-tests-green results.
+  - Use testBaseline fields sourceBranch, commitSha, and failingTestIds as the daemon-facing summary contract.
+subtasks: []
+quest: tdd-baseline
