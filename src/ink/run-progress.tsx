@@ -21,6 +21,9 @@ export interface RunProgressOptions {
   title: string;
   /** Optional context string. */
   context?: string;
+  /** Called when the user presses q or Esc while the operation is still
+   *  running (before any result is set) — e.g. to abort the planner child. */
+  onAbort?: () => void;
 }
 
 /**
@@ -45,12 +48,14 @@ function ProgressApp({
   statusRef,
   resultRef,
   onDismiss,
+  onAbort,
 }: {
   title: string;
   context?: string;
   statusRef: React.MutableRefObject<string>;
   resultRef: React.MutableRefObject<ProgressResult | undefined>;
   onDismiss: () => void;
+  onAbort?: () => void;
 }) {
   const frame = useSpinner(!resultRef.current);
   const [status, setStatus] = useState(statusRef.current);
@@ -65,8 +70,15 @@ function ProgressApp({
     return () => clearInterval(interval);
   }, [status, result, statusRef, resultRef]);
 
-  useInput(() => {
-    if (result) onDismiss();
+  useInput((input, key) => {
+    if (result) {
+      onDismiss();
+      return;
+    }
+    // While still running: q or Esc requests an abort of the underlying work
+    if (key.escape || input === "q") {
+      onAbort?.();
+    }
   });
 
   return (
@@ -102,6 +114,7 @@ export function runProgressInk(opts: RunProgressOptions): ProgressController {
         instance.unmount();
         dismissResolve?.();
       }}
+      onAbort={opts.onAbort}
     />,
     { exitOnCtrlC: false, stdin: getStableStdin(), stdout: createIsolatedStdout() }
   );

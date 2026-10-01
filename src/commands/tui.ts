@@ -29,7 +29,7 @@ import type { WomboConfig } from "../config";
 import { ensureTasksFile } from "../lib/tasks";
 import { loadTUISession, saveTUISession } from "../lib/tui-session";
 import type { ProposedTask } from "../lib/quest-planner";
-import { runQuestPlanner, applyPlanToQuest } from "../lib/quest-planner";
+import { runQuestPlanner, applyPlanToQuest, abortQuestPlanner, PLANNER_ABORTED } from "../lib/quest-planner";
 import type { PlanResult } from "../lib/quest-planner";
 import { loadAllQuests, loadQuest, saveQuest, listQuestIds, saveQuestKnowledge } from "../lib/quest-store";
 import { runGenesisPlanner } from "../lib/genesis-planner";
@@ -356,6 +356,9 @@ async function handlePlanFlow(
   const progress = runProgressInk({
     title: "Quest Planner",
     context: `${quest.title} (${quest.id})`,
+    onAbort: () => {
+      abortQuestPlanner(questId);
+    },
   });
   progress.update("Running quest planner agent...");
 
@@ -372,6 +375,21 @@ async function handlePlanFlow(
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
     await progress.finish({ type: "error", message: `Planner error: ${err.message}` });
+    return;
+  }
+
+  if (planResult.error === PLANNER_ABORTED) {
+    // User aborted mid-planning (q/Esc) — revert, record feedback for re-plan
+    quest.status = prevStatus;
+    quest.notes.push(
+      `planning aborted at ${new Date().toISOString()} — plan differently next time`
+    );
+    if (quest.notes.length > 20) quest.notes = quest.notes.slice(-20);
+    saveQuest(projectRoot, quest);
+    await progress.finish({
+      type: "info",
+      message: `Planner aborted. Quest "${questId}" reverted to "${prevStatus}". Feedback note saved — the next plan run will include it.`,
+    });
     return;
   }
 
@@ -399,13 +417,21 @@ async function handlePlanFlow(
   });
 
   if (reviewAction.type === "cancel") {
-    // User cancelled — revert quest status
+    // User cancelled — revert quest status and record the rejected plan
     quest.status = prevStatus;
+    const discarded = planResult.tasks
+      .slice(0, 5)
+      .map((t) => t.id)
+      .join(", ");
+    quest.notes.push(
+      `plan rejected at ${new Date().toISOString()}: ${planResult.tasks.length} tasks discarded (${discarded}${planResult.tasks.length > 5 ? " …" : ""}) — plan differently next time`
+    );
+    if (quest.notes.length > 20) quest.notes = quest.notes.slice(-20);
     saveQuest(projectRoot, quest);
     const p2 = runProgressInk({ title: "Plan Cancelled" });
     await p2.finish({
       type: "info",
-      message: `Plan discarded. Quest "${questId}" reverted to "${prevStatus}".`,
+      message: `Plan discarded. Quest "${questId}" reverted to "${prevStatus}". Feedback note saved — the next plan run will include it.`,
     });
     return;
   }

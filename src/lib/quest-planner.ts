@@ -90,6 +90,18 @@ export async function generatePlannerPrompt(
   sections.push(`\n## Quest Goal\n`);
   sections.push(quest.goal.trim());
 
+  // Previous planning feedback — steer re-plans away from rejected approaches
+  if (quest.notes.length > 0) {
+    sections.push(`\n## Previous Planning Feedback\n`);
+    sections.push(
+      "The user rejected or aborted earlier planning runs. The notes below " +
+        "record what happened — plan DIFFERENTLY this time:\n"
+    );
+    for (const note of quest.notes.slice(-10)) {
+      sections.push(`- ${note}`);
+    }
+  }
+
   // Quest constraints
   if (quest.constraints.add.length > 0) {
     sections.push(`\n## Quest Constraints\n`);
@@ -536,6 +548,38 @@ function detectFileOverlaps(tasks: ProposedTask[]): PlanValidationIssue[] {
 // Planner Execution
 // ---------------------------------------------------------------------------
 
+/** Error marker used when a planner run is aborted by the user (Esc/q). */
+export const PLANNER_ABORTED = "PLANNER_ABORTED_BY_USER";
+
+/** Registry of currently running planner child processes, by quest id. */
+const activePlanners = new Map<string, ChildProcess>();
+
+/** Quest ids whose planner run was aborted via abortQuestPlanner(). */
+const abortedPlanners = new Set<string>();
+
+/**
+ * Abort the running planner for a quest, if any.
+ *
+ * Kills the planner child process and marks the run aborted. The pending
+ * runQuestPlanner() call observes the marker after the child exits and
+ * returns a PlanResult whose error is PLANNER_ABORTED.
+ *
+ * Returns true if a planner was running and got killed.
+ */
+export function abortQuestPlanner(questId: string): boolean {
+  const child = activePlanners.get(questId);
+  abortedPlanners.add(questId);
+  if (!child || child.exitCode !== null || child.signalCode !== null) {
+    return false;
+  }
+  try {
+    child.kill("SIGTERM");
+  } catch {
+    // Best effort — the close handler still settles the exit promise
+  }
+  return true;
+}
+
 /**
  * Run the quest planner agent and capture its output.
  *
@@ -599,6 +643,10 @@ export async function runQuestPlanner(
   });
 
   child.stdin?.end();
+
+  // Track this planner for abortQuestPlanner() (Esc/q during planning)
+  activePlanners.set(quest.id, child);
+  abortedPlanners.delete(quest.id);
 
   // Transcript log for this quest — written once after the planner exits.
   // (Per-chunk appendSync(fd) silently fails in Bun — single final write instead.)
@@ -703,6 +751,23 @@ export async function runQuestPlanner(
     writeFileSync(logPath, rawOutput);
   } catch {
     // Best-effort transcript; planning continues without it
+  }
+
+  // Planner no longer running — drop from the abort registry
+  activePlanners.delete(quest.id);
+
+  // User aborted via abortQuestPlanner() — return the marker error so the
+  // UI can show a clean "aborted" message instead of a planner failure.
+  if (abortedPlanners.has(quest.id)) {
+    abortedPlanners.delete(quest.id);
+    return {
+      success: false,
+      tasks: [],
+      knowledge: null,
+      issues: [],
+      rawOutput,
+      error: PLANNER_ABORTED,
+    };
   }
 
   if (exitCode === -1) {
