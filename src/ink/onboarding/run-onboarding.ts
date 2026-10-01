@@ -21,7 +21,7 @@
  */
 
 import React, { useCallback } from "react";
-import { getStableStdin } from "../bun-stdin";
+import { getStableStdin, createIsolatedStdout } from "../bun-stdin";
 import { render } from "ink";
 import { useNavigation } from "../router";
 import type { ProjectProfile } from "../../lib/project-store";
@@ -131,6 +131,7 @@ export async function runOnboardingInk(
       // Don't exit on Ctrl+C — let the onboarding flow handle it
       exitOnCtrlC: false,
       stdin: getStableStdin(),
+      stdout: createIsolatedStdout(),
     });
   });
 }

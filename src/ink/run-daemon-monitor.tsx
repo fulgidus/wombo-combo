@@ -58,6 +58,7 @@ import type {
   SchedulerState,
 } from "../daemon/protocol";
 import { TuiSession, getStdin } from "./tui-session";
+import { createIsolatedStdout } from "./bun-stdin";
 import { ScreenRouter, useNavigation, type NavigationState } from "./router";
 import { ChromeLayout } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
@@ -1083,7 +1084,7 @@ export class InkDaemonTUI {
           this.resolveQuit();
         }}
       />,
-      { exitOnCtrlC: false, stdin: getStdin() }
+      { exitOnCtrlC: false, stdin: getStdin(), stdout: createIsolatedStdout() }
     );
   }
 

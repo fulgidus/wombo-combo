@@ -114,6 +114,12 @@ async function runDaemonMonitor(opts: {
 // Command -- Single inkRender entry point
 // ---------------------------------------------------------------------------
 
+/**
+ * Renders nothing — swapped in while a nested standalone flow runs so the
+ * main tree unmounts (stdin listener + timers removed) without exiting.
+ */
+const NullTree: React.FC = () => null;
+
 export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   const { projectRoot, config } = opts;
 
@@ -165,74 +171,81 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   const isFirstRun = !projectExists(projectRoot);
 
   try {
+    // Late-bound main-tree suspension — wired after the main render below.
+    // While a nested standalone flow (plan/genesis/errand/wizard/onboarding/
+    // monitor) runs its own Ink instance, the main tree unmounts so the flow
+    // gets exclusive stdin (ink drains 'readable' per instance — a live main
+    // tree starves the flow's keypresses) and exclusive stdout. The Ink
+    // INSTANCE stays alive (suspension ≠ exit), so waitUntilExit() does not
+    // resolve and the process keeps running.
+    let suspendMainTree: (() => void) | null = null;
+    let resumeMainTree: (() => void) | null = null;
+    const runMainTreeSuspended = async (flow: () => Promise<void>): Promise<void> => {
+      clearScreen();
+      suspendMainTree?.();
+      try {
+        await flow();
+      } finally {
+        clearScreen();
+        resumeMainTree?.();
+      }
+    };
+
     // Build the callbacks that complex async flows are wired through
     const callbacks: TuiAppCallbacks = {
-      onPlan: async (questId: string) => {
-        clearScreen();
-        await handlePlanFlow(projectRoot, config, opts, questId);
-        clearScreen();
-      },
-      onGenesis: async (vision: string) => {
-        clearScreen();
-        // If vision is empty, prompt for it
-        let finalVision = vision;
-        if (!finalVision) {
-          finalVision = await promptVisionText();
-        }
-        if (finalVision) {
-          await handleGenesisFlow(projectRoot, config, opts, finalVision);
-        }
-        clearScreen();
-      },
-      onErrand: async (spec: ErrandSpec) => {
-        clearScreen();
-        let finalSpec = spec;
-        if (!finalSpec.description) {
-          const wizardSpec = await runErrandWizardInk();
-          if (wizardSpec) {
-            finalSpec = wizardSpec;
-          } else {
-            return; // user cancelled wizard
+      onPlan: (questId: string) =>
+        runMainTreeSuspended(() => handlePlanFlow(projectRoot, config, opts, questId)),
+      onGenesis: (vision: string) =>
+        runMainTreeSuspended(async () => {
+          // If vision is empty, prompt for it
+          let finalVision = vision;
+          if (!finalVision) {
+            finalVision = await promptVisionText();
           }
-        }
-        await handleErrandFlow(projectRoot, config, opts, finalSpec);
-        clearScreen();
-      },
-      onWishlist: async () => {
-        clearScreen();
-        await handleWishlistFlow(projectRoot, config, opts);
-        clearScreen();
-      },
-      onOnboarding: async () => {
-        clearScreen();
-        const result = await runOnboardingInk({ projectRoot, config });
-        clearScreen();
-        if (result.profile && result.genesisRequested) {
-          const vision = formatProjectContext(result.profile);
-          await handleGenesisFlow(projectRoot, config, opts, vision);
-          clearScreen();
-        }
-      },
-      onQuestCreate: async () => {
-        clearScreen();
-        await runQuestWizardInk({
-          projectRoot,
-          baseBranch: opts.baseBranch ?? config.baseBranch,
-        });
-        clearScreen();
-      },
-      onShowMonitor: async () => {
-        clearScreen();
-        if (daemonConnected && daemonClient) {
-          try {
-            await runDaemonMonitor({ client: daemonClient, projectRoot, config });
-          } catch (err: any) {
-            const errProgress = runProgressInk({ title: "Monitor Error" });
-            await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
+          if (finalVision) {
+            await handleGenesisFlow(projectRoot, config, opts, finalVision);
           }
-        }
-        clearScreen();
-      },
+        }),
+      onErrand: (spec: ErrandSpec) =>
+        runMainTreeSuspended(async () => {
+          let finalSpec = spec;
+          if (!finalSpec.description) {
+            const wizardSpec = await runErrandWizardInk();
+            if (wizardSpec) {
+              finalSpec = wizardSpec;
+            } else {
+              return; // user cancelled wizard
+            }
+          }
+          await handleErrandFlow(projectRoot, config, opts, finalSpec);
+        }),
+      onWishlist: () => runMainTreeSuspended(() => handleWishlistFlow(projectRoot, config, opts)),
+      onOnboarding: () =>
+        runMainTreeSuspended(async () => {
+          const result = await runOnboardingInk({ projectRoot, config });
+          if (result.profile && result.genesisRequested) {
+            const vision = formatProjectContext(result.profile);
+            await handleGenesisFlow(projectRoot, config, opts, vision);
+          }
+        }),
+      onQuestCreate: () =>
+        runMainTreeSuspended(async () => {
+          await runQuestWizardInk({
+            projectRoot,
+            baseBranch: opts.baseBranch ?? config.baseBranch,
+          });
+        }),
+      onShowMonitor: () =>
+        runMainTreeSuspended(async () => {
+          if (daemonConnected && daemonClient) {
+            try {
+              await runDaemonMonitor({ client: daemonClient, projectRoot, config });
+            } catch (err: any) {
+              const errProgress = runProgressInk({ title: "Monitor Error" });
+              await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
+            }
+          }
+        }),
       onTasksPlanned: () => {
         // Wake the scheduler from idle so it picks up newly-planned tasks
         // immediately rather than waiting for the next 3s tick (or missing
@@ -262,9 +275,11 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     // Determine initial screen: onboarding for first run, splash otherwise
     const initialScreen: "splash" | "onboarding" = isFirstRun ? "onboarding" : "splash";
 
-    // Render the unified TUI app (single mount, persistent for entire session)
+    // Render the unified TUI app (single instance, persistent for the
+    // entire session). The tree can be suspended while nested flows run
+    // (see runMainTreeSuspended above) and re-rendered from this factory.
     process.stdin.resume();
-    const instance = inkRender(
+    const renderMainTree = () =>
       React.createElement(TuiApp, {
         projectRoot,
         config,
@@ -278,14 +293,22 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
         daemonClient: daemonClient ?? undefined,
         daemonConnected,
         callbacks,
-      }),
-      {
-        exitOnCtrlC: false,
-        stdin: getStableStdin(),
-      }
-    );
+      });
+    let instance: ReturnType<typeof inkRender>;
+    instance = inkRender(renderMainTree(), {
+      exitOnCtrlC: false,
+      stdin: getStableStdin(),
+    });
+    // Suspend = swap in a tree that renders nothing (removes the main tree's
+    // stdin listener and timers); resume = re-render the full main tree.
+    suspendMainTree = () => instance.rerender(React.createElement(NullTree));
+    resumeMainTree = () => instance.rerender(renderMainTree());
 
     await instance.waitUntilExit();
+  } catch (err: any) {
+    // Surface internal errors — the finally block below exits the process,
+    // which would otherwise swallow any pending error output.
+    console.error("TUI exited after an internal error:", err?.stack ?? err);
   } finally {
     // Disconnect daemon client gracefully
     if (daemonClient) {

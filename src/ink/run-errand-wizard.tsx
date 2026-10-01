@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { getStableStdin } from "./bun-stdin";
+import { getStableStdin, createIsolatedStdout } from "./bun-stdin";
 import { render } from "ink";
 import { ErrandWizard } from "./errand-wizard";
 import type { ErrandSpec } from "../lib/errand-planner";
@@ -45,7 +45,7 @@ export function runErrandWizardInk(
           resolve(null);
         }}
       />,
-      { exitOnCtrlC: false, stdin: getStableStdin() }
+      { exitOnCtrlC: false, stdin: getStableStdin(), stdout: createIsolatedStdout() }
     );
   });
 }
