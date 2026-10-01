@@ -15,7 +15,10 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-03-20T00:08:57.228Z
-updated_at: 2026-10-01T09:20:18.743Z
+updated_at: 2026-10-01T15:56:00.487Z
 started_at: null
 ended_at: null
-notes: []
+notes:
+  - planning aborted at 2026-10-01T15:52:00.320Z — plan differently next time
+  - "plan rejected at 2026-10-01T15:56:00.487Z: 8 tasks discarded (scaffold-starlight, generate-command-reference,
+    write-getting-started, write-workflow-guides, write-config-reference …) — plan differently next time"
