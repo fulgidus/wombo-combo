@@ -1,0 +1,49 @@
+id: dashboard-metrics
+title: Model dashboard metrics and history
+description: |
+  Add src/lib/dashboard-metrics.ts with typed dashboard state, pure
+  snapshot/event reducers, bounded throughput history, recent activity,
+  status counts, and an approximate remaining-time calculation.
+  Add src/ink/dashboard-metrics-context.tsx exporting a nullable metrics
+  context and its consumer hook for subsequent tasks.
+
+  Classify installing/running/resolving_conflict as running,
+  completed/verified/merged as done, and failed as failed. Keep queued
+  and retry agents visible without including them in those three counts.
+  Measure throughput as successful agent completions per minute in
+  fixed time buckets. Do not count completed → verified → merged as
+  three completions or count repeated snapshots again.
+  Capture status, activity, build, merge, and scheduler events in a
+  timestamped, newest-first activity feed.
+
+  Estimate remaining time for tracked unfinished agents from effort
+  estimates, elapsed execution time, and effective concurrency.
+  Return an explicit unknown state when available data is insufficient.
+  Add deterministic tests in tests/dashboard-metrics.test.ts.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Inject time into pure functions; do not depend on wall-clock time in tests.
+  - Bound throughput history to 60 minute buckets and activity to 100 entries.
+  - Advance empty time buckets even when no events arrive.
+  - Handle repeated snapshots, retries, invalid timestamps, and concurrency zero meaning unlimited.
+  - Label ETA as approximate and scoped to tracked agents, not the entire project backlog.
+forbidden:
+  - Do not modify daemon protocol, scheduler behavior, or existing DashboardStore interfaces.
+  - Do not introduce dependencies or persistent dashboard history.
+references:
+  - src/daemon/protocol.ts
+  - src/daemon/agent-status.ts
+  - src/daemon/state.ts
+  - src/ink/dashboard.tsx
+notes:
+  - DaemonClient subscribers receive payloads, not event envelope timestamps; accept an explicit receipt timestamp.
+  - Use completion timestamps from initial snapshots when available; do not invent historical activity.
+subtasks: []
+quest: dashboard-realtime

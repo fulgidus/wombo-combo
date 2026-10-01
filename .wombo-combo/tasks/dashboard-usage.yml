@@ -1,0 +1,46 @@
+id: dashboard-usage
+title: Read incremental quest token totals
+description: |
+  Add src/lib/dashboard-usage.ts implementing a read-only incremental
+  reader for .wombo-combo/usage.jsonl. Bootstrap existing records once,
+  then consume appended bytes and maintain quest-level UsageTotals
+  without retaining every record or reparsing the entire file each tick.
+
+  Group by explicit UsageRecord.quest_id. For legacy records without
+  quest_id, resolve task_id through caller-supplied active/archive task
+  metadata; otherwise use an explicit unknown group. Expose a way to
+  refresh that metadata without rereading all usage records.
+  Preserve token totals, including reasoning and cache fields, using
+  existing aggregation semantics.
+
+  Handle trailing partial lines, malformed records, missing files,
+  truncation, replacement, and incremental UTF-8 decoding.
+  Add tests in tests/dashboard-usage.test.ts using temporary fixtures.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Reuse UsageRecord and UsageTotals types and existing aggregation semantics.
+  - Read only appended data after bootstrap unless file identity or size requires a reset.
+  - Count each valid JSONL line once; retain incomplete trailing data until completed.
+  - Keep attribution from explicit quest_id authoritative.
+  - Validate finite numeric usage fields before aggregation.
+forbidden:
+  - Do not write to usage.jsonl or change existing usage persistence.
+  - Do not combine persisted records with cumulative WebSocket token totals.
+  - Do not modify src/lib/token-usage.ts or src/lib/token-collector.ts.
+references:
+  - src/lib/token-usage.ts
+  - src/lib/token-collector.ts
+  - src/lib/tasks.ts
+  - src/lib/monitor.ts
+notes:
+  - ProcessMonitor already persists step records before invoking onUsage.
+  - Daemon token events are cumulative and omit quest attribution; JSONL is the dashboard token-total source.
+subtasks: []
+quest: dashboard-realtime

@@ -1,0 +1,38 @@
+id: dashboard-chrome-entry
+title: Expose dashboard through chrome menu
+description: |
+  Extend src/ink/esc-menu.tsx with an optional onOpenDashboard callback
+  on EscMenu and EscMenuProvider. When supplied, include a Dashboard
+  menu item that closes the overlay and invokes that callback.
+  Keep the existing settings/quit action union unchanged so existing
+  application roots remain compatible.
+
+  Extend src/ink/chrome.tsx with an optional dashboardAvailable flag
+  propagated through ChromeLayout to ChromeBottomBar. When enabled,
+  show an additional concise hint identifying the ESC menu dashboard
+  entry. Add tests to the existing chrome and ESC-menu test suites.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Existing callers without the new props must retain their current menu and chrome behavior.
+  - Dashboard selection must close the menu before navigating.
+  - Use the existing ESC-menu keyboard handling; do not add a global shortcut that intercepts text editing.
+forbidden:
+  - Do not modify application roots, router.tsx, dashboard.tsx, or shared translation files.
+  - Do not widen existing onNavigate action unions.
+references:
+  - src/ink/chrome.tsx
+  - src/ink/esc-menu.tsx
+  - tests/ink/chrome.test.tsx
+  - tests/ink/esc-menu.test.tsx
+notes:
+  - Application wiring tasks will supply onOpenDashboard and dashboardAvailable.
+  - Keep menu label handling consistent with existing components without introducing missing translation keys.
+subtasks: []
+quest: dashboard-realtime

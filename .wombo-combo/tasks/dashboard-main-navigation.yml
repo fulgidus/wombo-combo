@@ -1,0 +1,49 @@
+id: dashboard-main-navigation
+title: Wire dashboard into unified application
+description: |
+  Update src/ink/run-tui-app.tsx to mount DashboardMetricsProvider once
+  above ScreenRouter using projectRoot and daemonClient. Type
+  daemonClient as DaemonClient rather than unknown.
+  Register DashboardScreen under dashboard, add its chrome title,
+  and extend explicit initialScreen support to dashboard.
+
+  Supply the optional ESC-menu dashboard callback and chrome availability
+  flag. Push dashboard with a back callback that pops to the originating
+  screen; repeated dashboard selections must not grow the stack.
+  Support direct dashboard startup with a sensible return to quest-picker.
+
+  Preserve the existing chrome concurrency polling/override behavior
+  and legacy monitor context. Extend tests/ink/tui-app.test.tsx with
+  dashboard startup and menu navigation coverage.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-live-provider
+  - dashboard-rich-screen
+  - dashboard-chrome-entry
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - The metrics provider must survive navigation to settings, task-browser, and quest-picker.
+  - Navigating must not create another Ink render instance or daemon connection.
+  - Do not change default splash/quest-picker startup behavior.
+  - Back navigation must restore the prior screen rather than exit the application.
+forbidden:
+  - Do not modify run-daemon-monitor.tsx, commands/tui.ts, or ScreenRouter internals.
+  - Do not replace existing concurrency override handling with dashboard estimates.
+references:
+  - src/ink/run-tui-app.tsx
+  - src/ink/router.tsx
+  - src/ink/dashboard-provider.tsx
+  - src/ink/dashboard.tsx
+  - src/ink/chrome.tsx
+  - src/ink/esc-menu.tsx
+  - src/commands/tui.ts
+  - tests/ink/tui-app.test.tsx
+notes:
+  - ChromeLayout sits outside NavigationContext; use the existing navRef bridge for menu navigation.
+subtasks: []
+quest: dashboard-realtime

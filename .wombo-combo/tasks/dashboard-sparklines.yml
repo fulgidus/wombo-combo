@@ -1,0 +1,35 @@
+id: dashboard-sparklines
+title: Render bounded terminal sparkline graphs
+description: |
+  Add src/ink/sparkline.tsx with a pure sparkline formatter and a small
+  Ink presentation component. Render finite nonnegative samples using
+  Unicode levels, with an ASCII mode compatible with the minimal theme.
+  Support explicit terminal-column width, consistent scaling, empty
+  samples, flat series, and numeric labels supplied by callers.
+
+  Add tests in tests/ink/sparkline.test.tsx for formatting, width limits,
+  invalid values, zeros, constant values, and both character modes.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Output must never exceed the requested graph width.
+  - Zero-only data must look flat rather than imply nonzero activity.
+  - ASCII mode must not emit Unicode graph characters.
+  - Keep graph formatting independent of data collection and timers.
+forbidden:
+  - Do not add charting dependencies.
+  - Do not modify theme tokens, dashboard.tsx, or application roots.
+references:
+  - src/ink/theme.ts
+  - src/ink/use-terminal-size.ts
+  - src/ink/usage-overlay.tsx
+notes:
+  - Use existing theme tokens to select minimal/ASCII rendering rather than adding configuration.
+subtasks: []
+quest: dashboard-realtime

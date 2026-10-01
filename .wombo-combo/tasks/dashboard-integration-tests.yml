@@ -1,0 +1,50 @@
+id: dashboard-integration-tests
+title: Verify realtime dashboard end to end
+description: |
+  Add tests/ink/dashboard-realtime.test.tsx exercising the merged feature
+  through live Ink renders and a fake DaemonClient. Navigate from chrome
+  to dashboard, emit snapshot/status/activity events, advance sampling
+  time, append usage records, and assert that visible metrics update
+  without remounting the TUI.
+
+  Cover completed → verified → merged deduplication, multiple quest
+  totals, unknown attribution, disconnected/reconnected state,
+  navigation away and back, short/narrow layouts, minimal theme, and
+  listener/timer cleanup. Verify both unified and standalone shells.
+
+  Run focused tests, bun run typecheck, bun test, and bun run build
+  with a 300000ms build timeout. Record dashboard access and metric
+  scope briefly in README.md. Fix any integration regressions in the
+  touched dashboard code after all implementation tasks have merged.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-main-navigation
+  - dashboard-monitor-navigation
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Use fake clients and temporary usage files; do not launch real agents.
+  - Use live render/input tests for navigation and subscriptions, not only renderToString.
+  - Assert history survives navigation and subscriptions stop after unmount.
+  - Run local CLI checks through bun dev, never the installed global binary.
+  - Distinguish baseline failures from regressions and track unexpected bugs rather than silently bypassing them.
+forbidden:
+  - Do not edit project quest/task artifacts, runtime usage files, release metadata, or dependency versions.
+  - Do not change scheduler behavior to make dashboard tests pass.
+references:
+  - src/ink/init-form.test.tsx
+  - tests/ink/tui-app.test.tsx
+  - tests/ink/monitor-router.test.tsx
+  - tests/ink/dashboard.test.tsx
+  - src/ink/dashboard-provider.tsx
+  - README.md
+  - package.json
+notes:
+  - This final task runs after both shell integrations, so integration fixes cannot conflict with their implementation
+    branches.
+subtasks: []
+quest: dashboard-realtime

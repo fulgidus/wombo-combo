@@ -1,0 +1,55 @@
+id: dashboard-rich-screen
+title: Build responsive realtime dashboard screen
+description: |
+  Enhance DashboardScreen in src/ink/dashboard.tsx to consume the new
+  metrics context and display running/done/failed counts, throughput
+  sparkline with its time window and units, approximate remaining time,
+  quest-level token totals with compact bars, and recent activity.
+
+  Retain DashboardStoreContext, useDashboardStore, DashboardAgentRow,
+  and their public interfaces. When no metrics provider is present,
+  preserve legacy store-based rendering for existing consumers/tests.
+  Keep historical token panels visible when there are no active agents.
+  Show distinct empty, unknown-ETA, and disconnected/stale states.
+
+  Size panels against terminal rows/columns, reserve space for chrome,
+  and bound visible quest/activity rows. Provide a narrow stacked layout
+  and a compact short-terminal layout. Support a screen-local back
+  action through an optional onBack callback, disabled while ESC menu
+  is open. Add dashboard translation keys in src/ink/strings/en.ts.
+  Extend tests/ink/dashboard.test.tsx with rich metric fixtures.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-metrics
+  - dashboard-sparklines
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Use useTheme and useI18n for new presentation.
+  - Use existing formatTokenCount and formatCost helpers where appropriate.
+  - All five requested metrics must be visible at a normal 80x24 terminal size.
+  - Do not let large quest lists or activity feeds push chrome offscreen.
+  - Render identifiers and activity as safe single-line terminal text, without embedded control sequences.
+  - Preserve existing dashboard module exports and legacy context tests.
+forbidden:
+  - Do not read files, subscribe to daemon events, or start sampling timers inside the screen.
+  - Do not modify application roots, chrome.tsx, esc-menu.tsx, or metrics modules.
+references:
+  - src/ink/dashboard.tsx
+  - src/ink/dashboard-metrics-context.tsx
+  - src/ink/sparkline.tsx
+  - src/ink/theme.ts
+  - src/ink/i18n.ts
+  - src/ink/strings/en.ts
+  - src/ink/use-terminal-size.ts
+  - src/ink/usage-overlay.tsx
+  - tests/ink/dashboard.test.tsx
+notes:
+  - Use an explicit back hint such as b; leave ESC to the global menu.
+  - A successful completion must not inflate throughput when subsequently verified or merged.
+subtasks: []
+quest: dashboard-realtime

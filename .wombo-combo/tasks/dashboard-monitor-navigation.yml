@@ -1,0 +1,41 @@
+id: dashboard-monitor-navigation
+title: Wire dashboard into standalone monitor
+description: |
+  Update DaemonMonitorShell in src/ink/run-daemon-monitor.tsx to mount
+  DashboardMetricsProvider once for its existing caller-owned client.
+  Register DashboardScreen alongside splash, monitor, and settings.
+  Connect the new ESC-menu dashboard callback and chrome availability
+  flag, and update the chrome title on screen changes.
+
+  Push dashboard from the monitor and return with pop(), avoiding
+  duplicate dashboard stack entries. Retain the existing notifyRef,
+  DashboardStoreContext, HITL state, and monitor event-handling paths.
+  Extend tests/ink/monitor-router.test.tsx with dashboard navigation.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - dashboard-live-provider
+  - dashboard-rich-screen
+  - dashboard-chrome-entry
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - The standalone monitor must retain its current splash and detach behavior.
+  - Dashboard history must persist while switching between monitor, dashboard, and settings.
+  - Existing monitor subscriptions and the dashboard provider must coexist without double-counting metrics.
+  - Preserve live monitor updates and pending HITL questions.
+forbidden:
+  - Do not modify run-tui-app.tsx, daemon protocol, or existing monitor command semantics.
+  - Do not replace the standalone monitor with a new TUI session.
+references:
+  - src/ink/run-daemon-monitor.tsx
+  - src/ink/dashboard-provider.tsx
+  - src/ink/router.tsx
+  - tests/ink/monitor-router.test.tsx
+notes:
+  - Keep the existing legacy dashboard-store provider separate from the new metrics context.
+subtasks: []
+quest: dashboard-realtime

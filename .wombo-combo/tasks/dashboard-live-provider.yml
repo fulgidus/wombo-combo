@@ -1,0 +1,53 @@
+id: dashboard-live-provider
+title: Subscribe to live dashboard updates
+description: |
+  Add src/ink/dashboard-provider.tsx implementing DashboardMetricsProvider
+  around the new metrics context. Accept projectRoot and an optional
+  typed DaemonClient. Bootstrap from getLastSnapshot(), subscribe to
+  state snapshots and relevant typed events, and observe connection
+  changes. Request fresh state on connection/reconnection without
+  opening a second daemon connection.
+
+  Own one one-second timer for throughput bucket advancement, ETA
+  updates, incremental usage reads, and bounded refresh of task/archive
+  attribution metadata. Feed the metrics reducer and usage reader into
+  immutable context values. Preserve metrics across screen navigation.
+  Represent disconnected or unavailable data explicitly rather than
+  displaying stale information as live.
+
+  Add tests in tests/ink/dashboard-provider.test.tsx using a fake client
+  and controlled clock to verify updates, reconnects, project changes,
+  and cleanup.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - dashboard-metrics
+  - dashboard-usage
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Subscribe before requesting a snapshot so updates are not lost during initialization.
+  - Unsubscribe all handlers and clear timers/read resources on unmount or client/project replacement.
+  - Do not reconnect or disconnect a caller-owned DaemonClient.
+  - Use JSONL totals exclusively for quest token usage; token events may trigger a refresh.
+  - Coalesce event bursts and avoid rebuilding unbounded arrays per event.
+  - Historical quest usage must remain available when no daemon is connected.
+forbidden:
+  - Do not modify daemon/client.ts, daemon/protocol.ts, application roots, or existing monitor event handlers.
+  - Do not poll daemon-state.json for a second competing dashboard state source.
+references:
+  - src/daemon/client.ts
+  - src/daemon/protocol.ts
+  - src/lib/tasks.ts
+  - src/ink/dashboard-metrics-context.tsx
+  - src/lib/dashboard-metrics.ts
+  - src/lib/dashboard-usage.ts
+  - src/ink/init-form.test.tsx
+notes:
+  - DaemonClient.on and onStateChange return unsubscribe functions.
+  - Only this provider owns dashboard sampling; screen components must not create their own sampling intervals.
+subtasks: []
+quest: dashboard-realtime
