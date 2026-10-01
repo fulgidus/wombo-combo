@@ -22,6 +22,7 @@
 
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
+import { useTerminalSize } from "./use-terminal-size";
 import type {
   ReviewItem,
   ReviewListConfig,
@@ -143,7 +144,7 @@ function ListItemRow({
         <Text color={isSelected ? "cyan" : undefined}>
           {isSelected ? ">" : " "}
         </Text>
-        <Text color="red"> \u2718 </Text>
+        <Text color="red"> ✘ </Text>
         <Text>{num} </Text>
         <Text dimColor>{item.id}</Text>
         <Text> </Text>
@@ -157,13 +158,13 @@ function ListItemRow({
       <Text color={isSelected ? "cyan" : undefined}>
         {isSelected ? ">" : " "}
       </Text>
-      <Text color="green"> \u2714 </Text>
+      <Text color="green"> ✔ </Text>
       <Text>{num} </Text>
       <Text bold={isSelected}>{displayId}</Text>
       <Text> </Text>
       <Text color={pColor as any}>{pAbbr}</Text>
       {item.dependsOn.length > 0 && (
-        <Text dimColor> \u2192{item.dependsOn.length}</Text>
+        <Text dimColor> →{item.dependsOn.length}</Text>
       )}
     </Box>
   );
@@ -363,7 +364,7 @@ function ValidationPopup({
               <Text bold color="red">Errors ({errors.length}):</Text>
               {errors.map((e, i) => (
                 <Box key={i}>
-                  <Text color="red">  \u2718 </Text>
+                  <Text color="red">  ✘ </Text>
                   <Text>{e.itemId ? `[${e.itemId}] ` : ""}{e.message}</Text>
                 </Box>
               ))}
@@ -374,7 +375,7 @@ function ValidationPopup({
               <Text bold color="yellow">Warnings ({warnings.length}):</Text>
               {warnings.map((w, i) => (
                 <Box key={i}>
-                  <Text color="yellow">  \u26A0 </Text>
+                  <Text color="yellow">  ⚠ </Text>
                   <Text>{w.itemId ? `[${w.itemId}] ` : ""}{w.message}</Text>
                 </Box>
               ))}
@@ -449,9 +450,9 @@ function ConfirmPopup({
       </Box>
       <Box marginTop={1}>
         <Text color="green" bold>Y</Text>
-        <Text> \u2014 Confirm  |  </Text>
+        <Text> — Confirm  |  </Text>
         <Text color="red" bold>N</Text>
-        <Text> / Esc \u2014 Cancel</Text>
+        <Text> / Esc — Cancel</Text>
       </Box>
     </Box>
   );
@@ -487,6 +488,19 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
   const counts = getCounts(state);
   const selectedItem = state.items[state.selectedIndex];
   const hasErrors = config.issues.some((i) => i.level === "error");
+
+  // Scroll window: cap the list to the terminal height so long plans
+  // scroll instead of growing the box past the screen
+  const { rows } = useTerminalSize();
+  const listHeight = Math.max(4, rows - 12);
+  const winStart = Math.max(
+    0,
+    Math.min(
+      state.selectedIndex - Math.floor(listHeight / 2),
+      Math.max(0, state.items.length - listHeight)
+    )
+  );
+  const visibleItems = state.items.slice(winStart, winStart + listHeight);
 
   // -----------------------------------------------------------------------
   // Input handling
@@ -677,12 +691,12 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
           {state.items.length === 0 ? (
             <Text dimColor> No {config.itemLabelPlural} in plan</Text>
           ) : (
-            state.items.map((item, index) => (
+            visibleItems.map((item, i) => (
               <ListItemRow
                 key={item.id}
                 item={item}
-                index={index}
-                isSelected={index === state.selectedIndex}
+                index={winStart + i}
+                isSelected={winStart + i === state.selectedIndex}
               />
             ))
           )}
@@ -830,7 +844,7 @@ function ReviewEditModalInline({
       </Text>
 
       <Box marginTop={1} flexDirection="column">
-        <Text bold>{stepLabel} \u2014 {field.label}</Text>
+        <Text bold>{stepLabel} — {field.label}</Text>
         {field.hint && <Text dimColor>{field.hint}</Text>}
         <Text dimColor>Enter to save, Esc to skip</Text>
       </Box>
