@@ -10,7 +10,7 @@
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, relative, basename, dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config";
@@ -22,6 +22,7 @@ import { createBlankTask, saveTaskToStore } from "./tasks";
 import { loadTasksFromStore } from "./task-store";
 import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
+import { type OpenCodeEvent, extractActivity } from "./monitor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -599,46 +600,55 @@ export async function runQuestPlanner(
 
   child.stdin?.end();
 
-  // Transcript log for this quest — persisted across runs
+  // Transcript log for this quest — written once after the planner exits.
+  // (Per-chunk appendSync(fd) silently fails in Bun — single final write instead.)
   const logPath = resolve(projectRoot, ".wombo-combo", "logs", `planner-${quest.id}.log`);
-  const fs = require("node:fs");
-  // Ensure the logs directory exists
-  const logDir = resolve(projectRoot, ".wombo-combo", "logs");
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-  }
-  let transcriptFd: any = null;
-  try {
-    transcriptFd = fs.openSync(logPath, "w");
-  } catch {
-    transcriptFd = null;
-  }
 
-  // Stream planner stdout into chunks + transcript + live progress
+  // Stream planner stdout: collect chunks + live token/tool activity feed
   const chunks: Buffer[] = [];
   let stderrText = "";
 
+  // Live observability state, updated per parsed event line
+  let tokIn = 0;
+  let tokOut = 0;
+  let lastActivity = "";
+  let lineBuf = "";
+
+  const fmtTok = (n: number): string =>
+    n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
+
+  /** Parse one NDJSON event line; update token totals + last activity; emit live status. */
+  const handleEventLine = (line: string): void => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let event: OpenCodeEvent;
+    try {
+      event = JSON.parse(trimmed) as OpenCodeEvent;
+    } catch {
+      return; // not a JSON event line
+    }
+    // Accumulate token usage per completed step
+    if (event.type === "step_finish" && event.part?.tokens) {
+      tokIn += event.part.tokens.input ?? 0;
+      tokOut += event.part.tokens.output ?? 0;
+    }
+    // Track the latest activity (tool calls with args, thinking, …)
+    const activity = extractActivity(event);
+    if (activity) lastActivity = activity;
+    // Compose the live status line: token feed + latest activity
+    const parts: string[] = [];
+    if (tokIn || tokOut) parts.push(`↑${fmtTok(tokIn)} ↓${fmtTok(tokOut)}`);
+    if (lastActivity) parts.push(lastActivity);
+    if (parts.length > 0) onProgress(parts.join(" · "));
+  };
+
   child.stdout?.on("data", (chunk: Buffer) => {
     chunks.push(chunk);
-    // Append to transcript log line by line
-    if (transcriptFd !== null) {
-      const lines = chunk.toString().split("\n");
-      for (const line of lines) {
-        if (line) {
-          try {
-            fs.appendSync(transcriptFd, line + "\n");
-          } catch {
-            // Best-effort logging; continue without crashing
-          }
-        }
-      }
-    }
-    // Provide live progress updates from the JSON event stream
-    const textSoFar = Buffer.concat(chunks).toString("utf-8");
-    const summary = liveSummaryFromEvents(textSoFar);
-    if (summary) {
-      onProgress(summary);
-    }
+    // Incremental NDJSON line parsing (chunks can split lines mid-event)
+    lineBuf += chunk.toString("utf-8");
+    const lines = lineBuf.split("\n");
+    lineBuf = lines.pop() ?? "";
+    for (const line of lines) handleEventLine(line);
   });
 
   child.stderr?.on("data", (chunk: Buffer) => {
@@ -682,8 +692,18 @@ export async function runQuestPlanner(
 
   const rawOutput = Buffer.concat(chunks).toString("utf-8");
 
-  // Final progress update
-  onProgress(liveSummaryFromEvents(rawOutput));
+  // Flush the final partial line through the live feed
+  handleEventLine(lineBuf);
+
+  // Persist the full transcript for post-mortem (single write — per-chunk
+  // appendSync with an fd silently fails in Bun)
+  try {
+    const logDir = resolve(projectRoot, ".wombo-combo", "logs");
+    if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
+    writeFileSync(logPath, rawOutput);
+  } catch {
+    // Best-effort transcript; planning continues without it
+  }
 
   if (exitCode === -1) {
     return {
@@ -780,25 +800,6 @@ function extractTextFromJsonEvents(rawOutput: string): string {
   }
 
   return textParts.join("");
-}
-
-/** Extract a short live summary from the raw planner output (streamed JSON events). */
-function liveSummaryFromEvents(rawOutput: string): string {
-  const lines = rawOutput.split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      const event = JSON.parse(trimmed);
-      if (event.type === "text" && event.part?.text) {
-        return event.part.text.slice(0, 60).trim();
-      }
-    } catch {
-      // Not JSON — first non-empty line as rough summary
-      return trimmed.slice(0, 60).trim();
-    }
-  }
-  return "";
 }
 
 // ---------------------------------------------------------------------------
