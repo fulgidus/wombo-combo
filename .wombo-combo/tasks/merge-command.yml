@@ -1,0 +1,56 @@
+id: merge-command
+title: Add Merge Command With Publication
+description: |
+  Implement the currently absent src/commands/merge.ts and
+  src/commands/citty/merge.ts. Accept optional comma-separated --tasks IDs;
+  otherwise select persisted verified, nondeferred agents. Reject selected
+  unverified agents and mixed destination branches rather than guessing.
+  Read DaemonState and existing task stores, refusing mutation while a live
+  daemon could merge concurrently. Merge selected branches sequentially using
+  enqueueMerge and existing merger APIs. Mark successfully merged records and
+  tasks done using existing persistence patterns.
+  Capture before/after SHAs, task metadata, and verification evidence before
+  cleanup. After a completely successful batch, invoke the coordinator once.
+  If any selected merge fails, preserve/report successes but do not publish
+  the incomplete batch. Support --dry-run and existing text/json/toon output.
+  Register merge in src/commands/citty/router.ts and src/lib/citty-registry.ts
+  so help, describe, and completion discover it. Add tests/citty-merge.test.ts
+  and tests/merge-command.test.ts.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - post-merge-coordinator
+  - verification-state
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Dry-run must not write state, merge, create worktrees, commit, push, or invoke gh.
+  - Use persisted verification evidence; absent test evidence is unknown.
+  - Do not merge deferred chain predecessors separately.
+  - Detect already-merged/no-change branches and avoid duplicate publication.
+  - Machine-readable output must remain valid when merger helpers print diagnostics.
+  - Live-daemon refusal must include an actionable explanation.
+forbidden:
+  - Do not modify src/daemon/agent-runner.ts.
+  - Do not resurrect removed wave-state modules or hand-written CLI parsing.
+  - Do not maintain a second manual registry in src/lib/schema.ts.
+references:
+  - src/commands/citty/retry.ts
+  - src/commands/citty/router.ts
+  - src/lib/citty-registry.ts
+  - src/lib/schema.ts
+  - src/lib/output.ts
+  - src/lib/merger.ts
+  - src/lib/tasks.ts
+  - src/daemon/state.ts
+  - src/daemon/pid-utils.ts
+  - tests/citty-commands.test.ts
+notes:
+  - Source exploration confirms that woco merge is not currently registered or implemented.
+  - Command registry data now derives from citty-registry.ts, despite older architecture notes.
+  - The in-process merge queue cannot protect against a separate daemon process.
+subtasks: []
+quest: auto-pr-changelog

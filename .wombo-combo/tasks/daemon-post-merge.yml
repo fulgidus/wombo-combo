@@ -1,0 +1,50 @@
+id: daemon-post-merge
+title: Integrate Daemon Merge Publication
+description: |
+  Update src/daemon/agent-runner.ts to store compact verification summaries
+  from runFullVerification and explicitly record fake-agent verification as
+  skipped rather than passed tests.
+  Make handleMergeSuccess asynchronous and await it at every normal and
+  conflict-escalation success call site. Capture merge SHAs and task metadata
+  before branch/worktree cleanup, including deferred chain predecessors.
+  Invoke the shared post-merge coordinator inside the existing serialized
+  merge lifecycle and retain task completion and cleanup behavior.
+  Open/draft publication owns its awaited push; avoid a second fire-and-forget
+  auto-push. In skip mode, preserve existing explicitly requested auto-push
+  after changelog generation and inspect its boolean result.
+  Emit existing evt:log messages containing publication outcomes and PR URLs.
+  Extend tests/daemon-agent-runner.test.ts for successful merges, failures,
+  chains, escalation paths, skipped tests, and publication errors.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - post-merge-coordinator
+  - verification-state
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - All successful conflict-resolution tiers must use the same post-merge hook.
+  - Failed merges and deferred nonterminal chain members must not publish.
+  - Chain-terminal reports must include the predecessors actually merged.
+  - Publication errors must not mark merged agents failed or trigger coding retries.
+  - Keep merge serialization intact and avoid nested queue acquisition.
+forbidden:
+  - Do not modify protocol/state files owned by verification-state.
+  - Do not restore legacy WaveState or invent a second execution pipeline.
+  - Do not change daemon scheduling or concurrency accounting.
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/state.ts
+  - src/daemon/protocol.ts
+  - src/lib/merger.ts
+  - src/lib/post-merge.ts
+  - tests/daemon-agent-runner.test.ts
+notes:
+  - handleMergeSuccess currently returns void and is called from multiple escalation tiers.
+  - pushBaseBranch returns false on failure; a catch handler alone does not detect failure.
+  - "The daemon is continuous: each successful terminal merge updates the shared branch-pair PR."
+subtasks: []
+quest: auto-pr-changelog

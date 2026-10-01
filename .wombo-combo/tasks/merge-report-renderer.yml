@@ -1,0 +1,43 @@
+id: merge-report-renderer
+title: Generate Structured Merge Reports
+description: |
+  Implement src/lib/merge-report.ts with report collection and deterministic
+  Markdown rendering. Derive operation-level affected files from explicit
+  before/after SHAs, not the user's current checkout. Render Summary,
+  Affected Files, and Test Results sections with task identifiers and titles.
+  Provide separate rendering for cumulative PR reports: affected files must
+  reflect the actual PR target-to-head comparison, while task summaries
+  combine recorded successful operations for that branch pair.
+  Add conversion from FullVerificationResult to VerificationSummary.
+  Include build, unit-test, and browser outcomes, durations/counts when
+  available, and explicit skipped/unknown states.
+  Add tests/merge-report.test.ts for deterministic output, renamed/deleted
+  files, unusual filenames, missing historical results, and skipped tests.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - post-merge-contract
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Use argument-array subprocess calls and NUL-delimited Git filename output.
+  - A passing build must never be represented as passing unit tests.
+  - Do not publish raw build logs, environment values, or credentials.
+  - Sort and deduplicate files and task IDs; escape Markdown-sensitive content.
+forbidden:
+  - Do not modify existing verification behavior.
+  - Do not write CHANGELOG.md, push branches, or invoke GitHub.
+references:
+  - src/lib/post-merge-types.ts
+  - src/lib/verifier.ts
+  - src/lib/test-runner.ts
+  - src/lib/tdd-verifier.ts
+  - src/lib/browser-verifier.ts
+notes:
+  - FullVerificationResult contains richer information than buildPassed.
+  - Older daemon records must render unavailable test results as unknown.
+subtasks: []
+quest: auto-pr-changelog

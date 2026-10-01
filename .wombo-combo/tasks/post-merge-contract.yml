@@ -1,0 +1,44 @@
+id: post-merge-contract
+title: Define Post Merge Configuration Contracts
+description: |
+  Add PostMergeConfig and its defaults, normalization, and validation in
+  src/config.ts. Configuration: postMerge.prMode = open | draft | skip
+  (default skip), postMerge.prBaseBranch = string | null (default null,
+  meaning the configured remote's default branch), and
+  postMerge.changelog = boolean (default true).
+  Keep older config files and manually constructed configurations compatible.
+  Update schemas/config.schema.json and tests/config.test.ts.
+  Create src/lib/post-merge-types.ts defining compact VerificationSummary,
+  MergeReportInput, MergeReport, and PostMergeResult contracts. Report inputs
+  include destination branch, before/after commit SHAs, task IDs/titles,
+  verification summaries, and a stable operation ID. Results distinguish
+  changelog, push, and PR outcomes without changing merge success.
+  Ignore .wombo-combo/post-merge.json and its temporary files in .gitignore.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Skip mode must require neither GitHub CLI nor remote publication.
+  - Changelog generation is independent of PR mode.
+  - Validate enum values, booleans, and nonempty explicitly configured PR target branches.
+  - Shared types must not import command or daemon runtime modules.
+forbidden:
+  - Do not modify merge execution, daemon scheduling, or tracked project configuration.
+  - Do not add dependencies.
+references:
+  - src/config.ts
+  - schemas/config.schema.json
+  - tests/config.test.ts
+  - src/lib/verifier.ts
+  - src/lib/tdd-verifier.ts
+  - .gitignore
+notes:
+  - Export a normalization helper so legacy callers need not supply the new block.
+  - Use optional verification fields to preserve older persisted state compatibility.
+subtasks: []
+quest: auto-pr-changelog

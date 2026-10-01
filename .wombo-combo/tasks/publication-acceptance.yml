@@ -1,0 +1,45 @@
+id: publication-acceptance
+title: Verify And Document Publication Workflows
+description: |
+  Add tests/post-merge-integration.test.ts exercising the merged CLI and daemon
+  integration with disposable local Git repositories, a local bare remote,
+  and mocked gh execution. Verify open/draft/skip modes, commit-before-push
+  ordering, one PR per head/base pair, cumulative report contents, repeat
+  execution, preserved dirty checkout, partial merge failure, missing gh,
+  failed pushes, and same-head/base refusal.
+  Document configuration and both entry points in README.md, including the
+  distinction between merge destination and PR target, independent changelog
+  behavior, default skip mode, authentication prerequisites, recovery through
+  rerunning merge, and continuous daemon PR updates.
+  Run bun run typecheck, bun run build, bun test, and read-only bun dev merge
+  --help / describe smoke checks. Record any unrelated baseline failures
+  without widening this quest.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - daemon-post-merge
+  - merge-command
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - No real GitHub PR creation, external pushes, or authentication changes during tests.
+  - Acceptance tests must assert skipped and unknown tests are not reported as passed.
+  - Use bun dev for local CLI checks, never a globally installed binary.
+  - Build verification timeout is 300000 milliseconds.
+forbidden:
+  - Do not edit implementation files or existing test files owned by other tasks.
+  - Do not modify release workflows, package versions, or tracked project configuration.
+references:
+  - README.md
+  - tests/daemon-agent-runner.test.ts
+  - tests/citty-merge.test.ts
+  - tests/post-merge.test.ts
+  - src/lib/registry-parity.test.ts
+  - package.json
+notes:
+  - Use a fake gh executable or injected adapter to inspect commands deterministically.
+subtasks: []
+quest: auto-pr-changelog

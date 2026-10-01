@@ -1,0 +1,54 @@
+id: post-merge-coordinator
+title: Coordinate Changelog And PR Publication
+description: |
+  Implement src/lib/post-merge.ts as the shared post-success entry point.
+  Reject failed or unchanged operations. Collect the merge report, append
+  the changelog in an isolated temporary worktree on the destination branch,
+  and commit only CHANGELOG.md before any publication.
+  Persist operation reports and phase outcomes atomically in
+  .wombo-combo/post-merge.json. Reuse committed changelog markers and existing
+  PR lookup to recover safely from interrupted publication. Aggregate recorded
+  successful task summaries when updating a branch-pair PR.
+  In open/draft mode, resolve the PR target, verify distinct branches and
+  meaningful changes, push the destination branch to config.git.remote,
+  await confirmed push success, then create/update the PR.
+  In skip mode, perform local changelog work only; leave separately requested
+  auto-push to the caller. Return structured outcomes and warnings without
+  throwing publication failures into merge-failure handling.
+  Add tests/post-merge.test.ts using local Git fixtures and mocked GitHub calls.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - merge-report-renderer
+  - changelog-writer
+  - github-pr-adapter
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Caller owns enqueueMerge; coordinator must not acquire the same queue recursively.
+  - Never checkout, stage, reset, or stash the user's working tree.
+  - Always remove temporary worktrees and temporary files in finally blocks.
+  - Commit only the generated changelog change, preserving unrelated work.
+  - Never force-push; failed push must prevent PR creation.
+  - Head equal to PR target must produce an actionable skip, not an invented PR.
+  - Publication failures must preserve successful merge and local changelog outcomes.
+forbidden:
+  - Do not modify src/lib/merger.ts or existing merge conflict resolution.
+  - Do not push when PR mode is skip.
+  - Do not hide corrupt journal state or silently duplicate entries.
+references:
+  - src/lib/post-merge-types.ts
+  - src/lib/merge-report.ts
+  - src/lib/changelog.ts
+  - src/lib/github-pr.ts
+  - src/lib/merger.ts
+  - src/lib/history.ts
+notes:
+  - Use destination branch as PR head; PR target is a separate configuration concept.
+  - The runtime journal is recovery metadata, not a tracked project definition.
+  - Stable operation IDs should derive from branch and merge commit SHAs.
+subtasks: []
+quest: auto-pr-changelog

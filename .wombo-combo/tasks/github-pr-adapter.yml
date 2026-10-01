@@ -1,0 +1,43 @@
+id: github-pr-adapter
+title: Create Or Update GitHub Requests
+description: |
+  Implement src/lib/github-pr.ts using GitHub CLI through injectable,
+  bounded argument-array subprocess execution. Resolve the GitHub repository
+  from config.git.remote rather than implicitly selecting another remote.
+  Expose availability/authentication checks, remote default-branch resolution,
+  and create-or-update behavior for an explicit head/base pair.
+  Query open PRs before creating one. Create with explicit title/body/head/base
+  and --draft only in draft mode. Update an existing automation-owned PR's
+  generated content without duplicating it or destroying surrounding manual
+  text. Return its URL and created/updated/skipped/failed outcome.
+  Add tests/github-pr.test.ts with mocked process responses.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - post-merge-contract
+effort: PT25M
+started_at: null
+ended_at: null
+constraints:
+  - Never prompt, open a browser, print authentication tokens, or require interactive login.
+  - Skip mode must execute no gh commands.
+  - Missing gh, authentication, non-GitHub remotes, and API errors must have actionable outcomes.
+  - Do not silently change an existing PR's draft status.
+  - Do not overwrite unrelated manually authored PR descriptions.
+forbidden:
+  - Do not install gh or add an API SDK dependency.
+  - Do not push Git branches or modify changelogs.
+  - Do not use gh pr create --dry-run; it can still push.
+references:
+  - src/lib/post-merge-types.ts
+  - src/config.ts
+  - https://cli.github.com/manual/gh_pr_create
+  - https://cli.github.com/manual/gh_pr_list
+  - https://cli.github.com/manual/gh_pr_edit
+notes:
+  - Use stdin or a temporary body file rather than shell-interpolated Markdown.
+  - Use generated-section markers to distinguish automation-owned content.
+subtasks: []
+quest: auto-pr-changelog

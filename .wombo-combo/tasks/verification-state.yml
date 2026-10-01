@@ -1,0 +1,37 @@
+id: verification-state
+title: Persist Compact Verification Evidence
+description: |
+  Add optional VerificationSummary and mergeCommitHash fields to
+  DaemonAgentState in src/daemon/protocol.ts. Ensure src/daemon/state.ts
+  preserves them through updates, persistence, and snapshots without making
+  them mandatory in legacy records.
+  Extend tests/daemon-state.test.ts and tests/daemon-protocol.test.ts with
+  round-trip and legacy-loading coverage. This task supplies storage only;
+  the daemon integration task will populate the fields from verification
+  and merge execution.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - post-merge-contract
+effort: PT15M
+started_at: null
+ended_at: null
+constraints:
+  - Existing daemon-state.json files must continue loading.
+  - Store compact outcomes, not raw logs or complete verification objects.
+  - Do not invalidate state by unnecessarily changing STATE_VERSION.
+forbidden:
+  - Do not modify src/daemon/agent-runner.ts.
+  - Do not alter scheduler semantics or existing event meanings.
+references:
+  - src/lib/post-merge-types.ts
+  - src/daemon/protocol.ts
+  - src/daemon/state.ts
+  - tests/daemon-state.test.ts
+  - tests/daemon-protocol.test.ts
+notes:
+  - InternalAgentState extends DaemonAgentState and is already persisted.
+subtasks: []
+quest: auto-pr-changelog

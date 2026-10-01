@@ -1,0 +1,36 @@
+id: changelog-writer
+title: Append Idempotent Changelog Entries
+description: |
+  Implement src/lib/changelog.ts to add a dated, structured entry to
+  CHANGELOG.md in a supplied automation worktree. Preserve all existing
+  content and create a minimal document when the file does not exist.
+  Entries include successful task summaries and the merge operation ID in
+  a hidden Markdown marker. Reprocessing the same operation must return
+  unchanged rather than adding another entry.
+  Keep this module responsible only for formatting and atomic file writes;
+  the post-merge coordinator owns Git staging and commits.
+  Add tests/changelog.test.ts covering new/existing files, Unicode, missing
+  trailing newline, duplicate operations, and preservation of manual entries.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - post-merge-contract
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Append entries without replacing or reorganizing existing changelog content.
+  - Use an explicit timestamp supplied by the caller for deterministic tests.
+  - Return whether content changed so callers avoid empty commits.
+forbidden:
+  - Do not edit this repository's CHANGELOG.md as part of implementation.
+  - Do not stage files, create commits, or touch the user's checkout.
+references:
+  - src/lib/post-merge-types.ts
+  - src/lib/history.ts
+notes:
+  - A committed operation marker provides deduplication even if runtime state is lost.
+subtasks: []
+quest: auto-pr-changelog
