@@ -179,8 +179,9 @@ export function ChromeTopBar({
       borderRight={false}
       borderTop={false}
     >
-      {/* Left: app name + screen */}
-      <Box flexDirection="row" gap={1}>
+      {/* Left: app name + screen — never shrinks, so narrow terminals keep
+          the breadcrumb intact and the status items truncate instead */}
+      <Box flexDirection="row" gap={1} flexShrink={0}>
         <Text bold>Home</Text>
         <Text dimColor>›</Text>
         <Text bold>{displayName}</Text>
@@ -188,7 +189,7 @@ export function ChromeTopBar({
 
       {/* Center: wave summary (legacy, only shown when explicitly set) */}
       {waveSummary && (
-        <Box flexDirection="row" gap={1}>
+        <Box flexDirection="row" gap={1} flexShrink={1} overflow="hidden">
           <Text color="blue">●{waveSummary.running}</Text>
           <Text color="green">✓{waveSummary.done}</Text>
           <Text color="red">✗{waveSummary.failed}</Text>
@@ -196,7 +197,7 @@ export function ChromeTopBar({
       )}
 
       {/* Right: live agent count + scheduler status + connection dot */}
-      <Box flexDirection="row" gap={1}>
+      <Box flexDirection="row" gap={1} flexShrink={1} overflow="hidden" marginLeft={1}>
         {daemonStats ? (
           <>
             <Text color={daemonStats.running > 0 ? "greenBright" : "gray"}>
@@ -208,9 +209,9 @@ export function ChromeTopBar({
           </>
         ) : null}
         {daemonConnected ? (
-          <Text color="greenBright">⬤ connected</Text>
+          <Text color="greenBright" wrap="truncate">⬤ connected</Text>
         ) : (
-          <Text color="red">⬤ unreachable</Text>
+          <Text color="red" wrap="truncate">⬤ unreachable</Text>
         )}
       </Box>
     </Box>

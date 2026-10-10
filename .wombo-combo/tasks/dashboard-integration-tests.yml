@@ -16,16 +16,16 @@ description: |
   with a 300000ms build timeout. Record dashboard access and metric
   scope briefly in README.md. Fix any integration regressions in the
   touched dashboard code after all implementation tasks have merged.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - dashboard-main-navigation
   - dashboard-monitor-navigation
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:33:52.612Z
+ended_at: 2026-10-10T08:54:37.239Z
 constraints:
   - Use fake clients and temporary usage files; do not launch real agents.
   - Use live render/input tests for navigation and subscriptions, not only renderToString.
