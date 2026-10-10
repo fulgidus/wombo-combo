@@ -148,6 +148,11 @@ async function main(): Promise<void> {
     if (globalFlags.noUi && !cittyArgs.includes("--no-ui")) {
       cittyArgs.push("--no-ui");
     }
+    // --output/-o is consumed by extractGlobalFlags; forward it so each
+    // command's own `output` arg sees it (otherwise it is silently ignored).
+    if (globalFlags.output && !cittyArgs.includes("--output") && !cittyArgs.includes("-o")) {
+      cittyArgs.push("--output", globalFlags.output);
+    }
 
     await runCittyCommand(command, cittyArgs);
     return;
