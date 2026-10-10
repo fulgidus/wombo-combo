@@ -59,6 +59,8 @@ import { patchImportedAgent } from "../lib/templates";
 import type { QuestHitlMode } from "../lib/quest";
 import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
+import { AnalyticsTracker } from "./analytics-tracker";
+import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +69,11 @@ import { createDaemonAgentState } from "./state";
 export interface AgentRunnerConfig {
   projectRoot: string;
   config: WomboConfig;
+  /**
+   * Daemon session id (also the history wave_id). Newly submitted executions
+   * are attributed to this wave in analytics.
+   */
+  sessionId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +140,9 @@ export class AgentRunner {
   private state: DaemonState;
   private monitor: ProcessMonitor;
 
+  /** Durable per-execution analytics (lifecycle, retries, usage). */
+  readonly analytics: AnalyticsTracker;
+
   /** Session-scoped agent-name override (CLI --agent). null = use task.agent. */
   private agentOverride: string | null = null;
 
@@ -152,6 +162,14 @@ export class AgentRunner {
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
     this.state = state;
+
+    this.analytics = new AnalyticsTracker({
+      projectRoot: this.projectRoot,
+      state,
+      waveId: opts.sessionId ?? `runner-${new Date().toISOString().replace(/[:.]/g, "-")}`,
+      onDiagnostic: (message) =>
+        state.emit("evt:log", { level: "warn", message: `[analytics] ${message}` }),
+    });
 
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
@@ -240,6 +258,9 @@ export class AgentRunner {
       },
 
       onUsage: (featureId, record) => {
+        // The monitor already persisted this record to usage.jsonl; analytics
+        // only accumulates totals and must not append it again.
+        this.analytics.recordUsage(featureId, record as UsageRecord);
         const agent = this.state.getAgent(featureId);
         if (agent) {
           if (!agent.tokenUsage) {
@@ -313,6 +334,13 @@ export class AgentRunner {
       hasChainSuccessor: ctx?.hasChainSuccessor ?? false,
       model,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
+    });
+
+    // Allocate a new analytics execution on every submission.
+    this.analytics.allocate(agentState, {
+      questId: task.quest ?? null,
+      agentId: agentState.agentName,
+      model: model ?? this.state.getModel(),
     });
 
     this.state.addAgent(agentState);
@@ -477,7 +505,11 @@ export class AgentRunner {
         startedAt: new Date().toISOString(),
       });
 
-      // Register with monitor
+      this.analytics.recordProcessStart(featureId);
+
+      // Register usage context before attaching the process so every record
+      // carries quest/model, then register with the monitor.
+      this.registerUsageContext(featureId);
       this.monitor.addProcess(featureId, result.process);
 
       this.state.emit("evt:task-picked", {
@@ -1023,6 +1055,8 @@ export class AgentRunner {
       `tier 3: resolving ${conflictFiles.length} conflict(s)...`
     );
 
+    // Resolver token streams are not monitored: usage can only be partial.
+    this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
       worktreePath: agent.worktree,
       featureId: agent.featureId,
@@ -1143,6 +1177,7 @@ export class AgentRunner {
         this.config
       );
 
+      this.analytics.markUnmonitoredUsage(featureId);
       const resolverResult = launchConflictResolver({
         worktreePath: agent.worktree,
         featureId: agent.featureId,
@@ -1256,6 +1291,7 @@ export class AgentRunner {
     );
 
     // Launch the agent
+    this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
       worktreePath: agent.worktree,
       featureId: agent.featureId,
@@ -1346,6 +1382,7 @@ export class AgentRunner {
 
       this.state.updateAgent(featureId, { pid: result.pid });
       this.state.updateAgentStatus(featureId, "running", "Retry launched");
+      this.registerUsageContext(featureId);
       this.monitor.addProcess(featureId, result.process);
     } catch {
       // Retry launch failed — queue for fresh launch
@@ -1403,13 +1440,37 @@ export class AgentRunner {
   // Process management
   // -------------------------------------------------------------------------
 
+  /** Register the token collector's per-agent context (quest, model). */
+  private registerUsageContext(featureId: string): void {
+    const agent = this.state.getAgent(featureId);
+    this.monitor.tokenCollector.registerAgent(featureId, {
+      quest_id: agent?.analytics?.quest_id ?? null,
+      model: agent?.model ?? this.state.getModel() ?? null,
+    });
+  }
+
+  /** Restore persisted analytics snapshots (call before startup reconciliation). */
+  restoreAnalytics(): void {
+    this.analytics.restore();
+  }
+
+  /** Finish unfinished executions as interrupted and stop recording (shutdown). */
+  interruptAnalytics(reason: string): void {
+    this.analytics.interruptAll(reason);
+    this.analytics.close();
+  }
+
   /** Kill a specific agent's process. */
   cancelAgent(featureId: string): void {
+    this.analytics.markStopRequested(featureId, "cancelled");
     this.monitor.remove(featureId);
   }
 
   /** Kill all running agents. */
   async killAll(): Promise<void> {
+    // Mark executions stopped first so exit callbacks from the killed
+    // processes cannot alter their snapshots.
+    this.analytics.interruptAll("killed");
     this.monitor.killAll();
     // Wait for processes to actually die
     await this.monitor.waitAll(500);
@@ -1624,6 +1685,7 @@ export class AgentRunner {
 
   /** Destroy: clean up resources. */
   destroy(): void {
+    this.analytics.close();
     this.monitor.killAll();
     this.launchQueue = [];
   }

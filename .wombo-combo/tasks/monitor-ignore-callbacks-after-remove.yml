@@ -1,0 +1,21 @@
+id: monitor-ignore-callbacks-after-remove
+title: ProcessMonitor fires exit callbacks for removed processes (cancelled/killed agents get retried)
+description: "ProcessMonitor.remove()/killAll() delete the process entry and SIGTERM the child, but the child's exit
+  handler stays attached and still calls onError/onComplete. AgentRunner.onError then retries cancelled or killed agents
+  (status failed/retry -> running again), and shutdown/kill can trigger retries. Fix: in addProcess exit/error handlers,
+  skip callbacks when this.processes.get(featureId) is no longer the monitored entry. Found while implementing
+  analytics-run-tracking; analytics ignores such late callbacks for finished executions."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "
 import { resolve } from "node:path";
 import { WOMBO_DIR } from "../config";
 import type { AgentStatus } from "./agent-status";
+import type { AgentAnalyticsRecord } from "../lib/analytics";
 import type {
   DaemonAgentState,
   SchedulerState,
@@ -38,7 +39,46 @@ export interface InternalAgentState extends DaemonAgentState {
   buildOutput: string | null;
   /** Internal merge queue position (null = not queued for merge) */
   mergeQueuePosition: number | null;
+  /**
+   * Internal analytics snapshot of the current execution (never sent to
+   * clients). Absent on state written by older daemon versions.
+   */
+  analytics?: AgentAnalyticsRecord;
+  /**
+   * Internal: true when this execution consumed tokens from streams that are
+   * not monitored (conflict resolvers, PID-only recovery), so usage totals
+   * can only be partial. Never sent to clients.
+   */
+  analyticsUnmonitored?: boolean;
 }
+
+/** Extra context passed to internal status observers. */
+export interface StatusObserverInfo {
+  /** True while a user-requested retry (DaemonState.retryAgent) is applied. */
+  userRetry: boolean;
+}
+
+/**
+ * Internal observer invoked synchronously after an agent's status changed but
+ * BEFORE the public event is emitted (so successful measurements can be
+ * captured before e.g. "verified" makes chain successors eligible).
+ */
+export type StatusObserver = (
+  agent: InternalAgentState,
+  previousStatus: AgentStatus,
+  newStatus: AgentStatus,
+  detail: string | undefined,
+  info: StatusObserverInfo,
+) => void;
+
+/** Why an agent is about to leave tracking. */
+export type AgentRemovalReason = "remove" | "clear" | "reset";
+
+/** Internal hook invoked just before an agent is dropped from state. */
+export type AgentRemovalObserver = (
+  agent: InternalAgentState,
+  reason: AgentRemovalReason,
+) => void;
 
 /** Persisted daemon state (written to daemon-state.json). */
 export interface PersistedDaemonState {
@@ -84,6 +124,9 @@ export class DaemonState {
   private scheduler: SchedulerState;
   private agents: Map<string, InternalAgentState> = new Map();
   private listeners: Set<StateListener> = new Set();
+  private statusObservers: Set<StatusObserver> = new Set();
+  private removalObservers: Set<AgentRemovalObserver> = new Set();
+  private userRetryActive = false;
   private dirty = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -169,6 +212,34 @@ export class DaemonState {
   subscribe(listener: StateListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Register an internal status observer (not a client-facing event).
+   * Runs synchronously before the status-change event is emitted.
+   */
+  observeStatus(observer: StatusObserver): () => void {
+    this.statusObservers.add(observer);
+    return () => this.statusObservers.delete(observer);
+  }
+
+  /**
+   * Register an internal pre-removal hook covering removeAgent,
+   * clearCompleted and reset. Not a client-facing event.
+   */
+  observeRemoval(observer: AgentRemovalObserver): () => void {
+    this.removalObservers.add(observer);
+    return () => this.removalObservers.delete(observer);
+  }
+
+  private notifyRemoval(agent: InternalAgentState, reason: AgentRemovalReason): void {
+    for (const observer of this.removalObservers) {
+      try {
+        observer(agent, reason);
+      } catch {
+        // Observers must never break state mutation
+      }
+    }
   }
 
   /** Emit an event to all listeners (public so AgentRunner can broadcast). */
@@ -386,6 +457,14 @@ export class DaemonState {
       this.scheduler.totalFailed++;
     }
 
+    for (const observer of this.statusObservers) {
+      try {
+        observer(agent, previousStatus, newStatus, detail, { userRetry: this.userRetryActive });
+      } catch {
+        // Observers must never break state mutation
+      }
+    }
+
     this.scheduleSave();
     this.emit("evt:agent-status-change", {
       featureId,
@@ -419,6 +498,8 @@ export class DaemonState {
 
   /** Remove an agent from tracking. */
   removeAgent(featureId: string): void {
+    const agent = this.agents.get(featureId);
+    if (agent) this.notifyRemoval(agent, "remove");
     this.agents.delete(featureId);
     this.scheduleSave();
   }
@@ -453,7 +534,12 @@ export class DaemonState {
     agent.error = null;
     agent.buildPassed = null;
     agent.completedAt = null;
-    this.updateAgentStatus(featureId, "retry", `Retry ${agent.retries}/${agent.maxRetries}`);
+    this.userRetryActive = true;
+    try {
+      this.updateAgentStatus(featureId, "retry", `Retry ${agent.retries}/${agent.maxRetries}`);
+    } finally {
+      this.userRetryActive = false;
+    }
     return true;
   }
 
@@ -515,6 +601,8 @@ export class DaemonState {
     const {
       buildOutput: _buildOutput,
       mergeQueuePosition: _mergeQueuePosition,
+      analytics: _analytics,
+      analyticsUnmonitored: _analyticsUnmonitored,
       ...clientState
     } = agent;
     return clientState;
@@ -529,6 +617,7 @@ export class DaemonState {
     let cleared = 0;
     for (const [id, agent] of this.agents) {
       if (TERMINAL_STATUSES.has(agent.status)) {
+        this.notifyRemoval(agent, "clear");
         this.agents.delete(id);
         cleared++;
       }
@@ -539,6 +628,7 @@ export class DaemonState {
 
   /** Reset everything to initial state. */
   reset(): void {
+    for (const agent of this.agents.values()) this.notifyRemoval(agent, "reset");
     this.agents.clear();
     this.scheduler = DaemonState.defaultSchedulerState();
     this.scheduleSave();
