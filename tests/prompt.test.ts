@@ -6,6 +6,8 @@
  *     portless section, commit guidelines, subtask formatting
  *   - TDD prompt content: red-green-refactor cycle, test command inclusion,
  *     rules about never skipping red step, commit at green
+ *   - Quest test baseline: default zero-failure language vs. baseline-aware
+ *     no-new-regressions language, bounded failure list
  *   - generateConflictResolutionPrompt: basic structure
  */
 
@@ -13,6 +15,9 @@ import { describe, test, expect } from "bun:test";
 import {
   generatePrompt,
   generateConflictResolutionPrompt,
+  MAX_BASELINE_FAILURES_SHOWN,
+  type QuestPromptContext,
+  type TestBaselineSummary,
 } from "../src/lib/prompt";
 import type { Feature } from "../src/lib/tasks";
 import type { WomboConfig } from "../src/config";
@@ -304,6 +309,98 @@ describe("generatePrompt — TDD section", () => {
     const config = makeConfig({ tdd: { enabled: true, testCommand: "bun test", strictTdd: true, testTimeout: 120_000 } });
     const prompt = generatePrompt(makeFeature(), "main", config);
     expect(prompt).toContain("Strict mode is active");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generatePrompt — Quest test baseline
+// ---------------------------------------------------------------------------
+
+describe("generatePrompt — quest test baseline", () => {
+  const tddConfig = () =>
+    makeConfig({ tdd: { enabled: true, testCommand: "bun test", strictTdd: false, testTimeout: 120_000 } });
+
+  function questWith(testBaseline?: TestBaselineSummary): QuestPromptContext {
+    return {
+      questId: "q1",
+      goal: "Do the thing",
+      addedConstraints: [],
+      addedForbidden: [],
+      knowledge: null,
+      testBaseline,
+    };
+  }
+
+  const baseline: TestBaselineSummary = {
+    sourceBranch: "main",
+    commitSha: "abc1234",
+    failingTestIds: [
+      "tests/a.test.ts > outer > flaky",
+      "tests/b.test.ts > legacy",
+    ],
+  };
+
+  test("without a baseline, keeps all-tests-pass requirements", () => {
+    const prompt = generatePrompt(makeFeature(), "main", tddConfig(), questWith());
+    expect(prompt).not.toContain("Quest Test Baseline");
+    expect(prompt).toContain("verify all tests pass");
+    expect(prompt).toContain("Each commit should have all tests passing.");
+    expect(prompt).toContain("keeping tests green");
+  });
+
+  test("with a baseline, renders source branch, sha, and failing ids", () => {
+    const prompt = generatePrompt(makeFeature(), "main", tddConfig(), questWith(baseline));
+    expect(prompt).toContain("## Quest Test Baseline");
+    expect(prompt).toContain("`main`");
+    expect(prompt).toContain("`abc1234`");
+    expect(prompt).toContain("- `tests/a.test.ts > outer > flaky`");
+    expect(prompt).toContain("- `tests/b.test.ts > legacy`");
+  });
+
+  test("with a baseline, replaces absolute all-green language", () => {
+    const prompt = generatePrompt(makeFeature(), "main", tddConfig(), questWith(baseline));
+    expect(prompt).not.toContain("verify all tests pass");
+    expect(prompt).not.toContain("Each commit should have all tests passing.");
+    expect(prompt).toContain("No new regressions");
+    expect(prompt).toContain("beyond the quest baseline");
+  });
+
+  test("with a baseline, keeps red-green-refactor and anti-hiding rules", () => {
+    const prompt = generatePrompt(makeFeature(), "main", tddConfig(), questWith(baseline));
+    expect(prompt).toContain("red-green-refactor");
+    expect(prompt).toContain("Never skip the red step");
+    expect(prompt).toContain("Every test you add MUST pass");
+    expect(prompt).toMatch(/Never skip, delete, disable/);
+  });
+
+  test("strict mode stays enforced with a baseline", () => {
+    const config = makeConfig({ tdd: { enabled: true, testCommand: "bun test", strictTdd: true, testTimeout: 120_000 } });
+    const prompt = generatePrompt(makeFeature(), "main", config, questWith(baseline));
+    expect(prompt).toContain("Strict mode is active");
+  });
+
+  test("empty baseline states that all tests passed", () => {
+    const prompt = generatePrompt(
+      makeFeature(),
+      "main",
+      tddConfig(),
+      questWith({ ...baseline, failingTestIds: [] })
+    );
+    expect(prompt).toContain("All tests passed at that point.");
+    expect(prompt).not.toContain("Pre-existing failing tests");
+  });
+
+  test("bounds the failure list and states how many were omitted", () => {
+    const many = Array.from({ length: MAX_BASELINE_FAILURES_SHOWN + 7 }, (_, i) => `tests/x.test.ts > t${i}`);
+    const prompt = generatePrompt(
+      makeFeature(),
+      "main",
+      tddConfig(),
+      questWith({ ...baseline, failingTestIds: many })
+    );
+    expect(prompt).toContain(`tests/x.test.ts > t${MAX_BASELINE_FAILURES_SHOWN - 1}\``);
+    expect(prompt).not.toContain(`tests/x.test.ts > t${MAX_BASELINE_FAILURES_SHOWN}\``);
+    expect(prompt).toContain("... and 7 more not shown");
   });
 });
 

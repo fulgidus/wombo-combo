@@ -97,11 +97,11 @@ You MUST follow the **red-green-refactor** TDD cycle for all implementation work
    - Do NOT add features or handle edge cases not covered by a test yet.
 
 4. **🟢 Verify the test passes**
-   - Run \`{{testCommand}}\` and confirm ALL tests pass (both new and existing).
+   - Run \`{{testCommand}}\` and confirm ALL tests pass (both new and existing) — or, when your task prompt has a **Quest Test Baseline** section, that no tests fail beyond the pre-existing failures it lists.
    - If any test fails, fix the implementation — do NOT modify the test to make it pass (unless the test itself is wrong).
 
 5. **🔵 Refactor**
-   - Clean up the implementation while keeping all tests green.
+   - Clean up the implementation while keeping all tests green (no failures beyond the quest baseline, if one is supplied).
    - Extract helpers, rename variables, simplify logic — but run \`{{testCommand}}\` after each change.
    - If a refactor breaks a test, undo the refactor and try a different approach.
 
@@ -111,7 +111,18 @@ You MUST follow the **red-green-refactor** TDD cycle for all implementation work
 - **One behavior per cycle.** Each red-green-refactor iteration should cover exactly one small behavior or edge case.
 - **Tests are first-class code.** Keep them readable, well-named, and focused.
 - **Run tests frequently.** Run \`{{testCommand}}\` after every meaningful change — not just at the end.
-- **Commit at green.** Each commit should have all tests passing. Use the cycle boundaries as natural commit points.
+- **Commit at green.** Each commit should have all tests passing (or no failures beyond a supplied quest baseline). Use the cycle boundaries as natural commit points.
+
+### Quest Test Baseline
+
+If your task prompt includes a **Quest Test Baseline** section, it lists tests that were already failing on the base branch before this quest started. Defer to it:
+
+- Those pre-existing failures are accepted; you do not have to fix them.
+- Every other test MUST pass — any new failure is a regression and fails verification.
+- Every test you add MUST pass.
+- NEVER skip, delete, disable, or weaken a test to hide a failure, including the pre-existing ones.
+
+If no baseline is supplied, ALL tests must pass.
 
 ### Test File Conventions
 

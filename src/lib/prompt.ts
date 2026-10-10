@@ -42,6 +42,64 @@ export interface QuestPromptContext {
    * that gives the agent a head start on exploring the codebase.
    */
   fileManifest?: string[];
+  /**
+   * Test baseline captured from the quest's base branch before agents ran.
+   * When provided, pre-existing failures listed here are accepted and the
+   * agent must avoid new regressions instead of reaching zero failures.
+   */
+  testBaseline?: TestBaselineSummary;
+}
+
+/**
+ * Summary of a quest test baseline as shown to agents. Pure data — the
+ * prompt generator never reads baseline files itself.
+ */
+export interface TestBaselineSummary {
+  /** Branch the baseline was captured from (e.g. "main") */
+  sourceBranch: string;
+  /** Commit SHA the baseline was captured at */
+  commitSha: string;
+  /** Identities of tests that were already failing at that commit */
+  failingTestIds: string[];
+}
+
+/** Maximum number of baseline failures listed in a prompt */
+export const MAX_BASELINE_FAILURES_SHOWN = 50;
+
+/**
+ * Render the quest test baseline section. Lists at most
+ * MAX_BASELINE_FAILURES_SHOWN failures and states how many were omitted.
+ */
+export function formatTestBaselineSection(
+  baseline: TestBaselineSummary,
+  testCmd: string
+): string[] {
+  const lines: string[] = [];
+  const failures = baseline.failingTestIds;
+  lines.push(`\n## Quest Test Baseline\n`);
+  lines.push(
+    `Tests were run on \`${baseline.sourceBranch}\` at commit \`${baseline.commitSha}\` ` +
+    `before this quest started. ` +
+    (failures.length === 0
+      ? "All tests passed at that point."
+      : `${failures.length} test(s) were already failing there. These pre-existing failures are accepted and are NOT your responsibility unless your task says otherwise.`)
+  );
+  if (failures.length > 0) {
+    lines.push("\n**Pre-existing failing tests:**\n");
+    for (const id of failures.slice(0, MAX_BASELINE_FAILURES_SHOWN)) {
+      lines.push(`- \`${id}\``);
+    }
+    const omitted = failures.length - MAX_BASELINE_FAILURES_SHOWN;
+    if (omitted > 0) {
+      lines.push(`- ... and ${omitted} more not shown`);
+    }
+  }
+  lines.push("\n**Requirements:**\n");
+  lines.push(`- **No new regressions.** When you run \`${testCmd}\`, every test that is not listed above MUST pass.`);
+  lines.push("- **Every test you add MUST pass.** New tests can never be accepted as failing.");
+  lines.push("- **Do NOT hide failures.** Never skip, delete, disable, or weaken a test (including the pre-existing failures) to make the run look green.");
+  lines.push("- Fixing a pre-existing failure is welcome but optional.");
+  return lines;
 }
 
 // ---------------------------------------------------------------------------
@@ -274,6 +332,7 @@ export function generatePrompt(
   }
 
   // TDD instructions — deterministic injection based on config
+  const baseline = quest?.testBaseline;
   if (config.tdd?.enabled) {
     const testCmd = config.tdd.testCommand || "bun test";
     const strictLabel = config.tdd.strictTdd
@@ -287,12 +346,20 @@ export function generatePrompt(
     sections.push("### Workflow\n");
     sections.push(`1. **🔴 Red** — Write a failing test first. Run \`${testCmd}\` to confirm it fails.`);
     sections.push(`2. **🟢 Green** — Write minimal code to make the test pass. Run \`${testCmd}\` to confirm.`);
-    sections.push(`3. **🔵 Refactor** — Clean up while keeping tests green. Run \`${testCmd}\` after each change.`);
+    sections.push(
+      baseline
+        ? `3. **🔵 Refactor** — Clean up without introducing new failures. Run \`${testCmd}\` after each change.`
+        : `3. **🔵 Refactor** — Clean up while keeping tests green. Run \`${testCmd}\` after each change.`
+    );
     sections.push(`4. **Repeat** for each new behavior or edge case.\n`);
     sections.push("### Rules\n");
     sections.push("- **Never skip the red step.** Every new behavior starts with a failing test.");
     sections.push("- **One behavior per cycle.** Each iteration covers exactly one small behavior.");
-    sections.push("- **Commit at green.** Each commit should have all tests passing.");
+    sections.push(
+      baseline
+        ? "- **Commit at green.** Each commit should have no failures beyond the quest baseline below, and all new tests passing."
+        : "- **Commit at green.** Each commit should have all tests passing."
+    );
     sections.push(`- **Run tests frequently.** Run \`${testCmd}\` after every meaningful change.`);
     sections.push("- Use `import { describe, test, expect } from \"bun:test\";` for test files.");
     sections.push("- Place tests next to source: `src/foo.ts` → `src/foo.test.ts` (or `tests/foo.test.ts`).");
@@ -311,7 +378,11 @@ export function generatePrompt(
     sections.push(
       "After all changes are complete, the verification pipeline will automatically:"
     );
-    sections.push(`1. Run \`${testCmd}\` and verify all tests pass`);
+    sections.push(
+      baseline
+        ? `1. Run \`${testCmd}\` and verify no tests fail beyond the quest baseline (new regressions fail verification)`
+        : `1. Run \`${testCmd}\` and verify all tests pass`
+    );
     sections.push("2. Check that every new/modified source file has a corresponding test file");
     sections.push("3. Report coverage ratio of tested vs untested files");
     if (config.tdd.strictTdd) {
@@ -319,6 +390,11 @@ export function generatePrompt(
         "\n**⚠️ Strict mode is active.** Verification will FAIL if any testable source file is missing a test."
       );
     }
+  }
+
+  if (baseline) {
+    const testCmd = config.tdd?.testCommand || "bun test";
+    sections.push(...formatTestBaselineSection(baseline, testCmd));
   }
 
   // HITL — Human-in-the-Loop instructions
@@ -382,9 +458,15 @@ export function generatePrompt(
     const testCmd = config.tdd.testCommand || "bun test";
     sections.push("3. For each subtask, follow the TDD cycle: write a failing test, make it pass, refactor");
     sections.push("4. Commit after each green cycle");
-    sections.push(`5. Run \`${testCmd}\` to verify all tests pass`);
-    sections.push(`6. Run \`${config.build.command}\` to verify the build`);
-    sections.push("7. If tests or build fail, fix the errors and re-run until both pass");
+    if (baseline) {
+      sections.push(`5. Run \`${testCmd}\` to verify there are no failures beyond the quest baseline`);
+      sections.push(`6. Run \`${config.build.command}\` to verify the build`);
+      sections.push("7. If you introduced test failures or the build fails, fix the errors and re-run until both pass");
+    } else {
+      sections.push(`5. Run \`${testCmd}\` to verify all tests pass`);
+      sections.push(`6. Run \`${config.build.command}\` to verify the build`);
+      sections.push("7. If tests or build fail, fix the errors and re-run until both pass");
+    }
   } else {
     sections.push("3. Implement each subtask, committing as you go");
     sections.push(`4. Run \`${config.build.command}\` to verify`);
