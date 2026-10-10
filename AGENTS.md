@@ -38,13 +38,14 @@ Publishing is handled by the GitHub Actions release workflow, which triggers on
 git tag pushes. **Never run `npm publish` manually** — always let the workflow
 handle it.
 
-To release: bump `package.json` version, commit, tag (`v<version>`), push with
-`--tags`. The workflow takes care of the rest.
+To release: bump `package.json` version and push the commit to `main`. The
+Release workflow sees the new version, runs typecheck/tests/build, creates the
+`v<version>` tag, and publishes to GitHub Releases and npm. Pushes whose
+version already has a tag release nothing.
 
-If you cannot push tags (e.g. from a restricted environment), push the version
-bump to `main` and run the Release workflow manually (Actions → Release → Run
-workflow, `version` = the package.json version). It creates the `v<version>`
-tag itself and then runs the same release steps.
+Pushing a `v<version>` tag yourself, or running the workflow manually
+(Actions → Release → Run workflow, `version` = the package.json version),
+also works.
 
 Users install via:
 
@@ -211,9 +212,10 @@ The active backlog lives in `.wombo-combo/tasks.yml`. Use
 - **When creating a git tag, ALWAYS update `package.json` `"version"` first,
   commit the bump, then tag that commit.** Never tag without bumping the
   version — they must stay in sync.
-- Release workflow (when implemented) triggers on `v*` tag push to main.
+- The Release workflow runs on a version bump pushed to `main` (it creates the
+  tag), on a `v*` tag push, or manually from the Actions tab.
 - **Never run `npm publish` manually** — always let the GitHub Actions workflow
-  handle publishing. Just bump, commit, tag, push.
+  handle publishing. Just bump, commit, push to `main`.
 
 ## graphify
 

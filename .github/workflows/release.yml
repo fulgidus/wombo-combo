@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+    # Continuous delivery: a version bump in package.json on main releases
+    # that version (skipped when its tag already exists).
+    branches:
+      - main
+    paths:
+      - package.json
+      - .github/workflows/release.yml
   # Manual release from the Actions tab (or API): creates the v<version> tag
   # for the current commit, then runs the same release steps.
   workflow_dispatch:
@@ -12,26 +19,55 @@ on:
         description: "Version to release (must equal package.json version, e.g. 0.5.0)"
         required: true
 
+# Never run two releases at once (e.g. a bump and a tag push together)
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   id-token: write
 
 jobs:
-  release:
+  plan:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      release: ${{ steps.resolve.outputs.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="v${{ inputs.version }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # A branch push or manual run must not re-release an existing tag
+          if [ "${{ github.ref_type }}" != "tag" ] && git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists; nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # full history for changelog generation
-
-      - name: Resolve release tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "RELEASE_TAG=v${{ inputs.version }}" >> "$GITHUB_ENV"
-          else
-            echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
-          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -71,8 +107,8 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Create release tag (manual release)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Create release tag (branch push or manual release)
+        if: github.ref_type != 'tag'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
