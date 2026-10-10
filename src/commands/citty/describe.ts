@@ -10,6 +10,7 @@
  */
 
 import { defineCommand } from "citty";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   findCommandDef,
@@ -24,7 +25,7 @@ import { buildToonSpec, renderToonLegend } from "../../lib/toon-spec";
 async function getPackageVersion(): Promise<string> {
   const pkgPath = resolve(import.meta.dir, "../../..", "package.json");
   try {
-    const pkg = await Bun.file(pkgPath).json();
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     return pkg.version ?? "unknown";
   } catch {
     return "unknown";

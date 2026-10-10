@@ -4,14 +4,14 @@ description: "node dist/index.js crashes at load with 'ReferenceError: self is n
   (marked external in the build). dist is built with --target node and shipped as a release asset. Either fix the bundle
   (e.g. stub/alias react-devtools-core) or stop claiming node support. Tracked as test.todo in
   tests/e2e/cli-smoke.test.ts."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T01:18:11.430Z
 constraints: []
 forbidden: []
 references: []

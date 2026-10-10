@@ -12,3 +12,6 @@ dist/
 .wombo-combo/daemon-state.json
 .wombo-combo/daemon.pid
 .wombo-combo/baselines/
+
+# Claude Code agent worktrees
+.claude/worktrees/
