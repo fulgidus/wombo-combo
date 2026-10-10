@@ -14,14 +14,14 @@ description: |
   separately. Removed or skipped baseline failures must be visible rather
   than reported as fixes.
   Add tests/test-baseline.test.ts and ignore the runtime directory.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on:
   - structured-test-results
 effort: PT30M
-started_at: null
+started_at: 2026-10-10T00:45:52.741Z
 ended_at: null
 constraints:
   - Expose reusable types and functions for capture, verification, and daemon integration.

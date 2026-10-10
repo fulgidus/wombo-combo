@@ -11,3 +11,4 @@ dist/
 *.bak
 .wombo-combo/daemon-state.json
 .wombo-combo/daemon.pid
+.wombo-combo/baselines/

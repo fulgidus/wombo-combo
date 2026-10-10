@@ -45,6 +45,14 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Configure git identity (tests create commits/worktrees)
+        run: |
+          git config --global user.name "wombo-ci"
+          git config --global user.email "ci@wombo-combo.invalid"
+
+      - name: Test
+        run: bun test
+
       - name: Build
         run: bun run build
 

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck, build, unit + CLI/TUI e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Non-interactive defaults for CLI/TUI subprocess tests
+      CI: "1"
+      FORCE_COLOR: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Pinned: test-runner fixtures and output parsing track Bun's format
+          bun-version: "1.4.2"
+
+      - name: Setup Node (runs the built CLI under node)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Configure git identity (tests create commits/worktrees)
+        run: |
+          git config --global user.name "wombo-ci"
+          git config --global user.email "ci@wombo-combo.invalid"
+          git config --global init.defaultBranch main
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build
+        # Built before tests so e2e smoke tests also exercise dist/index.js
+        run: bun run build
+
+      - name: Unit and component tests (incl. Ink TUI components)
+        run: bun test --timeout 30000 --path-ignore-patterns 'tests/e2e/**'
+
+      - name: CLI e2e smoke tests
+        run: bun test --timeout 60000 tests/e2e/cli-smoke.test.ts
+
+      - name: TUI e2e smoke tests (real TUI in a pseudo-terminal)
+        run: bun test --timeout 60000 tests/e2e/tui-smoke.test.ts
