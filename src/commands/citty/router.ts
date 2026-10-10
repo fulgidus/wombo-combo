@@ -141,6 +141,28 @@ export function resolveGlobalFlagsAndCommand(args: string[]): ResolvedCommand {
 }
 
 /**
+ * Re-attach global flags that citty commands declare as their own args.
+ *
+ * extractGlobalFlags() removes --dev, --force, --no-ui and --output/-o (with
+ * their value) from anywhere in argv. Citty commands still read those from
+ * their args, so they must be passed back. --output is re-added in its
+ * space-separated form and only when the args do not already carry one.
+ */
+export function buildCittyArgs(remaining: string[], flags: GlobalFlags): string[] {
+    const args = [...remaining];
+    if (flags.dev && !args.includes("--dev")) args.push("--dev");
+    if (flags.force && !args.includes("--force")) args.push("--force");
+    if (flags.noUi && !args.includes("--no-ui")) args.push("--no-ui");
+    const hasOutput = args.some(
+        (a) => a === "--output" || a === "-o" || a.startsWith("--output=")
+    );
+    if (flags.output !== undefined && !hasOutput) {
+        args.push("--output", flags.output);
+    }
+    return args;
+}
+
+/**
  * Commands whose parent `run()` has been removed because citty always
  * executes both the matched subcommand AND the parent run(), causing
  * double output. For these commands, if no subcommand is provided we
