@@ -101,10 +101,11 @@ export function makePostMergeFixture(destination = "integration"): PostMergeFixt
 
 /** Environment that keeps git hermetic for runners that inherit process.env. */
 export function useHermeticGitEnv(): { restore(): void } {
-  const keys = ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_TERMINAL_PROMPT"];
+  const keys = ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_COUNT", "GIT_TERMINAL_PROMPT"];
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   process.env.GIT_CONFIG_GLOBAL = "/dev/null";
   process.env.GIT_CONFIG_SYSTEM = "/dev/null";
+  process.env.GIT_CONFIG_COUNT = "0"; // ignore env-injected config such as URL rewrites
   process.env.GIT_TERMINAL_PROMPT = "0";
   return {
     restore() {
