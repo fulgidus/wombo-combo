@@ -106,6 +106,11 @@ export interface OnboardingAppProps {
    * Optional: override save for testing.
    */
   saveFn?: (projectRoot: string, profile: ProjectProfile) => void;
+  /**
+   * Called when the user presses q on the create-mode wizard's selection step
+   * (see StepWizard). Typically the TUI's onExit.
+   */
+  onQuit?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +133,7 @@ export function OnboardingApp({
   scoutFn,
   synthesisFn,
   saveFn,
+  onQuit,
 }: OnboardingAppProps): React.ReactElement {
   // =========================================================================
   // Shared progress state
@@ -365,6 +371,7 @@ export function OnboardingApp({
           <StepWizard
             onComplete={handleInputsComplete}
             onCancel={handleInputsCancel}
+            onQuit={onQuit}
           />
         );
 

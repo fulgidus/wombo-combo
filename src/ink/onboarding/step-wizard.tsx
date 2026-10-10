@@ -8,6 +8,8 @@
  * Navigation:
  *   - Esc on the first step cancels the wizard
  *   - Esc on subsequent steps goes back one step
+ *   - q on selection steps quits the app (onQuit); on text steps q is typed
+ *     into the field like any other character
  *   - Enter/Space on selection items advances
  *   - Enter on single-line text inputs advances
  *   - Ctrl+S on multi-line textareas advances
@@ -32,6 +34,11 @@ export interface StepWizardProps {
   onCancel: () => void;
   /** Optional initial values to pre-populate fields. */
   initialValues?: Partial<RawInputs>;
+  /**
+   * Called when the user presses q on a selection step (no text field has
+   * focus). Mirrors the global "q quit" behaviour of the other TUI screens.
+   */
+  onQuit?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,6 +50,7 @@ interface SelectionListProps {
   selectedIndex: number;
   onSelect: (index: number) => void;
   onBack: () => void;
+  onQuit?: () => void;
 }
 
 function SelectionList({
@@ -50,6 +58,7 @@ function SelectionList({
   selectedIndex,
   onSelect,
   onBack,
+  onQuit,
 }: SelectionListProps): React.ReactElement {
   const [cursor, setCursor] = useState(selectedIndex);
 
@@ -68,6 +77,11 @@ function SelectionList({
     }
     if (key.escape) {
       onBack();
+      return;
+    }
+    // No text field on selection steps, so q can quit safely.
+    if (input === "q") {
+      onQuit?.();
       return;
     }
   });
@@ -234,6 +248,7 @@ export function StepWizard({
   onComplete,
   onCancel,
   initialValues,
+  onQuit,
 }: StepWizardProps): React.ReactElement {
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<RawInputs>({
@@ -304,6 +319,7 @@ export function StepWizard({
           selectedIndex={currentIdx}
           onSelect={handleSelect}
           onBack={goBack}
+          onQuit={onQuit}
         />
       );
     }

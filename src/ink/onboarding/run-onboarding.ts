@@ -213,5 +213,6 @@ export function OnboardingScreen({
     scoutFn: runBrownfieldScout,
     synthesisFn: runLlmSynthesis,
     saveFn: saveProject,
+    onQuit: onExit,
   });
 }
