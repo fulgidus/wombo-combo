@@ -1,0 +1,76 @@
+bun test v1.4.2 (744846f84)
+
+##[group]tests/test-runner.test.ts:
+(pass) parseTestCounts — Bun format > parses pass count [0.51ms]
+(pass) parseTestCounts — Bun format > parses pass and fail counts [0.10ms]
+(pass) parseTestCounts — Bun format > parses pass, fail, and skip counts [0.08ms]
+(pass) parseTestCounts — Bun format > parses counts from stderr [0.07ms]
+(pass) parseTestCounts — Bun format > handles case-insensitive matching [0.06ms]
+(pass) parseTestCounts — Jest format > parses Tests: X passed, Y total format [0.05ms]
+(pass) parseTestCounts — Jest format > parses Tests with failures [0.05ms]
+(pass) parseTestCounts — Unparseable > returns parsed=false for empty output [0.12ms]
+(pass) parseTestCounts — Unparseable > returns parsed=false for unrecognized format [0.07ms]
+(pass) parseTestCounts — Unparseable > returns parsed=false for only 'fail' without match pattern [0.05ms]
+(pass) extractTestErrorSummary > extracts error lines with context [0.20ms]
+(pass) extractTestErrorSummary > extracts FAIL markers [0.07ms]
+(pass) extractTestErrorSummary > falls back to last 30 lines when no error patterns found [0.22ms]
+(pass) extractTestErrorSummary > truncates long error output [0.08ms]
+(pass) extractTestErrorSummary > handles empty output [0.06ms]
+(pass) extractTestErrorSummary > captures expect() patterns [0.06ms]
+(pass) runTests > captures successful command output [6.44ms]
+(pass) runTests > captures failing command [2.78ms]
+(pass) runTests > captures command with stderr output [1.85ms]
+(pass) runTests > returns error summary for failed tests [1.22ms]
+(pass) runTests > respects timeout [101.24ms]
+(pass) runTests > measures duration [1.45ms]
+(pass) classifyExecution > no error is completed [0.19ms]
+(pass) classifyExecution > numeric exit code is completed, not a failure kind [0.12ms]
+(pass) classifyExecution > signal sent by exec is a timeout [0.10ms]
+(pass) classifyExecution > external signal is reported as signal [0.08ms]
+(pass) classifyExecution > maxBuffer overflow [0.09ms]
+(pass) classifyExecution > exit 127 is command-not-found [0.08ms]
+(pass) classifyExecution > non-numeric code is a spawn error [0.08ms]
+(pass) normalizeTestPath > strips worktree root and converts separators [0.19ms]
+(pass) normalizeTestPath > stripAnsi removes color codes [0.10ms]
+(pass) parseStructuredResults — Bun > extracts failing identities with nested suites and duplicates [0.43ms]
+(pass) parseStructuredResults — Bun > TTY output with ANSI codes yields the same identities [0.39ms]
+(pass) parseStructuredResults — Bun > timing noise does not affect identities [0.31ms]
+(pass) parseStructuredResults — Bun > load errors make results non-comparable [0.21ms]
+(pass) parseStructuredResults — Bun > all-pass run is comparable with no failures [0.20ms]
+(pass) parseStructuredResults — Bun > lists passes, skips, and todos when Bun prints them [0.18ms]
+(pass) parseStructuredResults — Bun > truncated output (missing summary) is non-comparable [0.11ms]
+(pass) parseStructuredResults — Bun > failure count mismatch is non-comparable [0.15ms]
+(pass) parseStructuredResults — Bun > incomplete execution never reports assertion failures [0.31ms]
+(pass) parseStructuredResults — Bun > nonzero exit without reported failures is unknown [0.15ms]
+(pass) parseStructuredResults — Bun > unsupported runner output is non-comparable [0.11ms]
+(pass) runTests — execution metadata > timeout is classified and non-comparable [102.18ms]
+(pass) runTests — execution metadata > missing command is command-not-found [1.66ms]
+472 |       ].join("\n")
+473 |     );
+474 |     const result = await runTests(tmpDir, "bun test", 30_000);
+475 |     expect(result.passed).toBe(false);
+476 |     expect(result.execution?.status).toBe("completed");
+477 |     expect(result.structured?.comparable).toBe(true);
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/work/tree/tests/test-runner.test.ts:477:43)
+
+##[error]Expected: true
+Received: false
+
+      at <anonymous> (/work/tree/tests/test-runner.test.ts:477:43)
+(fail) runTests — execution metadata > real bun run with a failing test yields its identity [5.52ms]
+
+##[endgroup]
+
+1 tests failed:
+(fail) runTests — execution metadata > real bun run with a failing test yields its identity [5.52ms]
+
+ 44 pass
+ 1 fail
+ 70 expect() calls
+Ran 45 tests across 1 file. [1.00s]

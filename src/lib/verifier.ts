@@ -26,6 +26,7 @@ import {
   extractTddErrorSummary,
   type TddVerificationResult,
 } from "./tdd-verifier";
+import type { TestBaseline } from "./test-baseline";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +49,8 @@ export interface FullVerificationOptions {
   skipTests?: boolean;
   /** Strict TDD mode — fail if new files are missing tests (--strict-tdd) */
   strictTdd?: boolean;
+  /** Quest test baseline; when supplied, only regressions fail the TDD step */
+  testBaseline?: TestBaseline;
 }
 
 /**
@@ -249,6 +252,7 @@ export async function runFullVerification(
     skipTests,
     strictTdd,
     baseBranch: config.baseBranch,
+    testBaseline: opts?.testBaseline,
   });
 
   // Determine overall pass

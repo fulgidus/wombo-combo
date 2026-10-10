@@ -7,20 +7,28 @@
  *     overall pass/fail logic, summary building
  *   - extractTddErrorSummary: test failure extraction, missing tests in strict mode
  *   - renderTddVerificationReport: basic rendering (doesn't crash)
+ *   - Quest test baseline: real `bun test` runs in temp git repos (accepted
+ *     failures, regressions, fixes, not-comparable runs, timeouts, strict mode,
+ *     skipping), summarizeBaselineComparison, baseline-aware error summaries
+ *     and report rendering
  */
 
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, rmSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import {
   runTddVerification,
   extractTddErrorSummary,
   renderTddVerificationReport,
   isNonTestableChangeOnly,
+  summarizeBaselineComparison,
   type TddVerificationResult,
   type TddVerificationOptions,
 } from "../src/lib/tdd-verifier";
+import { createTestBaseline, type TestBaseline, type TestBaselineComparison } from "../src/lib/test-baseline";
+import { runTests } from "../src/lib/test-runner";
 import type { WomboConfig } from "../src/config";
 
 // ---------------------------------------------------------------------------
@@ -570,5 +578,446 @@ describe("isNonTestableChangeOnly", () => {
       comparedTo: "main",
     };
     expect(isNonTestableChangeOnly(report)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quest test baseline — real `bun test` runs in the temp git repo
+// ---------------------------------------------------------------------------
+
+const SUITE = "tests/a.test.ts";
+const ID_A = `${SUITE} > fails A`;
+const ID_B = `${SUITE} > fails B`;
+
+const SUITE_ALL_PASS = `import { test, expect } from "bun:test";
+test("passes A", () => expect(1).toBe(1));
+test("fixed A", () => expect(1).toBe(1));
+`;
+
+const SUITE_FAILS_A = `import { test, expect } from "bun:test";
+test("passes A", () => expect(1).toBe(1));
+test("fails A", () => expect(1).toBe(2));
+`;
+
+const SUITE_FAILS_A_AND_B = SUITE_FAILS_A + `test("fails B", () => expect(1).toBe(3));
+`;
+
+const SUITE_A_FIXED = `import { test, expect } from "bun:test";
+test("passes A", () => expect(1).toBe(1));
+test("fails A", () => expect(1).toBe(1));
+`;
+
+const SUITE_SLOW = `import { test } from "bun:test";
+test("slow", async () => {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+});
+`;
+
+const BASELINE_QUEST = "quest-baseline";
+
+function git(cwd: string, args: string[]): string {
+  return execFileSync("git", args, { cwd, encoding: "utf-8", stdio: "pipe" }).trim();
+}
+
+function writeRepoFiles(dir: string, files: Record<string, string>): void {
+  for (const [rel, content] of Object.entries(files)) {
+    const full = join(dir, rel);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, content, "utf-8");
+  }
+}
+
+/** Commit `files` as the `main` branch, configuring a local git identity */
+function initMainRepo(dir: string, files: Record<string, string>): void {
+  git(dir, ["symbolic-ref", "HEAD", "refs/heads/main"]);
+  git(dir, ["config", "user.email", "tdd-test@example.com"]);
+  git(dir, ["config", "user.name", "TDD Test"]);
+  writeRepoFiles(dir, files);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "baseline state"]);
+}
+
+/** Move to a feature branch and commit `files` on top of main */
+function applyFeatureChanges(dir: string, files: Record<string, string>): void {
+  git(dir, ["checkout", "-q", "-b", "feature"]);
+  writeRepoFiles(dir, files);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "feature change"]);
+}
+
+/** Snapshot the current tree the way a quest does: run the real command, store the result */
+async function captureBaseline(dir: string, testCommand = "bun test"): Promise<TestBaseline> {
+  const run = await runTests(dir, "bun test");
+  return createTestBaseline(
+    {
+      questId: BASELINE_QUEST,
+      sourceBranch: "main",
+      commitSha: git(dir, ["rev-parse", "HEAD"]),
+      testCommand,
+      timeoutMs: 120_000,
+    },
+    run
+  );
+}
+
+function baselineConfig(overrides?: Partial<WomboConfig["tdd"]>): WomboConfig {
+  return makeConfig({
+    tdd: { enabled: true, testCommand: "bun test", strictTdd: false, testTimeout: 120_000, ...overrides },
+  });
+}
+
+function makeComparison(overrides: Partial<TestBaselineComparison> = {}): TestBaselineComparison {
+  return {
+    verdict: "pass",
+    newFailures: [],
+    unchangedFailures: [],
+    fixedFailures: [],
+    skippedBaselineFailures: [],
+    missingBaselineFailures: [],
+    regressedPasses: [],
+    reasons: [],
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function makeRunResult(passed: boolean, errorSummary = ""): TddVerificationResult["testRun"] {
+  return {
+    passed,
+    exitCode: passed ? 0 : 1,
+    stdout: "",
+    stderr: "",
+    durationMs: 10,
+    testCounts: { total: 2, passed: passed ? 2 : 1, failed: passed ? 0 : 1, skipped: 0, parsed: true },
+    errorSummary,
+  };
+}
+
+describe("runTddVerification — test baseline (real bun test runs)", () => {
+  test("without a baseline, a failing test fails and no comparison is attached", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+    });
+    expect(result.ran).toBe(true);
+    expect(result.passed).toBe(false);
+    expect(result.baselineComparison).toBeUndefined();
+    expect(result.testRun!.passed).toBe(false);
+    expect(extractTddErrorSummary(result)).toContain("Test Failures");
+  });
+
+  test("failures recorded in the baseline are accepted when the run still fails only them", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    expect(baseline.results.structured?.failingTestIds).toEqual([ID_A]);
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      testBaseline: baseline,
+    });
+    expect(result.passed).toBe(true);
+    expect(result.testRun!.passed).toBe(false);
+    expect(result.baselineComparison!.verdict).toBe("pass");
+    expect(result.baselineComparison!.unchangedFailures).toEqual([ID_A]);
+    expect(result.baselineComparison!.newFailures).toEqual([]);
+
+    const summary = extractTddErrorSummary(result);
+    expect(summary).not.toContain("Test Failures");
+    expect(summary).not.toContain("NEW FAILURE");
+  });
+
+  test("a new failure fails verification; only the new one is listed as NEW FAILURE", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    applyFeatureChanges(tmpDir, { [SUITE]: SUITE_FAILS_A_AND_B });
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      testBaseline: baseline,
+    });
+    expect(result.passed).toBe(false);
+    expect(result.baselineComparison!.verdict).toBe("regression");
+    expect(result.baselineComparison!.newFailures).toEqual([ID_B]);
+    expect(result.baselineComparison!.unchangedFailures).toEqual([ID_A]);
+
+    const summary = extractTddErrorSummary(result);
+    expect(summary).toContain(`NEW FAILURE: ${ID_B}`);
+    expect(summary).not.toContain(`NEW FAILURE: ${ID_A}`);
+    expect(summary).toContain("accepted");
+  });
+
+  test("a baseline failure that is fixed does not fail verification", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    applyFeatureChanges(tmpDir, { [SUITE]: SUITE_A_FIXED });
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      testBaseline: baseline,
+    });
+    expect(result.testRun!.passed).toBe(true);
+    expect(result.passed).toBe(true);
+    expect(result.baselineComparison!.verdict).toBe("pass");
+    expect(result.baselineComparison!.newFailures).toEqual([]);
+    // Bun does not list passing tests in non-TTY output, so the fix shows up
+    // as a missing baseline failure rather than a confirmed fixed one.
+    const accounted = [
+      ...result.baselineComparison!.fixedFailures,
+      ...result.baselineComparison!.missingBaselineFailures,
+      ...result.baselineComparison!.skippedBaselineFailures,
+    ];
+    expect(accounted).toContain(ID_A);
+    expect(extractTddErrorSummary(result)).not.toContain("NEW FAILURE");
+  });
+
+  test("a baseline recorded with a different test command is not comparable and fails closed", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_ALL_PASS });
+    const baseline = await captureBaseline(tmpDir, "npm test");
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      testBaseline: baseline,
+    });
+    // The run itself is green, but the comparison cannot be trusted
+    expect(result.testRun!.passed).toBe(true);
+    expect(result.baselineComparison!.verdict).toBe("not-comparable");
+    expect(result.baselineComparison!.reasons.join(" ")).toContain("test command changed");
+    expect(result.passed).toBe(false);
+    expect(result.summary).toContain("NOT COMPARABLE");
+
+    const summary = extractTddErrorSummary(result);
+    expect(summary).toContain("Could Not Be Compared To The Quest Baseline");
+  });
+
+  test("a run that exceeds testTimeout is not comparable even with a baseline", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    applyFeatureChanges(tmpDir, { [SUITE]: SUITE_SLOW });
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig({ testTimeout: 50 }),
+      testBaseline: baseline,
+    });
+    expect(result.testRun!.execution?.status).toBe("timeout");
+    expect(result.passed).toBe(false);
+    expect(result.baselineComparison!.verdict).toBe("not-comparable");
+    expect(result.baselineComparison!.reasons.join(" ")).toContain("timeout");
+  }, 30_000);
+
+  test("strict mode still fails on missing tests when the baseline comparison passes", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    applyFeatureChanges(tmpDir, { "src/lib/new-mod.ts": "export const value = 1;\n" });
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      strictTdd: true,
+      testBaseline: baseline,
+    });
+    expect(result.baselineComparison!.verdict).toBe("pass");
+    expect(result.testDetection!.missingTests).toContain("src/lib/new-mod.ts");
+    expect(result.passed).toBe(false);
+    expect(result.summary).toContain("FAIL");
+    expect(extractTddErrorSummary(result)).toContain("Missing Tests (strict TDD mode)");
+  }, 30_000);
+
+  test("non-strict mode passes the same scenario and only warns about missing tests", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    applyFeatureChanges(tmpDir, { "src/lib/new-mod.ts": "export const value = 1;\n" });
+
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      strictTdd: false,
+      testBaseline: baseline,
+    });
+    expect(result.baselineComparison!.verdict).toBe("pass");
+    expect(result.testDetection!.missingTests).toContain("src/lib/new-mod.ts");
+    expect(result.passed).toBe(true);
+    expect(result.hasWarnings).toBe(true);
+  }, 30_000);
+
+  test("--skip-tests still skips when a baseline is supplied", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig(),
+      skipTests: true,
+      testBaseline: baseline,
+    });
+    expect(result.ran).toBe(false);
+    expect(result.passed).toBe(true);
+    expect(result.testRun).toBeNull();
+    expect(result.baselineComparison).toBeUndefined();
+  }, 30_000);
+
+  test("disabled TDD still skips when a baseline is supplied", async () => {
+    initMainRepo(tmpDir, { [SUITE]: SUITE_FAILS_A });
+    const baseline = await captureBaseline(tmpDir);
+    const result = await runTddVerification({
+      worktreePath: tmpDir,
+      featureId: "test-feat",
+      config: baselineConfig({ enabled: false }),
+      testBaseline: baseline,
+    });
+    expect(result.ran).toBe(false);
+    expect(result.passed).toBe(true);
+    expect(result.testRun).toBeNull();
+    expect(result.baselineComparison).toBeUndefined();
+  }, 30_000);
+});
+
+describe("summarizeBaselineComparison", () => {
+  test("pass with accepted failures", () => {
+    const c = makeComparison({ unchangedFailures: ["a"] });
+    expect(summarizeBaselineComparison(c)).toBe("Baseline: PASS — 1 accepted existing failure(s)");
+  });
+
+  test("pass reports fixed and no-longer-reported failures separately", () => {
+    const c = makeComparison({ fixedFailures: ["a"], missingBaselineFailures: ["b"] });
+    const line = summarizeBaselineComparison(c);
+    expect(line).toContain("Baseline: PASS");
+    expect(line).toContain("1 fixed");
+    expect(line).toContain("1 no longer reported");
+    expect(line).not.toContain("regression");
+  });
+
+  test("regression counts new failures and lost passes", () => {
+    const c = makeComparison({
+      verdict: "regression",
+      newFailures: ["b"],
+      regressedPasses: ["c"],
+      unchangedFailures: ["a"],
+    });
+    expect(summarizeBaselineComparison(c)).toBe(
+      "Baseline: REGRESSION — 2 regression(s), 1 accepted existing failure(s)"
+    );
+  });
+
+  test("not-comparable shows the reasons", () => {
+    const c = makeComparison({
+      verdict: "not-comparable",
+      reasons: ["test run did not complete (timeout)"],
+    });
+    expect(summarizeBaselineComparison(c)).toBe(
+      "Baseline: NOT COMPARABLE — test run did not complete (timeout)"
+    );
+  });
+});
+
+describe("extractTddErrorSummary — baseline comparisons (hand-built)", () => {
+  test("regression lists only new failures and skips accepted ones", () => {
+    const result: TddVerificationResult = {
+      ran: true,
+      skipReason: null,
+      testRun: makeRunResult(false, "error output"),
+      testDetection: null,
+      passed: false,
+      hasWarnings: false,
+      summary: "",
+      strictMode: false,
+      baselineComparison: makeComparison({
+        verdict: "regression",
+        newFailures: ["x.test.ts > new"],
+        unchangedFailures: ["x.test.ts > old"],
+      }),
+    };
+    const summary = extractTddErrorSummary(result);
+    expect(summary).toContain("--- Test Regressions (vs quest baseline) ---");
+    expect(summary).toContain("NEW FAILURE: x.test.ts > new");
+    expect(summary).not.toContain("NEW FAILURE: x.test.ts > old");
+    expect(summary).toContain("1 pre-existing baseline failure(s) are accepted");
+    expect(summary).not.toContain("--- Test Failures ---");
+  });
+
+  test("not-comparable explains the reasons instead of listing failures", () => {
+    const result: TddVerificationResult = {
+      ran: true,
+      skipReason: null,
+      testRun: makeRunResult(false),
+      testDetection: null,
+      passed: false,
+      hasWarnings: false,
+      summary: "",
+      strictMode: false,
+      baselineComparison: makeComparison({
+        verdict: "not-comparable",
+        reasons: ["test command changed since baseline (\"npm test\" → \"bun test\")"],
+      }),
+    };
+    const summary = extractTddErrorSummary(result);
+    expect(summary).toContain("Could Not Be Compared To The Quest Baseline");
+    expect(summary).toContain("test command changed");
+    expect(summary).not.toContain("NEW FAILURE");
+  });
+
+  test("a passing baseline comparison produces no failure text even if the run failed", () => {
+    const result: TddVerificationResult = {
+      ran: true,
+      skipReason: null,
+      testRun: makeRunResult(false, "fails A details"),
+      testDetection: null,
+      passed: true,
+      hasWarnings: false,
+      summary: "",
+      strictMode: false,
+      baselineComparison: makeComparison({ unchangedFailures: ["x.test.ts > old"] }),
+    };
+    expect(extractTddErrorSummary(result)).toBe("");
+  });
+});
+
+describe("renderTddVerificationReport — baseline comparison", () => {
+  test("prints the baseline line and lists new failures", () => {
+    const logs: string[] = [];
+    const spy = spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(" "));
+    });
+    try {
+      const result: TddVerificationResult = {
+        ran: true,
+        skipReason: null,
+        testRun: makeRunResult(false, "error output"),
+        testDetection: null,
+        passed: false,
+        hasWarnings: false,
+        summary: "",
+        strictMode: false,
+        baselineComparison: makeComparison({
+          verdict: "regression",
+          newFailures: [ID_B],
+          unchangedFailures: [ID_A],
+          fixedFailures: ["x.test.ts > fixed one"],
+        }),
+      };
+      renderTddVerificationReport(result);
+    } finally {
+      spy.mockRestore();
+    }
+    // Strip ANSI colour codes so assertions read plain text
+    const text = logs.join("\n").replace(/\x1b\[[0-9;]*m/g, "");
+    expect(text).toContain("Baseline: REGRESSION — 1 regression(s), 1 accepted existing failure(s), 1 fixed");
+    expect(text).toContain("New failures:");
+    expect(text).toContain(`- ${ID_B}`);
+    expect(text).toContain("Fixed baseline failures:");
+    expect(text).toContain("TDD Overall: FAILED");
   });
 });

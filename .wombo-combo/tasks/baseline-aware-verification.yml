@@ -12,14 +12,14 @@ description: |
   regressions, and comparison/execution errors. Retry diagnostics must
   identify new regressions rather than demand repairs to every old failure.
   Extend tests/tdd-verifier.test.ts and add focused full-pipeline tests.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on:
   - baseline-store-diff
 effort: PT30M
-started_at: null
+started_at: 2026-10-10T01:08:32.505Z
 ended_at: null
 constraints:
   - Without a baseline, preserve the existing absolute-success behavior.

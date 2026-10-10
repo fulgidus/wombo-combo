@@ -13,14 +13,14 @@ description: |
   and quest. Always clean up the temporary Git worktree and filesystem
   directory, including installation and execution failures.
   Add tests/test-baseline-capture.test.ts using disposable Git repositories.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: hard
 priority: high
 depends_on:
   - baseline-store-diff
 effort: PT30M
-started_at: null
+started_at: 2026-10-10T01:08:31.059Z
 ended_at: null
 constraints:
   - Capture quest.baseBranch, normally main, never the evolving quest or task branch.

@@ -306,8 +306,13 @@ export function testCaseId(file: string, name: string): string {
   return `${file} > ${name}`;
 }
 
-// Bun file header, e.g. "tests/foo.test.ts:"
-const BUN_FILE_HEADER = /^(\S[^:]*?\.(?:[cm]?[jt]sx?)):$/;
+// Bun file header, e.g. "tests/foo.test.ts:" — prefixed with "##[group]"
+// when Bun detects GitHub Actions
+const BUN_FILE_HEADER = /^(?:##\[group\])?(\S[^:]*?\.(?:[cm]?[jt]sx?)):$/;
+// End of a file's output under GitHub Actions
+const BUN_GROUP_END = /^##\[endgroup\]\s*$/;
+// Recap that repeats failures before the summary ("3 tests failed:")
+const BUN_FAILURE_RECAP = /^\d+ tests? failed:\s*$/;
 // Bun result line: "(fail) a > b [1.23ms]" (non-TTY) or "✗ a > b [1.23ms]" (TTY)
 const BUN_RESULT_LINE =
   /^(?:\((pass|fail|skip|todo)\)|([✓✗»✎]))\s+(.+?)(?:\s+\[[\d.]+\s*m?s\])?\s*$/;
@@ -347,13 +352,25 @@ export function parseStructuredResults(
 
   if (isBun) {
     let file: string | null = null;
+    let inRecap = false;
     const seen = new Map<string, number>();
     for (const line of text.split("\n")) {
       const header = line.match(BUN_FILE_HEADER);
       if (header) {
         file = normalizeTestPath(header[1], context.rootPath);
+        inRecap = false;
         continue;
       }
+      if (BUN_GROUP_END.test(line)) {
+        file = null;
+        continue;
+      }
+      if (BUN_FAILURE_RECAP.test(line)) {
+        // Failures listed here were already reported under their files
+        inRecap = true;
+        continue;
+      }
+      if (inRecap) continue;
       if (/^# Unhandled error/.test(line)) {
         loadErrors++;
         continue;

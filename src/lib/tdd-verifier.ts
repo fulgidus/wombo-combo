@@ -6,6 +6,8 @@
  *   - Run test-detection.ts to check new files have tests
  *   - Combine results into a structured TddVerificationResult
  *   - Support strict mode (blocking) vs warn mode (non-blocking)
+ *   - When a quest test baseline is supplied, gate on regressions relative
+ *     to it instead of requiring the test command to exit 0
  *   - Render human-readable reports
  *
  * This module is called by verifier.ts as an additional step in the
@@ -20,6 +22,11 @@ import {
   isNonTestableFile,
   type TestDetectionReport,
 } from "./test-detection";
+import {
+  compareTestRunToBaseline,
+  type TestBaseline,
+  type TestBaselineComparison,
+} from "./test-baseline";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +46,11 @@ export interface TddVerificationOptions {
   strictTdd?: boolean;
   /** Base branch for git diff comparison (default: from config) */
   baseBranch?: string;
+  /**
+   * Quest test baseline. When supplied, pre-existing failures recorded in it
+   * are accepted and only regressions fail verification. Never mutated.
+   */
+  testBaseline?: TestBaseline;
 }
 
 /** Result of TDD verification */
@@ -59,6 +71,8 @@ export interface TddVerificationResult {
   summary: string;
   /** Whether strict mode was used */
   strictMode: boolean;
+  /** Comparison against the quest test baseline (only when one was supplied) */
+  baselineComparison?: TestBaselineComparison;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +149,7 @@ export async function runTddVerification(
   // Step 1: Run the test command
   let testRun: TestRunResult | null = null;
   try {
-    testRun = await runTests(worktreePath, testCommand);
+    testRun = await runTests(worktreePath, testCommand, config.tdd.testTimeout);
   } catch (err: any) {
     // Test command failed to execute (not the same as tests failing)
     return {
@@ -159,8 +173,15 @@ export async function runTddVerification(
     testDetection = null;
   }
 
-  // Step 3: Determine overall pass/fail
-  const testsPassed = testRun.passed;
+  // Step 3: Determine overall pass/fail. With a baseline, accepted
+  // pre-existing failures don't block; anything not provably a known
+  // failure (regressions, incomplete runs, bad data) still does.
+  const baselineComparison = opts.testBaseline
+    ? compareTestRunToBaseline(opts.testBaseline, testRun, { testCommand })
+    : undefined;
+  const testsPassed = baselineComparison
+    ? baselineComparison.verdict === "pass"
+    : testRun.passed;
   const hasMissingTests =
     testDetection !== null && testDetection.missingTests.length > 0;
   const hasWarnings = hasMissingTests && !strictMode;
@@ -172,7 +193,7 @@ export async function runTddVerification(
     : testsPassed;
 
   // Build summary
-  const summary = buildSummary(testRun, testDetection, strictMode);
+  const summary = buildSummary(testRun, testDetection, strictMode, baselineComparison);
 
   return {
     ran: true,
@@ -183,6 +204,7 @@ export async function runTddVerification(
     hasWarnings,
     summary,
     strictMode,
+    ...(baselineComparison ? { baselineComparison } : {}),
   };
 }
 
@@ -196,7 +218,8 @@ export async function runTddVerification(
 function buildSummary(
   testRun: TestRunResult,
   testDetection: TestDetectionReport | null,
-  strictMode: boolean
+  strictMode: boolean,
+  comparison?: TestBaselineComparison
 ): string {
   const parts: string[] = [];
 
@@ -216,6 +239,8 @@ function buildSummary(
       `(exit code ${testRun.exitCode}, ${Math.round(testRun.durationMs / 1000)}s)`
     );
   }
+
+  if (comparison) parts.push(summarizeBaselineComparison(comparison));
 
   // Test detection summary
   if (testDetection) {
@@ -241,6 +266,30 @@ function buildSummary(
   return parts.join(" | ");
 }
 
+/**
+ * One-line summary of a baseline comparison, distinguishing accepted
+ * existing failures, fixes, regressions, and comparison errors.
+ */
+export function summarizeBaselineComparison(c: TestBaselineComparison): string {
+  if (c.verdict === "not-comparable") {
+    return `Baseline: NOT COMPARABLE — ${c.reasons.join("; ")}`;
+  }
+  const bits: string[] = [];
+  if (c.verdict === "regression") {
+    const n = c.newFailures.length + c.regressedPasses.length;
+    bits.push(`${n} regression(s)`);
+  }
+  bits.push(`${c.unchangedFailures.length} accepted existing failure(s)`);
+  if (c.fixedFailures.length > 0) bits.push(`${c.fixedFailures.length} fixed`);
+  if (c.skippedBaselineFailures.length > 0) {
+    bits.push(`${c.skippedBaselineFailures.length} now skipped`);
+  }
+  if (c.missingBaselineFailures.length > 0) {
+    bits.push(`${c.missingBaselineFailures.length} no longer reported`);
+  }
+  return `Baseline: ${c.verdict === "pass" ? "PASS" : "REGRESSION"} — ${bits.join(", ")}`;
+}
+
 // ---------------------------------------------------------------------------
 // Error Summary Extraction
 // ---------------------------------------------------------------------------
@@ -253,10 +302,38 @@ export function extractTddErrorSummary(
   result: TddVerificationResult
 ): string {
   const parts: string[] = [];
+  const comparison = result.baselineComparison;
 
-  if (result.testRun && !result.testRun.passed) {
+  if (comparison && comparison.verdict === "regression") {
+    // Only new regressions are actionable — accepted baseline failures are not.
+    parts.push("--- Test Regressions (vs quest baseline) ---");
+    for (const id of comparison.newFailures) parts.push(`  NEW FAILURE: ${id}`);
+    for (const id of comparison.regressedPasses) {
+      parts.push(`  NO LONGER PASSING (skipped or missing): ${id}`);
+    }
+    if (comparison.unchangedFailures.length > 0) {
+      parts.push(
+        `(${comparison.unchangedFailures.length} pre-existing baseline failure(s) are accepted — do not try to fix them unless your task asks for it.)`
+      );
+    }
+    if (result.testRun?.errorSummary) {
+      parts.push("");
+      parts.push("--- Test Output (may include accepted pre-existing failures) ---");
+      parts.push(result.testRun.errorSummary);
+    }
+  } else if (comparison && comparison.verdict === "not-comparable") {
+    parts.push("--- Test Results Could Not Be Compared To The Quest Baseline ---");
+    for (const r of comparison.reasons) parts.push(`  ${r}`);
+    if (result.testRun?.errorSummary) {
+      parts.push("");
+      parts.push(result.testRun.errorSummary);
+    }
+  } else if (!comparison && result.testRun && !result.testRun.passed) {
     parts.push("--- Test Failures ---");
     parts.push(result.testRun.errorSummary || "(no error details)");
+  } else if (result.ran && !result.testRun && !result.passed) {
+    parts.push("--- Test Command Error ---");
+    parts.push(result.summary);
   }
 
   if (
@@ -309,6 +386,26 @@ export function renderTddVerificationReport(
         `(${tr.testCounts.total} total)`
       );
     }
+  }
+
+  // Baseline comparison
+  const c = result.baselineComparison;
+  if (c) {
+    const icon =
+      c.verdict === "pass" ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
+    console.log(`\n  ${icon} ${summarizeBaselineComparison(c)}`);
+    const list = (label: string, ids: string[]) => {
+      if (ids.length === 0) return;
+      console.log(`    ${label}:`);
+      for (const id of ids.slice(0, 20)) console.log(`      - ${id}`);
+      if (ids.length > 20) console.log(`      ... and ${ids.length - 20} more`);
+    };
+    list("New failures", c.newFailures);
+    list("No longer passing (skipped or missing)", c.regressedPasses);
+    list("Fixed baseline failures", c.fixedFailures);
+    list("Baseline failures now skipped (not counted as fixed)", c.skippedBaselineFailures);
+    list("Baseline failures no longer reported (not counted as fixed)", c.missingBaselineFailures);
+    for (const w of c.warnings) console.log(`    \x1b[33m⚠\x1b[0m ${w}`);
   }
 
   // Test detection results

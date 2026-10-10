@@ -401,6 +401,20 @@ describe("parseStructuredResults — Bun", () => {
     expect(r.failingTestIds).toEqual(["tests/x.test.ts > suite > broken"]);
   });
 
+  test("GitHub Actions output (##[group] headers, listed passes, failure recap)", () => {
+    // Trimmed from a real GitHub Actions log (bun v1.4.2); summary counts
+    // adjusted to the excerpt
+    const r = parseStructuredResults("", fixture("bun-failures-gha"), ctx);
+    expect(r.incompleteReasons).toEqual([]);
+    expect(r.comparable).toBe(true);
+    expect(r.passesListed).toBe(true);
+    expect(r.tests.filter((t) => t.outcome === "pass").length).toBe(44);
+    // The recap repeats the failure; it must not be counted twice
+    expect(r.failingTestIds).toEqual([
+      "tests/test-runner.test.ts > runTests — execution metadata > real bun run with a failing test yields its identity",
+    ]);
+  });
+
   test("truncated output (missing summary) is non-comparable", () => {
     const cut = fixture("bun-failures").split("\n").slice(0, 20).join("\n");
     const r = parseStructuredResults("", cut, ctx);
