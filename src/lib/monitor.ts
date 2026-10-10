@@ -499,7 +499,13 @@ export class ProcessMonitor {
       }
     });
 
+    // Late exit/error events from a process that was removed (remove/killAll)
+    // or replaced by a newer process for the same featureId (e.g. retry) must
+    // not fire callbacks — otherwise cancelled agents get retried.
+    const isCurrent = () => this.processes.get(featureId) === monitored;
+
     child.on("exit", (code) => {
+      if (!isCurrent()) return;
       monitored.done = true;
       this.pushActivity(featureId, `-- process exited (code ${code})`);
       this.writeLog(featureId, `\n[wombo] Process exited with code ${code} at ${new Date().toISOString()}\n`);
@@ -515,6 +521,7 @@ export class ProcessMonitor {
     });
 
     child.on("error", (err) => {
+      if (!isCurrent()) return;
       monitored.done = true;
       this.pushActivity(featureId, `!! process error: ${err.message}`);
       this.writeLog(featureId, `\n[wombo] Process error: ${err.message}\n`);
