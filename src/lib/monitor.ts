@@ -437,9 +437,16 @@ export class ProcessMonitor {
     this.pushActivity(featureId, "-- agent process started");
     this.writeLog(featureId, `[wombo] Process started at ${new Date().toISOString()}\n`);
 
+    // Late events from a process that was removed (remove/killAll) or
+    // replaced by a newer process for the same featureId (e.g. retry) must
+    // not fire callbacks — otherwise cancelled agents get retried and stale
+    // output lands in the new process's activity/log.
+    const isCurrent = () => this.processes.get(featureId) === monitored;
+
     child.stdout?.on("data", (data: Buffer) => {
       const chunk = data.toString();
       monitored.stdout += chunk;
+      if (!isCurrent()) return;
       this.callbacks.onOutput?.(featureId, chunk);
       this.writeLog(featureId, chunk);
 
@@ -492,6 +499,7 @@ export class ProcessMonitor {
     child.stderr?.on("data", (data: Buffer) => {
       const chunk = data.toString();
       monitored.stderr += chunk;
+      if (!isCurrent()) return;
       this.writeLog(featureId, `[stderr] ${chunk}`);
       const lines = chunk.split("\n").filter((l) => l.trim());
       for (const line of lines) {
@@ -499,10 +507,6 @@ export class ProcessMonitor {
       }
     });
 
-    // Late exit/error events from a process that was removed (remove/killAll)
-    // or replaced by a newer process for the same featureId (e.g. retry) must
-    // not fire callbacks — otherwise cancelled agents get retried.
-    const isCurrent = () => this.processes.get(featureId) === monitored;
 
     child.on("exit", (code) => {
       if (!isCurrent()) return;

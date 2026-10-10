@@ -5,14 +5,14 @@ description: "ProcessMonitor.remove()/killAll() delete the process entry and SIG
   (status failed/retry -> running again), and shutdown/kill can trigger retries. Fix: in addProcess exit/error handlers,
   skip callbacks when this.processes.get(featureId) is no longer the monitored entry. Found while implementing
   analytics-run-tracking; analytics ignores such late callbacks for finished executions."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT20M
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T02:00:31.146Z
 constraints: []
 forbidden: []
 references: []
