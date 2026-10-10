@@ -11,8 +11,8 @@ description: |
   Document storage, metric definitions, coverage limitations, grouping
   and filtering examples, and TUI access in README.md.
   Run typecheck, targeted tests, the full test suite, and build.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
@@ -20,8 +20,8 @@ depends_on:
   - analytics-usage-command
   - analytics-tui-wiring
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:45:30.116Z
+ended_at: 2026-10-10T01:55:17.374Z
 constraints:
   - Use temporary local roots and controlled processes; never launch paid agents or require remote services.
   - Analytics must survive normal cleanup separately from disposable daemon state.

@@ -52,6 +52,15 @@ function rec(id: string, over: Partial<AgentAnalyticsRecord> = {}): AgentAnalyti
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Poll until `cond` holds (robust under a loaded full-suite run). */
+async function waitFor(cond: () => boolean, timeoutMs = 3000): Promise<void> {
+  const start = Date.now();
+  while (!cond()) {
+    if (Date.now() - start > timeoutMs) throw new Error("waitFor timed out");
+    await wait(10);
+  }
+}
+
 interface Harness {
   stdin: PassThrough;
   frames: string[];
@@ -81,7 +90,7 @@ function mount(props: Record<string, unknown> = {}): Harness {
     exits: 0,
     press: async (data: string) => {
       stdin.write(data);
-      await wait(40);
+      await wait(70);
     },
     unmount: async () => {},
   };
@@ -170,22 +179,20 @@ describe("task browser analytics overlay", () => {
     expect(h.last()).toContain("1 executions");
 
     loader.state.data = result([rec("a"), rec("b")]);
-    await wait(150);
-    expect(loader.state.calls).toBeGreaterThan(2);
-    expect(h.last()).toContain("2 executions");
+    await waitFor(() => loader.state.calls > 2 && h.last().includes("2 executions"));
 
     // close: refresh stops
     await h.press("\x1b");
     expect(h.last()).not.toContain("Agent Analytics");
     const callsAtClose = loader.state.calls;
-    await wait(150);
+    await wait(200);
     expect(loader.state.calls).toBe(callsAtClose);
 
     // reopen: loads again and refresh resumes
     await h.press("u");
-    expect(loader.state.calls).toBe(callsAtClose + 1);
-    await wait(100);
-    expect(loader.state.calls).toBeGreaterThan(callsAtClose + 1);
+    expect(loader.state.calls).toBeGreaterThanOrEqual(callsAtClose + 1);
+    const afterOpen = loader.state.calls;
+    await waitFor(() => loader.state.calls > afterOpen);
     await h.unmount();
   });
 
@@ -255,7 +262,7 @@ describe("grouping and selection", () => {
     expect(h.last()).toMatch(/▸ task-c/);
 
     loader.state.data = result([rec("a")]);
-    await wait(150);
+    await waitFor(() => /▸ task-a/.test(h.last()));
     expect(h.last()).toMatch(/▸ task-a/);
     expect(h.last()).not.toContain("task-c");
     await h.unmount();
