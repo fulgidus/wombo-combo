@@ -1101,3 +1101,100 @@ describe("destroy", () => {
     expect(existsSync(p)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Verification evidence + merge commit (optional fields)
+// ---------------------------------------------------------------------------
+
+describe("verification evidence fields", () => {
+  const verification = {
+    build: { status: "passed" as const, durationMs: 1200 },
+    unitTests: { status: "passed" as const, total: 10, passed: 10, failed: 0, skipped: 0 },
+    browser: { status: "skipped" as const, reason: "browser disabled" },
+  };
+
+  test("new agents do not carry the optional fields", () => {
+    const agent = makeAgent("a1");
+    expect(agent.verification).toBeUndefined();
+    expect(agent.mergeCommitHash).toBeUndefined();
+  });
+
+  test("updateAgent stores verification and mergeCommitHash", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgent("a1", { verification, mergeCommitHash: "abc123" });
+    const agent = state.getAgent("a1")!;
+    expect(agent.verification).toEqual(verification);
+    expect(agent.mergeCommitHash).toBe("abc123");
+    state.destroy();
+  });
+
+  test("fields survive unrelated updates and status changes", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgent("a1", { verification, mergeCommitHash: "abc123" });
+    state.updateAgent("a1", { error: "later" });
+    state.updateAgentStatus("a1", "running");
+    const agent = state.getAgent("a1")!;
+    expect(agent.verification).toEqual(verification);
+    expect(agent.mergeCommitHash).toBe("abc123");
+    state.destroy();
+  });
+
+  test("round-trips through save and load", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgent("a1", { verification, mergeCommitHash: "abc123" });
+    state.save();
+
+    const state2 = new DaemonState(tempDir);
+    state2.load();
+    const loaded = state2.getAgent("a1")!;
+    expect(loaded.verification).toEqual(verification);
+    expect(loaded.mergeCommitHash).toBe("abc123");
+    state.destroy();
+    state2.destroy();
+  });
+
+  test("snapshots expose the fields to clients", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgent("a1", { verification, mergeCommitHash: "abc123" });
+    const client = state.getSnapshot().agents[0]!;
+    expect(client.verification).toEqual(verification);
+    expect(client.mergeCommitHash).toBe("abc123");
+    state.destroy();
+  });
+
+  test("legacy persisted state without the fields still loads", () => {
+    const legacy = makeAgent("old");
+    mkdirSync(join(tempDir, ".wombo-combo"), { recursive: true });
+    writeFileSync(
+      join(tempDir, ".wombo-combo", "daemon-state.json"),
+      JSON.stringify({
+        version: 1,
+        scheduler: new DaemonState(tempDir).getSchedulerState(),
+        agents: [legacy],
+      })
+    );
+    const state = new DaemonState(tempDir);
+    state.load();
+    expect(state.stateLoaded).toBe(true);
+    const agent = state.getAgent("old")!;
+    expect(agent.verification).toBeUndefined();
+    expect(agent.mergeCommitHash).toBeUndefined();
+    expect(agent.buildPassed).toBeNull();
+    state.destroy();
+  });
+
+  test("retryAgent clears stale verification but keeps other state", () => {
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("a1"));
+    state.updateAgentStatus("a1", "running");
+    state.updateAgent("a1", { verification, buildPassed: false });
+    state.updateAgentStatus("a1", "failed");
+    expect(state.retryAgent("a1")).toBe(true);
+    expect(state.getAgent("a1")!.verification).toBeUndefined();
+    state.destroy();
+  });
+});

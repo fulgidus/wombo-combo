@@ -9,6 +9,7 @@
  */
 
 import type { AgentStatus } from "./agent-status";
+import type { VerificationSummary } from "../lib/post-merge-types";
 
 // ---------------------------------------------------------------------------
 // Protocol version
@@ -321,6 +322,13 @@ export interface DaemonAgentState {
   startedAt: string | null;
   completedAt: string | null;
   buildPassed: boolean | null;
+  /**
+   * Compact verification evidence (build / unit tests / browser). Optional:
+   * legacy records only know buildPassed, so absent checks mean "unknown".
+   */
+  verification?: VerificationSummary | null;
+  /** Merge commit SHA on the destination branch once merged (optional for legacy records) */
+  mergeCommitHash?: string | null;
   error: string | null;
   effortEstimateMs: number | null;
   streamIndex: number | null;

@@ -9,15 +9,15 @@ description: |
   round-trip and legacy-loading coverage. This task supplies storage only;
   the daemon integration task will populate the fields from verification
   and merge execution.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
   - post-merge-contract
 effort: PT15M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:19:03.498Z
+ended_at: 2026-10-10T01:20:50.594Z
 constraints:
   - Existing daemon-state.json files must continue loading.
   - Store compact outcomes, not raw logs or complete verification objects.

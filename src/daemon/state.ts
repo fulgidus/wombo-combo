@@ -452,6 +452,8 @@ export class DaemonState {
     agent.retries++;
     agent.error = null;
     agent.buildPassed = null;
+    // Evidence from the failed attempt must not describe the retried one
+    delete agent.verification;
     agent.completedAt = null;
     this.updateAgentStatus(featureId, "retry", `Retry ${agent.retries}/${agent.maxRetries}`);
     return true;

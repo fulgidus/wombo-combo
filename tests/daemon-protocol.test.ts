@@ -510,3 +510,65 @@ describe("type maps", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// DaemonAgentState optional verification fields
+// ---------------------------------------------------------------------------
+
+describe("DaemonAgentState verification evidence", () => {
+  const base: DaemonAgentState = {
+    featureId: "f",
+    taskTitle: "t",
+    branch: "feature/f",
+    baseBranch: "main",
+    worktree: "/tmp/f",
+    status: "queued",
+    pid: null,
+    sessionId: null,
+    activity: null,
+    activityUpdatedAt: null,
+    retries: 0,
+    maxRetries: 2,
+    startedAt: null,
+    completedAt: null,
+    buildPassed: null,
+    error: null,
+    effortEstimateMs: null,
+    streamIndex: null,
+    dependsOn: [],
+    dependedOnBy: [],
+    agentName: null,
+    agentType: null,
+    pendingQuestions: [],
+    tokenUsage: null,
+  };
+
+  test("legacy agent records are valid without the new fields", () => {
+    const evt = makeEvent(
+      "evt:state-snapshot",
+      { scheduler: {} as SchedulerState, agents: [base], uptime: 0 },
+      1
+    );
+    expect(evt.payload.agents[0]!.verification).toBeUndefined();
+    expect(evt.payload.agents[0]!.mergeCommitHash).toBeUndefined();
+  });
+
+  test("verification and mergeCommitHash round-trip through the wire format", () => {
+    const agent: DaemonAgentState = {
+      ...base,
+      verification: {
+        build: { status: "passed" },
+        unitTests: { status: "unknown" },
+      },
+      mergeCommitHash: "deadbeef",
+    };
+    const evt = makeEvent(
+      "evt:state-snapshot",
+      { scheduler: {} as SchedulerState, agents: [agent], uptime: 0 },
+      1
+    );
+    const parsed = parseMessage(JSON.stringify(evt)) as any;
+    expect(parsed.payload.agents[0].verification.unitTests.status).toBe("unknown");
+    expect(parsed.payload.agents[0].mergeCommitHash).toBe("deadbeef");
+  });
+});
