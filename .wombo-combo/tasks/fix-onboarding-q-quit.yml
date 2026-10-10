@@ -1,0 +1,18 @@
+id: fix-onboarding-q-quit
+title: Make q quit from the onboarding wizard
+description: On first-run onboarding (no project.yml) the chrome shows 'q quit' but pressing q does nothing; only ESC
+  menu -> Quit works. src/ink/onboarding/step-wizard.tsx handles Esc but not q. Either handle q or fix the hint. Tracked
+  as test.todo in tests/e2e/tui-smoke.test.ts.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
