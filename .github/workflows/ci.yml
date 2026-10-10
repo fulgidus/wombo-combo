@@ -61,3 +61,28 @@ jobs:
 
       - name: TUI e2e smoke tests (real TUI in a pseudo-terminal)
         run: bun test --timeout 60000 tests/e2e/tui-smoke.test.ts
+
+  graph:
+    name: Knowledge graph is up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure git identity (the hook commits a refresh when stale)
+        run: |
+          git config --global user.name "wombo-ci"
+          git config --global user.email "ci@wombo-combo.invalid"
+
+      # Same prek hook as the local pre-push (.pre-commit-config.yaml), so the
+      # graphify version and logic have a single source of truth. The hook
+      # fails when `graphify update .` changes anything under graphify-out/.
+      - name: graphify-out/ matches the code
+        run: |
+          if ! pipx run prek run --stage pre-push graphify-update; then
+            echo "::error title=Stale knowledge graph::graphify-out/ is out of date. Run 'graphify update .' and commit, or install the pre-push hook once per clone: uvx prek install"
+            echo "Files the refresh would change:"
+            git show --stat --format= HEAD | head -40
+            exit 1
+          fi
