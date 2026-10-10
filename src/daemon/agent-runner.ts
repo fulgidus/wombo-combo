@@ -561,7 +561,7 @@ export class AgentRunner {
     // branch.
     let verifyConfig = this.config;
     let testBaseline: TestBaseline | undefined;
-    const questScope = this.resolveTaskQuestScope(this.loadTask(featureId));
+    const questScope = this.resolveTaskQuestScope(this.loadTask(featureId), agent);
     if (questScope) {
       verifyConfig = { ...questScope.config, baseBranch: agent.baseBranch };
       if (questScope.config.tdd?.enabled) {
@@ -1353,14 +1353,23 @@ export class AgentRunner {
   }
 
   /**
-   * Build quest context for conflict resolution prompts.
+   * Quest + effective config for a task's own quest (null when unquested).
+   *
+   * When the task file is gone (e.g. archived mid-run), fall back to the
+   * agent's quest base branch ("quest/<id>") so baseline checks fail closed
+   * instead of silently treating the task as unquested.
    */
-  /** Quest + effective config for a task's own quest (null when unquested) */
   private resolveTaskQuestScope(
-    task: Task | null
+    task: Task | null,
+    agent?: InternalAgentState
   ): { quest: Quest; config: WomboConfig } | null {
-    if (!task?.quest) return null;
-    const quest = loadQuest(this.projectRoot, task.quest);
+    const questId =
+      task?.quest ??
+      (task === null && agent?.baseBranch.startsWith("quest/")
+        ? agent.baseBranch.slice("quest/".length)
+        : undefined);
+    if (!questId) return null;
+    const quest = loadQuest(this.projectRoot, questId);
     if (!quest) return null;
     return { quest, config: resolveQuestConfig(this.config, quest) };
   }
@@ -1403,6 +1412,9 @@ export class AgentRunner {
     };
   }
 
+  /**
+   * Build quest context for conflict resolution prompts.
+   */
   private buildQuestContext(): QuestPromptContext | undefined {
     const questId = this.state.getQuestId();
     if (!questId) return undefined;
@@ -1438,7 +1450,7 @@ export class AgentRunner {
     // prerequisite here too. Retries reuse the original snapshot; it is
     // never recaptured, even if the base branch has advanced.
     if (agent.agentName !== FAKE_AGENT_SENTINEL) {
-      const scope = this.resolveTaskQuestScope(this.loadTask(featureId));
+      const scope = this.resolveTaskQuestScope(this.loadTask(featureId), agent);
       if (scope?.config.tdd?.enabled) {
         const loaded = loadTestBaseline(this.projectRoot, scope.quest.id);
         if (loaded.status !== "ok") {
