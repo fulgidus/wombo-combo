@@ -161,12 +161,21 @@ export interface EscMenuProps {
    * Receives the action key: 'settings' | 'quit'.
    */
   onNavigate: (action: "settings" | "quit") => void;
+  /**
+   * Optional. When supplied, a Dashboard item is shown; selecting it closes
+   * the menu first, then invokes this callback. Kept separate from
+   * onNavigate so the settings/quit action union is unchanged.
+   */
+  onOpenDashboard?: () => void;
 }
 
-const MENU_ITEMS: Array<{ key: string; label: () => string; action: "close" | "settings" | "quit" }> = [
-  { key: "return",   label: () => t("menu.returnToApp"), action: "close" },
-  { key: "settings", label: () => t("menu.settings"),   action: "settings" },
-  { key: "quit",     label: () => t("menu.quit"),        action: "quit" },
+type MenuAction = "close" | "settings" | "quit" | "dashboard";
+
+const MENU_ITEMS: Array<{ key: string; label: () => string; action: MenuAction }> = [
+  { key: "return",    label: () => t("menu.returnToApp"), action: "close" },
+  { key: "dashboard", label: () => t("screen.dashboard"), action: "dashboard" },
+  { key: "settings",  label: () => t("menu.settings"),    action: "settings" },
+  { key: "quit",      label: () => t("menu.quit"),        action: "quit" },
 ];
 
 /**
@@ -179,8 +188,24 @@ export function EscMenu({
   open,
   onClose,
   onNavigate,
+  onOpenDashboard,
 }: EscMenuProps): React.ReactElement | null {
   const [cursor, setCursor] = useState(0);
+  const items = onOpenDashboard
+    ? MENU_ITEMS
+    : MENU_ITEMS.filter((item) => item.action !== "dashboard");
+
+  const activate = (action: MenuAction): void => {
+    if (action === "close") {
+      onClose();
+    } else if (action === "dashboard") {
+      // Close the overlay before navigating.
+      onClose();
+      onOpenDashboard?.();
+    } else {
+      onNavigate(action);
+    }
+  };
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -196,14 +221,10 @@ export function EscMenu({
       if (key.upArrow) {
         setCursor((c) => Math.max(0, c - 1));
       } else if (key.downArrow) {
-        setCursor((c) => Math.min(MENU_ITEMS.length - 1, c + 1));
+        setCursor((c) => Math.min(items.length - 1, c + 1));
       } else if (key.return) {
-        const item = MENU_ITEMS[cursor];
-        if (item.action === "close") {
-          onClose();
-        } else {
-          onNavigate(item.action);
-        }
+        const item = items[Math.min(cursor, items.length - 1)];
+        if (item) activate(item.action);
       } else if (key.escape) {
         onClose();
       }
@@ -229,18 +250,12 @@ export function EscMenu({
       </Box>
 
       {/* Items */}
-      {MENU_ITEMS.map((item, i) => (
+      {items.map((item, i) => (
         <EscMenuItem
           key={item.key}
           label={item.label()}
           selected={i === cursor}
-          onSelect={() => {
-            if (item.action === "close") {
-              onClose();
-            } else {
-              onNavigate(item.action);
-            }
-          }}
+          onSelect={() => activate(item.action)}
         />
       ))}
     </Box>
@@ -258,6 +273,11 @@ export interface EscMenuProviderProps {
    * If not provided, navigation items are still rendered but no-op.
    */
   onNavigate?: (action: "settings" | "quit") => void;
+  /**
+   * Optional. When supplied, the menu shows a Dashboard item that closes the
+   * menu and then calls this.
+   */
+  onOpenDashboard?: () => void;
 }
 
 /**
@@ -269,6 +289,7 @@ export interface EscMenuProviderProps {
 export function EscMenuProvider({
   children,
   onNavigate,
+  onOpenDashboard,
 }: EscMenuProviderProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const { rows, columns } = useTerminalSize();
@@ -307,7 +328,12 @@ export function EscMenuProvider({
           alignItems="center"
           justifyContent="center"
         >
-          <EscMenu open={open} onClose={closeMenu} onNavigate={handleNavigate} />
+          <EscMenu
+            open={open}
+            onClose={closeMenu}
+            onNavigate={handleNavigate}
+            onOpenDashboard={onOpenDashboard}
+          />
         </Box>
       )}
     </EscMenuContext.Provider>

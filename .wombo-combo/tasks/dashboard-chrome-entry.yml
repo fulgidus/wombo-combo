@@ -11,14 +11,14 @@ description: |
   propagated through ChromeLayout to ChromeBottomBar. When enabled,
   show an additional concise hint identifying the ESC menu dashboard
   entry. Add tests to the existing chrome and ESC-menu test suites.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT20M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:09:33.042Z
+ended_at: 2026-10-10T02:11:58.015Z
 constraints:
   - Existing callers without the new props must retain their current menu and chrome behavior.
   - Dashboard selection must close the menu before navigating.

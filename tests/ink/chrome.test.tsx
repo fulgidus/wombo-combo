@@ -311,3 +311,43 @@ describe("useChromeHideQuitHint", () => {
     expect(out).toContain("q quit");
   });
 });
+
+describe("ChromeBottomBar dashboardAvailable", () => {
+  const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+  test("no dashboard hint by default", () => {
+    expect(strip(renderToString(<ChromeBottomBar />))).not.toContain("Dashboard");
+  });
+
+  test("shows a concise ESC-menu dashboard hint when enabled", () => {
+    const out = strip(renderToString(<ChromeBottomBar dashboardAvailable />));
+    expect(out).toContain("Dashboard");
+    expect(out).toContain("ESC menu");
+    expect(out).toContain("q quit");
+  });
+
+  test("hint is kept when quit hint is hidden", () => {
+    const out = strip(renderToString(<ChromeBottomBar dashboardAvailable hideQuitHint />));
+    expect(out).toContain("Dashboard");
+    expect(out).not.toContain("q quit");
+  });
+
+  test("ChromeLayout propagates dashboardAvailable", () => {
+    const on = strip(
+      renderToString(
+        <ChromeLayout screenName="Home" daemonConnected={false} dashboardAvailable>
+          <Text>body</Text>
+        </ChromeLayout>,
+      ),
+    );
+    const off = strip(
+      renderToString(
+        <ChromeLayout screenName="Home" daemonConnected={false}>
+          <Text>body</Text>
+        </ChromeLayout>,
+      ),
+    );
+    expect(on).toContain("Dashboard in ESC menu");
+    expect(off).not.toContain("in ESC menu");
+  });
+});
