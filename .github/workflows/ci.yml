@@ -55,6 +55,7 @@ jobs:
 
       - name: "TEMP debug: raw nested bun test output"
         run: |
+          set +e
           D=$(mktemp -d)
           mkdir -p "$D/tests"
           printf 'import { test, expect } from "bun:test";\ntest("ok", () => {});\ntest("bad", () => expect(1).toBe(2));\n' > "$D/tests/x.test.ts"
