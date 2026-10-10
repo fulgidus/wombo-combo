@@ -277,6 +277,30 @@
         }
       }
     },
+    "postMerge": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Changelog generation and GitHub PR publication after successful merges",
+      "properties": {
+        "prMode": {
+          "type": "string",
+          "enum": ["open", "draft", "skip"],
+          "default": "skip",
+          "description": "open = ready PR, draft = draft PR, skip = no GitHub publication"
+        },
+        "prBaseBranch": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "default": null,
+          "description": "PR target branch; null = the configured remote's default branch"
+        },
+        "changelog": {
+          "type": "boolean",
+          "default": true,
+          "description": "Append a CHANGELOG.md entry after successful merges (independent of prMode)"
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

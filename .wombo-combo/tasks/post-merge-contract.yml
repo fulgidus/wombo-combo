@@ -14,14 +14,14 @@ description: |
   verification summaries, and a stable operation ID. Results distinguish
   changelog, push, and PR outcomes without changing merge success.
   Ignore .wombo-combo/post-merge.json and its temporary files in .gitignore.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:16:32.747Z
+ended_at: 2026-10-10T01:18:57.811Z
 constraints:
   - Skip mode must require neither GitHub CLI nor remote publication.
   - Changelog generation is independent of PR mode.

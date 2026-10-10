@@ -21,6 +21,7 @@ import {
   CONFIG_FILE,
   WOMBO_DIR,
   generateDefaultConfig,
+  normalizePostMergeConfig,
 } from "../src/config";
 import type { WomboConfig } from "../src/config";
 
@@ -311,5 +312,96 @@ describe("generateDefaultConfig", () => {
   test("ends with newline", () => {
     const jsonStr = generateDefaultConfig();
     expect(jsonStr.endsWith("\n")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// postMerge
+// ---------------------------------------------------------------------------
+
+describe("postMerge config", () => {
+  function fresh(): WomboConfig {
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as WomboConfig;
+  }
+
+  test("DEFAULT_CONFIG defaults to skip mode, null target, changelog on", () => {
+    expect(DEFAULT_CONFIG.postMerge).toEqual({
+      prMode: "skip",
+      prBaseBranch: null,
+      changelog: true,
+    });
+  });
+
+  test("loadConfig fills defaults for legacy configs without postMerge", () => {
+    writeConfig(tmpDir, { baseBranch: "main" });
+    const config = loadConfig(tmpDir);
+    expect(normalizePostMergeConfig(config.postMerge)).toEqual({
+      prMode: "skip",
+      prBaseBranch: null,
+      changelog: true,
+    });
+  });
+
+  test("loadConfig deep-merges a partial postMerge block", () => {
+    writeConfig(tmpDir, { postMerge: { prMode: "draft" } });
+    expect(loadConfig(tmpDir).postMerge).toEqual({
+      prMode: "draft",
+      prBaseBranch: null,
+      changelog: true,
+    });
+  });
+
+  test("normalizePostMergeConfig tolerates undefined and partial blocks", () => {
+    expect(normalizePostMergeConfig(undefined).prMode).toBe("skip");
+    expect(normalizePostMergeConfig({ changelog: false })).toEqual({
+      prMode: "skip",
+      prBaseBranch: null,
+      changelog: false,
+    });
+    expect(normalizePostMergeConfig(null as any).changelog).toBe(true);
+  });
+
+  test("normalizePostMergeConfig trims an explicit target branch", () => {
+    expect(normalizePostMergeConfig({ prBaseBranch: " main " }).prBaseBranch).toBe("main");
+  });
+
+  test("validateConfig accepts manually constructed configs without postMerge", () => {
+    const config = fresh();
+    delete (config as any).postMerge;
+    expect(() => validateConfig(config)).not.toThrow();
+  });
+
+  test("validateConfig accepts every valid prMode", () => {
+    for (const prMode of ["open", "draft", "skip"] as const) {
+      const config = fresh();
+      config.postMerge = { prMode, prBaseBranch: null, changelog: true };
+      expect(() => validateConfig(config)).not.toThrow();
+    }
+  });
+
+  test("validateConfig rejects an invalid prMode", () => {
+    const config = fresh();
+    (config.postMerge as any).prMode = "auto";
+    expect(() => validateConfig(config)).toThrow("postMerge.prMode");
+  });
+
+  test("validateConfig rejects non-boolean changelog", () => {
+    const config = fresh();
+    (config.postMerge as any).changelog = "yes";
+    expect(() => validateConfig(config)).toThrow("postMerge.changelog");
+  });
+
+  test("validateConfig rejects empty or non-string prBaseBranch", () => {
+    for (const bad of ["", "   ", 5]) {
+      const config = fresh();
+      (config.postMerge as any).prBaseBranch = bad;
+      expect(() => validateConfig(config)).toThrow("postMerge.prBaseBranch");
+    }
+  });
+
+  test("validateConfig accepts null prBaseBranch", () => {
+    const config = fresh();
+    config.postMerge = { prMode: "open", prBaseBranch: null, changelog: true };
+    expect(() => validateConfig(config)).not.toThrow();
   });
 });
