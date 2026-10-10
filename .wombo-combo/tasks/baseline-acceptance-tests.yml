@@ -12,15 +12,15 @@ description: |
   Document snapshot location, supported output, immutable lifecycle,
   fail-closed behavior, and non-quest fallback in
   docs/tdd-baseline.md. Run targeted tests, typecheck, and build.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - daemon-baseline-lifecycle
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:23:36.398Z
+ended_at: 2026-10-10T01:27:47.169Z
 constraints:
   - Use real structured runner output, not only mocked summary counts.
   - Keep intentionally failing fixture projects outside repository test discovery.
