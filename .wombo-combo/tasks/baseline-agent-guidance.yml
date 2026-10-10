@@ -10,13 +10,13 @@ description: |
   agents defer to a supplied quest baseline and otherwise require all tests
   to pass. Cover default and baseline-aware prompts in tests/prompt.test.ts
   and add tests/tdd-baseline-templates.test.ts.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT20M
-started_at: null
+started_at: 2026-10-10T00:29:28.634Z
 ended_at: null
 constraints:
   - Keep the baseline summary optional and independent of filesystem access.

@@ -1,0 +1,58 @@
+bun test v1.4.2 (744846f84)
+
+tests/a.test.ts:
+1 | import { describe, test, expect } from "bun:test";
+2 | describe("outer", () => {
+3 |   describe("inner", () => {
+4 |     test("adds", () => { expect(1 + 1).toBe(2); });
+5 |     test("dup", () => { expect(1).toBe(2); });
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+
+      at <anonymous> (/work/tree/tests/a.test.ts:5:35)
+(fail) outer > inner > dup [0.19ms]
+1 | import { describe, test, expect } from "bun:test";
+2 | describe("outer", () => {
+3 |   describe("inner", () => {
+4 |     test("adds", () => { expect(1 + 1).toBe(2); });
+5 |     test("dup", () => { expect(1).toBe(2); });
+6 |     test("dup", () => { expect(1).toBe(3); });
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 3
+Received: 1
+
+      at <anonymous> (/work/tree/tests/a.test.ts:6:35)
+(fail) outer > inner > dup [0.03ms]
+
+tests/sub/broken.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module './does-not-exist' from '/work/tree/tests/sub/broken.test.ts'
+-------------------------------
+
+
+tests/sub/b.test.ts:
+1 | import { test, expect } from "bun:test";
+2 | test("fails here", () => { expect("a").toBe("b"); });
+                                           ^
+error: expect(received).toBe(expected)
+
+Expected: "b"
+Received: "a"
+
+      at <anonymous> (/work/tree/tests/sub/b.test.ts:2:40)
+(fail) fails here [0.08ms]
+
+ 3 pass
+ 1 skip
+ 1 todo
+ 4 fail
+ 1 error
+ 5 expect() calls
+Ran 9 tests across 3 files. [3.00ms]

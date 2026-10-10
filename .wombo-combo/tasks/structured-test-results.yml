@@ -11,14 +11,14 @@ description: |
   Distinguish completed assertion failures from timeout, signal, buffer
   overflow, command-not-found, and test loading/runtime errors.
   Add coverage in tests/test-runner.test.ts and dedicated output fixtures.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on: []
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T00:29:27.838Z
+ended_at: 2026-10-10T00:32:04.983Z
 constraints:
   - Keep existing TestRunResult consumers and fixtures source-compatible through additive optional fields.
   - Normalize ANSI codes, worktree roots, path separators, and timing noise.

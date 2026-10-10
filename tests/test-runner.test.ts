@@ -5,17 +5,36 @@
  *   - parseTestCounts: Bun format, Jest format, unparseable output
  *   - extractTestErrorSummary: error line extraction, context lines, fallback
  *   - runTests: integration test with real commands (echo, exit codes)
+ *   - classifyExecution: timeout, signal, buffer overflow, command-not-found
+ *   - parseStructuredResults: per-test outcomes from real Bun output fixtures
+ *     (tests/fixtures/test-runner/, captured from bun v1.4.2 with the worktree
+ *     root rewritten to /work/tree)
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+  mkdirSync,
+  readFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   parseTestCounts,
   extractTestErrorSummary,
   runTests,
+  classifyExecution,
+  parseStructuredResults,
+  normalizeTestPath,
+  stripAnsi,
 } from "../src/lib/test-runner";
+
+const FIXTURES = join(import.meta.dir, "fixtures", "test-runner");
+const fixture = (name: string) =>
+  readFileSync(join(FIXTURES, `${name}.txt`), "utf-8");
+const COMPLETED = { status: "completed" as const };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -220,5 +239,245 @@ describe("runTests", () => {
     const result = await runTests(tmpDir, "echo done");
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
     expect(result.durationMs).toBeLessThan(5000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// classifyExecution
+// ---------------------------------------------------------------------------
+
+describe("classifyExecution", () => {
+  test("no error is completed", () => {
+    expect(classifyExecution(null)).toEqual({ status: "completed" });
+  });
+
+  test("numeric exit code is completed, not a failure kind", () => {
+    expect(classifyExecution({ code: 1, signal: null, killed: false })).toEqual({
+      status: "completed",
+    });
+  });
+
+  test("signal sent by exec is a timeout", () => {
+    expect(
+      classifyExecution({ code: null, signal: "SIGTERM", killed: true })
+    ).toEqual({ status: "timeout", signal: "SIGTERM" });
+  });
+
+  test("external signal is reported as signal", () => {
+    expect(
+      classifyExecution({ code: null, signal: "SIGKILL", killed: false })
+    ).toEqual({ status: "signal", signal: "SIGKILL" });
+  });
+
+  test("maxBuffer overflow", () => {
+    expect(
+      classifyExecution({ code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" })
+    ).toEqual({ status: "buffer-overflow" });
+  });
+
+  test("exit 127 is command-not-found", () => {
+    expect(classifyExecution({ code: 127, signal: null })).toEqual({
+      status: "command-not-found",
+    });
+  });
+
+  test("non-numeric code is a spawn error", () => {
+    expect(classifyExecution({ code: "ENOENT" })).toEqual({
+      status: "spawn-error",
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Normalization helpers
+// ---------------------------------------------------------------------------
+
+describe("normalizeTestPath", () => {
+  test("strips worktree root and converts separators", () => {
+    expect(normalizeTestPath("/work/tree/tests/a.test.ts", "/work/tree")).toBe(
+      "tests/a.test.ts"
+    );
+    expect(normalizeTestPath("C:\\wt\\tests\\a.test.ts", "C:\\wt\\")).toBe(
+      "tests/a.test.ts"
+    );
+    expect(normalizeTestPath("./tests/a.test.ts")).toBe("tests/a.test.ts");
+  });
+
+  test("stripAnsi removes color codes", () => {
+    expect(stripAnsi("\x1b[31m\u2717\x1b[0m a\x1b[2m > \x1b[0mb\r")).toBe(
+      "\u2717 a > b"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseStructuredResults — Bun fixtures
+// ---------------------------------------------------------------------------
+
+describe("parseStructuredResults — Bun", () => {
+  const ctx = { passed: false, execution: COMPLETED, rootPath: "/work/tree" };
+
+  test("extracts failing identities with nested suites and duplicates", () => {
+    const r = parseStructuredResults("", fixture("bun-failures"), ctx);
+    expect(r.runner).toBe("bun");
+    expect(r.comparable).toBe(true);
+    expect(r.incompleteReasons).toEqual([]);
+    expect(r.failureKind).toBe("assertions");
+    expect(r.passesListed).toBe(false);
+    // Two distinct tests share the name "dup" — both are kept
+    expect(r.failingTestIds).toEqual([
+      "tests/a.test.ts > outer > inner > dup",
+      "tests/a.test.ts > outer > inner > dup",
+      "tests/sub/b.test.ts > fails here",
+    ]);
+    expect(r.tests.map((t) => t.occurrence)).toEqual([1, 2, 1]);
+    expect(r.tests[0]).toMatchObject({
+      file: "tests/a.test.ts",
+      name: "outer > inner > dup",
+      outcome: "fail",
+    });
+  });
+
+  test("TTY output with ANSI codes yields the same identities", () => {
+    const plain = parseStructuredResults("", fixture("bun-failures"), ctx);
+    const tty = parseStructuredResults("", fixture("bun-failures-tty"), ctx);
+    expect(fixture("bun-failures-tty")).toContain("\x1b[");
+    expect(tty.comparable).toBe(true);
+    expect(tty.failingTestIds).toEqual(plain.failingTestIds);
+  });
+
+  test("timing noise does not affect identities", () => {
+    const a = fixture("bun-failures");
+    const b = a.replace(/\[[\d.]+ms\]/g, "[999.99ms]");
+    expect(parseStructuredResults("", b, ctx).failingTestIds).toEqual(
+      parseStructuredResults("", a, ctx).failingTestIds
+    );
+  });
+
+  test("load errors make results non-comparable", () => {
+    const r = parseStructuredResults("", fixture("bun-load-error"), ctx);
+    expect(r.loadErrors).toBe(1);
+    expect(r.failureKind).toBe("load-error");
+    expect(r.comparable).toBe(false);
+    expect(r.incompleteReasons.join("\n")).toContain("load or unhandled");
+  });
+
+  test("all-pass run is comparable with no failures", () => {
+    const r = parseStructuredResults("", fixture("bun-all-pass"), {
+      ...ctx,
+      passed: true,
+    });
+    expect(r.comparable).toBe(true);
+    expect(r.failureKind).toBe("none");
+    expect(r.failingTestIds).toEqual([]);
+  });
+
+  test("lists passes, skips, and todos when Bun prints them", () => {
+    // Older Bun versions print every result line in non-TTY mode
+    const out = [
+      "bun test v1.1.0",
+      "",
+      "tests/x.test.ts:",
+      "(pass) suite > ok [0.10ms]",
+      "(skip) suite > later",
+      "(todo) suite > someday",
+      "(fail) suite > broken [0.20ms]",
+      "",
+      " 1 pass",
+      " 1 skip",
+      " 1 todo",
+      " 1 fail",
+      "Ran 4 tests across 1 files. [5.00ms]",
+    ].join("\n");
+    const r = parseStructuredResults("", out, ctx);
+    expect(r.passesListed).toBe(true);
+    expect(r.comparable).toBe(true);
+    expect(r.tests.map((t) => t.outcome)).toEqual([
+      "pass",
+      "skip",
+      "todo",
+      "fail",
+    ]);
+    expect(r.failingTestIds).toEqual(["tests/x.test.ts > suite > broken"]);
+  });
+
+  test("truncated output (missing summary) is non-comparable", () => {
+    const cut = fixture("bun-failures").split("\n").slice(0, 20).join("\n");
+    const r = parseStructuredResults("", cut, ctx);
+    expect(r.comparable).toBe(false);
+    expect(r.failureKind).toBe("unknown");
+  });
+
+  test("failure count mismatch is non-comparable", () => {
+    const out = fixture("bun-failures").replace(" 3 fail", " 4 fail");
+    const r = parseStructuredResults("", out, ctx);
+    expect(r.comparable).toBe(false);
+    expect(r.failureKind).toBe("unknown");
+  });
+
+  test("incomplete execution never reports assertion failures", () => {
+    for (const status of ["timeout", "signal", "buffer-overflow"] as const) {
+      const r = parseStructuredResults("", fixture("bun-failures"), {
+        ...ctx,
+        execution: { status },
+      });
+      expect(r.comparable).toBe(false);
+      expect(r.failureKind).toBe(status);
+    }
+  });
+
+  test("nonzero exit without reported failures is unknown", () => {
+    const r = parseStructuredResults("", fixture("bun-all-pass"), ctx);
+    expect(r.comparable).toBe(false);
+    expect(r.failureKind).toBe("unknown");
+  });
+
+  test("unsupported runner output is non-comparable", () => {
+    const r = parseStructuredResults("Tests: 3 passed, 1 failed, 4 total", "", ctx);
+    expect(r.runner).toBe("unknown");
+    expect(r.comparable).toBe(false);
+    expect(r.failureKind).toBe("unknown");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// runTests — execution metadata
+// ---------------------------------------------------------------------------
+
+describe("runTests — execution metadata", () => {
+  test("timeout is classified and non-comparable", async () => {
+    const result = await runTests(tmpDir, "sleep 10", 100);
+    expect(result.execution?.status).toBe("timeout");
+    expect(result.exitCode).toBe(1);
+    expect(result.structured?.comparable).toBe(false);
+    expect(result.structured?.failureKind).toBe("timeout");
+  });
+
+  test("missing command is command-not-found", async () => {
+    const result = await runTests(tmpDir, "definitely-not-a-command-xyz");
+    expect(result.execution?.status).toBe("command-not-found");
+    expect(result.structured?.failureKind).toBe("command-not-found");
+  });
+
+  test("real bun run with a failing test yields its identity", async () => {
+    mkdirSync(join(tmpDir, "tests", "nested"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "tests", "nested", "x.test.ts"),
+      [
+        'import { describe, test, expect } from "bun:test";',
+        'describe("group", () => {',
+        '  test("ok", () => expect(1).toBe(1));',
+        '  test("bad", () => expect(1).toBe(2));',
+        "});",
+      ].join("\n")
+    );
+    const result = await runTests(tmpDir, "bun test", 30_000);
+    expect(result.passed).toBe(false);
+    expect(result.execution?.status).toBe("completed");
+    expect(result.structured?.comparable).toBe(true);
+    expect(result.structured?.failureKind).toBe("assertions");
+    expect(result.structured?.failingTestIds).toEqual([
+      "tests/nested/x.test.ts > group > bad",
+    ]);
   });
 });

@@ -1,0 +1,49 @@
+[0m[1mbun test [0m[2mv1.4.2 (744846f84)[0m
+[0m
+tests/a.test.ts:
+[0m[1m1 |[0m [0m[35mimport[0m { describe, test, expect } [0m[35mfrom[0m [0m[32m"bun:test"[0m[0m[2m;[0m
+[0m[1m2 |[0m describe([0m[32m"outer"[0m, () => {
+[0m[1m3 |[0m   describe([0m[32m"inner"[0m, () => {
+[0m[1m4 |[0m     test([0m[32m"adds"[0m, () => { expect([0m[33m1[0m + [0m[33m1[0m)[0m[3m[1m.toBe[0m([0m[33m2[0m)[0m[2m;[0m })[0m[2m;[0m
+[0m[1m5 |[0m     test([0m[32m"dup"[0m, () => { expect([0m[33m1[0m)[0m[3m[1m.toBe[0m([0m[33m2[0m)[0m[2m;[0m })[0m[2m;[0m
+                                      [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1m[2mexpect([0m[31mreceived[0m[2m).[0mtoBe[2m([0m[32mexpected[0m[2m)[0m
+
+Expected: [32m2[0m
+Received: [31m1[0m
+[0m
+[0m      [2mat [0m[0m[2m<anonymous>[0m[2m ([0m[0m[36m[2m/work/tree/[0m[36mtests/a.test.ts[0m[2m:[0m[33m5[0m[2m:[33m35[0m[2m)[0m
+[0m[31m✗[0m [0mouter[2m > [0minner[2m >[0m[1m dup[0m [0m[2m[0.22ms[0m[2m][0m
+[0m[1m1 |[0m [0m[35mimport[0m { describe, test, expect } [0m[35mfrom[0m [0m[32m"bun:test"[0m[0m[2m;[0m
+[0m[1m2 |[0m describe([0m[32m"outer"[0m, () => {
+[0m[1m3 |[0m   describe([0m[32m"inner"[0m, () => {
+[0m[1m4 |[0m     test([0m[32m"adds"[0m, () => { expect([0m[33m1[0m + [0m[33m1[0m)[0m[3m[1m.toBe[0m([0m[33m2[0m)[0m[2m;[0m })[0m[2m;[0m
+[0m[1m5 |[0m     test([0m[32m"dup"[0m, () => { expect([0m[33m1[0m)[0m[3m[1m.toBe[0m([0m[33m2[0m)[0m[2m;[0m })[0m[2m;[0m
+[0m[1m6 |[0m     test([0m[32m"dup"[0m, () => { expect([0m[33m1[0m)[0m[3m[1m.toBe[0m([0m[33m3[0m)[0m[2m;[0m })[0m[2m;[0m
+                                      [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1m[2mexpect([0m[31mreceived[0m[2m).[0mtoBe[2m([0m[32mexpected[0m[2m)[0m
+
+Expected: [32m3[0m
+Received: [31m1[0m
+[0m
+[0m      [2mat [0m[0m[2m<anonymous>[0m[2m ([0m[0m[36m[2m/work/tree/[0m[36mtests/a.test.ts[0m[2m:[0m[33m6[0m[2m:[33m35[0m[2m)[0m
+[0m[31m✗[0m [0mouter[2m > [0minner[2m >[0m[1m dup[0m [0m[2m[0.06ms[0m[2m][0m
+[0m
+tests/sub/b.test.ts:
+[0m[1m1 |[0m [0m[35mimport[0m { test, expect } [0m[35mfrom[0m [0m[32m"bun:test"[0m[0m[2m;[0m
+[0m[1m2 |[0m test([0m[32m"fails here"[0m, () => { expect([0m[32m"a"[0m)[0m[3m[1m.toBe[0m([0m[32m"b"[0m)[0m[2m;[0m })[0m[2m;[0m
+                                           [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1m[2mexpect([0m[31mreceived[0m[2m).[0mtoBe[2m([0m[32mexpected[0m[2m)[0m
+
+Expected: [0m[32m"[0m[32mb[0m[32m"[0m
+Received: [0m[31m"[0m[31ma[0m[31m"[0m
+[0m
+[0m      [2mat [0m[0m[2m<anonymous>[0m[2m ([0m[0m[36m[2m/work/tree/[0m[36mtests/sub/b.test.ts[0m[2m:[0m[33m2[0m[2m:[33m40[0m[2m)[0m
+[0m[31m✗[0m[0m[1m fails here[0m [0m[2m[0.16ms[0m[2m][0m
+
+[0m[32m 3 pass[0m
+ [0m[33m1 skip[0m
+ [0m[35m1 todo[0m
+[0m[31m 3 fail[0m
+ 5 expect() calls
+Ran 8 tests across 2 files. [0m[2m[[1m3.00ms[0m[2m][0m

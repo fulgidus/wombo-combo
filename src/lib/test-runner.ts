@@ -6,6 +6,8 @@
  *   - Capture exit code, stdout, stderr
  *   - Parse test output to extract pass/fail counts
  *   - Produce structured TestRunResult for the TDD verification pipeline
+ *   - Classify how the command ended (completed, timeout, signal, ...) and
+ *     extract per-test outcomes so runs can be compared test-by-test
  *
  * This module is used by tdd-verifier.ts as part of the TDD verification step.
  */
@@ -32,6 +34,99 @@ export interface TestRunResult {
   testCounts: TestCounts;
   /** Error summary for retry prompts (empty if passed) */
   errorSummary: string;
+  /** How the test command ended (absent for results built by hand) */
+  execution?: TestExecution;
+  /** Per-test outcomes, when the runner output could be parsed */
+  structured?: StructuredTestResults;
+}
+
+/**
+ * How the test command process ended.
+ *
+ *   - completed:         the process exited on its own (any exit code)
+ *   - timeout:           killed after exceeding the configured timeout
+ *   - signal:            terminated by a signal we did not send
+ *   - buffer-overflow:   stdout/stderr exceeded maxBuffer and was cut off
+ *   - command-not-found: the shell could not find the command (exit 126/127)
+ *   - spawn-error:       any other failure to run the command
+ */
+export type TestExecutionStatus =
+  | "completed"
+  | "timeout"
+  | "signal"
+  | "buffer-overflow"
+  | "command-not-found"
+  | "spawn-error";
+
+export interface TestExecution {
+  status: TestExecutionStatus;
+  /** Terminating signal, when status is "timeout" or "signal" */
+  signal?: string;
+}
+
+/**
+ * Why a test run did not pass. A nonzero exit code alone is never treated as
+ * completed assertion failures — that requires parsed, consistent output.
+ *
+ *   - none:          the command passed
+ *   - assertions:    the run completed and reported only test failures
+ *   - load-error:    a test file failed to load, or an error escaped a test
+ *   - <execution>:   the command did not complete (see TestExecutionStatus)
+ *   - unknown:       nonzero exit that the output does not explain
+ */
+export type TestFailureKind =
+  | "none"
+  | "assertions"
+  | "load-error"
+  | "timeout"
+  | "signal"
+  | "buffer-overflow"
+  | "command-not-found"
+  | "spawn-error"
+  | "unknown";
+
+export type TestOutcome = "pass" | "fail" | "skip" | "todo";
+
+/** One test case as reported by the runner */
+export interface TestCaseResult {
+  /** Stable identity: "<file> > <suite> > ... > <test name>" */
+  id: string;
+  /** Repository-relative file path with forward slashes */
+  file: string;
+  /** Full test name including enclosing suites, joined by " > " */
+  name: string;
+  /**
+   * 1-based occurrence among reported cases sharing this id, so duplicate
+   * test names stay distinct instead of collapsing into one entry.
+   */
+  occurrence: number;
+  outcome: TestOutcome;
+}
+
+/** Per-test results plus the metadata needed to decide if they can be trusted */
+export interface StructuredTestResults {
+  /** Runner whose output format was recognized */
+  runner: "bun" | "unknown";
+  failureKind: TestFailureKind;
+  /** Reported test cases, in output order */
+  tests: TestCaseResult[];
+  /** Ids of failing tests; duplicates are preserved (one entry per failure) */
+  failingTestIds: string[];
+  /**
+   * Whether passing tests are individually listed. Bun only lists failures
+   * when stdout is not a TTY, so passing identities are usually unavailable.
+   */
+  passesListed: boolean;
+  /** Number of load/unhandled errors reported outside of any test */
+  loadErrors: number;
+  /**
+   * True only when the run completed, the output format is supported, and
+   * every reported failure is accounted for by an identified test case.
+   * Consumers must not exempt failures from non-comparable results.
+   */
+  comparable: boolean;
+  /** Human-readable reasons the results are not comparable (empty if they are) */
+  incompleteReasons: string[];
 }
 
 /** Parsed test pass/fail counts from test runner output */
@@ -78,10 +173,19 @@ export function runTests(
       },
       (error, stdout, stderr) => {
         const durationMs = Date.now() - start;
-        const exitCode = error ? (error as any).code ?? 1 : 0;
+        const code = error ? (error as any).code : 0;
+        // error.code is a string for spawn/maxBuffer errors and null for signals
+        const exitCode = typeof code === "number" ? code : error ? 1 : 0;
         const passed = !error;
 
         const testCounts = parseTestCounts(stdout ?? "", stderr ?? "");
+        const execution = classifyExecution(error);
+        const structured = parseStructuredResults(stdout ?? "", stderr ?? "", {
+          passed,
+          execution,
+          testCounts,
+          rootPath: worktreePath,
+        });
 
         let errorSummary = "";
         if (!passed) {
@@ -96,6 +200,8 @@ export function runTests(
           durationMs,
           testCounts,
           errorSummary,
+          execution,
+          structured,
         });
       }
     );
@@ -154,6 +260,175 @@ export function parseTestCounts(stdout: string, stderr: string): TestCounts {
   }
 
   return result;
+}
+
+/**
+ * Classify how a child process ended from the node:child_process exec error.
+ */
+export function classifyExecution(error: unknown): TestExecution {
+  if (!error) return { status: "completed" };
+  const e = error as { code?: unknown; signal?: unknown; killed?: unknown };
+  if (e.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+    return { status: "buffer-overflow" };
+  }
+  if (typeof e.signal === "string" && e.signal) {
+    // exec sets killed=true when it sent the signal itself (timeout)
+    return e.killed
+      ? { status: "timeout", signal: e.signal }
+      : { status: "signal", signal: e.signal };
+  }
+  if (e.code === 126 || e.code === 127) return { status: "command-not-found" };
+  if (typeof e.code === "number") return { status: "completed" };
+  return { status: "spawn-error" };
+}
+
+/** Remove ANSI escape sequences and carriage returns */
+export function stripAnsi(s: string): string {
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").replace(/\r/g, "");
+}
+
+/**
+ * Normalize a test file path to repository-relative form with forward
+ * slashes, stripping the worktree root when the runner printed it.
+ */
+export function normalizeTestPath(path: string, rootPath?: string): string {
+  let p = path.trim().replace(/\\/g, "/");
+  if (rootPath) {
+    const root = rootPath.replace(/\\/g, "/").replace(/\/+$/, "") + "/";
+    if (p.startsWith(root)) p = p.slice(root.length);
+  }
+  return p.replace(/^\.\//, "");
+}
+
+/** Build the stable identity for a test case */
+export function testCaseId(file: string, name: string): string {
+  return `${file} > ${name}`;
+}
+
+// Bun file header, e.g. "tests/foo.test.ts:"
+const BUN_FILE_HEADER = /^(\S[^:]*?\.(?:[cm]?[jt]sx?)):$/;
+// Bun result line: "(fail) a > b [1.23ms]" (non-TTY) or "✗ a > b [1.23ms]" (TTY)
+const BUN_RESULT_LINE =
+  /^(?:\((pass|fail|skip|todo)\)|([✓✗»✎]))\s+(.+?)(?:\s+\[[\d.]+\s*m?s\])?\s*$/;
+const BUN_GLYPHS: Record<string, TestOutcome> = {
+  "✓": "pass",
+  "✗": "fail",
+  "»": "skip",
+  "✎": "todo",
+};
+const BUN_SUMMARY = /^Ran (\d+) tests? across (\d+) files?\./m;
+
+/**
+ * Extract per-test outcomes from runner output and decide whether they are
+ * complete enough to compare against another run.
+ *
+ * Only Bun output is understood today; anything else is marked
+ * non-comparable while counts parsing keeps working as before.
+ */
+export function parseStructuredResults(
+  stdout: string,
+  stderr: string,
+  context: {
+    passed: boolean;
+    execution: TestExecution;
+    testCounts?: TestCounts;
+    rootPath?: string;
+  }
+): StructuredTestResults {
+  const text = stripAnsi(stdout + "\n" + stderr);
+  const counts = context.testCounts ?? parseTestCounts(stdout, stderr);
+  const reasons: string[] = [];
+
+  const isBun = /^bun test v\d/m.test(text) || BUN_SUMMARY.test(text);
+  const tests: TestCaseResult[] = [];
+  let loadErrors = 0;
+  let unattributed = 0;
+
+  if (isBun) {
+    let file: string | null = null;
+    const seen = new Map<string, number>();
+    for (const line of text.split("\n")) {
+      const header = line.match(BUN_FILE_HEADER);
+      if (header) {
+        file = normalizeTestPath(header[1], context.rootPath);
+        continue;
+      }
+      if (/^# Unhandled error/.test(line)) {
+        loadErrors++;
+        continue;
+      }
+      const m = line.match(BUN_RESULT_LINE);
+      if (!m) continue;
+      const outcome = (m[1] as TestOutcome | undefined) ?? BUN_GLYPHS[m[2]];
+      if (!file) {
+        unattributed++;
+        continue;
+      }
+      const name = m[3].replace(/\s+>\s+/g, " > ").trim();
+      const id = testCaseId(file, name);
+      const occurrence = (seen.get(id) ?? 0) + 1;
+      seen.set(id, occurrence);
+      tests.push({ id, file, name, occurrence, outcome });
+    }
+    // Bun's summary also reports "N error(s)" for errors outside tests
+    const summaryErrors = text.match(/^\s*(\d+) errors?$/m);
+    if (summaryErrors) {
+      loadErrors = Math.max(loadErrors, parseInt(summaryErrors[1], 10));
+    }
+  } else {
+    reasons.push("unsupported test runner output");
+  }
+
+  const failing = tests.filter((t) => t.outcome === "fail");
+  const passesListed = tests.some((t) => t.outcome === "pass");
+
+  if (context.execution.status !== "completed") {
+    reasons.push(`test command did not complete (${context.execution.status})`);
+  }
+  if (isBun) {
+    if (!BUN_SUMMARY.test(text)) reasons.push("missing run summary");
+    if (!counts.parsed) reasons.push("missing pass/fail counts");
+    if (loadErrors > 0) reasons.push(`${loadErrors} load or unhandled error(s)`);
+    if (unattributed > 0) {
+      reasons.push(`${unattributed} result(s) without a test file`);
+    }
+    if (counts.parsed && failing.length !== counts.failed) {
+      reasons.push(
+        `listed failures (${failing.length}) do not match reported fail count (${counts.failed})`
+      );
+    }
+    if (
+      counts.parsed &&
+      passesListed &&
+      tests.filter((t) => t.outcome === "pass").length !== counts.passed
+    ) {
+      reasons.push("listed passes do not match reported pass count");
+    }
+    if (!context.passed && context.execution.status === "completed" && failing.length === 0 && loadErrors === 0) {
+      reasons.push("nonzero exit without any reported failure");
+    }
+  }
+
+  const comparable = reasons.length === 0;
+
+  let failureKind: TestFailureKind;
+  if (context.passed) failureKind = "none";
+  else if (context.execution.status !== "completed") failureKind = context.execution.status;
+  else if (loadErrors > 0) failureKind = "load-error";
+  else if (comparable && failing.length > 0) failureKind = "assertions";
+  else failureKind = "unknown";
+
+  return {
+    runner: isBun ? "bun" : "unknown",
+    failureKind,
+    tests,
+    failingTestIds: failing.map((t) => t.id),
+    passesListed,
+    loadErrors,
+    comparable,
+    incompleteReasons: reasons,
+  };
 }
 
 /**
