@@ -1,0 +1,20 @@
+# Git hooks, run with prek (https://github.com/j178/prek) — a fast drop-in
+# replacement for pre-commit that reads this same file.
+#
+# Install once per clone:  uvx prek install
+default_install_hook_types: [pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      # Keep graphify-out/ in sync with the code before it leaves the machine.
+      # If the graph changed, the refresh is committed and the push is stopped
+      # so it can be re-run including that commit.
+      - id: graphify-update
+        name: graphify update (refresh knowledge graph)
+        language: python
+        additional_dependencies: ["graphifyy==0.9.85"]
+        entry: python scripts/graphify-pre-push.py
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

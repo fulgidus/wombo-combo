@@ -18,3 +18,6 @@ dist/
 # Claude Code agent worktrees
 .claude/worktrees/
 .wombo-combo/analytics/
+
+# graphify local backups of the previous graph (dated folders)
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
