@@ -34,9 +34,9 @@ bun dev init --force
 
 ### 2. Never publish manually — use the release workflow
 
-Publishing is handled by the GitHub Actions release workflow, which triggers on
-git tag pushes. **Never run `npm publish` manually** — always let the workflow
-handle it.
+Publishing is handled by the GitHub Actions release workflow, which runs when
+the `package.json` version changes on `main`. **Never run `npm publish`
+manually** — always let the workflow handle it.
 
 To release: bump `package.json` version and push the commit to `main`. The
 Release workflow sees the new version, runs typecheck/tests/build, creates the
