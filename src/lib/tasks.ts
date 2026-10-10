@@ -15,6 +15,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR, isProjectInitialized } from "../config";
+import type { SchemaIssue } from "./task-schema";
 import {
   loadTasksFromStore,
   loadArchiveFromStore,
@@ -288,9 +289,10 @@ export const ensureFeaturesFile = ensureTasksFile;
  */
 export function loadTasks(
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  schemaIssues?: SchemaIssue[]
 ): TasksFile {
-  return loadTasksFromStore(projectRoot, config);
+  return loadTasksFromStore(projectRoot, config, schemaIssues);
 }
 
 /**
@@ -299,9 +301,10 @@ export function loadTasks(
  */
 export function loadArchive(
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  schemaIssues?: SchemaIssue[]
 ): ArchiveFile {
-  return loadArchiveFromStore(projectRoot, config);
+  return loadArchiveFromStore(projectRoot, config, schemaIssues);
 }
 
 /**
@@ -310,10 +313,11 @@ export function loadArchive(
  */
 export function loadFeatures(
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  schemaIssues?: SchemaIssue[]
 ): FeaturesFile {
-  const tasksData = loadTasks(projectRoot, config);
-  const archiveData = loadArchive(projectRoot, config);
+  const tasksData = loadTasks(projectRoot, config, schemaIssues);
+  const archiveData = loadArchive(projectRoot, config, schemaIssues);
   return {
     ...tasksData,
     // Map "tasks" to "features" for backward compat (FeaturesFile has .features)

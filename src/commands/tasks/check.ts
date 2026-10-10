@@ -27,6 +27,7 @@ import {
   VALID_STATUSES,
   VALID_PRIORITIES,
   VALID_DIFFICULTIES,
+  type SchemaIssue,
 } from "../../lib/task-schema";
 import { output, type OutputFormat } from "../../lib/output";
 import { renderTasksCheck } from "../../lib/toon";
@@ -157,12 +158,29 @@ function checkTasks(data: FeaturesFile): CheckResult {
 // Command
 // ---------------------------------------------------------------------------
 
+/**
+ * Fold loader-reported schema issues into the check result. Messages use the
+ * same `[id] message` shape as checkTasks, so an issue reported by both
+ * sources is counted once.
+ */
+function mergeSchemaIssues(result: CheckResult, issues: SchemaIssue[]): void {
+  for (const issue of issues) {
+    const line = `[${issue.taskId}] ${issue.message}`;
+    const bucket = issue.level === "error" ? result.errors : result.warnings;
+    if (!bucket.includes(line)) bucket.push(line);
+  }
+}
+
 export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
   const { projectRoot, config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
-  const data = loadFeatures(projectRoot, config);
+  // Schema issues found while loading (invalid ids, bad enums, unparseable
+  // files, ...) are failures too, not just console noise.
+  const schemaIssues: SchemaIssue[] = [];
+  const data = loadFeatures(projectRoot, config, schemaIssues);
   const result = checkTasks(data);
+  mergeSchemaIssues(result, schemaIssues);
 
   const allItems = collectAllItems(data);
   const issues = [
