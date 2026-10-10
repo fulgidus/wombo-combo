@@ -17,7 +17,7 @@
  * ChromeTitleContext allows screens to push a custom title into the top bar.
  */
 
-import React, { createContext, useContext, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 
@@ -71,6 +71,33 @@ export const ChromeTitleContext = createContext<string | null>(null);
  */
 export function useChromTitle(): string | null {
   return useContext(ChromeTitleContext);
+}
+
+// ---------------------------------------------------------------------------
+// ChromeHideQuitContext — screen-level suppression of the global "q quit" hint
+// ---------------------------------------------------------------------------
+
+/**
+ * Provided by ChromeLayout. Setter that toggles whether the global "q" quit
+ * hint is hidden in the bottom bar. Null outside a ChromeLayout.
+ */
+const ChromeHideQuitContext = createContext<((hide: boolean) => void) | null>(null);
+
+/**
+ * Hide the global "q quit" hint while `hide` is true.
+ *
+ * Screens call this when `q` does not quit on the current view (e.g. a
+ * text-input step where q is typed into a field). The hint is restored
+ * automatically when the screen unmounts or `hide` becomes false. The
+ * ESC menu hint remains, since it is the quit path there.
+ */
+export function useChromeHideQuitHint(hide: boolean): void {
+  const setHidden = useContext(ChromeHideQuitContext);
+  useEffect(() => {
+    if (!setHidden) return;
+    setHidden(hide);
+    return () => setHidden(false);
+  }, [hide, setHidden]);
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +232,8 @@ export interface ChromeBottomBarProps {
   contextHints?: KeybindHint[];
   /** Active locale code displayed in the icon strip (default: "en"). */
   locale?: string;
+  /** Omit the global "q quit" hint (screen has a text field that takes q). */
+  hideQuitHint?: boolean;
 }
 
 /**
@@ -215,8 +244,12 @@ export interface ChromeBottomBarProps {
 export function ChromeBottomBar({
   contextHints = [],
   locale = "en",
+  hideQuitHint = false,
 }: ChromeBottomBarProps): React.ReactElement {
-  const allHints = [...GLOBAL_HINTS, ...contextHints];
+  const globalHints = hideQuitHint
+    ? GLOBAL_HINTS.filter((hint) => hint.key !== "q")
+    : GLOBAL_HINTS;
+  const allHints = [...globalHints, ...contextHints];
 
   return (
     <Box
@@ -291,19 +324,26 @@ export function ChromeLayout({
   children,
 }: ChromeLayoutProps): React.ReactElement {
   const { rows } = useTerminalSize();
+  const [hideQuitHint, setHideQuitHint] = useState(false);
 
   return (
-    <Box flexDirection="column" width="100%" height={rows}>
-      <ChromeTopBar
-        screenName={screenName}
-        daemonConnected={daemonConnected}
-        waveSummary={waveSummary}
-        daemonStats={daemonStats}
-      />
-      <Box flexDirection="column" flexGrow={1}>
-        {children}
+    <ChromeHideQuitContext.Provider value={setHideQuitHint}>
+      <Box flexDirection="column" width="100%" height={rows}>
+        <ChromeTopBar
+          screenName={screenName}
+          daemonConnected={daemonConnected}
+          waveSummary={waveSummary}
+          daemonStats={daemonStats}
+        />
+        <Box flexDirection="column" flexGrow={1}>
+          {children}
+        </Box>
+        <ChromeBottomBar
+          contextHints={contextHints}
+          locale={locale}
+          hideQuitHint={hideQuitHint}
+        />
       </Box>
-      <ChromeBottomBar contextHints={contextHints} locale={locale} />
-    </Box>
+    </ChromeHideQuitContext.Provider>
   );
 }

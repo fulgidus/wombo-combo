@@ -1,14 +1,16 @@
 id: onboarding-q-hint-text-steps
 title: Chrome q hint is misleading on onboarding text steps
-description: ""
-status: backlog
-completion: 0
+description: On the first-run onboarding wizard, q quits only on the selection step; on text-input steps it types a
+  letter. The global bottom chrome still advertises "q quit" on every screen, so text steps show a misleading hint. Fix
+  by letting the active screen suppress the q quit hint, leaving other screens unchanged.
+status: done
+completion: 100
 difficulty: medium
 priority: low
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T01:24:31.214Z
 constraints: []
 forbidden: []
 references: []

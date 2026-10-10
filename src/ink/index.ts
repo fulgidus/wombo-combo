@@ -258,6 +258,7 @@ export {
   ChromeBottomBar,
   ChromeTitleContext,
   useChromTitle,
+  useChromeHideQuitHint,
   type ChromeLayoutProps,
   type ChromeTopBarProps,
   type ChromeBottomBarProps,
