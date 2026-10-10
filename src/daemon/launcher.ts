@@ -238,7 +238,11 @@ function resolveDaemonEntry(): string {
   const srcEntry = resolve(import.meta.dir, "daemon.ts");
   if (existsSync(srcEntry)) return srcEntry;
 
-  // Fall back to dist (production)
+  // Bundled CLI: this code runs from dist/index.js, daemon is dist/daemon/daemon.js
+  const bundledEntry = resolve(import.meta.dir, "daemon", "daemon.js");
+  if (existsSync(bundledEntry)) return bundledEntry;
+
+  // Running from src with a built dist alongside
   const distEntry = resolve(import.meta.dir, "../../dist/daemon/daemon.js");
   if (existsSync(distEntry)) return distEntry;
 

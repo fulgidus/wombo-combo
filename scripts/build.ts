@@ -1,5 +1,6 @@
 /**
- * Builds dist/index.js for the Node and Bun runtimes.
+ * Builds dist/index.js (CLI) and dist/daemon/daemon.js (daemon) for the
+ * Node and Bun runtimes.
  *
  * Two build-time fixes make the bundle load under Node:
  *
@@ -17,7 +18,10 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "..");
 
 const result = await Bun.build({
-  entrypoints: [resolve(root, "src/index.ts")],
+  // The daemon runs as a separate detached process, so it needs its own
+  // entry: src/daemon/daemon.ts → dist/daemon/daemon.js
+  entrypoints: [resolve(root, "src/index.ts"), resolve(root, "src/daemon/daemon.ts")],
+  root: resolve(root, "src"),
   outdir: resolve(root, "dist"),
   target: "node",
   plugins: [
