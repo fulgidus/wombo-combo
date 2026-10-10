@@ -62,13 +62,20 @@ export const ANALYTICS_DIR = `${WOMBO_DIR}/analytics`;
 export type AnalyticsOutcome = "running" | "succeeded" | "failed" | "stopped";
 export type AnalyticsMergeOutcome = "pending" | "merged" | "failed" | "not_applicable";
 export type AnalyticsUsageCoverage = "none" | "partial" | "full";
-/** Where line-change measurement stands. */
-export type AnalyticsMeasurementPhase = "pending" | "measured" | "unavailable";
+/**
+ * Where line-change measurement stands: "pending" (not yet measured),
+ * "measured" (measured at successful verification, or best-effort before a
+ * failure), "replacement" (re-measured after a tier-four conflict re-run reset
+ * the worktree; the diff then describes the replacement implementation while
+ * verified_at/duration_ms keep describing the original verification), or
+ * "unavailable" (git could not provide a measurement).
+ */
+export type AnalyticsMeasurementPhase = "pending" | "measured" | "replacement" | "unavailable";
 
 export const ANALYTICS_OUTCOMES: readonly AnalyticsOutcome[] = ["running", "succeeded", "failed", "stopped"];
 export const ANALYTICS_MERGE_OUTCOMES: readonly AnalyticsMergeOutcome[] = ["pending", "merged", "failed", "not_applicable"];
 export const ANALYTICS_USAGE_COVERAGES: readonly AnalyticsUsageCoverage[] = ["none", "partial", "full"];
-export const ANALYTICS_MEASUREMENT_PHASES: readonly AnalyticsMeasurementPhase[] = ["pending", "measured", "unavailable"];
+export const ANALYTICS_MEASUREMENT_PHASES: readonly AnalyticsMeasurementPhase[] = ["pending", "measured", "replacement", "unavailable"];
 
 export interface AgentAnalyticsRecord {
   schema_version: number;

@@ -128,6 +128,10 @@ describe("AnalyticsStore", () => {
     expect(validateAnalyticsRecord({ ...rec(), additions: "x" }).ok).toBe(false);
     expect(validateAnalyticsRecord(null).ok).toBe(false);
     expect(validateAnalyticsRecord({ ...rec(), outcome: "weird" }).ok).toBe(false);
+    for (const phase of ["pending", "measured", "replacement", "unavailable"] as const) {
+      expect(validateAnalyticsRecord({ ...rec(), measurement_phase: phase }).ok).toBe(true);
+    }
+    expect(validateAnalyticsRecord({ ...rec(), measurement_phase: "other" }).ok).toBe(false);
   });
 
   test("upsert rejects invalid records", () => {
