@@ -14,8 +14,8 @@ description: |
   branches. Reuse persisted snapshots after daemon restart and prevent
   cross-quest leakage when session scope changes.
   Add tests/daemon-test-baseline.test.ts for these lifecycle paths.
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
@@ -24,7 +24,7 @@ depends_on:
   - baseline-agent-guidance
 effort: PT30M
 started_at: 2026-10-10T01:16:03.400Z
-ended_at: null
+ended_at: 2026-10-10T01:23:10.853Z
 constraints:
   - No real quest coding agent may spawn before a valid snapshot is persisted.
   - Cover CLI, auto-detected quest, and TUI launches through the shared AgentRunner seam.
