@@ -290,9 +290,19 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
     TEST_TIMEOUT_MS
   );
 
-  // Known issue (observed manually, not yet fixed): on the first-run onboarding
-  // screen (no project.yml), the global chrome advertises "q quit" but pressing
-  // `q` does not exit the TUI. Left as a todo so the suite stays green; see the
-  // report accompanying this file.
-  test.todo("q quits from the onboarding screen (first run, no project.yml)");
+  test(
+    "q quits from the onboarding screen (first run, no project.yml)",
+    async () => {
+      // First run: config.json is present but project.yml is not.
+      rmSync(join(projectDir, ".wombo-combo", "project.yml"));
+
+      const tui = start();
+      await tui.waitFor("Project Onboarding");
+      // The type step is a selection list (no text field), so q quits.
+      await tui.send("q");
+
+      expect(await tui.waitForExit(5_000)).toBe(0);
+    },
+    TEST_TIMEOUT_MS
+  );
 });
