@@ -244,8 +244,11 @@ export async function resolveGithubRepo(
   return { repo };
 }
 
-/** Run availability + authentication + remote resolution in order. */
-async function prepare(
+/**
+ * Run availability + remote resolution + authentication in order. Callers use
+ * it to verify PR publication can succeed BEFORE pushing anything.
+ */
+export async function ensureGithubReady(
   ctx: GhContext,
   remote: string
 ): Promise<{ repo: GithubRepo } | { error: GithubPrResult }> {
@@ -263,7 +266,7 @@ export async function resolveRemoteDefaultBranch(
   ctx: GhContext,
   remote: string
 ): Promise<{ branch: string; repo: GithubRepo } | { error: GithubPrResult }> {
-  const prep = await prepare(ctx, remote);
+  const prep = await ensureGithubReady(ctx, remote);
   if ("error" in prep) return prep;
   const res = await run(ctx, "gh", [
     "repo",
@@ -377,7 +380,7 @@ export async function createOrUpdatePullRequest(
     return failure("invalid-input", "PR head and base must differ.");
   }
 
-  const prep = await prepare(opts, opts.remote);
+  const prep = await ensureGithubReady(opts, opts.remote);
   if ("error" in prep) return prep.error;
   const { repo } = prep;
 

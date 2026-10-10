@@ -333,6 +333,24 @@ describe("failure handling", () => {
     expect(remoteHas("integration")).toBe(false);
   });
 
+  test("missing or unauthenticated gh with an explicit PR target never pushes", async () => {
+    for (const ghOpts of [{ missing: true }, { unauthenticated: true }]) {
+      setup();
+      const op = fx.merge("t1", "Task one");
+      const gh = makeFakeGh(ghOpts);
+      const res = await runPostMerge(
+        { projectRoot: fx.repo, config: fx.config({ prBaseBranch: "main" }), operation: op, mergeSucceeded: true },
+        { runner: gh.runner, now: NOW }
+      );
+      expect(res.pr.status).toBe("failed");
+      expect(res.push.status).toBe("skipped");
+      expect(remoteHas("integration")).toBe(false);
+      expect(gh.calls.some((c) => c.command === "git" && c.args[0] === "push")).toBe(false);
+      expect(res.changelog.status).toBe("written");
+      fx.cleanup();
+    }
+  });
+
   test("unauthenticated gh skips the push", async () => {
     setup();
     const op = fx.merge("t1", "Task one");

@@ -39,6 +39,7 @@ import { appendChangelogEntry } from "./changelog";
 import {
   createOrUpdatePullRequest,
   defaultCommandRunner,
+  ensureGithubReady,
   resolveRemoteDefaultBranch,
   type CommandResult,
   type CommandRunner,
@@ -362,6 +363,16 @@ async function runPublicationPhase(
       };
     }
     base = resolved.branch;
+  } else {
+    // An explicit target still needs a usable GitHub CLI: verify BEFORE pushing,
+    // so a missing/unauthenticated gh never leaves a half-published branch.
+    const ready = await ensureGithubReady({ cwd: req.projectRoot, runner }, remote);
+    if ("error" in ready) {
+      return {
+        push: { status: "skipped", message: "Push skipped: GitHub CLI is not ready." },
+        pr: { status: "failed", head, base, message: ready.error.message },
+      };
+    }
   }
   if (!validBranchName(base)) {
     return {
