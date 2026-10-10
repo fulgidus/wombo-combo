@@ -280,12 +280,39 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       await tui.waitFor("Return to app");
       await tui.waitFor("Quit wombo");
 
-      // Items: Return to app, Settings, Quit wombo.
+      // Items: Return to app, Dashboard, Settings, Quit wombo.
+      await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_ENTER);
 
       expect(await tui.waitForExit(5_000)).toBe(0);
+    },
+    TEST_TIMEOUT_MS
+  );
+
+  test(
+    "ESC menu → Dashboard shows the realtime dashboard; b returns to the quest picker",
+    async () => {
+      const tui = start();
+      await reachQuestPicker(tui);
+
+      await tui.send(KEY_ESC);
+      await tui.waitFor("Dashboard");
+      await tui.send(KEY_DOWN); // Return to app -> Dashboard
+      await tui.send(KEY_ENTER);
+
+      await tui.waitFor("Throughput");
+      await tui.waitFor("Est. remaining");
+      await tui.waitFor("Quest tokens");
+      expect(tui.exitCode()).toBeNull();
+
+      await tui.send("b");
+      await tui.waitFor("Keys:");
+      expect(tui.exitCode()).toBeNull();
+
+      await tui.send("q");
+      expect(await tui.waitForExit()).toBe(0);
     },
     TEST_TIMEOUT_MS
   );

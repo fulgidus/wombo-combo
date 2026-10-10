@@ -15,6 +15,7 @@ import { getStableStdin } from "./bun-stdin";
 import { render, Box } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import { useNavigation } from "./router";
+import { useEscMenu } from "./esc-menu";
 import { QuestPickerView, type QuestSummary } from "./quest-picker";
 import { FakeTaskWizard, generateFakeTasks, type FakeTaskConfig } from "./fake-task-wizard";
 import type { Quest } from "../lib/quest";
@@ -242,6 +243,9 @@ function QuestPickerApp({
   }, []);
 
   const { columns, rows } = useTerminalSize();
+  // The ESC menu owns input while open; otherwise Enter/arrows would also
+  // drive this screen underneath the overlay.
+  const escMenu = useEscMenu();
 
   return (
     <>
@@ -265,7 +269,7 @@ function QuestPickerApp({
         onOnboarding={handleOnboarding}
         onDelete={handleDelete}
         onSeedFake={handleSeedFake}
-        isActive={!showWizard}
+        isActive={!showWizard && !escMenu.open}
       />
       {showWizard && (
         <Box
