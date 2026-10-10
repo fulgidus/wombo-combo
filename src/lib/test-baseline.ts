@@ -525,6 +525,16 @@ export function compareTestRunToBaseline(
   if (baseTotal > 0 && curTotal > 0 && curTotal < baseTotal) {
     result.warnings.push(`fewer tests ran than in the baseline (${curTotal} < ${baseTotal})`);
   }
+  // Without listed passes a newly skipped test can't be attributed to an
+  // identity, so surface the count change instead of hiding it
+  if (baseline.results.counts.parsed && run.testCounts.parsed) {
+    const extraSkips = run.testCounts.skipped - baseline.results.counts.skipped;
+    if (extraSkips > 0) {
+      result.warnings.push(
+        `${extraSkips} more skipped test(s) than in the baseline — check that no test was skipped to hide a failure`
+      );
+    }
+  }
   if (result.skippedBaselineFailures.length > 0) {
     result.warnings.push(
       `${result.skippedBaselineFailures.length} baseline failure(s) are now skipped — not counted as fixed`

@@ -342,7 +342,7 @@ describe("baseline acceptance: pre-existing failure", () => {
 
 describe("baseline acceptance: passing tests skipped or removed", () => {
   test(
-    "KNOWN LIMITATION: skipping a passing test is not reported when passes are not listed",
+    "skipping a passing test blocks when passes are listed, and warns otherwise",
     async () => {
       const repo = makeRepo({ [SUITE]: suiteSource(MAIN_SUITE) });
       const config = makeConfig();
@@ -362,13 +362,18 @@ describe("baseline acceptance: passing tests skipped or removed", () => {
       const c = result.tdd.baselineComparison!;
       const run = result.tdd.testRun!;
 
-      expect(run.structured!.passesListed).toBe(false);
-      expect(baseline.results.structured!.passesListed).toBe(false);
-      // Total stays the same (pass+fail+skip), so no count warning either
-      expect(c.regressedPasses).toEqual([]);
-      expect(c.warnings.some((w) => w.includes("fewer tests ran"))).toBe(false);
-      expect(c.verdict).toBe("pass");
-      expect(result.overallPassed).toBe(true);
+      if (run.structured!.passesListed && baseline.results.structured!.passesListed) {
+        // e.g. under GitHub Actions, where Bun lists every passing test
+        expect(c.regressedPasses).toEqual(["tests/suite.test.ts > stays green"]);
+        expect(c.verdict).toBe("regression");
+        expect(result.overallPassed).toBe(false);
+      } else {
+        // The skip can't be tied to a test identity: surfaced, not blocked
+        expect(c.regressedPasses).toEqual([]);
+        expect(c.warnings.some((w) => w.includes("more skipped test(s) than in the baseline"))).toBe(true);
+        expect(c.verdict).toBe("pass");
+        expect(result.overallPassed).toBe(true);
+      }
     },
     TEST_TIMEOUT
   );

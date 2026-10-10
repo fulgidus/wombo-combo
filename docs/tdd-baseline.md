@@ -119,8 +119,9 @@ The GitHub Actions case could not be reproduced here.
 
 Without listed passes:
 
-- a passing test that becomes **skipped** is not detected. Skipping keeps the
-  total unchanged, so there is no warning either;
+- a passing test that becomes **skipped** cannot be tied to a test identity,
+  so it only produces a `more skipped test(s) than in the baseline` warning
+  and does not block;
 - a passing test that is **removed** produces only the `fewer tests ran`
   warning and does not block;
 - a baseline failure that **now passes** is reported as "no longer reported",
@@ -129,4 +130,5 @@ Without listed passes:
   are always listed.
 
 Regressions that turn a passing test into a failure are always detected.
-Skipped and removed passing tests are detected only when passes are listed.
+Skipped and removed passing tests block only when passes are listed; otherwise
+they are surfaced as warnings.
