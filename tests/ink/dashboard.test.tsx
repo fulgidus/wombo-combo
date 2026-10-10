@@ -51,7 +51,7 @@ describe("DashboardScreen with no active wave", () => {
 describe("DashboardScreen with active wave", () => {
   test("renders agent count from context", async () => {
     const { DashboardScreen, DashboardStoreContext } = await import("../../src/ink/dashboard");
-    const store = { agents: [{} as any, {} as any], running: 1, done: 1, failed: 0, total: 2 };
+    const store = { agents: [{ id: "a1" } as any, { id: "a2" } as any], running: 1, done: 1, failed: 0, total: 2 };
     const output = renderToString(
       React.createElement(
         DashboardStoreContext.Provider,
@@ -65,7 +65,7 @@ describe("DashboardScreen with active wave", () => {
 
   test("renders running count", async () => {
     const { DashboardScreen, DashboardStoreContext } = await import("../../src/ink/dashboard");
-    const store = { agents: [{} as any], running: 1, done: 0, failed: 0, total: 1 };
+    const store = { agents: [{ id: "a1" } as any], running: 1, done: 0, failed: 0, total: 1 };
     const output = renderToString(
       React.createElement(
         DashboardStoreContext.Provider,
