@@ -36,7 +36,7 @@ jobs:
       release: ${{ steps.resolve.outputs.release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve release tag
         id: resolve
@@ -65,7 +65,7 @@ jobs:
       RELEASE_TAG: ${{ needs.plan.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # full history for changelog generation
 
@@ -75,7 +75,7 @@ jobs:
           bun-version: "1.4.2" # keep in sync with ci.yml
 
       - name: Setup Node (for npm publish)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
