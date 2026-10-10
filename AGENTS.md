@@ -229,3 +229,4 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A prek `pre-push` hook (`.pre-commit-config.yaml`, `scripts/graphify-pre-push.py`) does this automatically: if the graph is stale it commits a refresh and stops the push — just push again. Install it once per clone with `uvx prek install` (prek installs graphify into its own environment).
