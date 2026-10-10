@@ -18,16 +18,16 @@ description: |
   action through an optional onBack callback, disabled while ESC menu
   is open. Add dashboard translation keys in src/ink/strings/en.ts.
   Extend tests/ink/dashboard.test.tsx with rich metric fixtures.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - dashboard-metrics
   - dashboard-sparklines
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:17:54.430Z
+ended_at: 2026-10-10T02:20:27.064Z
 constraints:
   - Use useTheme and useI18n for new presentation.
   - Use existing formatTokenCount and formatCost helpers where appropriate.

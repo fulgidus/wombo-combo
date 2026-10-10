@@ -11,8 +11,8 @@ description: |
   duplicate dashboard stack entries. Retain the existing notifyRef,
   DashboardStoreContext, HITL state, and monitor event-handling paths.
   Extend tests/ink/monitor-router.test.tsx with dashboard navigation.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
@@ -20,8 +20,8 @@ depends_on:
   - dashboard-rich-screen
   - dashboard-chrome-entry
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:30:23.020Z
+ended_at: 2026-10-10T02:32:56.923Z
 constraints:
   - The standalone monitor must retain its current splash and detach behavior.
   - Dashboard history must persist while switching between monitor, dashboard, and settings.

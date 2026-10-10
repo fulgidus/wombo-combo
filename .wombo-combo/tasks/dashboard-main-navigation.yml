@@ -15,8 +15,8 @@ description: |
   Preserve the existing chrome concurrency polling/override behavior
   and legacy monitor context. Extend tests/ink/tui-app.test.tsx with
   dashboard startup and menu navigation coverage.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
@@ -24,8 +24,8 @@ depends_on:
   - dashboard-rich-screen
   - dashboard-chrome-entry
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:21:20.782Z
+ended_at: 2026-10-10T02:29:04.830Z
 constraints:
   - The metrics provider must survive navigation to settings, task-browser, and quest-picker.
   - Navigating must not create another Ink render instance or daemon connection.

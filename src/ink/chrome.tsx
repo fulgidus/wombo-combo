@@ -179,8 +179,9 @@ export function ChromeTopBar({
       borderRight={false}
       borderTop={false}
     >
-      {/* Left: app name + screen */}
-      <Box flexDirection="row" gap={1}>
+      {/* Left: app name + screen — never shrinks, so narrow terminals keep
+          the breadcrumb intact and the status items truncate instead */}
+      <Box flexDirection="row" gap={1} flexShrink={0}>
         <Text bold>Home</Text>
         <Text dimColor>›</Text>
         <Text bold>{displayName}</Text>
@@ -188,7 +189,7 @@ export function ChromeTopBar({
 
       {/* Center: wave summary (legacy, only shown when explicitly set) */}
       {waveSummary && (
-        <Box flexDirection="row" gap={1}>
+        <Box flexDirection="row" gap={1} flexShrink={1} overflow="hidden">
           <Text color="blue">●{waveSummary.running}</Text>
           <Text color="green">✓{waveSummary.done}</Text>
           <Text color="red">✗{waveSummary.failed}</Text>
@@ -196,7 +197,7 @@ export function ChromeTopBar({
       )}
 
       {/* Right: live agent count + scheduler status + connection dot */}
-      <Box flexDirection="row" gap={1}>
+      <Box flexDirection="row" gap={1} flexShrink={1} overflow="hidden" marginLeft={1}>
         {daemonStats ? (
           <>
             <Text color={daemonStats.running > 0 ? "greenBright" : "gray"}>
@@ -208,9 +209,9 @@ export function ChromeTopBar({
           </>
         ) : null}
         {daemonConnected ? (
-          <Text color="greenBright">⬤ connected</Text>
+          <Text color="greenBright" wrap="truncate">⬤ connected</Text>
         ) : (
-          <Text color="red">⬤ unreachable</Text>
+          <Text color="red" wrap="truncate">⬤ unreachable</Text>
         )}
       </Box>
     </Box>
@@ -234,7 +235,12 @@ export interface ChromeBottomBarProps {
   locale?: string;
   /** Omit the global "q quit" hint (screen has a text field that takes q). */
   hideQuitHint?: boolean;
+  /** Show a hint that the dashboard is reachable from the ESC menu. */
+  dashboardAvailable?: boolean;
 }
+
+/** Extra hint shown when the dashboard entry exists in the ESC menu. */
+const DASHBOARD_HINT: KeybindHint = { key: "Dashboard", description: "in ESC menu" };
 
 /**
  * Fixed bottom bar.
@@ -245,11 +251,16 @@ export function ChromeBottomBar({
   contextHints = [],
   locale = "en",
   hideQuitHint = false,
+  dashboardAvailable = false,
 }: ChromeBottomBarProps): React.ReactElement {
   const globalHints = hideQuitHint
     ? GLOBAL_HINTS.filter((hint) => hint.key !== "q")
     : GLOBAL_HINTS;
-  const allHints = [...globalHints, ...contextHints];
+  const allHints = [
+    ...globalHints,
+    ...(dashboardAvailable ? [DASHBOARD_HINT] : []),
+    ...contextHints,
+  ];
 
   return (
     <Box
@@ -301,6 +312,8 @@ export interface ChromeLayoutProps {
   contextHints?: KeybindHint[];
   /** Active locale code for the bottom bar icon strip. */
   locale?: string;
+  /** Show the ESC-menu dashboard hint in the bottom bar. */
+  dashboardAvailable?: boolean;
   /** The screen content (rendered between the bars). */
   children?: ReactNode;
 }
@@ -321,6 +334,7 @@ export function ChromeLayout({
   daemonStats,
   contextHints,
   locale,
+  dashboardAvailable,
   children,
 }: ChromeLayoutProps): React.ReactElement {
   const { rows } = useTerminalSize();
@@ -342,6 +356,7 @@ export function ChromeLayout({
           contextHints={contextHints}
           locale={locale}
           hideQuitHint={hideQuitHint}
+          dashboardAvailable={dashboardAvailable}
         />
       </Box>
     </ChromeHideQuitContext.Provider>

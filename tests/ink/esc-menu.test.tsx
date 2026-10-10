@@ -114,8 +114,9 @@ describe("useEscMenu()", () => {
   });
 
   test("EscMenuProvider renders its children", async () => {
-    const { EscMenuProvider } = await import("../../src/ink/esc-menu");
+    const { EscMenuProvider, useEscMenu } = await import("../../src/ink/esc-menu");
     const { Text } = await import("ink");
+    const Probe = () => React.createElement(Text, {}, `open:${useEscMenu().open}`);
     const output = renderToString(
       React.createElement(
         EscMenuProvider,
@@ -124,5 +125,124 @@ describe("useEscMenu()", () => {
       )
     );
     expect(output).toContain("child content");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard entry (optional onOpenDashboard)
+// ---------------------------------------------------------------------------
+
+function makeStreams() {
+  const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
+  (stdout as any).columns = 100;
+  (stdout as any).rows = 40;
+  const stdin = new PassThrough() as unknown as NodeJS.ReadStream;
+  (stdin as any).isTTY = true;
+  (stdin as any).setRawMode = () => stdin;
+  (stdin as any).ref = () => stdin;
+  (stdin as any).unref = () => stdin;
+  return { stdin, stdout };
+}
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+describe("EscMenu dashboard entry", () => {
+  test("no Dashboard item without onOpenDashboard (existing behavior)", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const out = renderToString(
+      React.createElement(EscMenu, { open: true, onClose: () => {}, onNavigate: () => {} }),
+    );
+    expect(out).not.toContain("Dashboard");
+  });
+
+  test("Dashboard item shown when onOpenDashboard is supplied", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const out = renderToString(
+      React.createElement(EscMenu, {
+        open: true,
+        onClose: () => {},
+        onNavigate: () => {},
+        onOpenDashboard: () => {},
+      }),
+    );
+    expect(out).toContain("Dashboard");
+    expect(out).toContain("Settings");
+    expect(out).toContain("Quit");
+  });
+
+  test("selecting Dashboard closes the menu before navigating", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const { stdin, stdout } = makeStreams();
+    const calls: string[] = [];
+    const inst = render(
+      React.createElement(EscMenu, {
+        open: true,
+        onClose: () => calls.push("close"),
+        onNavigate: (a: string) => calls.push(`nav:${a}`),
+        onOpenDashboard: () => calls.push("dashboard"),
+      }),
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await wait(30);
+    (stdin as any).write("\u001b[B"); // down -> Dashboard
+    await wait(30);
+    (stdin as any).write("\r");
+    await wait(30);
+    inst.unmount();
+    expect(calls).toEqual(["close", "dashboard"]);
+  });
+
+  test("settings still uses onNavigate with the existing action union", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const { stdin, stdout } = makeStreams();
+    const calls: string[] = [];
+    const inst = render(
+      React.createElement(EscMenu, {
+        open: true,
+        onClose: () => calls.push("close"),
+        onNavigate: (a: string) => calls.push(`nav:${a}`),
+        onOpenDashboard: () => calls.push("dashboard"),
+      }),
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await wait(30);
+    (stdin as any).write("\u001b[B");
+    await wait(20);
+    (stdin as any).write("\u001b[B"); // Settings
+    await wait(20);
+    (stdin as any).write("\r");
+    await wait(30);
+    inst.unmount();
+    expect(calls).toEqual(["nav:settings"]);
+  });
+
+  test("EscMenuProvider: ESC opens menu, Dashboard closes it then navigates", async () => {
+    const { EscMenuProvider, useEscMenu } = await import("../../src/ink/esc-menu");
+    const { Text } = await import("ink");
+    const Probe = () => React.createElement(Text, {}, `open:${useEscMenu().open}`);
+    const { stdin, stdout } = makeStreams();
+    let output = "";
+    stdout.on("data", (c: Buffer) => (output += c.toString()));
+    const calls: string[] = [];
+    const inst = render(
+      React.createElement(
+        EscMenuProvider,
+        { onOpenDashboard: () => calls.push("dashboard"), onNavigate: (a: string) => calls.push(a) },
+        React.createElement(Probe),
+      ),
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await wait(30);
+    (stdin as any).write("\u001b");
+    await wait(400);
+    expect(stripAnsi(output)).toContain("open:true");
+    (stdin as any).write("\u001b[B");
+    await wait(30);
+    (stdin as any).write("\r");
+    await wait(60);
+    inst.unmount();
+    expect(calls).toEqual(["dashboard"]);
+    const frames = stripAnsi(output).split("open:");
+    expect(frames[frames.length - 1]!.startsWith("false")).toBe(true);
   });
 });

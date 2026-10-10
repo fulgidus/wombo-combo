@@ -350,3 +350,199 @@ describe("TaskBrowserScreen renders inside ScreenRouter", () => {
     expect(output.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Dashboard integration (live renders)
+// ---------------------------------------------------------------------------
+
+import { PassThrough } from "node:stream";
+import { render } from "ink";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+class FakeDaemonClient {
+  handlers = new Map<string, Set<(p: any) => void>>();
+  stateHandlers = new Set<(s: string) => void>();
+  onCalls = 0;
+  connectCalls = 0;
+  disconnectCalls = 0;
+  on(type: string, handler: (p: any) => void) {
+    this.onCalls++;
+    let set = this.handlers.get(type);
+    if (!set) this.handlers.set(type, (set = new Set()));
+    set.add(handler);
+    return () => set!.delete(handler);
+  }
+  onStateChange(h: (s: string) => void) {
+    this.onCalls++;
+    this.stateHandlers.add(h);
+    return () => this.stateHandlers.delete(h);
+  }
+  getLastSnapshot() {
+    return null;
+  }
+  getState() {
+    return "connected";
+  }
+  sendCommand() {
+    return 1;
+  }
+  connect() {
+    this.connectCalls++;
+  }
+  disconnect() {
+    this.disconnectCalls++;
+  }
+  listenerCount() {
+    let n = this.stateHandlers.size;
+    for (const s of this.handlers.values()) n += s.size;
+    return n;
+  }
+}
+
+function liveStreams() {
+  const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
+  (stdout as any).columns = 80;
+  (stdout as any).rows = 24;
+  const stdin = new PassThrough() as unknown as NodeJS.ReadStream;
+  (stdin as any).isTTY = true;
+  (stdin as any).setRawMode = () => stdin;
+  (stdin as any).ref = () => stdin;
+  (stdin as any).unref = () => stdin;
+  return { stdin, stdout };
+}
+
+const sleep = (ms = 40) => new Promise((r) => setTimeout(r, ms));
+
+async function mountTuiApp(props: Record<string, unknown>) {
+  const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
+  const root = mkdtempSync(join(tmpdir(), "tui-dash-"));
+  const { stdin, stdout } = liveStreams();
+  let last = "";
+  stdout.on("data", (c: Buffer) => {
+    last = stripAnsi(c.toString());
+  });
+  const exits: number[] = [];
+  const inst = render(
+    React.createElement(TuiApp, {
+      projectRoot: root,
+      config: makeMinimalConfig(),
+      splashDurationMs: 0,
+      onExit: () => exits.push(1),
+      ...props,
+    }),
+    { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+  );
+  return {
+    key: (s: string) => (stdin as any).write(s),
+    frame: () => last,
+    exits,
+    unmount: () => {
+      inst.unmount();
+      rmSync(root, { recursive: true, force: true });
+    },
+  };
+}
+
+describe("TuiApp dashboard", () => {
+  test("initialScreen=dashboard renders the realtime dashboard with chrome title", async () => {
+    const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
+    const out = stripAnsi(
+      renderToString(
+        React.createElement(TuiApp, {
+          projectRoot: "/tmp",
+          config: makeMinimalConfig(),
+          initialScreen: "dashboard",
+          onExit: () => {},
+        }),
+      ),
+    );
+    expect(out).toContain("Home › Dashboard");
+    expect(out).toContain("Throughput");
+    expect(out).toContain("Est. remaining");
+    expect(out).toContain("Quest tokens");
+    expect(out).toContain("Dashboard in ESC menu");
+  });
+
+  test("default startup behavior is unchanged", async () => {
+    const { TuiApp } = (await import("../../src/ink/run-tui-app")) as any;
+    const quest = stripAnsi(
+      renderToString(
+        React.createElement(TuiApp, { projectRoot: "/tmp", config: makeMinimalConfig(), skipSplash: true, onExit: () => {} }),
+      ),
+    );
+    expect(quest).toContain("Quest Picker");
+    expect(quest).not.toContain("Throughput");
+    const splash = stripAnsi(
+      renderToString(
+        React.createElement(TuiApp, { projectRoot: "/tmp", config: makeMinimalConfig(), splashDurationMs: 0, onExit: () => {} }),
+      ),
+    );
+    expect(splash).toContain("██");
+    expect(splash).not.toContain("Throughput");
+  });
+
+  test("dashboard startup: b returns to quest-picker without exiting", async () => {
+    const app = await mountTuiApp({ initialScreen: "dashboard" });
+    await sleep();
+    expect(app.frame()).toContain("Home › Dashboard");
+    app.key("b");
+    await sleep();
+    expect(app.frame()).toContain("Home › Quest Picker");
+    expect(app.exits).toHaveLength(0);
+    app.unmount();
+  });
+
+  test("ESC menu opens the dashboard; repeated selection does not grow the stack; back restores origin", async () => {
+    const app = await mountTuiApp({ skipSplash: true });
+    await sleep();
+    expect(app.frame()).toContain("Home › Quest Picker");
+
+    const openFromMenu = async () => {
+      app.key("\u001b");
+      await sleep(400);
+      app.key("\u001b[B"); // Return -> Dashboard
+      await sleep();
+      app.key("\r");
+      await sleep(80);
+    };
+
+    await openFromMenu();
+    expect(app.frame()).toContain("Home › Dashboard");
+    await openFromMenu(); // dashboard again: no-op
+    expect(app.frame()).toContain("Home › Dashboard");
+    app.key("b");
+    await sleep(80);
+    expect(app.frame()).toContain("Home › Quest Picker"); // one pop is enough
+    expect(app.exits).toHaveLength(0);
+    app.unmount();
+  });
+
+  test("metrics provider survives navigation; one subscription set, no connect/disconnect", async () => {
+    const client = new FakeDaemonClient();
+    const app = await mountTuiApp({ initialScreen: "dashboard", daemonClient: client });
+    await sleep();
+    const subscribed = client.onCalls;
+    const listeners = client.listenerCount();
+    expect(subscribed).toBeGreaterThan(0);
+
+    // dashboard -> (menu) settings -> back -> back to quest-picker
+    app.key("\u001b");
+    await sleep(400);
+    app.key("\u001b[B");
+    await sleep();
+    app.key("\u001b[B"); // Settings
+    await sleep();
+    app.key("\r");
+    await sleep(80);
+    expect(app.frame()).toContain("Settings");
+    expect(client.onCalls).toBe(subscribed);
+    expect(client.listenerCount()).toBe(listeners);
+
+    app.unmount();
+    expect(client.listenerCount()).toBe(0);
+    expect(client.connectCalls).toBe(0);
+    expect(client.disconnectCalls).toBe(0);
+  });
+});

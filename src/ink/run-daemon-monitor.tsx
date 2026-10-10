@@ -16,11 +16,12 @@
  *
  *   ThemeContext.Provider
  *     I18nContext.Provider
- *       DashboardStoreContext.Provider
- *         EscMenuProvider (onNavigate via navRef bridge)
- *           ChromeLayout
- *             ScreenRouter (splash → monitor → settings)
- *               NavWire (fills navRef — inside NavigationContext)
+ *       DashboardStoreContext.Provider       (legacy store, separate)
+ *         DashboardMetricsProvider           (realtime metrics, mounted once)
+ *           EscMenuProvider (onNavigate / onOpenDashboard via navRef bridge)
+ *             ChromeLayout
+ *               ScreenRouter (splash → monitor → settings | dashboard)
+ *                 NavWire (fills navRef — inside NavigationContext)
  *
  * Usage:
  *   const tui = new InkDaemonTUI({ client, projectRoot, config, onQuit });
@@ -38,6 +39,8 @@ import React, {
 } from "react";
 import { render as inkRender, type Instance as InkInstance } from "ink";
 import { WaveMonitorView, type AgentInfo, type AgentCounts } from "./wave-monitor";
+import { DashboardScreen } from "./dashboard";
+import { DashboardMetricsProvider } from "./dashboard-provider";
 import { QuestionPopupView } from "./question-popup";
 import type { AgentStatus } from "../daemon/agent-status";
 import type { ActivityEntry } from "../lib/monitor";
@@ -284,10 +287,11 @@ export interface DaemonMonitorShellProps {
  *   ThemeContext.Provider
  *     I18nContext.Provider
  *       DashboardStoreContext.Provider
- *         EscMenuProvider (onNavigate uses navRef → nav.push/pop)
- *           ChromeLayout
- *             ScreenRouter (screens: splash, monitor, settings)
- *               NavWire (fills navRef — inside NavigationContext)
+ *         DashboardMetricsProvider (caller-owned client; one per shell)
+ *           EscMenuProvider (onNavigate uses navRef → nav.push/pop)
+ *             ChromeLayout
+ *               ScreenRouter (screens: splash, monitor, settings, dashboard)
+ *                 NavWire (fills navRef — inside NavigationContext)
  *
  * Exported for testing; InkDaemonTUI uses this via inkRender().
  */
@@ -321,6 +325,20 @@ export function DaemonMonitorShell({
 
   // navRef bridges EscMenuProvider's onNavigate callback to the inner ScreenRouter
   const navRef = useRef<NavigationState | null>(null);
+
+  // Chrome title follows the active screen (monitor/splash keep "Wave Monitor").
+  const [screenKey, setScreenKey] = useState<string>(skipSplash ? "monitor" : "splash");
+  const chromeTitle =
+    screenKey === "dashboard" ? "Dashboard" : screenKey === "settings" ? "Settings" : "Wave Monitor";
+
+  // Dashboard entry from the ESC menu: push once (never stack duplicates; the
+  // splash owns a pending replace()) and return with pop().
+  const handleOpenDashboard = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
+    nav.push("dashboard", { onBack: () => navRef.current?.pop() });
+  }, []);
 
   // Wire up the notify callback
   useEffect(() => {
@@ -386,6 +404,7 @@ export function DaemonMonitorShell({
     splash: SplashScreen,
     monitor: DaemonMonitorScreen,
     settings: SettingsScreen,
+    dashboard: DashboardScreen,
   };
 
   const initialScreen = skipSplash ? "monitor" : "splash";
@@ -397,22 +416,26 @@ export function DaemonMonitorShell({
     <ThemeContext.Provider value={theme}>
       <I18nContext.Provider value={tFn}>
         <DashboardStoreContext.Provider value={dashStore}>
-          <EscMenuProvider onNavigate={handleEscNavigate}>
-            <ChromeLayout
-              screenName="Wave Monitor"
-              daemonConnected={true}
-              waveSummary={waveSummary}
-              locale={config.tui?.locale ?? "en"}
-            >
-              <ScreenRouter
-                screens={screens}
-                initialScreen={initialScreen}
-                initialProps={initialProps}
+          <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={client}>
+            <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+              <ChromeLayout
+                screenName={chromeTitle}
+                daemonConnected={true}
+                waveSummary={waveSummary}
+                locale={config.tui?.locale ?? "en"}
+                dashboardAvailable
               >
-                <NavWire navRef={navRef} />
-              </ScreenRouter>
-            </ChromeLayout>
-          </EscMenuProvider>
+                <ScreenRouter
+                  screens={screens}
+                  initialScreen={initialScreen}
+                  initialProps={initialProps}
+                  onScreenChange={setScreenKey}
+                >
+                  <NavWire navRef={navRef} />
+                </ScreenRouter>
+              </ChromeLayout>
+            </EscMenuProvider>
+          </DashboardMetricsProvider>
         </DashboardStoreContext.Provider>
       </I18nContext.Provider>
     </ThemeContext.Provider>

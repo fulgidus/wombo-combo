@@ -9,11 +9,12 @@
  *
  *   ThemeContext.Provider
  *     I18nContext.Provider
- *       DashboardStoreContext.Provider
- *         EscMenuProvider (onNavigate via navRef bridge)
- *           ChromeLayout
- *             ScreenRouter (initialScreen: "splash" | "quest-picker" | "onboarding")
- *               NavWire (fills navRef — inside NavigationContext)
+ *       DashboardStoreContext.Provider          (legacy store, kept separate)
+ *         DashboardMetricsProvider              (realtime metrics, mounted once)
+ *           EscMenuProvider (onNavigate / onOpenDashboard via navRef bridge)
+ *             ChromeLayout
+ *               ScreenRouter (initialScreen: "splash" | "quest-picker" | "onboarding" | "dashboard")
+ *                 NavWire (fills navRef — inside NavigationContext)
  *
  * Screen map:
  *   splash         → SplashScreen   (onDone → nav.replace("quest-picker"))
@@ -22,6 +23,7 @@
  *   daemon-monitor → DaemonMonitorScreen
  *   settings       → SettingsScreen
  *   onboarding     → OnboardingScreen
+ *   dashboard      → DashboardScreen (realtime metrics)
  *
  * Usage (from tui.ts):
  *
@@ -50,9 +52,12 @@ import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
 import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
 import {
+  DashboardScreen,
   DashboardStoreContext,
   type DashboardStore,
 } from "./dashboard";
+import { DashboardMetricsProvider } from "./dashboard-provider";
+import type { DaemonClient } from "../daemon/client";
 import type { WomboConfig } from "../config";
 import type { ErrandSpec } from "../lib/errand-planner";
 // Lazy imports — screen components imported statically but their heavy
@@ -131,20 +136,21 @@ export interface TuiAppProps {
    * - "splash"       (default) — show splash, auto-advance to quest-picker
    * - "quest-picker" — skip splash, go straight to quest-picker
    * - "onboarding"   — start in onboarding wizard (first-run path)
+   * - "dashboard"    — start in the realtime dashboard (back returns to quest-picker)
    *
    * When set, takes precedence over skipSplash.
    */
-  initialScreen?: "splash" | "quest-picker" | "onboarding";
+  initialScreen?: "splash" | "quest-picker" | "onboarding" | "dashboard";
   /**
    * Called when the user quits (Q from quest-picker, or ESC → Quit).
    * The caller should unmount the TuiApp / exit the process.
    */
   onExit: () => void;
   /**
-   * Optional: DaemonClient to pass to DaemonMonitorScreen.
-   * When provided, the daemon-monitor screen is available.
+   * Optional caller-owned DaemonClient. The dashboard metrics provider
+   * subscribes to it (it never connects/disconnects it).
    */
-  daemonClient?: unknown;
+  daemonClient?: DaemonClient;
   /**
    * Whether the daemon is currently connected.
    * Used to display the connection indicator in ChromeLayout.
@@ -203,6 +209,7 @@ export function TuiApp({
     "daemon-monitor": "Daemon Monitor",
     settings: "Settings",
     onboarding: "Setup",
+    dashboard: "Dashboard",
   };
   const [currentScreenKey, setCurrentScreenKey] = useState<string>(
     initialScreenProp ?? (skipSplash ? "quest-picker" : "splash")
@@ -230,6 +237,26 @@ export function TuiApp({
     [settingsConfig, projectRoot, onExit]
   );
 
+  // Initial quest-picker props (declared early: dashboard "back" may need them)
+  // Dashboard back: pop to the originating screen; when the dashboard is the
+  // root of the stack (direct startup), fall back to quest-picker.
+  const questPickerPropsRef = useRef<Record<string, unknown>>({});
+  const backFromDashboard = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.stackDepth > 1) nav.pop();
+    else nav.replace("quest-picker", { ...questPickerPropsRef.current });
+  }, []);
+
+  const handleOpenDashboard = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    // Repeated selections must not grow the stack; the splash screen owns a
+    // pending replace() so the dashboard is not stacked above it.
+    if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
+    nav.push("dashboard", { onBack: backFromDashboard });
+  }, [backFromDashboard]);
+
   // Wrapped callbacks to handle local overrides (e.g. concurrency)
   const wrappedCallbacks = useMemo(() => {
     return {
@@ -248,6 +275,8 @@ export function TuiApp({
     onExit,
     callbacks: wrappedCallbacks as unknown,
   };
+
+  questPickerPropsRef.current = questPickerProps;
 
   // Initial onboarding props
   const onboardingProps: Record<string, unknown> = {
@@ -301,6 +330,8 @@ export function TuiApp({
     resolvedInitialProps = onboardingProps;
   } else if (resolvedInitialScreen === "quest-picker") {
     resolvedInitialProps = questPickerProps;
+  } else if (resolvedInitialScreen === "dashboard") {
+    resolvedInitialProps = { onBack: backFromDashboard };
   } else {
     // splash
     resolvedInitialProps = {
@@ -321,6 +352,7 @@ export function TuiApp({
     "daemon-monitor": DaemonMonitorScreen,
     settings: SettingsScreen,
     onboarding: OnboardingScreen,
+    dashboard: DashboardScreen,
   };
 
   const { rows, columns } = useTerminalSize();
@@ -330,23 +362,26 @@ export function TuiApp({
       <ThemeContext.Provider value={theme}>
         <I18nContext.Provider value={tFn}>
           <DashboardStoreContext.Provider value={emptyDashStore}>
-            <EscMenuProvider onNavigate={handleEscNavigate}>
-              <ChromeLayout
-                screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
-                daemonConnected={daemonConnected}
-                daemonStats={daemonStats}
-                locale={config.tui?.locale ?? "en"}
-              >
-                <ScreenRouter
-                  screens={screens}
-                  initialScreen={resolvedInitialScreen}
-                  initialProps={resolvedInitialProps}
-                  onScreenChange={setCurrentScreenKey}
+            <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={daemonClient}>
+              <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+                <ChromeLayout
+                  screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
+                  daemonConnected={daemonConnected}
+                  daemonStats={daemonStats}
+                  locale={config.tui?.locale ?? "en"}
+                  dashboardAvailable
                 >
-                  <NavWire navRef={navRef} />
-                </ScreenRouter>
-              </ChromeLayout>
-            </EscMenuProvider>
+                  <ScreenRouter
+                    screens={screens}
+                    initialScreen={resolvedInitialScreen}
+                    initialProps={resolvedInitialProps}
+                    onScreenChange={setCurrentScreenKey}
+                  >
+                    <NavWire navRef={navRef} />
+                  </ScreenRouter>
+                </ChromeLayout>
+              </EscMenuProvider>
+            </DashboardMetricsProvider>
           </DashboardStoreContext.Provider>
         </I18nContext.Provider>
       </ThemeContext.Provider>
