@@ -267,7 +267,12 @@ export function AnalyticsOverlayView({
 
           {selectedGroup && (
             <Box marginTop={1}>
-              <MetricsBlock m={selectedGroup.metrics} heading={`Selected: ${truncate(keyLabel(selectedGroup.key), 40).trimEnd()}`} />
+              <Text dimColor>
+                Selected {truncate(keyLabel(selectedGroup.key), 30).trimEnd()}: {selectedGroup.metrics.executions} exec, retries{" "}
+                {selectedGroup.metrics.retries.total}, in {formatTokenCount(selectedGroup.metrics.usage.totals.input_tokens)} out{" "}
+                {formatTokenCount(selectedGroup.metrics.usage.totals.output_tokens)}, {selectedGroup.metrics.builds.passes}/
+                {selectedGroup.metrics.builds.attempts} builds
+              </Text>
             </Box>
           )}
         </>
