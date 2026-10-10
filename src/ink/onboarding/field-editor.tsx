@@ -14,6 +14,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { TextInput } from "../text-input";
+import { useChromeHideQuitHint } from "../chrome";
 import {
   type ProfileSection,
   type ProjectProfile,
@@ -59,6 +60,8 @@ export function FieldEditor({
   const sectionName = SECTION_NAMES[section];
   const initialText = serializeSectionForEdit(section, profile);
   const [editText, setEditText] = useState(initialText);
+  // Text field: q types a letter here, so don't advertise "q quit"
+  useChromeHideQuitHint(true);
 
   const handleSave = useCallback(
     (value: string) => {
