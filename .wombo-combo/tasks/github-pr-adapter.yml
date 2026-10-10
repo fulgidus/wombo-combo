@@ -11,15 +11,15 @@ description: |
   generated content without duplicating it or destroying surrounding manual
   text. Return its URL and created/updated/skipped/failed outcome.
   Add tests/github-pr.test.ts with mocked process responses.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - post-merge-contract
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:28:54.179Z
+ended_at: 2026-10-10T01:31:24.090Z
 constraints:
   - Never prompt, open a browser, print authentication tokens, or require interactive login.
   - Skip mode must execute no gh commands.
