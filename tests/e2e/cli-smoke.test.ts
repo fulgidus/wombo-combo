@@ -306,12 +306,36 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
       "BUG: tasks show --output json emits JSON (currently prints human-readable text)",
     );
 
-    test.todo(
-      "BUG: tasks add rejects a non-kebab-case id such as Bad_ID (currently accepts it, exit 0)",
+    test(
+      "tasks add rejects a non-kebab-case id such as Bad_ID and writes nothing",
+      () => {
+        const result = woco(["tasks", "add", "Bad_ID", "x"]);
+        expect(result.exitCode).toBe(1);
+        expect(result.output).toContain("Bad_ID");
+        expect(result.output).toContain("kebab-case");
+        expect(existsSync(join(projectDir, ".wombo-combo", "tasks", "Bad_ID.yml"))).toBe(false);
+        expect(woco(["tasks", "list"]).stdout).not.toContain("Bad_ID");
+      },
+      TEST_TIMEOUT,
     );
 
-    test.todo(
-      "BUG: tasks check exits non-zero when a task id is invalid (currently prints a [schema] error yet reports 'All checks passed', exit 0)",
+    test(
+      "tasks check exits 1 and does not report success when a task id is invalid",
+      () => {
+        expect(woco(["tasks", "add", "good-task", "Good task"]).exitCode).toBe(0);
+        const tasksDirPath = join(projectDir, ".wombo-combo", "tasks");
+        writeFileSync(
+          join(tasksDirPath, "Bad_ID.yml"),
+          "id: Bad_ID\ntitle: Bad task\nstatus: backlog\neffort: PT1H\n",
+          "utf-8",
+        );
+        const result = woco(["tasks", "check"]);
+        expect(result.exitCode).toBe(1);
+        expect(result.output).toContain("[Bad_ID]");
+        expect(result.output).toContain("kebab-case");
+        expect(result.stdout).not.toContain("All checks passed");
+      },
+      TEST_TIMEOUT,
     );
   });
 

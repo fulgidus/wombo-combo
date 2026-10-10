@@ -21,7 +21,7 @@ import {
   VALID_DIFFICULTIES,
 } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
-import { validateEnum } from "../../lib/validate";
+import { validateEnum, validateId } from "../../lib/validate";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,6 +58,13 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
 
   if (!opts.title) {
     outputError(fmt, "--title is required when adding a task.");
+    return;
+  }
+
+  // Task IDs must be kebab-case (same rule tasks check enforces via validateTask)
+  const idResult = validateId(opts.id, "Task ID");
+  if (!idResult.valid) {
+    outputError(fmt, idResult.error!);
     return;
   }
 

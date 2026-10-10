@@ -2,14 +2,14 @@ id: fix-tasks-check-exit-code
 title: tasks check must fail when schema errors are reported
 description: tasks check prints a [schema] error for an invalid task but then reports 'All checks passed' and exits 0.
   Schema errors must make it exit nonzero. Tracked as test.todo in tests/e2e/cli-smoke.test.ts.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T01:19:11.451Z
 constraints: []
 forbidden: []
 references: []

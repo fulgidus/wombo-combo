@@ -33,7 +33,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR } from "../config";
 import type { Task, TasksFile, ArchiveFile } from "./tasks";
-import { validateTask, validateMeta as validateMetaSchema } from "./task-schema";
+import { validateTask, validateMeta as validateMetaSchema, type SchemaIssue } from "./task-schema";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -102,7 +102,22 @@ function defaultMeta(): TasksMeta {
   };
 }
 
-function loadMeta(dir: string): TasksMeta {
+/**
+ * Print schema issues and, when a sink is given, record them so callers
+ * (e.g. `tasks check`) can count them as failures.
+ */
+function reportSchemaIssues(issues: SchemaIssue[], sink?: SchemaIssue[]): void {
+  for (const issue of issues) {
+    sink?.push(issue);
+    if (issue.level === "error") {
+      console.error(`  [schema] ${issue.taskId}: ${issue.message}`);
+    } else {
+      console.warn(`  [schema] ${issue.taskId}: ${issue.message}`);
+    }
+  }
+}
+
+function loadMeta(dir: string, sink?: SchemaIssue[]): TasksMeta {
   const metaPath = join(dir, META_FILE);
   if (!existsSync(metaPath)) return defaultMeta();
   try {
@@ -110,14 +125,7 @@ function loadMeta(dir: string): TasksMeta {
     const parsed = parseYaml(raw);
 
     // Validate and warn
-    const issues = validateMetaSchema(parsed);
-    for (const issue of issues) {
-      if (issue.level === "error") {
-        console.error(`  [schema] ${issue.taskId}: ${issue.message}`);
-      } else {
-        console.warn(`  [schema] ${issue.taskId}: ${issue.message}`);
-      }
-    }
+    reportSchemaIssues(validateMetaSchema(parsed), sink);
 
     return {
       version: parsed?.version ?? "1.0",
@@ -167,7 +175,7 @@ function listTaskFiles(dir: string): string[] {
 /**
  * Load a single task from a YAML file.
  */
-function loadTaskFile(filePath: string): Task | null {
+function loadTaskFile(filePath: string, sink?: SchemaIssue[]): Task | null {
   try {
     const raw = readFileSync(filePath, "utf-8");
     const parsed = parseYaml(raw);
@@ -175,19 +183,17 @@ function loadTaskFile(filePath: string): Task | null {
     normalizeTask(parsed as Task);
 
     // Validate and warn (but still return the task)
-    const issues = validateTask(parsed);
-    for (const issue of issues) {
-      if (issue.level === "error") {
-        console.error(`  [schema] ${issue.taskId}: ${issue.message}`);
-      } else {
-        console.warn(`  [schema] ${issue.taskId}: ${issue.message}`);
-      }
-    }
+    reportSchemaIssues(validateTask(parsed), sink);
 
     return parsed as Task;
   } catch (err: unknown) {
     const reason = err instanceof Error ? err.message : String(err);
     console.error(`Failed to parse ${basename(filePath)}: ${reason}`);
+    sink?.push({
+      level: "error",
+      taskId: basename(filePath),
+      message: `Failed to parse file: ${reason}`,
+    });
     return null;
   }
 }
@@ -248,7 +254,8 @@ function normalizeTask(t: Task): void {
  */
 export function loadTasksFromStore(
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  sink?: SchemaIssue[]
 ): TasksFile {
   const dir = tasksDir(projectRoot, config);
 
@@ -261,12 +268,12 @@ export function loadTasksFromStore(
     }
   }
 
-  const meta = loadMeta(dir);
+  const meta = loadMeta(dir, sink);
   const files = listTaskFiles(dir);
   const tasks: Task[] = [];
 
   for (const file of files) {
-    const task = loadTaskFile(join(dir, file));
+    const task = loadTaskFile(join(dir, file), sink);
     if (task) tasks.push(task);
   }
 
@@ -278,7 +285,8 @@ export function loadTasksFromStore(
  */
 export function loadArchiveFromStore(
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  sink?: SchemaIssue[]
 ): ArchiveFile {
   const dir = archiveDir(projectRoot, config);
 
@@ -291,12 +299,12 @@ export function loadArchiveFromStore(
     return { ...defaultMeta(), tasks: [] };
   }
 
-  const meta = loadMeta(dir);
+  const meta = loadMeta(dir, sink);
   const files = listTaskFiles(dir);
   const tasks: Task[] = [];
 
   for (const file of files) {
-    const task = loadTaskFile(join(dir, file));
+    const task = loadTaskFile(join(dir, file), sink);
     if (task) tasks.push(task);
   }
 

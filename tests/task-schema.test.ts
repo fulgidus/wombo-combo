@@ -10,7 +10,13 @@
  *   - SchemaIssue level classification (error vs warning)
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DEFAULT_CONFIG } from "../src/config";
+import { loadTasksFromStore } from "../src/lib/task-store";
+import { validateId } from "../src/lib/validate";
 import {
   validateTask,
   validateMeta,
@@ -424,5 +430,66 @@ describe("validateMeta", () => {
     const warnings = warningMessages(issues);
     expect(errors.some((m) => m.includes("meta"))).toBe(true);
     expect(warnings.filter((m) => m.includes("created_at"))).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task ID rule: shared between validateId (tasks add) and validateTask (tasks check)
+// ---------------------------------------------------------------------------
+
+describe("task id rule", () => {
+  test("validateId and validateTask agree on kebab-case ids", () => {
+    for (const id of ["fix-task-id-validation", "fake-testing-diamond-1-muob6gls", "a", "42"]) {
+      expect(validateId(id, "Task ID").valid).toBe(true);
+      expect(errorMessages(validateTask(makeValidTask({ id })))).toHaveLength(0);
+    }
+    for (const id of ["Bad_ID", "UPPERCASE", "has space", "-leading"]) {
+      expect(validateId(id, "Task ID").valid).toBe(false);
+      expect(errorMessages(validateTask(makeValidTask({ id }))).length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Store loader: schema issues are recorded in the caller's sink
+// ---------------------------------------------------------------------------
+
+describe("loadTasksFromStore schema sink", () => {
+  let projectRoot: string;
+  let tasksPath: string;
+
+  beforeEach(() => {
+    projectRoot = mkdtempSync(join(tmpdir(), "woco-schema-sink-"));
+    tasksPath = join(projectRoot, ".wombo-combo", DEFAULT_CONFIG.tasksDir);
+    mkdirSync(tasksPath, { recursive: true });
+    writeFileSync(
+      join(tasksPath, "_meta.yml"),
+      "version: '1.0'\nmeta:\n  created_at: x\n  updated_at: x\n  project: p\n  generator: g\n  maintainer: m\n",
+    );
+  });
+
+  afterEach(() => {
+    rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  test("records an error for a non-kebab-case id", () => {
+    writeFileSync(join(tasksPath, "Bad_ID.yml"), "id: Bad_ID\ntitle: x\nstatus: backlog\neffort: PT1H\n");
+    const sink: SchemaIssue[] = [];
+    const data = loadTasksFromStore(projectRoot, DEFAULT_CONFIG, sink);
+    expect(data.tasks.map((t) => t.id)).toContain("Bad_ID");
+    const errors = sink.filter((i) => i.level === "error");
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].taskId).toBe("Bad_ID");
+    expect(errors[0].message).toContain("kebab-case");
+  });
+
+  test("records no errors for a valid task with digits in its id", () => {
+    writeFileSync(
+      join(tasksPath, "fake-testing-diamond-1-muob6gls.yml"),
+      "id: fake-testing-diamond-1-muob6gls\ntitle: x\nstatus: backlog\neffort: PT1H\n",
+    );
+    const sink: SchemaIssue[] = [];
+    loadTasksFromStore(projectRoot, DEFAULT_CONFIG, sink);
+    expect(sink.filter((i) => i.level === "error")).toHaveLength(0);
   });
 });
