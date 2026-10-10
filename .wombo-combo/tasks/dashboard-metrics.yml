@@ -20,14 +20,14 @@ description: |
   estimates, elapsed execution time, and effective concurrency.
   Return an explicit unknown state when available data is insufficient.
   Add deterministic tests in tests/dashboard-metrics.test.ts.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:00:06.480Z
+ended_at: 2026-10-10T02:02:24.600Z
 constraints:
   - Inject time into pure functions; do not depend on wall-clock time in tests.
   - Bound throughput history to 60 minute buckets and activity to 100 entries.
