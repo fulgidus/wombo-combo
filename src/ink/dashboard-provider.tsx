@@ -106,6 +106,15 @@ function mapConnection(state: ConnectionState | undefined): DashboardConnection 
   }
 }
 
+/**
+ * Partial clients (tests, stubs) may lack some methods; real DaemonClients
+ * always have them. Optional-call so a partial client never crashes the TUI.
+ */
+function clientState(client: DashboardDaemonClient | null | undefined): DashboardConnection {
+  if (!client) return "unavailable";
+  return typeof client.getState === "function" ? mapConnection(client.getState()) : "disconnected";
+}
+
 function defaultLoadTaskQuests(projectRoot: string): ReadonlyMap<string, string | null> {
   const config = loadConfig(projectRoot);
   const tasks = loadTasks(projectRoot, config).tasks;
@@ -140,16 +149,14 @@ export function DashboardMetricsProvider({
   children,
 }: DashboardMetricsProviderProps): React.ReactElement {
   const [value, setValue] = useState<DashboardMetricsValue>(() =>
-    initialValue(clock(), daemonClient ? mapConnection(daemonClient.getState()) : "unavailable"),
+    initialValue(clock(), clientState(daemonClient)),
   );
 
   useEffect(() => {
     let disposed = false;
     const reader = new DashboardUsageReader(projectRoot);
     let metrics: DashboardMetricsState = createDashboardMetrics(clock());
-    let connection: DashboardConnection = daemonClient
-      ? mapConnection(daemonClient.getState())
-      : "unavailable";
+    let connection: DashboardConnection = clientState(daemonClient);
     let quests = reader.snapshot();
     let usageDirty = false;
     let flushHandle: unknown = null;
@@ -199,7 +206,7 @@ export function DashboardMetricsProvider({
     };
 
     const requestState = (): void => {
-      if (!daemonClient) return;
+      if (!daemonClient || typeof daemonClient.sendCommand !== "function") return;
       try {
         daemonClient.sendCommand("cmd:get-state", {});
       } catch {
@@ -221,31 +228,36 @@ export function DashboardMetricsProvider({
     // 2. Subscribe FIRST, then bootstrap from the cached snapshot and request
     //    fresh state, so nothing is lost during initialization.
     if (daemonClient) {
-      for (const type of DASHBOARD_EVENTS) {
-        unsubs.push(daemonClient.on(type, onEvent(type) as never));
+      if (typeof daemonClient.on === "function") {
+        for (const type of DASHBOARD_EVENTS) {
+          unsubs.push(daemonClient.on(type, onEvent(type) as never));
+        }
+        unsubs.push(
+          daemonClient.on("evt:token-usage", () => {
+            // Cumulative, unattributed totals: only a hint to reread the JSONL.
+            if (disposed) return;
+            usageDirty = true;
+            scheduleFlush();
+          }),
+        );
       }
-      unsubs.push(
-        daemonClient.on("evt:token-usage", () => {
-          // Cumulative, unattributed totals: only a hint to reread the JSONL.
-          if (disposed) return;
-          usageDirty = true;
-          scheduleFlush();
-        }),
-      );
-      unsubs.push(
-        daemonClient.onStateChange((state) => {
-          if (disposed) return;
-          connection = mapConnection(state);
-          if (connection === "connected") requestState();
-          scheduleFlush();
-        }),
-      );
+      if (typeof daemonClient.onStateChange === "function") {
+        unsubs.push(
+          daemonClient.onStateChange((state) => {
+            if (disposed) return;
+            connection = mapConnection(state);
+            if (connection === "connected") requestState();
+            scheduleFlush();
+          }),
+        );
+      }
 
-      const cached = daemonClient.getLastSnapshot();
+      const cached =
+        typeof daemonClient.getLastSnapshot === "function" ? daemonClient.getLastSnapshot() : null;
       if (cached) {
         metrics = applyDashboardEvent(metrics, { type: "evt:state-snapshot", payload: cached }, clock());
       }
-      connection = mapConnection(daemonClient.getState());
+      connection = clientState(daemonClient);
       if (connection === "connected") requestState();
     }
 
