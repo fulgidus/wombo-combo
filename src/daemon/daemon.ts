@@ -146,6 +146,7 @@ export class Daemon {
     const runnerConfig: AgentRunnerConfig = {
       projectRoot: this.projectRoot,
       config: this.config,
+      sessionId: this.sessionId,
     };
     this.runner = new AgentRunner(runnerConfig, this.state);
 
@@ -202,6 +203,9 @@ export class Daemon {
     // that crashed or was killed — reset them to "planned" so a future scoped
     // session can pick them up. Harmless for tasks outside a session scope:
     // the scheduler only ever submits tasks matching the cmd:start scope.
+    // Restore persisted analytics snapshots first so reconciliation (reaping,
+    // merge retries) updates the original executions instead of new ones.
+    this.runner.restoreAnalytics();
     this.runner.reconcileOrphanedTasks();
     // Re-trigger the merge pipeline for any agents that were left in "verified"
     // state (completed but not yet merged) by a previous daemon run.
@@ -213,6 +217,11 @@ export class Daemon {
   /** Graceful shutdown: stop scheduler, drain agents, close server, clean up. */
   async shutdown(reason: string, force = false): Promise<void> {
     this.log("info", `Shutting down: ${reason} (force=${force})`);
+
+    // Finalize analytics for interrupted executions and stop recording so late
+    // process-exit callbacks cannot corrupt the snapshots. Independent of the
+    // write-once history export below.
+    this.runner.interruptAnalytics(`daemon shutdown: ${reason}`);
 
     // Persist session history before tearing down (write-once).
     this.writeHistoryOnce();

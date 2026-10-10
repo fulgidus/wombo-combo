@@ -13,7 +13,12 @@
  *   woco usage --format json                            Output as JSON
  *   woco usage --format table                           Output as aligned table (default)
  *
- * Reads from .wombo-combo/usage.jsonl and aggregates token counts.
+ *   woco usage --analytics                              Agent analytics (per-execution) total
+ *   woco usage --analytics --by task|quest|wave|agent|model
+ *   woco usage --analytics --task <id> --quest <id> --wave <id>   Exact filters
+ *
+ * Reads from .wombo-combo/usage.jsonl and aggregates token counts. With
+ * --analytics it reads the per-execution snapshots in .wombo-combo/analytics/.
  */
 
 import type { WomboConfig } from "../config";
@@ -26,6 +31,14 @@ import {
   type GroupableField,
 } from "../lib/token-usage";
 import { output, outputError, type OutputFormat } from "../lib/output";
+import { AnalyticsStore, type AnalyticsDiagnostic } from "../lib/analytics";
+import {
+  summarizeAnalytics,
+  type AggregateMetrics,
+  type AnalyticsFilter,
+  type AnalyticsGroupBy,
+  type AnalyticsSummary,
+} from "../lib/analytics-summary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +60,13 @@ export interface UsageCommandOptions {
   projectRoot: string;
   config: WomboConfig;
   /** Grouping key (default: total — no grouping) */
-  by?: UsageGroupBy;
+  by?: UsageGroupBy | AnalyticsGroupBy;
+  /** Opt-in: aggregate per-execution analytics instead of token usage */
+  analytics?: boolean;
+  /** Analytics-only exact filters */
+  task?: string;
+  quest?: string;
+  wave?: string;
   /** Start of date range filter (ISO 8601) */
   since?: string;
   /** End of date range filter (ISO 8601) */
@@ -257,6 +276,17 @@ function groupedToJSON(
 export async function cmdUsage(opts: UsageCommandOptions): Promise<void> {
   const { projectRoot, outputFmt, usageFormat } = opts;
 
+  const invalid = validateUsageOptions({
+    by: opts.by,
+    analytics: opts.analytics,
+    task: opts.task,
+    quest: opts.quest,
+    wave: opts.wave,
+  });
+  if (invalid) outputError(outputFmt, invalid);
+
+  if (opts.analytics) return cmdUsageAnalytics(opts);
+
   // Load all records
   let records = loadUsageRecords(projectRoot);
 
@@ -282,7 +312,7 @@ export async function cmdUsage(opts: UsageCommandOptions): Promise<void> {
 
   // Grouped or total?
   if (opts.by) {
-    const byLabel = opts.by;
+    const byLabel = opts.by as UsageGroupBy;
     const field = toGroupableField(byLabel);
     const groups = groupBy(records, field);
     const jsonData = groupedToJSON(groups, byLabel);
@@ -312,4 +342,220 @@ export async function cmdUsage(opts: UsageCommandOptions): Promise<void> {
       });
     }
   }
+}
+
+// ===========================================================================
+// Analytics mode (--analytics)
+// ===========================================================================
+
+/** Valid --by values in analytics mode. */
+export const VALID_ANALYTICS_GROUP_BY: readonly string[] = ["task", "quest", "wave", "agent", "model"];
+
+/** Raw option bag used for cross-mode validation. */
+export interface UsageOptionInput {
+  by?: string;
+  analytics?: boolean;
+  task?: string;
+  quest?: string;
+  wave?: string;
+}
+
+/**
+ * Validate option combinations separately for each mode. Returns an error
+ * message, or null when the combination is valid.
+ *
+ * - Analytics-only options (--task/--quest/--wave) require --analytics.
+ * - --by values are validated against the mode's own list.
+ */
+export function validateUsageOptions(input: UsageOptionInput): string | null {
+  if (input.analytics) {
+    if (input.by !== undefined && !VALID_ANALYTICS_GROUP_BY.includes(input.by)) {
+      return `Invalid --by value for --analytics: "${input.by}". Valid values: ${VALID_ANALYTICS_GROUP_BY.join(", ")}`;
+    }
+    return null;
+  }
+  const analyticsOnly = (["task", "quest", "wave"] as const).filter((k) => input[k] !== undefined);
+  if (analyticsOnly.length > 0) {
+    return `${analyticsOnly.map((k) => `--${k}`).join(", ")} can only be used with --analytics`;
+  }
+  if (input.by !== undefined && !VALID_USAGE_GROUP_BY.includes(input.by)) {
+    return `Invalid --by value: "${input.by}". Valid values: ${VALID_USAGE_GROUP_BY.join(", ")}`;
+  }
+  return null;
+}
+
+const NA = "n/a";
+
+export function formatAnalyticsDuration(ms: number | null): string {
+  if (ms === null) return NA;
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+export function formatAnalyticsRate(rate: number | null): string {
+  return rate === null ? NA : `${(rate * 100).toFixed(1)}%`;
+}
+
+// TOON rendering: one row per scope (total + each group), null = empty field.
+const TOON_FIELDS = [
+  "scope", "key", "executions",
+  "succeeded", "failed", "stopped", "running",
+  "merged", "merge_failed",
+  "duration_samples", "duration_total_ms", "duration_mean_ms",
+  "retries",
+  "usage_samples", "usage_missing", "coverage_none", "coverage_partial", "coverage_full",
+  "input_tokens", "output_tokens", "cache_read", "cache_write", "reasoning_tokens", "total_tokens", "total_cost", "usage_records",
+  "build_attempts", "build_passes", "build_pass_rate", "build_samples",
+  "additions", "deletions", "lines_changed", "line_samples",
+] as const;
+
+function toonMetricsRow(scope: string, key: string | null, m: AggregateMetrics): string {
+  const cells: Array<string | number | null> = [
+    scope, key, m.executions,
+    m.outcomes.succeeded, m.outcomes.failed, m.outcomes.stopped, m.outcomes.running,
+    m.merge_outcomes.merged, m.merge_outcomes.failed,
+    m.duration.samples, m.duration.total_ms, m.duration.mean_ms,
+    m.retries.total,
+    m.usage.samples, m.usage.missing, m.usage.coverage.none, m.usage.coverage.partial, m.usage.coverage.full,
+    m.usage.totals.input_tokens, m.usage.totals.output_tokens, m.usage.totals.cache_read, m.usage.totals.cache_write,
+    m.usage.totals.reasoning_tokens, m.usage.totals.total_tokens, m.usage.totals.total_cost, m.usage.totals.record_count,
+    m.builds.attempts, m.builds.passes, m.builds.pass_rate, m.builds.samples,
+    m.lines.additions, m.lines.deletions, m.lines.changed, m.lines.samples,
+  ];
+  return cells.map((c) => (c === null ? "" : String(c))).join("|");
+}
+
+/** Compact TOON form carrying the same numbers as the JSON summary. */
+export function renderAnalyticsToon(summary: AnalyticsSummary): string {
+  const f = summary.filter;
+  const filter = (["task", "quest", "wave", "since", "until"] as const)
+    .filter((k) => f[k] !== undefined)
+    .map((k) => `${k}=${String(f[k])}`)
+    .join(",");
+  return [
+    `#ANALYTICS group_by=${summary.groupBy ?? ""}${filter ? ` filter=${filter}` : ""}`,
+    `#FIELDS ${TOON_FIELDS.join("|")}`,
+    toonMetricsRow("total", null, summary.total),
+    ...summary.groups.map((g) => toonMetricsRow("group", g.key, g.metrics)),
+  ].join("\n");
+}
+
+function groupKeyLabel(key: string | null): string {
+  return key === null ? "(none)" : key;
+}
+
+function coverageNote(m: AggregateMetrics): string {
+  const parts: string[] = [];
+  if (m.usage.coverage.partial > 0) parts.push(`${m.usage.coverage.partial} partial`);
+  if (m.usage.missing > 0) parts.push(`${m.usage.missing} without usage data`);
+  return parts.join(", ");
+}
+
+/** Render the total block as plain text lines (no ANSI). */
+export function renderAnalyticsTotalLines(m: AggregateMetrics): string[] {
+  const o = m.outcomes;
+  const u = m.usage.totals;
+  const lines = [
+    `  Executions:        ${m.executions} (${o.succeeded} succeeded, ${o.failed} failed, ${o.stopped} stopped, ${o.running} running)`,
+    `  Completion time:   ${m.duration.samples > 0 ? `mean ${formatAnalyticsDuration(m.duration.mean_ms)}, total ${formatAnalyticsDuration(m.duration.total_ms)} (${m.duration.samples} successful)` : `${NA} (no successful executions)`}`,
+    `  Retries:           ${m.retries.total}`,
+    m.usage.samples > 0
+      ? `  Tokens:            ${formatNumber(u.total_tokens)} total (in ${formatNumber(u.input_tokens)}, out ${formatNumber(u.output_tokens)}, cache r/w ${formatNumber(u.cache_read)}/${formatNumber(u.cache_write)}, reasoning ${formatNumber(u.reasoning_tokens)}), cost ${formatCost(u.total_cost)} (${m.usage.samples}/${m.executions} executions)`
+      : `  Tokens:            ${NA} (no usage data)`,
+    `  Build pass rate:   ${m.builds.attempts > 0 ? `${formatAnalyticsRate(m.builds.pass_rate)} (${m.builds.passes}/${m.builds.attempts} builds, ${m.builds.samples} executions)` : `${NA} (no builds)`}`,
+    `  Lines changed:     ${m.lines.samples > 0 ? `+${formatNumber(m.lines.additions)} / -${formatNumber(m.lines.deletions)} (${formatNumber(m.lines.changed)} changed, ${m.lines.samples}/${m.executions} executions)` : `${NA} (no measurements)`}`,
+  ];
+  const cov = coverageNote(m);
+  if (cov) lines.push(`  Usage coverage:    WARNING ${cov}; token totals may be incomplete`);
+  return lines;
+}
+
+/** Render a grouped table as plain text lines (no ANSI). */
+export function renderAnalyticsGroupLines(summary: AnalyticsSummary): string[] {
+  const label = summary.groupBy ?? "group";
+  const rows = summary.groups.map((g) => {
+    const m = g.metrics;
+    return [
+      groupKeyLabel(g.key),
+      String(m.executions),
+      `${m.outcomes.succeeded}/${m.outcomes.failed}/${m.outcomes.stopped}`,
+      formatAnalyticsDuration(m.duration.mean_ms),
+      String(m.retries.total),
+      m.usage.samples > 0 ? formatNumber(m.usage.totals.total_tokens) : NA,
+      formatAnalyticsRate(m.builds.pass_rate),
+      m.lines.samples > 0 ? `+${m.lines.additions}/-${m.lines.deletions}` : NA,
+      coverageNote(m) || "ok",
+    ];
+  });
+  const header = [label, "Exec", "OK/Fail/Stop", "Mean time", "Retries", "Tokens", "Build%", "Lines", "Coverage"];
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
+  const fmt = (cells: string[]) => cells.map((c, i) => (i === 0 ? pad(c, widths[i]) : padLeft(c, widths[i]))).join("  ");
+  return [fmt(header.map((h, i) => (i === 0 ? h.charAt(0).toUpperCase() + h.slice(1) : h))), "-".repeat(widths.reduce((a, b) => a + b + 2, -2)), ...rows.map(fmt)];
+}
+
+/** Plain-text report for a summary. */
+export function renderAnalyticsText(summary: AnalyticsSummary): string {
+  const scope: string[] = [];
+  const f = summary.filter;
+  if (f.task) scope.push(`task=${f.task}`);
+  if (f.quest) scope.push(`quest=${f.quest}`);
+  if (f.wave) scope.push(`wave=${f.wave}`);
+  if (f.since) scope.push(`since=${String(f.since)}`);
+  if (f.until) scope.push(`until=${String(f.until)}`);
+  const title = `Agent Analytics${summary.groupBy ? ` — by ${summary.groupBy}` : " — Total"}${scope.length ? ` (${scope.join(", ")})` : ""}`;
+  if (summary.total.executions === 0) {
+    return `\n${title}\n\n  No analytics data found.\n  Analytics are recorded per execution when agents run via 'woco launch'.\n  Historical usage/history is not backfilled.\n`;
+  }
+  const out = ["", title, ""];
+  if (summary.groupBy) {
+    out.push(...renderAnalyticsGroupLines(summary), "", "Total", "");
+  }
+  out.push(...renderAnalyticsTotalLines(summary.total), "");
+  return out.join("\n");
+}
+
+/** Build the structured summary for the given options (throws on bad ranges). */
+export function buildAnalyticsSummary(opts: UsageCommandOptions): { summary: AnalyticsSummary; diagnostics: AnalyticsDiagnostic[] } {
+  const { records, diagnostics } = new AnalyticsStore(opts.projectRoot).load();
+  const filter: AnalyticsFilter = {};
+  if (opts.since) filter.since = opts.since;
+  if (opts.until) filter.until = opts.until;
+  if (opts.task) filter.task = opts.task;
+  if (opts.quest) filter.quest = opts.quest;
+  if (opts.wave) filter.wave = opts.wave;
+  const summary = summarizeAnalytics(records, {
+    filter,
+    groupBy: opts.by as AnalyticsGroupBy | undefined,
+  });
+  return { summary, diagnostics };
+}
+
+async function cmdUsageAnalytics(opts: UsageCommandOptions): Promise<void> {
+  const { outputFmt, usageFormat } = opts;
+  let built: ReturnType<typeof buildAnalyticsSummary>;
+  try {
+    built = buildAnalyticsSummary(opts);
+  } catch (err: any) {
+    outputError(outputFmt, err.message);
+    return; // unreachable
+  }
+  // Storage diagnostics always go to stderr so structured stdout stays clean.
+  for (const d of built.diagnostics) {
+    console.error(`warning: analytics storage: ${d.file}: ${d.kind}: ${d.message}`);
+  }
+  const { summary } = built;
+  if (usageFormat === "json" && outputFmt === "text") {
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+  output(
+    outputFmt,
+    summary,
+    () => console.log(renderAnalyticsText(summary)),
+    () => console.log(renderAnalyticsToon(summary)),
+  );
 }

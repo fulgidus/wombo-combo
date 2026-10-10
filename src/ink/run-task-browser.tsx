@@ -9,7 +9,7 @@
  * TaskBrowserView is a pure view component.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getStableStdin } from "./bun-stdin";
@@ -18,6 +18,7 @@ import { useNavigation } from "./router";
 import { useTerminalSize } from "./use-terminal-size";
 import { TaskBrowserView, type TaskNode } from "./task-browser";
 import { TaskEditor } from "./task-editor";
+import { AnalyticsOverlayView, nextAnalyticsGrouping } from "./analytics-overlay";
 import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task-graph";
 import { loadTasks, getDoneTaskIds, loadArchive, areDependenciesMet } from "../lib/tasks";
 import { PRIORITY_ORDER } from "../lib/task-schema";
@@ -25,6 +26,8 @@ import { loadTUISession, saveTUISession, type SortField, type TUISession } from 
 import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore, loadTasksFromStore, saveAllTasksToStore } from "../lib/task-store";
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/token-usage";
 import type { UsageTotals } from "../lib/token-usage";
+import { AnalyticsStore, type AnalyticsLoadResult } from "../lib/analytics";
+import { summarizeAnalytics, type AnalyticsFilter, type AnalyticsGroupBy } from "../lib/analytics-summary";
 import type { WomboConfig, } from "../config";
 import { WOMBO_DIR } from "../config";
 import type { DaemonAgentState } from "../daemon/protocol";
@@ -42,6 +45,24 @@ const CONCURRENCY_LEVELS = [0, 1, 2, 3, 5, 8, 10, 15, 20];
 
 // Priority cycle array
 const PRIORITIES = ["critical", "high", "medium", "low", "wishlist"] as const;
+
+// ---------------------------------------------------------------------------
+// Analytics overlay
+// ---------------------------------------------------------------------------
+
+/** How often (ms) the analytics overlay re-reads persisted snapshots while visible. */
+export const ANALYTICS_REFRESH_MS = 2000;
+
+/**
+ * Map the browser's quest scope to an analytics filter using RECORDED quest
+ * attribution (not the currently active quest task IDs):
+ *   undefined/null -> all executions; "" -> unquested errands; "id" -> that quest.
+ */
+export function analyticsScopeFilter(questId: string | null | undefined): AnalyticsFilter {
+  if (questId === undefined || questId === null) return {};
+  if (questId === "") return { unquested: true };
+  return { quest: questId };
+}
 
 // ---------------------------------------------------------------------------
 // Action Type
@@ -71,6 +92,10 @@ export interface RunTaskBrowserOptions {
   hasRunningWave?: boolean;
   /** Whether to show the Back action (Escape) */
   showBack?: boolean;
+  /** Refresh interval (ms) for the analytics overlay while visible. Default ANALYTICS_REFRESH_MS. */
+  analyticsRefreshMs?: number;
+  /** Override how analytics snapshots are loaded (default: AnalyticsStore on projectRoot). */
+  analyticsLoader?: () => AnalyticsLoadResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +110,8 @@ function TaskBrowserApp({
   questTaskIds,
   hasRunningWave,
   showBack,
+  analyticsRefreshMs = ANALYTICS_REFRESH_MS,
+  analyticsLoader,
   onAction,
   callbacks,
 }: RunTaskBrowserOptions & {
@@ -99,6 +126,10 @@ function TaskBrowserApp({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [hideDone, setHideDone] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsLoadResult>({ records: [], diagnostics: [] });
+  const [analyticsGroupBy, setAnalyticsGroupBy] = useState<AnalyticsGroupBy>("task");
+  const [analyticsSelected, setAnalyticsSelected] = useState(0);
   const [taskUsage, setTaskUsage] = useState<Map<string, UsageTotals>>(new Map());
   const [agentStates, setAgentStates] = useState<Map<string, DaemonAgentState>>(new Map());
 
@@ -212,6 +243,66 @@ function TaskBrowserApp({
     const id = setInterval(poll, 1000);
     return () => clearInterval(id);
   }, [projectRoot]);
+
+  // --- Analytics overlay (loaded on open, refreshed only while visible) ---
+
+  const loadAnalytics = useCallback(() => {
+    try {
+      const loaded = analyticsLoader ? analyticsLoader() : new AnalyticsStore(projectRoot).load();
+      setAnalyticsData(loaded);
+    } catch (err) {
+      setAnalyticsData({
+        records: [],
+        diagnostics: [
+          { file: ".", kind: "malformed", message: err instanceof Error ? err.message : String(err) },
+        ],
+      });
+    }
+  }, [projectRoot, analyticsLoader]);
+
+  const handleOpenAnalytics = useCallback(() => {
+    loadAnalytics();
+    setShowAnalytics(true);
+  }, [loadAnalytics]);
+
+  const handleCloseAnalytics = useCallback(() => {
+    setShowAnalytics(false);
+  }, []);
+
+  const handleCycleAnalyticsGrouping = useCallback(() => {
+    setAnalyticsGroupBy((g) => nextAnalyticsGrouping(g));
+    setAnalyticsSelected(0);
+  }, []);
+
+  // Bounded refresh, only while the overlay is visible; cleared on close/unmount.
+  useEffect(() => {
+    if (!showAnalytics) return;
+    const id = setInterval(loadAnalytics, analyticsRefreshMs);
+    return () => clearInterval(id);
+  }, [showAnalytics, loadAnalytics, analyticsRefreshMs]);
+
+  const analyticsSummary = useMemo(() => {
+    if (!showAnalytics) return null;
+    try {
+      return summarizeAnalytics(analyticsData.records, {
+        filter: analyticsScopeFilter(questId),
+        groupBy: analyticsGroupBy,
+      });
+    } catch {
+      return null;
+    }
+  }, [showAnalytics, analyticsData, questId, analyticsGroupBy]);
+
+  // Clamp the overlay selection after a refresh shrinks the group list.
+  const analyticsGroupCount = analyticsSummary?.groups.length ?? 0;
+  useEffect(() => {
+    setAnalyticsSelected((i) => Math.min(i, Math.max(analyticsGroupCount - 1, 0)));
+  }, [analyticsGroupCount]);
+
+  const analyticsDiagnostics = useMemo(
+    () => analyticsData.diagnostics.map((d) => `${d.file}: ${d.kind}: ${d.message}`),
+    [analyticsData],
+  );
 
   // Save session helper
   const saveSession = useCallback(() => {
@@ -461,8 +552,29 @@ function TaskBrowserApp({
       onWishlist={handleWishlist}
       onEdit={handleEdit}
       onRetry={handleRetry}
-      isActive={!showEditor}
+      onUsage={handleOpenAnalytics}
+      isActive={!showEditor && !showAnalytics}
     />
+    {showAnalytics && (
+      <Box
+        position="absolute"
+        width={columns}
+        height={rows}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <AnalyticsOverlayView
+          summary={analyticsSummary}
+          groupBy={analyticsGroupBy}
+          selectedIndex={analyticsSelected}
+          diagnostics={analyticsDiagnostics}
+          maxVisibleRows={Math.min(8, Math.max(3, rows - 26))}
+          onClose={handleCloseAnalytics}
+          onCycleGrouping={handleCycleAnalyticsGrouping}
+          onSelectIndex={setAnalyticsSelected}
+        />
+      </Box>
+    )}
     {editNode && (
       <Box
         position="absolute"
@@ -498,6 +610,8 @@ export interface TaskBrowserScreenProps {
   questTaskIds?: string[];
   hasRunningWave?: boolean;
   showBack?: boolean;
+  analyticsRefreshMs?: number;
+  analyticsLoader?: () => AnalyticsLoadResult;
   /** Called when the user quits the task browser entirely. */
   onExit: () => void;
   /**
@@ -524,6 +638,8 @@ export function TaskBrowserScreen({
   questTaskIds,
   hasRunningWave,
   showBack,
+  analyticsRefreshMs,
+  analyticsLoader,
   onExit,
   callbacks,
 }: TaskBrowserScreenProps): React.ReactElement {
@@ -579,6 +695,8 @@ export function TaskBrowserScreen({
       questTaskIds={questTaskIds}
       hasRunningWave={hasRunningWave}
       showBack={showBack}
+      analyticsRefreshMs={analyticsRefreshMs}
+      analyticsLoader={analyticsLoader}
       onAction={handleAction}
       callbacks={callbacks}
     />

@@ -17,3 +17,4 @@ dist/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+.wombo-combo/analytics/

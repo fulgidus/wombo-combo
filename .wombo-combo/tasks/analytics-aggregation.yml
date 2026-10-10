@@ -11,15 +11,15 @@ description: |
   build attempts/passes/pass rate, and added/deleted/changed lines.
   Include eligible sample counts for nullable metrics. Add deterministic
   tests/analytics-summary.test.ts.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - analytics-store
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:22:29.139Z
+ended_at: 2026-10-10T01:23:42.437Z
 constraints:
   - Build pass rate is total passes divided by total attempts, not an average of percentages.
   - Means and rates without eligible samples must be null.

@@ -56,7 +56,7 @@ woco merge                 # merge verified branches
 | `woco logs <id>`                      | View agent logs (--tail N, --follow)               |
 | `woco cleanup`                        | Remove worktrees and sessions                      |
 | `woco history`                        | List/view past wave results                        |
-| `woco usage`                          | Show token usage statistics                        |
+| `woco usage`                          | Show token usage statistics (`--analytics` for agent performance) |
 | `woco tasks list`                     | List tasks                                         |
 | `woco tasks add <id> <title>`         | Add a task                                         |
 | `woco tasks set-status <id> <status>` | Update task status                                 |
@@ -126,8 +126,75 @@ Token data is collected automatically when agents run via `woco launch`.
 Each record includes input/output tokens, cache read/write tokens,
 reasoning tokens, cost, model, provider, and harness information.
 
-In the TUI, press **U** in the Task Browser to open the token usage overlay,
-which shows overall totals and per-group breakdowns with Tab to cycle grouping.
+Without `--analytics`, `woco usage` keeps its token-only behavior and output
+shapes. For per-execution performance metrics see
+[Agent Analytics](#agent-analytics) below.
+
+## Agent Analytics
+
+While the daemon runs agents, wombo-combo records one snapshot per agent
+**execution** (a single run of a task) under `.wombo-combo/analytics/`
+(gitignored, project root only - never inside a worktree). Snapshots are written
+incrementally as the execution progresses, are independent of the daemon's
+session history export, and survive `woco cleanup` and daemon restarts (cleanup
+only removes disposable daemon state, worktrees and logs).
+
+```sh
+woco usage --analytics                          # totals across all executions
+woco usage --analytics --by task                # group by task | quest | wave | agent | model
+woco usage --analytics --quest my-quest         # exact filters: --task, --quest, --wave
+woco usage --analytics --wave daemon-2026-03-01T10-00-00-000Z --by agent
+woco usage --analytics --since 2026-03-01 --until 2026-03-31
+WOMBO_OUTPUT=json woco usage --analytics --by quest   # structured: json | toon
+```
+
+`--task`, `--quest` and `--wave` are only valid with `--analytics`, and `--by`
+is validated per mode (analytics: task, quest, wave, agent, model; token mode:
+task, quest, model, provider, harness). Dates filter on the execution's first
+process start. Structured output (`json`/`toon`) carries the same summary and
+never contains ANSI codes; storage diagnostics (malformed or unsupported
+snapshot files) are printed to stderr.
+
+### Metric definitions
+
+| Metric | Definition |
+| ------ | ---------- |
+| Execution | One run of a task. Re-submitting a task, or explicitly retrying a *finished* execution, creates a new execution. Ordinary automatic retries stay inside the same execution. |
+| Outcome | `succeeded` (reached successful verification), `failed`, `stopped` (cancelled, skipped, downstream-cancelled, killed, reaped or interrupted by shutdown) or `running`. Merge result is tracked separately (`pending`, `merged`, `failed`), so verified work that later fails to merge is still `succeeded`. |
+| Completion time | First agent process start to successful verification, including ordinary retries and excluding any later merge waiting. Only `succeeded` executions contribute; the process exiting (`completed`) is not success. |
+| Retries | Cumulative ordinary retries within the execution. |
+| Tokens | Input, output, cache read/write, reasoning, total and cost, accumulated from the same step events already written to `usage.jsonl` (analytics never appends to it again). |
+| Build pass rate | Total build passes / total build attempts (not an average of percentages). Counts the actual build result, so a passing build followed by failing browser or TDD verification is still a pass. Fake agents run no builds and contribute no attempts. |
+| Lines changed | Committed additions + deletions between an immutable baseline commit (captured before the first agent process) and the commit at successful verification; binary files contribute no counts; runtime artifacts (`.wombo-combo/analytics`, `usage.jsonl`, state, history, logs, evals) are excluded. Chain members are measured from their own starting commit. Uncommitted work is not counted. After a tier-four conflict re-run the measurement is re-taken for the replacement implementation (phase `replacement`) without changing the original completion time. |
+
+Unknown measurements are `null` in JSON and rendered as `n/a` (never as zero
+or 100%). Means and rates without eligible samples are `null`; every metric
+reports how many executions were eligible.
+
+### Coverage limitations
+
+- **Usage coverage** is `full` when every monitored token stream was seen,
+  `partial` when part of the execution was not monitored, and `none` when no
+  usage was recorded. Conflict-resolver agents (tiers 3, 3.5 and 4) are not
+  monitored, and PID-only recovery after a daemon restart cannot see the live
+  token stream, so those executions report `partial` usage and the CLI/TUI warn
+  that totals may be incomplete.
+- Build counts include the conflict-resolution re-builds but not builds run
+  outside the daemon.
+- Historical usage (`usage.jsonl`) and session history are **not** backfilled
+  into analytics; only executions run after this feature was enabled appear.
+
+### TUI
+
+In the Task Browser press **U** to open the analytics overlay (it works without
+a connected daemon). It shows outcomes, completion time, retries, token totals,
+weighted build pass rate and added/deleted lines with sample counts and
+coverage warnings. **Tab** cycles grouping (task, quest, wave, agent, model),
+**Up/Down** or **j/k** select, **Esc**/**U** close. Data is loaded when the
+overlay opens and refreshed every couple of seconds only while it is visible.
+When the browser is scoped to a quest the overlay uses the *recorded* quest of
+each execution (so archived or removed tasks still count); the unquested
+errands browser shows only executions without a quest.
 
 ## Launch options
 

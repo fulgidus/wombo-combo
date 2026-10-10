@@ -11,15 +11,15 @@ description: |
   Update src/lib/citty-registry.ts metadata so help, describe, and
   completion expose the new flags and grouping values.
   Add tests/analytics-usage-command.test.ts.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - analytics-aggregation
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:34:11.211Z
+ended_at: 2026-10-10T01:38:21.698Z
 constraints:
   - Without --analytics, preserve legacy token-only behavior and JSON shapes.
   - Reject analytics-only options outside analytics mode.

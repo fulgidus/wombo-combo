@@ -10,14 +10,14 @@ description: |
   Return nullable measurements and diagnostics when refs or git are
   unavailable. Test temporary local repositories, sequential chain
   members, unrelated movement of the base branch, and empty diffs.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT20M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:19:50.897Z
+ended_at: 2026-10-10T01:21:45.950Z
 constraints:
   - Use argument-array subprocess calls rather than shell interpolation.
   - Each chain member must use its own starting HEAD.

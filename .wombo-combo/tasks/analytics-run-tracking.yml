@@ -19,15 +19,15 @@ description: |
   finished execution starts a new execution even when its state object
   is reused and its retries counter resets.
   Add tests/analytics-lifecycle.test.ts.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - analytics-store
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:23:45.676Z
+ended_at: 2026-10-10T01:30:11.507Z
 constraints:
   - Ordinary retries preserve identity, first-start time, and accumulated metrics.
   - New submissions and explicit reruns of finished executions receive new identities.

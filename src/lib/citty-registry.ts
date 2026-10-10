@@ -276,9 +276,20 @@ const ENTRIES: RegistryEntry[] = [
       description:
         "Displays aggregated token usage data collected during agent runs. " +
         "Can show totals or group by task, quest, model, provider, or harness. " +
-        "Supports date range filtering and table or JSON output.",
+        "Supports date range filtering and table or JSON output. " +
+        "With --analytics, shows per-execution agent analytics from .wombo-combo/analytics/ " +
+        "(completion time, retries, full token totals, build pass rate, changed lines, usage coverage), " +
+        "grouped by task, quest, wave, agent, or model and filterable by --task, --quest, --wave.",
       flagOverrides: {
-        by: { description: "Group usage by field (default: total — no grouping)", enum: ["task", "quest", "model", "provider", "harness"] },
+        by: {
+          description:
+            "Group by field (default: total — no grouping). Token mode: task, quest, model, provider, harness. With --analytics: task, quest, wave, agent, model",
+          enum: ["task", "quest", "wave", "agent", "model", "provider", "harness"],
+        },
+        analytics: { description: "Show per-execution agent analytics instead of token usage", default: false },
+        task: { description: "Only executions of this task ID (requires --analytics)" },
+        quest: { description: "Only executions recorded under this quest ID (requires --analytics)" },
+        wave: { description: "Only executions from this wave/session ID (requires --analytics)" },
         since: { description: "Filter records from this date (ISO 8601, inclusive)" },
         until: { description: "Filter records until this date (ISO 8601, inclusive)" },
         format: { description: "Output format for usage data: table (default) or json", default: "table", enum: ["table", "json"] },

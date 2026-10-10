@@ -70,6 +70,8 @@ import type { Quest } from "../lib/quest";
 import type { QuestHitlMode } from "../lib/quest";
 import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
+import { AnalyticsTracker } from "./analytics-tracker";
+import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,6 +87,11 @@ export interface AgentRunnerConfig {
     runPostMerge?: typeof runPostMerge;
     pushBaseBranch?: typeof pushBaseBranch;
   };
+  /**
+   * Daemon session id (also the history wave_id). Newly submitted executions
+   * are attributed to this wave in analytics.
+   */
+  sessionId?: string;
 }
 
 /**
@@ -161,6 +168,9 @@ export class AgentRunner {
   private state: DaemonState;
   private monitor: ProcessMonitor;
 
+  /** Durable per-execution analytics (lifecycle, retries, usage). */
+  readonly analytics: AnalyticsTracker;
+
   /** Session-scoped agent-name override (CLI --agent). null = use task.agent. */
   private agentOverride: string | null = null;
 
@@ -191,6 +201,14 @@ export class AgentRunner {
     this.postMergeDeps = opts.postMergeDeps;
     this.runPostMergeFn = opts.overrides?.runPostMerge ?? runPostMerge;
     this.pushBaseFn = opts.overrides?.pushBaseBranch ?? pushBaseBranch;
+
+    this.analytics = new AnalyticsTracker({
+      projectRoot: this.projectRoot,
+      state,
+      waveId: opts.sessionId ?? `runner-${new Date().toISOString().replace(/[:.]/g, "-")}`,
+      onDiagnostic: (message) =>
+        state.emit("evt:log", { level: "warn", message: `[analytics] ${message}` }),
+    });
 
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
@@ -279,6 +297,9 @@ export class AgentRunner {
       },
 
       onUsage: (featureId, record) => {
+        // The monitor already persisted this record to usage.jsonl; analytics
+        // only accumulates totals and must not append it again.
+        this.analytics.recordUsage(featureId, record as UsageRecord);
         const agent = this.state.getAgent(featureId);
         if (agent) {
           if (!agent.tokenUsage) {
@@ -352,6 +373,13 @@ export class AgentRunner {
       hasChainSuccessor: ctx?.hasChainSuccessor ?? false,
       model,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
+    });
+
+    // Allocate a new analytics execution on every submission.
+    this.analytics.allocate(agentState, {
+      questId: task.quest ?? null,
+      agentId: agentState.agentName,
+      model: model ?? this.state.getModel(),
     });
 
     this.state.addAgent(agentState);
@@ -515,6 +543,11 @@ export class AgentRunner {
         hitlMode as any
       );
 
+      // Capture the immutable analytics baseline after worktree preparation
+      // and before the first agent process (preserved across retries; chain
+      // members start from their predecessor's tip).
+      this.analytics.captureBaseline(featureId);
+
       // Launch the agent process
       this.state.updateAgentStatus(featureId, "running", "Agent spawned");
 
@@ -535,7 +568,11 @@ export class AgentRunner {
         startedAt: new Date().toISOString(),
       });
 
-      // Register with monitor
+      this.analytics.recordProcessStart(featureId);
+
+      // Register usage context before attaching the process so every record
+      // carries quest/model, then register with the monitor.
+      this.registerUsageContext(featureId);
       this.monitor.addProcess(featureId, result.process);
 
       this.state.emit("evt:task-picked", {
@@ -581,6 +618,9 @@ export class AgentRunner {
     if (agent.agentName === FAKE_AGENT_SENTINEL) {
       agent.buildPassed = true;
       this.state.updateAgent(featureId, { verification: FAKE_AGENT_VERIFICATION });
+      // No actual build ran: zero build attempts. Measure before "verified"
+      // makes chain successors eligible to reuse the worktree.
+      this.analytics.measure(featureId);
       this.state.updateAgentStatus(featureId, "verified", "Build skipped (fake-agent)");
       if (this.hasChainSuccessor(featureId)) {
         this.state.updateAgentActivity(featureId, "chain member — deferring merge to chain terminal");
@@ -626,9 +666,15 @@ export class AgentRunner {
       });
       this.state.updateAgent(featureId, { verification: verificationSummaryFromResult(result) });
 
+      // Count the actual build result, independent of browser/TDD outcomes.
+      this.analytics.recordBuild(featureId, result.build.passed);
+
       if (result.overallPassed) {
         agent.buildPassed = true;
         agent.buildOutput = result.combinedErrorSummary || null;
+        // Measure committed changes before "verified" is emitted: successors
+        // can immediately reuse the shared worktree.
+        this.analytics.measure(featureId);
         this.state.updateAgentStatus(featureId, "verified", "Build passed");
 
         this.state.emit("evt:build-result", {
@@ -679,9 +725,29 @@ export class AgentRunner {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      this.analytics.reportDiagnostic(`verification of ${featureId} threw: ${msg}`);
       this.state.updateAgentStatus(featureId, "failed", `Verification error: ${msg}`);
       this.state.updateAgent(featureId, { error: msg });
       this.rescueChainPredecessors(featureId);
+    }
+  }
+
+  /**
+   * Run a build in a conflict-resolution tier, counting the invocation
+   * exactly once. Exceptions are reported, counted as a failed attempt (never
+   * a pass) and re-thrown so existing behavior is unchanged.
+   */
+  private async trackedBuild(featureId: string, wtPath: string): Promise<Awaited<ReturnType<typeof runBuild>>> {
+    try {
+      const result = await runBuild(wtPath, this.config);
+      this.analytics.recordBuild(featureId, result.passed);
+      return result;
+    } catch (err) {
+      this.analytics.recordBuild(featureId, false);
+      this.analytics.reportDiagnostic(
+        `conflict-tier build for ${featureId} threw: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
     }
   }
 
@@ -811,6 +877,9 @@ export class AgentRunner {
     const beforeSha = this.mergeBefore.get(featureId) ?? null;
     this.mergeBefore.delete(featureId);
     const destination = agent.baseBranch;
+    // Persist a best-effort diff (only if none was captured at verification)
+    // before the worktree and branches are cleaned up below.
+    this.analytics.captureBestEffort(featureId);
 
     this.state.updateAgentStatus(featureId, "merged", `${label} (${commitHash?.slice(0, 7)})`);
     this.state.updateAgent(featureId, {
@@ -1232,6 +1301,8 @@ export class AgentRunner {
       `tier 3: resolving ${conflictFiles.length} conflict(s)...`
     );
 
+    // Resolver token streams are not monitored: usage can only be partial.
+    this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
       worktreePath: agent.worktree,
       featureId: agent.featureId,
@@ -1251,7 +1322,7 @@ export class AgentRunner {
     this.state.updateAgentActivity(featureId, `tier 3 resolver exited (code ${resolverExitCode}) — re-verifying build...`);
 
     // Re-verify build
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 3 POST-CONFLICT BUILD FAILED");
       return "build-failed";
@@ -1352,6 +1423,7 @@ export class AgentRunner {
         this.config
       );
 
+      this.analytics.markUnmonitoredUsage(featureId);
       const resolverResult = launchConflictResolver({
         worktreePath: agent.worktree,
         featureId: agent.featureId,
@@ -1405,7 +1477,7 @@ export class AgentRunner {
     }
 
     // Verify build after rebase
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 3.5 POST-REBASE BUILD FAILED");
       return "failed";
@@ -1455,6 +1527,10 @@ export class AgentRunner {
       return "failed";
     }
 
+    // The reset invalidated the original baseline: capture a replacement one.
+    // Verification timestamps and duration are intentionally left unchanged.
+    this.analytics.captureReplacementBaseline(featureId);
+
     this.state.updateAgentActivity(featureId, "tier 4: re-implementing feature from scratch...");
 
     // Generate the tier 4 prompt
@@ -1465,6 +1541,7 @@ export class AgentRunner {
     );
 
     // Launch the agent
+    this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
       worktreePath: agent.worktree,
       featureId: agent.featureId,
@@ -1484,7 +1561,7 @@ export class AgentRunner {
     this.state.updateAgentActivity(featureId, `tier 4 agent exited (code ${exitCode}) — verifying build...`);
 
     // Verify build
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 4 BUILD FAILED");
       return "failed";
@@ -1496,6 +1573,10 @@ export class AgentRunner {
       `git diff --cached --quiet || git commit -m "feat(${agent.featureId}): re-implement ${task.title} (tier 4)"`,
       agent.worktree
     );
+
+    // Measure the replacement implementation after its commit and before
+    // merge cleanup can remove the worktree/branch.
+    this.analytics.measure(featureId, "replacement");
 
     // Merge into base
     this.state.updateAgentActivity(featureId, "tier 4 build passed — merging into base...");
@@ -1631,6 +1712,7 @@ export class AgentRunner {
 
       this.state.updateAgent(featureId, { pid: result.pid });
       this.state.updateAgentStatus(featureId, "running", "Retry launched");
+      this.registerUsageContext(featureId);
       this.monitor.addProcess(featureId, result.process);
     } catch {
       // Retry launch failed — queue for fresh launch
@@ -1688,13 +1770,37 @@ export class AgentRunner {
   // Process management
   // -------------------------------------------------------------------------
 
+  /** Register the token collector's per-agent context (quest, model). */
+  private registerUsageContext(featureId: string): void {
+    const agent = this.state.getAgent(featureId);
+    this.monitor.tokenCollector.registerAgent(featureId, {
+      quest_id: agent?.analytics?.quest_id ?? null,
+      model: agent?.model ?? this.state.getModel() ?? null,
+    });
+  }
+
+  /** Restore persisted analytics snapshots (call before startup reconciliation). */
+  restoreAnalytics(): void {
+    this.analytics.restore();
+  }
+
+  /** Finish unfinished executions as interrupted and stop recording (shutdown). */
+  interruptAnalytics(reason: string): void {
+    this.analytics.interruptAll(reason);
+    this.analytics.close();
+  }
+
   /** Kill a specific agent's process. */
   cancelAgent(featureId: string): void {
+    this.analytics.markStopRequested(featureId, "cancelled");
     this.monitor.remove(featureId);
   }
 
   /** Kill all running agents. */
   async killAll(): Promise<void> {
+    // Mark executions stopped first so exit callbacks from the killed
+    // processes cannot alter their snapshots.
+    this.analytics.interruptAll("killed");
     this.monitor.killAll();
     // Wait for processes to actually die
     await this.monitor.waitAll(500);
@@ -1707,6 +1813,8 @@ export class AgentRunner {
         this.state.emit("evt:log", { level: "warn", message: `Agent ${agent.featureId} PID ${agent.pid} is dead — reaping` });
         // Reset task back to "planned" so scheduler picks it up again
         this.resetTaskToPlanned(agent.featureId);
+        // Persist a best-effort diff before the worktree disappears
+        this.analytics.captureBestEffort(agent.featureId);
         // Clean up worktree if present
         if (agent.worktree) {
           try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
@@ -1720,6 +1828,7 @@ export class AgentRunner {
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
         if (agent.retries >= agent.maxRetries) {
+          this.analytics.captureBestEffort(agent.featureId);
           this.resetTaskToPlanned(agent.featureId);
           if (agent.worktree) {
             try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
@@ -1909,6 +2018,7 @@ export class AgentRunner {
 
   /** Destroy: clean up resources. */
   destroy(): void {
+    this.analytics.close();
     this.monitor.killAll();
     this.launchQueue = [];
   }
