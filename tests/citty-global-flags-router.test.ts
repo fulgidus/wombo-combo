@@ -11,6 +11,7 @@ import {
   isCittyCommand,
   runCittyCommand,
   resolveGlobalFlagsAndCommand,
+  buildCittyArgs,
 } from "../src/commands/citty/router";
 
 // ---------------------------------------------------------------------------
@@ -207,5 +208,49 @@ describe("runCittyCommand — with global flags", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildCittyArgs — re-attaching global flags that citty commands read as args
+// ---------------------------------------------------------------------------
+
+describe("buildCittyArgs — --output forwarding", () => {
+  test("space-separated --output after the command is forwarded", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["tasks", "list", "--output", "json"]);
+    expect(flags.output).toBe("json");
+    expect(buildCittyArgs(remaining, flags)).toEqual(["list", "--output", "json"]);
+  });
+
+  test("space-separated -o after the command is forwarded", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["tasks", "list", "-o", "json"]);
+    expect(buildCittyArgs(remaining, flags)).toEqual(["list", "--output", "json"]);
+  });
+
+  test("global -o before the command is forwarded", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["-o", "json", "tasks", "list"]);
+    expect(buildCittyArgs(remaining, flags)).toEqual(["list", "--output", "json"]);
+  });
+
+  test("--output=json is passed through once, not duplicated", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["quest", "list", "--output=json"]);
+    expect(flags.output).toBeUndefined();
+    expect(buildCittyArgs(remaining, flags)).toEqual(["list", "--output=json"]);
+  });
+
+  test("no output flag adds nothing", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["wishlist", "list"]);
+    expect(buildCittyArgs(remaining, flags)).toEqual(["list"]);
+  });
+
+  test("--output toon is forwarded", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["status", "--output", "toon"]);
+    expect(buildCittyArgs(remaining, flags)).toEqual(["--output", "toon"]);
+  });
+
+  test("dev, force and no-ui are re-attached alongside output", () => {
+    const { globalFlags: flags, remaining } = resolveGlobalFlagsAndCommand(["launch", "--dry-run", "--output", "json"]);
+    const args = buildCittyArgs(remaining, { ...flags, dev: true, force: true, noUi: true });
+    expect(args).toEqual(["--dry-run", "--dev", "--force", "--no-ui", "--output", "json"]);
   });
 });

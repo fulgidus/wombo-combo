@@ -95,6 +95,7 @@ import {
   isCittyCommand,
   runCittyCommand,
   resolveGlobalFlagsAndCommand,
+  buildCittyArgs,
 } from "./commands/citty/router";
 import { renderGlobalHelp, renderCommandHelp } from "./lib/schema";
 
@@ -135,19 +136,9 @@ async function main(): Promise<void> {
   // Route ALL commands through citty
   // -----------------------------------------------------------------------
   if (isCittyCommand(command)) {
-    // Re-add --dev if it was present (stripped by extractGlobalFlags but
-    // needed by citty commands that define --dev as an arg)
-    const cittyArgs = [...remaining];
-    if (globalFlags.dev && !cittyArgs.includes("--dev")) {
-      cittyArgs.push("--dev");
-    }
-    if (globalFlags.force && !cittyArgs.includes("--force")) {
-      cittyArgs.push("--force");
-    }
-    if (globalFlags.noUi && !cittyArgs.includes("--no-ui")) {
-      cittyArgs.push("--no-ui");
-    }
-
+    // extractGlobalFlags strips global flags from anywhere in argv; hand the
+    // citty commands back the ones they declare as args.
+    const cittyArgs = buildCittyArgs(remaining, globalFlags);
     await runCittyCommand(command, cittyArgs);
     return;
   }

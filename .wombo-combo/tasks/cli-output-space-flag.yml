@@ -2,14 +2,14 @@ id: cli-output-space-flag
 title: Fix --output <value> space-separated form dropped by citty router (only --output=value works); affects
   eval/history/status
 description: ""
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T01:19:23.843Z
 constraints: []
 forbidden: []
 references: []

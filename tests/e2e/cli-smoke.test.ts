@@ -296,12 +296,29 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
 
     // Known bugs. Kept as todos so CI stays green while the gap is tracked.
 
-    test.todo(
-      "BUG: tasks list --output json emits JSON (currently prints human-readable text)",
+    test(
+      "tasks list --output json emits a JSON object with the task",
+      () => {
+        expect(woco(["tasks", "add", "json-list", "JSON list"]).exitCode).toBe(0);
+        const result = woco(["tasks", "list", "--output", "json"]);
+        expect(result.exitCode).toBe(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.features.map((t: { id: string }) => t.id)).toContain("json-list");
+      },
+      TEST_TIMEOUT,
     );
 
-    test.todo(
-      "BUG: tasks show --output json emits JSON (currently prints human-readable text)",
+    test(
+      "tasks show --output json emits the task as a JSON object",
+      () => {
+        expect(woco(["tasks", "add", "json-show", "JSON show"]).exitCode).toBe(0);
+        const result = woco(["tasks", "show", "json-show", "--output", "json"]);
+        expect(result.exitCode).toBe(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.id).toBe("json-show");
+        expect(parsed.title).toBe("JSON show");
+      },
+      TEST_TIMEOUT,
     );
 
     test.todo(
@@ -338,8 +355,17 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
       TEST_TIMEOUT,
     );
 
-    test.todo(
-      "BUG: wishlist list --output json emits JSON (currently prints human-readable text)",
+    test(
+      "wishlist list --output json emits a JSON array with the idea",
+      () => {
+        expect(woco(["wishlist", "add", "json idea", "--tag", "ux"]).exitCode).toBe(0);
+        const result = woco(["wishlist", "list", "--output", "json"]);
+        expect(result.exitCode).toBe(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(Array.isArray(parsed)).toBe(true);
+        expect(parsed.map((item: { text: string }) => item.text)).toContain("json idea");
+      },
+      TEST_TIMEOUT,
     );
   });
 
@@ -390,8 +416,99 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
       TEST_TIMEOUT,
     );
 
-    test.todo(
-      "BUG: quest list --output json emits JSON (currently prints human-readable text)",
+    test(
+      "quest list --output json emits a JSON object with the quest",
+      () => {
+        expect(
+          woco(["quest", "create", "json-quest", "JSON quest", "--goal", "JSON goal"]).exitCode,
+        ).toBe(0);
+        const result = woco(["quest", "list", "--output", "json"]);
+        expect(result.exitCode).toBe(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.quests.map((q: { id: string }) => q.id)).toContain("json-quest");
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Output format flag forms: --output json, -o json, --output=json
+  // -------------------------------------------------------------------------
+
+  describe("--output json flag forms", () => {
+    const FORMS: string[][] = [
+      ["--output", "json"],
+      ["-o", "json"],
+      ["--output=json"],
+    ];
+
+    /** Seed one task, one wishlist idea and one quest so every listing has data. */
+    function seedStores(): void {
+      expect(woco(["tasks", "add", "form-task", "Form task"]).exitCode).toBe(0);
+      expect(woco(["wishlist", "add", "form idea"]).exitCode).toBe(0);
+      expect(woco(["quest", "create", "form-quest", "Form quest", "--goal", "Form goal"]).exitCode).toBe(0);
+    }
+
+    for (const flags of FORMS) {
+      const label = flags.join(" ");
+
+      test(
+        `tasks list ${label} parses as JSON`,
+        () => {
+          seedStores();
+          const result = woco(["tasks", "list", ...flags]);
+          expect(result.exitCode).toBe(0);
+          const parsed = JSON.parse(result.stdout);
+          expect(parsed.features.map((t: { id: string }) => t.id)).toContain("form-task");
+        },
+        TEST_TIMEOUT,
+      );
+
+      test(
+        `tasks show form-task ${label} parses as JSON`,
+        () => {
+          seedStores();
+          const result = woco(["tasks", "show", "form-task", ...flags]);
+          expect(result.exitCode).toBe(0);
+          expect(JSON.parse(result.stdout).id).toBe("form-task");
+        },
+        TEST_TIMEOUT,
+      );
+
+      test(
+        `wishlist list ${label} parses as JSON`,
+        () => {
+          seedStores();
+          const result = woco(["wishlist", "list", ...flags]);
+          expect(result.exitCode).toBe(0);
+          const parsed = JSON.parse(result.stdout);
+          expect(parsed.map((item: { text: string }) => item.text)).toContain("form idea");
+        },
+        TEST_TIMEOUT,
+      );
+
+      test(
+        `quest list ${label} parses as JSON`,
+        () => {
+          seedStores();
+          const result = woco(["quest", "list", ...flags]);
+          expect(result.exitCode).toBe(0);
+          const parsed = JSON.parse(result.stdout);
+          expect(parsed.quests.map((q: { id: string }) => q.id)).toContain("form-quest");
+        },
+        TEST_TIMEOUT,
+      );
+    }
+
+    test(
+      "global -o json placed before the command also yields JSON",
+      () => {
+        seedStores();
+        const result = woco(["-o", "json", "tasks", "list"]);
+        expect(result.exitCode).toBe(0);
+        expect(JSON.parse(result.stdout).features.map((t: { id: string }) => t.id)).toContain("form-task");
+      },
+      TEST_TIMEOUT,
     );
   });
 
