@@ -41,6 +41,11 @@ handle it.
 To release: bump `package.json` version, commit, tag (`v<version>`), push with
 `--tags`. The workflow takes care of the rest.
 
+If you cannot push tags (e.g. from a restricted environment), push the version
+bump to `main` and run the Release workflow manually (Actions → Release → Run
+workflow, `version` = the package.json version). It creates the `v<version>`
+tag itself and then runs the same release steps.
+
 Users install via:
 
 ```sh

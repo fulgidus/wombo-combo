@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  # Manual release from the Actions tab (or API): creates the v<version> tag
+  # for the current commit, then runs the same release steps.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (must equal package.json version, e.g. 0.5.0)"
+        required: true
 
 permissions:
   contents: write
@@ -17,6 +24,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # full history for changelog generation
+
+      - name: Resolve release tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=v${{ inputs.version }}" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -34,7 +49,7 @@ jobs:
 
       - name: Verify version matches tag
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
+          TAG="${RELEASE_TAG#v}"
           PKG_VERSION="$(bun -e "console.log(require('./package.json').version)")"
           if [ "$TAG" != "$PKG_VERSION" ]; then
             echo "::error::Tag v${TAG} does not match package.json version ${PKG_VERSION}"
@@ -55,6 +70,14 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Create release tag (manual release)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
       - name: Generate changelog
         id: changelog
@@ -95,8 +118,8 @@ jobs:
             echo "Or pin to this version:"
             echo ""
             echo '```sh'
-            echo "npm install -g wombo-combo@${GITHUB_REF#refs/tags/v}"
-            echo "bun add -g github:fulgidus/wombo-combo#${GITHUB_REF#refs/tags/}"
+            echo "npm install -g wombo-combo@${RELEASE_TAG#v}"
+            echo "bun add -g github:fulgidus/wombo-combo#${RELEASE_TAG}"
             echo '```'
           } > RELEASE_BODY.md
 
@@ -104,8 +127,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
             --notes-file RELEASE_BODY.md \
             dist/index.js dist/daemon/daemon.js
 
