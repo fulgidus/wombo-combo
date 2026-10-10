@@ -14,14 +14,14 @@ description: |
   metadata needed by lifecycle and measurement tasks now, so consumers
   do not need concurrent edits to this module.
   Add tests/analytics-store.test.ts and ignore analytics in .gitignore.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:17:54.921Z
+ended_at: 2026-10-10T01:19:45.357Z
 constraints:
   - Store data in the project root, never an agent worktree.
   - Upserts must not increase execution counts; repeated task executions remain distinct.

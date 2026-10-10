@@ -12,3 +12,4 @@ dist/
 .wombo-combo/daemon-state.json
 .wombo-combo/daemon.pid
 .wombo-combo/baselines/
+.wombo-combo/analytics/
