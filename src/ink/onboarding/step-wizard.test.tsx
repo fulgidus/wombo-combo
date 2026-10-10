@@ -18,6 +18,7 @@ import React from "react";
 import { render, renderToString } from "ink";
 import { PassThrough } from "node:stream";
 import { StepWizard, type StepWizardProps } from "./step-wizard";
+import { ChromeLayout } from "../chrome";
 
 // ---------------------------------------------------------------------------
 // Static render tests (renderToString)
@@ -137,5 +138,80 @@ describe("StepWizard (q key)", () => {
     expect(onCancel).not.toHaveBeenCalled();
     expect(output).not.toContain("cannot be empty");
     expect(output).toContain("Step 3/8");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bottom chrome quit hint (q quits on selection steps only)
+// ---------------------------------------------------------------------------
+
+// Strip ANSI styling so "q" and " quit" (separate styled Text nodes) read as "q quit".
+const plain = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+function renderWizardInChrome() {
+  const { stdin, stdout } = createTestStreams();
+  let output = "";
+  stdout.on("data", (chunk: Buffer) => {
+    output += chunk.toString();
+  });
+  const instance = render(
+    <ChromeLayout screenName="Setup" daemonConnected={false}>
+      <StepWizard onComplete={() => {}} onCancel={() => {}} onQuit={() => {}} />
+    </ChromeLayout>,
+    { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+  );
+  return {
+    stdin,
+    instance,
+    /** Output written since the returned offset (only frames rendered after it). */
+    mark: () => output.length,
+    since: (offset: number) => plain(output.slice(offset)),
+    all: () => plain(output),
+  };
+}
+
+describe("StepWizard quit hint in ChromeLayout", () => {
+  test("selection step still advertises q quit", async () => {
+    const w = renderWizardInChrome();
+    await tick();
+    expect(w.all()).toContain("q quit");
+    w.instance.unmount();
+  });
+
+  test("text step does not advertise q quit", async () => {
+    const w = renderWizardInChrome();
+    await tick();
+    // Select "brownfield" -> first text step (Project Name).
+    w.stdin.write("\r");
+    await tick();
+    const mark = w.mark();
+    // Type a letter so a fresh frame of the text step is rendered.
+    w.stdin.write("q");
+    await tick();
+    w.instance.unmount();
+
+    const frames = w.since(mark);
+    expect(frames).toContain("Step 2/8");
+    expect(frames).toContain("ESC");
+    expect(frames).not.toContain("q quit");
+  });
+
+  test("q quit hint returns when navigating back to the selection step", async () => {
+    const w = renderWizardInChrome();
+    await tick();
+    w.stdin.write("\r");
+    await tick();
+    // Esc on the first text step goes back to the selection step.
+    w.stdin.write("\x1b");
+    await tick();
+    const mark = w.mark();
+    // Move the cursor to re-render the selection list.
+    w.stdin.write("\x1b[B");
+    await tick();
+    w.instance.unmount();
+
+    const frames = w.since(mark);
+    expect(frames).toContain("Step 1/8");
+    expect(frames).toContain("q quit");
   });
 });

@@ -21,6 +21,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { TextInput } from "../text-input";
+import { useChromeHideQuitHint } from "../chrome";
 import { INPUT_STEPS, type RawInputs, type InputStep } from "./onboarding-utils";
 
 // ---------------------------------------------------------------------------
@@ -259,6 +260,9 @@ export function StepWizard({
   const step = INPUT_STEPS[stepIndex];
   const stepCount = INPUT_STEPS.length;
   const isFirstStep = stepIndex === 0;
+
+  // q is typed into the field on text steps, so the chrome must not advertise "q quit" there.
+  useChromeHideQuitHint(!step.selection);
 
   // Navigation helpers
   const goBack = useCallback(() => {

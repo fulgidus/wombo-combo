@@ -26,6 +26,7 @@ import {
   ChromeBottomBar,
   ChromeTitleContext,
   useChromTitle,
+  useChromeHideQuitHint,
   type ChromeLayoutProps,
   type WaveSummary,
   type KeybindHint,
@@ -245,5 +246,68 @@ describe("ChromeTitleContext", () => {
     await new Promise((r) => setTimeout(r, 30));
     expect(title as string | null).toBe("Custom Screen Title");
     instance.unmount();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quit hint suppression (useChromeHideQuitHint)
+// ---------------------------------------------------------------------------
+
+describe("ChromeBottomBar hideQuitHint", () => {
+  test("shows q quit by default", () => {
+    const out = renderToString(<ChromeBottomBar />);
+    expect(out.replace(/\x1b\[[0-9;]*m/g, "")).toContain("q quit");
+  });
+
+  test("hideQuitHint removes q quit but keeps ESC menu", () => {
+    const out = renderToString(<ChromeBottomBar hideQuitHint />).replace(/\x1b\[[0-9;]*m/g, "");
+    expect(out).not.toContain("q quit");
+    expect(out).toContain("ESC");
+    expect(out).toContain("menu");
+  });
+});
+
+describe("useChromeHideQuitHint", () => {
+  function Probe({ hide }: { hide: boolean }) {
+    useChromeHideQuitHint(hide);
+    return <Text>probe</Text>;
+  }
+
+  test("outside ChromeLayout it is a no-op", () => {
+    expect(() => renderToString(<Probe hide={true} />)).not.toThrow();
+  });
+
+  test("a screen that hides the quit hint is reflected in the bottom bar", async () => {
+    const { stdin, stdout } = createTestStreams();
+    let output = "";
+    stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    const instance = render(
+      <ChromeLayout screenName="Probe" daemonConnected={false}>
+        <Probe hide={true} />
+      </ChromeLayout>,
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    instance.unmount();
+    // Debug mode writes a full frame per render; the first frame predates the
+    // hook's effect, so assert on the last frame only.
+    const plain = output.replace(/\x1b\[[0-9;]*m/g, "");
+    const frames = plain.split("Home › Probe");
+    const last = frames[frames.length - 1];
+    expect(last).toContain("probe");
+    expect(last).toContain("ESC menu");
+    expect(last).not.toContain("q quit");
+  });
+
+  test("another screen without the hook still shows q quit", () => {
+    const out = renderToString(
+      <ChromeLayout screenName="Dashboard" daemonConnected={true}>
+        <Text>dashboard body</Text>
+      </ChromeLayout>,
+    ).replace(/\x1b\[[0-9;]*m/g, "");
+    expect(out).toContain("dashboard body");
+    expect(out).toContain("q quit");
   });
 });
