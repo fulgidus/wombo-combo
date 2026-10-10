@@ -42,3 +42,4 @@ notes:
   - Use optional verification fields to preserve older persisted state compatibility.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

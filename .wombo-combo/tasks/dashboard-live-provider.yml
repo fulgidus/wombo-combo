@@ -51,3 +51,4 @@ notes:
   - Only this provider owns dashboard sampling; screen components must not create their own sampling intervals.
 subtasks: []
 quest: dashboard-realtime
+paths: []

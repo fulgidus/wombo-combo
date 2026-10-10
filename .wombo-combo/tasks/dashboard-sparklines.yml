@@ -33,3 +33,4 @@ notes:
   - Use existing theme tokens to select minimal/ASCII rendering rather than adding configuration.
 subtasks: []
 quest: dashboard-realtime
+paths: []

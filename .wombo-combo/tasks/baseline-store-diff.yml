@@ -43,3 +43,4 @@ notes:
   - The snapshot is immutable for a quest execution; retries must not redefine its accepted failures.
 subtasks: []
 quest: tdd-baseline
+paths: []

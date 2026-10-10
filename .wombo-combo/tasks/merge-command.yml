@@ -54,3 +54,4 @@ notes:
   - The in-process merge queue cannot protect against a separate daemon process.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

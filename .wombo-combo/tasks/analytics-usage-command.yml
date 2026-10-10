@@ -43,3 +43,4 @@ notes:
   - Registry enums can advertise the union of groupings; runtime validation remains mode-specific.
 subtasks: []
 quest: agent-analytics
+paths: []

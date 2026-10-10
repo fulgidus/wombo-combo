@@ -44,3 +44,4 @@ notes:
   - Daemon token events are cumulative and omit quest attribution; JSONL is the dashboard token-total source.
 subtasks: []
 quest: dashboard-realtime
+paths: []

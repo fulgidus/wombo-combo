@@ -36,3 +36,4 @@ notes:
   - Keep menu label handling consistent with existing components without introducing missing translation keys.
 subtasks: []
 quest: dashboard-realtime
+paths: []

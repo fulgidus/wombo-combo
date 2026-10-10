@@ -37,3 +37,4 @@ notes:
   - Define a standalone helper result contract; storage integration belongs to build tracking.
 subtasks: []
 quest: agent-analytics
+paths: []

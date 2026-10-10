@@ -54,3 +54,4 @@ notes:
   - handleRetry can spawn directly using a session ID, bypassing doLaunch.
 subtasks: []
 quest: tdd-baseline
+paths: []

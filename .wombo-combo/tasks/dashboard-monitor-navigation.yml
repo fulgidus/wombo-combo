@@ -39,3 +39,4 @@ notes:
   - Keep the existing legacy dashboard-store provider separate from the new metrics context.
 subtasks: []
 quest: dashboard-realtime
+paths: []

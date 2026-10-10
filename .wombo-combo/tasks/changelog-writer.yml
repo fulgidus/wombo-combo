@@ -34,3 +34,4 @@ notes:
   - A committed operation marker provides deduplication even if runtime state is lost.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

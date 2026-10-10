@@ -53,3 +53,4 @@ notes:
   - A successful completion must not inflate throughput when subsequently verified or merged.
 subtasks: []
 quest: dashboard-realtime
+paths: []

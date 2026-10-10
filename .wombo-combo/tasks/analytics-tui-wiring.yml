@@ -43,3 +43,4 @@ notes:
   - TaskBrowserView already dispatches onUsage for u and exposes isActive.
 subtasks: []
 quest: agent-analytics
+paths: []

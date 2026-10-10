@@ -45,3 +45,4 @@ notes:
   - Keep temporary-worktree ownership explicit so cleanup removes only capture-owned resources.
 subtasks: []
 quest: tdd-baseline
+paths: []

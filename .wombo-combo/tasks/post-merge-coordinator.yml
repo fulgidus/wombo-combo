@@ -52,3 +52,4 @@ notes:
   - Stable operation IDs should derive from branch and merge commit SHAs.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

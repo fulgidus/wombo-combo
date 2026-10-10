@@ -41,3 +41,4 @@ notes:
   - Use optional result fields so existing skipped-result literals remain valid.
 subtasks: []
 quest: tdd-baseline
+paths: []

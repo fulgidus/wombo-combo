@@ -47,3 +47,4 @@ notes:
   - Use completion timestamps from initial snapshots when available; do not invent historical activity.
 subtasks: []
 quest: dashboard-realtime
+paths: []

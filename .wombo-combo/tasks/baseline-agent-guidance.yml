@@ -35,3 +35,4 @@ notes:
   - Use testBaseline fields sourceBranch, commitSha, and failingTestIds as the daemon-facing summary contract.
 subtasks: []
 quest: tdd-baseline
+paths: []

@@ -47,3 +47,4 @@ notes:
   - ChromeLayout sits outside NavigationContext; use the existing navRef bridge for menu navigation.
 subtasks: []
 quest: dashboard-realtime
+paths: []

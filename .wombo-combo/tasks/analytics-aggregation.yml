@@ -40,3 +40,4 @@ notes:
   - Export one serializable summary contract for CLI and TUI.
 subtasks: []
 quest: agent-analytics
+paths: []

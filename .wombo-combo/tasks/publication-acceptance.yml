@@ -43,3 +43,4 @@ notes:
   - Use a fake gh executable or injected adapter to inspect commands deterministically.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

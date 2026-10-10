@@ -58,3 +58,4 @@ notes:
   - PID-only recovery cannot guarantee full token coverage; report that limitation.
 subtasks: []
 quest: agent-analytics
+paths: []

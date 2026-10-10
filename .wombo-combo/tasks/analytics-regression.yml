@@ -48,3 +48,4 @@ notes:
   - Make a minimal cleanup.ts fix only if retention tests expose a problem.
 subtasks: []
 quest: agent-analytics
+paths: []

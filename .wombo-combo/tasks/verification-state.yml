@@ -35,3 +35,4 @@ notes:
   - InternalAgentState extends DaemonAgentState and is already persisted.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

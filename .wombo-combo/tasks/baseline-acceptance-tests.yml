@@ -42,3 +42,4 @@ notes:
   - Use bun test, bun run typecheck, and bun run build; CLI checks use bun dev.
 subtasks: []
 quest: tdd-baseline
+paths: []

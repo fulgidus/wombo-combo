@@ -41,3 +41,4 @@ notes:
   - Older daemon records must render unavailable test results as unknown.
 subtasks: []
 quest: auto-pr-changelog
+paths: []

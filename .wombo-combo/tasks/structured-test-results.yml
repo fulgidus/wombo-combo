@@ -36,3 +36,4 @@ notes:
   - Current parsing provides counts only; counts cannot detect one old failure being replaced by one new failure.
 subtasks: []
 quest: tdd-baseline
+paths: []

@@ -48,3 +48,4 @@ notes:
   - "The daemon is continuous: each successful terminal merge updates the shared branch-pair PR."
 subtasks: []
 quest: auto-pr-changelog
+paths: []
