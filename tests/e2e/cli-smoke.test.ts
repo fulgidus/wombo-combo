@@ -36,6 +36,8 @@ const PKG_VERSION: string = JSON.parse(
   readFileSync(join(REPO_ROOT, "package.json"), "utf-8"),
 ).version;
 const DIST_EXISTS = existsSync(DIST_ENTRY);
+/** Path to the node binary, or null when node is not on PATH (node tests skip). */
+const NODE_BIN: string | null = Bun.which("node");
 
 /** Per-test timeout (ms). The subprocess timeout sits just below it. */
 const TEST_TIMEOUT = 30_000;
@@ -444,7 +446,26 @@ describe.skipIf(!DIST_EXISTS)("CLI smoke (built dist: dist/index.js)", () => {
     TEST_TIMEOUT,
   );
 
-  test.todo(
-    "BUG: node dist/index.js help and version run (currently crash at load with 'ReferenceError: self is not defined' from react-devtools-core)",
-  );
+  describe.skipIf(!NODE_BIN)("under Node (node dist/index.js)", () => {
+    test(
+      "node dist/index.js help lists the core commands",
+      () => {
+        const result = runProcess([NODE_BIN!, DIST_ENTRY, "help"], REPO_ROOT);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("launch");
+        expect(result.stdout).toContain("tasks");
+      },
+      TEST_TIMEOUT,
+    );
+
+    test(
+      "node dist/index.js version prints the package version",
+      () => {
+        const result = runProcess([NODE_BIN!, DIST_ENTRY, "version"], REPO_ROOT);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain(`wombo-combo ${PKG_VERSION}`);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

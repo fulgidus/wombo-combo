@@ -7,19 +7,21 @@
  */
 
 import { defineCommand } from "citty";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 /**
  * Read the version string from wombo-combo's package.json.
  *
  * Walks up from this module's directory so it works both from source
- * (src/commands/citty/) and from the bundled dist/index.js.
+ * (src/commands/citty/) and from the bundled dist/index.js. Uses node:fs
+ * rather than Bun.file so it also runs under Node.
  */
 async function getPackageVersion(): Promise<string> {
   let dir = import.meta.dir;
   while (true) {
     try {
-      const pkg = await Bun.file(resolve(dir, "package.json")).json();
+      const pkg = JSON.parse(readFileSync(resolve(dir, "package.json"), "utf-8"));
       if (pkg.name === "wombo-combo") return pkg.version ?? "(unknown version)";
     } catch {
       // no package.json here — keep walking up
