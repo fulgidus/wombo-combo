@@ -7,19 +7,26 @@
  */
 
 import { defineCommand } from "citty";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 /**
- * Read the version string from package.json.
- * Uses the same resolution path as the original index.ts implementation.
+ * Read the version string from wombo-combo's package.json.
+ *
+ * Walks up from this module's directory so it works both from source
+ * (src/commands/citty/) and from the bundled dist/index.js.
  */
 async function getPackageVersion(): Promise<string> {
-  const pkgPath = resolve(import.meta.dir, "../../..", "package.json");
-  try {
-    const pkg = await Bun.file(pkgPath).json();
-    return pkg.version ?? "(unknown version)";
-  } catch {
-    return "(unknown version)";
+  let dir = import.meta.dir;
+  while (true) {
+    try {
+      const pkg = await Bun.file(resolve(dir, "package.json")).json();
+      if (pkg.name === "wombo-combo") return pkg.version ?? "(unknown version)";
+    } catch {
+      // no package.json here — keep walking up
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return "(unknown version)";
+    dir = parent;
   }
 }
 

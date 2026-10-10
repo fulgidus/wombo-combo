@@ -446,8 +446,9 @@ export function compareTestRunToBaseline(
   const currentComparable = !!current && current.comparable;
 
   if (!currentComparable) {
-    // Legacy path: a clean exit means zero failures, which satisfies any baseline.
-    if (run.passed) {
+    // Legacy path: a clean exit means zero failures, which satisfies any
+    // baseline — unless the output contradicts it by listing failures.
+    if (run.passed && (current?.failingTestIds.length ?? 0) === 0) {
       result.warnings.push("test output not parseable; accepted via zero-failure exit");
       return result;
     }

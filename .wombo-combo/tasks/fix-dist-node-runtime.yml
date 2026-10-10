@@ -1,0 +1,20 @@
+id: fix-dist-node-runtime
+title: Make dist/index.js run under Node
+description: "node dist/index.js crashes at load with 'ReferenceError: self is not defined' from react-devtools-core
+  (marked external in the build). dist is built with --target node and shipped as a release asset. Either fix the bundle
+  (e.g. stub/alias react-devtools-core) or stop claiming node support. Tracked as test.todo in
+  tests/e2e/cli-smoke.test.ts."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

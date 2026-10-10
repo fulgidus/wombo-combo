@@ -1,0 +1,19 @@
+id: fix-output-json-flag
+title: Honor --output json in tasks/wishlist/quest commands
+description: tasks list/show/check/add, wishlist add/list and quest list ignore --output json (-o json) and print human
+  text, although --help documents json and toon output. Found by tests/e2e/cli-smoke.test.ts (test.todo entries);
+  convert those todos to real assertions when fixed.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

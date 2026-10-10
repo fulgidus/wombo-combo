@@ -1,0 +1,18 @@
+id: fix-task-id-validation
+title: Reject non-kebab-case task IDs in tasks add
+description: "'tasks add Bad_ID x' exits 0 and writes the task although the argument is documented as kebab-case. Should
+  exit 1 with a clear error. Tracked as test.todo in tests/e2e/cli-smoke.test.ts."
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
