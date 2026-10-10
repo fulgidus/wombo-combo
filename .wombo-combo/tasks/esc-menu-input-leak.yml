@@ -4,14 +4,14 @@ description: Screens such as task-browser and settings-screen keep handling keys
   menu overlay is open, so menu selections also drive the screen underneath. quest-picker was gated via
   useEscMenu().open (dashboard-main-navigation); apply the same isActive gate to task-browser, settings-screen and other
   screens with useInput.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: null
-ended_at: null
+started_at: 2026-10-10T08:55:04.380Z
+ended_at: 2026-10-10T09:00:29.529Z
 constraints: []
 forbidden: []
 references: []

@@ -28,13 +28,14 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { TextInput } from "./text-input";
 import { SelectInput, type SelectInputItem } from "./select-input";
 import { createBlankQuest, type QuestHitlMode, VALID_HITL_MODES } from "../lib/quest";
 import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema";
 import type { Quest } from "../lib/quest";
 import type { Priority, Difficulty } from "../lib/tasks";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -252,7 +253,7 @@ export function QuestWizard({
   // Escape key handler for text input steps
   // -----------------------------------------------------------------------
 
-  useInput(
+  useScreenInput(
     (_input, key) => {
       if (
         key.escape &&
@@ -297,7 +298,7 @@ export function QuestWizard({
   // Error phase — press Escape to cancel
   // -----------------------------------------------------------------------
 
-  useInput(
+  useScreenInput(
     (_input, key) => {
       if (key.escape && phase === "error") {
         onCancelled();

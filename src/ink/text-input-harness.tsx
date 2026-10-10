@@ -16,10 +16,11 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { render, Box, Text, useApp, useInput } from "ink";
+import { render, Box, Text, useApp } from "ink";
 import { TextInput } from "./text-input";
 import { useTextInput } from "./use-text-input";
 import { openEditor } from "./open-editor";
+import { useScreenInput } from "./esc-menu";
 
 type Mode = "single" | "multi";
 
@@ -53,7 +54,7 @@ function Harness(): React.ReactElement {
   );
 
   // Global keybinds (Tab to switch mode, Ctrl+C to quit)
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.tab) {
       setMode((m) => (m === "single" ? "multi" : "single"));
       setSubmitted(null);

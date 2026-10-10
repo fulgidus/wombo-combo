@@ -17,9 +17,10 @@
  */
 
 import React, { useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { PROFILE_SECTIONS, type ProfileSection, type ProjectProfile } from "../../lib/project-store";
 import { SECTION_NAMES, summarizeSection } from "./onboarding-utils";
+import { useScreenInput } from "../esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +59,7 @@ export function SectionPicker({
 }: SectionPickerProps): React.ReactElement {
   const [cursor, setCursor] = useState(0);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.upArrow) {
       setCursor((prev) => Math.max(0, prev - 1));
       return;

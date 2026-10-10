@@ -26,9 +26,10 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import type { HitlQuestion } from "../lib/hitl-channel";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Helpers (exported for testing)
@@ -97,7 +98,7 @@ export function QuestionPopupView({
     };
   }, []);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Escape — close
     if (key.escape) {
       onClose();

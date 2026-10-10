@@ -11,7 +11,8 @@
  */
 
 import React, { type ReactNode } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp } from "ink";
+import { useScreenInput } from "./esc-menu";
 
 export interface ShellProps {
   /** Child components to render in the main content area. */
@@ -25,7 +26,7 @@ export interface ShellProps {
 function InputHandler(): null {
   const { exit } = useApp();
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (input === "q" || key.escape) {
       exit();
     }

@@ -25,9 +25,10 @@
  */
 
 import React from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import type { UsageTotals, GroupableField } from "../lib/token-usage";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Format Helpers (exported for testing)
@@ -192,7 +193,7 @@ export function UsageOverlayView({
   onCycleGrouping,
   onSelectIndex,
 }: UsageOverlayViewProps): React.ReactElement {
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.escape || input === "u" || input === "U") {
       onClose();
       return;

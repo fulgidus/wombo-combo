@@ -15,10 +15,11 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import { TextInput } from "./text-input";
 import type { ErrandSpec } from "../lib/errand-planner";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,7 +118,7 @@ export function ErrandWizard({
   );
 
   // Escape key handler for text input steps (TextInput ignores Escape)
-  useInput(
+  useScreenInput(
     (_input, key) => {
       if (key.escape && step !== "review") {
         goBack();
@@ -127,7 +128,7 @@ export function ErrandWizard({
   );
 
   // Review step keybindings
-  useInput(
+  useScreenInput(
     (_input, key) => {
       if (key.return) {
         const spec: ErrandSpec = { description };

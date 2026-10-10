@@ -19,10 +19,11 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { TextInput } from "../text-input";
 import { useChromeHideQuitHint } from "../chrome";
 import { INPUT_STEPS, type RawInputs, type InputStep } from "./onboarding-utils";
+import { useScreenInput } from "../esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,7 +64,7 @@ function SelectionList({
 }: SelectionListProps): React.ReactElement {
   const [cursor, setCursor] = useState(selectedIndex);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.upArrow) {
       setCursor((prev) => Math.max(0, prev - 1));
       return;
@@ -138,7 +139,7 @@ function SingleLineInput({
     [optional, onSubmit],
   );
 
-  useInput((_input, key) => {
+  useScreenInput((_input, key) => {
     if (key.escape) {
       onBack();
       return;
@@ -193,7 +194,7 @@ function MultiLineInput({
     [optional, onSubmit],
   );
 
-  useInput((_input, key) => {
+  useScreenInput((_input, key) => {
     if (key.escape) {
       onBack();
       return;

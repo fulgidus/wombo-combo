@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { TextInput } from "../text-input";
 import { useChromeHideQuitHint } from "../chrome";
 import {
@@ -24,6 +24,7 @@ import {
   serializeSectionForEdit,
   parseSectionEdit,
 } from "./onboarding-utils";
+import { useScreenInput } from "../esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,7 +97,7 @@ export function FieldEditor({
     [profile, section, onSave],
   );
 
-  useInput((_input, key) => {
+  useScreenInput((_input, key) => {
     if (key.escape) {
       onDiscard();
       return;

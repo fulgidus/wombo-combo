@@ -28,7 +28,7 @@
  */
 
 import React, { createContext, useContext } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { t as defaultT, useI18n } from "./i18n";
 import { useTheme } from "./theme";
 import { useTerminalSize } from "./use-terminal-size";
@@ -45,6 +45,7 @@ import {
 import type { AgentStatus } from "../daemon/agent-status";
 import type { SchedulerState } from "../daemon/protocol";
 import type { HitlQuestion } from "../lib/hitl-channel";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // DashboardStore type
@@ -339,7 +340,7 @@ function RealtimeDashboard({
   const esc = useEscMenu();
 
   // Screen-local back action; ESC stays with the global menu.
-  useInput(
+  useScreenInput(
     (input) => {
       if (input === "b") onBack?.();
     },

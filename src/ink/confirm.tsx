@@ -19,8 +19,9 @@
  */
 
 import React from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
+import { useScreenInput } from "./esc-menu";
 
 export interface ConfirmDialogProps {
   /** Title displayed in the modal header. */
@@ -39,7 +40,7 @@ export function ConfirmDialog({
   message,
   onConfirm,
 }: ConfirmDialogProps): React.ReactElement {
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (input === "y" || input === "Y") {
       onConfirm(true);
     } else if (input === "n" || input === "N" || key.escape) {

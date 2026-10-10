@@ -22,10 +22,11 @@ import React, {
   useCallback,
   type ReactNode,
 } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { t } from "./i18n";
 import type { ThemeName } from "./theme";
 import { saveConfig } from "../config";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Partial config shape (only TUI-editable fields for now)
@@ -266,7 +267,7 @@ export function SettingsScreen({
     [cursor, cfg, persist, onBack]
   );
 
-  useInput(handleInput);
+  useScreenInput(handleInput);
 
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>

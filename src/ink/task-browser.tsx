@@ -21,7 +21,7 @@
  */
 
 import React, { useMemo } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { Task } from "../lib/tasks";
 import type { UsageTotals } from "../lib/token-usage";
 import type { SortField } from "../lib/tui-session";
@@ -34,6 +34,7 @@ import {
   TASK_PRIORITY_COLORS,
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
+import { useScreenInput } from "./esc-menu";
 
 function agentStatusColor(status: AgentStatus): string {
   switch (status) {
@@ -593,7 +594,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
   } = props;
 
   // Keyboard handling
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Quit
     if (input === "q") {
       onQuit();

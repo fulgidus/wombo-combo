@@ -11,12 +11,13 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import { TextInput } from "./text-input";
 import { useTextInput } from "./use-text-input";
 import type { Task } from "../lib/tasks";
 import { randomUUID } from "node:crypto";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -212,7 +213,7 @@ export function FakeTaskWizard({ onConfirm, onCancel }: FakeTaskWizardProps): Re
     onConfirm({ count, workflow, questName: questInput.value });
   }, [count, workflow, questInput.value, onConfirm]);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Cancel
     if (key.escape) { onCancel(); return; }
 

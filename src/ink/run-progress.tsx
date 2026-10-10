@@ -7,10 +7,11 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { getStableStdin, createIsolatedStdout } from "./bun-stdin";
-import { render, useInput } from "ink";
+import { render } from "ink";
 import { ProgressView, type ProgressResult } from "./progress";
 import { ConfirmDialog } from "./confirm";
 import { useSpinner } from "./use-spinner";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Progress Screen
@@ -70,7 +71,7 @@ function ProgressApp({
     return () => clearInterval(interval);
   }, [status, result, statusRef, resultRef]);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (result) {
       onDismiss();
       return;

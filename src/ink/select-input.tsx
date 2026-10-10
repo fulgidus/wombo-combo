@@ -26,7 +26,8 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,7 +117,7 @@ export function SelectInput<V = string>({
     [items, highlightedIndex, onSelect, onCancel]
   );
 
-  useInput(handleInput, { isActive: focus });
+  useScreenInput(handleInput, { isActive: focus });
 
   // Empty state
   if (items.length === 0) {

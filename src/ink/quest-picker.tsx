@@ -23,7 +23,7 @@
  */
 
 import React from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { Quest } from "../lib/quest";
 import type { UsageTotals } from "../lib/token-usage";
 import { formatTokenCount } from "./usage-overlay";
@@ -34,6 +34,7 @@ import {
   progressBar,
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -473,7 +474,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
   const itemCount = 2 + quests.length;
 
   // Keyboard handling
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Quit
     if (input === "q") {
       onQuit();

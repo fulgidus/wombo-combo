@@ -26,10 +26,11 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { WishlistItem } from "../lib/wishlist-store";
 import { useWishlistStore } from "./use-wishlist-store";
 import { formatDate, truncateText } from "./wishlist-helpers";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -180,7 +181,7 @@ export function WishlistOverlay({
     hideAddInput();
   }, [inputValue, store, hideAddInput]);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (addingItem) {
       // In add mode, handle text input
       if (key.return) {

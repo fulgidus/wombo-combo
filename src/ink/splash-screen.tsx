@@ -19,7 +19,7 @@
  */
 
 import React, { useEffect, useState, useRef } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -27,6 +27,7 @@ import { WOMBO_DIR } from "../config";
 import type { WomboConfig } from "../config";
 import { loadTasks } from "../lib/tasks";
 import { fetchNpmLatest, getLocalVersion, compareSemver } from "../commands/upgrade";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Splash texts
@@ -453,7 +454,7 @@ export function SplashScreen({
   const updateAvailable = newVersionRef.current !== null;
   const autoInstall = config?.tui?.autoInstallUpdates ?? false;
 
-  useInput((input) => {
+  useScreenInput((input) => {
     if (!checksComplete) return;
     if (installing) return;
     // 'u' — manually install available update then continue (only when auto-install is off)

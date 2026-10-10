@@ -16,7 +16,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import {
   PROFILE_SECTIONS,
   type ProfileSection,
@@ -29,6 +29,7 @@ import {
   serializeSectionForEdit,
   parseSectionEdit,
 } from "./onboarding-utils";
+import { useScreenInput } from "../esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,7 +162,7 @@ export function ProfileReview({
   // Input handling
   // -------------------------------------------------------------------------
 
-  useInput(
+  useScreenInput(
     (input, key) => {
       if (editMode) return; // Edit mode handles its own input
 

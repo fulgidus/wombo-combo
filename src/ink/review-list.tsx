@@ -21,7 +21,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import type {
   ReviewItem,
@@ -44,6 +44,7 @@ import {
   getCounts,
   type ReviewState,
 } from "./use-review-list";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -340,7 +341,7 @@ function ValidationPopup({
   issues: ReviewValidationIssue[];
   onClose: () => void;
 }): React.ReactElement {
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.escape || key.return || input === "q") {
       onClose();
     }
@@ -403,7 +404,7 @@ function MessagePopup({
   color: string;
   onClose: () => void;
 }): React.ReactElement {
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.escape || key.return || input === "q") {
       onClose();
     }
@@ -434,7 +435,7 @@ function ConfirmPopup({
   onConfirm: () => void;
   onCancel: () => void;
 }): React.ReactElement {
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (input === "y" || input === "Y") {
       onConfirm();
     } else if (input === "n" || input === "N" || key.escape) {
@@ -613,7 +614,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
     [modal, state, config]
   );
 
-  useInput(handleInput, { isActive: modal.type === "none" });
+  useScreenInput(handleInput, { isActive: modal.type === "none" });
 
   // -----------------------------------------------------------------------
   // Render
@@ -770,7 +771,7 @@ function ReviewEditModalInline({
     [field, currentItem, config, nextField]
   );
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (!field) return;
 
     // Escape — skip field / cancel edit

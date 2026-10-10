@@ -64,6 +64,22 @@ export function useEscMenu(): EscMenuState {
   return useContext(EscMenuContext);
 }
 
+/**
+ * useScreenInput — Ink's useInput, gated while the global ESC menu is open.
+ *
+ * Screens rendered under EscMenuProvider must not act on keys while the
+ * overlay owns input, otherwise menu selections also drive the screen beneath.
+ * Behaves exactly like useInput when the menu is closed (or outside a provider,
+ * where the default context reports open=false).
+ */
+export function useScreenInput(
+  inputHandler: Parameters<typeof useInput>[0],
+  options: Parameters<typeof useInput>[1] = {},
+): void {
+  const { open } = useEscMenu();
+  useInput(inputHandler, { ...options, isActive: (options.isActive ?? true) && !open });
+}
+
 // ---------------------------------------------------------------------------
 // ASCII art title
 // ---------------------------------------------------------------------------

@@ -23,7 +23,7 @@
  */
 
 import React from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { AgentStatus } from "../daemon/agent-status";
 import type { ActivityEntry } from "../lib/monitor";
 import { formatTokenCount, formatCost } from "./usage-overlay";
@@ -34,6 +34,7 @@ import {
   progressBar,
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -578,7 +579,7 @@ export function WaveMonitorView(props: WaveMonitorViewProps): React.ReactElement
   } = props;
 
   // Keyboard handling
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Quit
     if (input === "q" || (key.ctrl && input === "c")) {
       onQuit();

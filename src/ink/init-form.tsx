@@ -15,7 +15,8 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,7 +125,7 @@ export function InitForm({
     onCancel();
   }, [onCancel]);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (editing) {
       // In edit mode
       if (key.escape) {

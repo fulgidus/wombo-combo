@@ -19,11 +19,12 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { render as inkRender, Box, Text, useInput } from "ink";
+import { render as inkRender, Box, Text } from "ink";
 import type { AgentResolution } from "../lib/agent-registry";
 import { isSpecializedAgent } from "../lib/agent-registry";
 import type { Task } from "../lib/tasks";
 import type { AgentRegistryMode, WomboConfig } from "../config";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,7 +100,7 @@ function PreflightView({
     [rows, agents, mode, onFinish]
   );
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     // Escape / Ctrl-C — cancel
     if (key.escape || (input === "c" && key.ctrl)) {
       finish(false);

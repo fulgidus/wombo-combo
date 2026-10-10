@@ -13,12 +13,13 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import { TextInput } from "./text-input";
 import { useTextInput } from "./use-text-input";
 import type { Task, TaskStatus, Priority } from "../lib/tasks";
 import { VALID_STATUSES, VALID_PRIORITIES } from "../lib/task-schema";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -85,7 +86,7 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
     onConfirm(updated);
   }, [task, titleInput.value, descInput.value, statusIdx, priorityIdx, effortInput.value, noteInput.value, onConfirm]);
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.escape) { onCancel(); return; }
     if (key.ctrl && input === "s") { handleConfirm(); return; }
 

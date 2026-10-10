@@ -15,7 +15,8 @@
  */
 
 import React, { useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
+import { useScreenInput } from "../esc-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,7 +52,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps): React.ReactElement {
   const [selected, setSelected] = useState<"yes" | "no">("yes");
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.upArrow || key.downArrow || key.leftArrow || key.rightArrow) {
       setSelected((prev) => (prev === "yes" ? "no" : "yes"));
       return;

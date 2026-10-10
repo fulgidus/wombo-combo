@@ -24,8 +24,9 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { TextBuffer } from "./text-buffer";
+import { useScreenInput } from "./esc-menu";
 
 export interface TextInputProps {
   /** Current value of the text input. */
@@ -225,7 +226,7 @@ export function TextInput({
     [buffer, onChange, onSubmit, onEditorRequest, multiline]
   );
 
-  useInput(handleInput, { isActive: focus });
+  useScreenInput(handleInput, { isActive: focus });
 
   // Render
   const isEmpty = buffer.value.length === 0;

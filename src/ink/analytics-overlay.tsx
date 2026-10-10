@@ -16,11 +16,12 @@
  */
 
 import React from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import { useTheme } from "./theme";
 import { formatTokenCount, formatCost } from "./usage-overlay";
 import type { AggregateMetrics, AnalyticsGroupBy, AnalyticsSummary } from "../lib/analytics-summary";
+import { useScreenInput } from "./esc-menu";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers (exported for testing and adapters)
@@ -202,7 +203,7 @@ export function AnalyticsOverlayView({
 }: AnalyticsOverlayViewProps): React.ReactElement {
   const groups = summary?.groups ?? [];
 
-  useInput((input, key) => {
+  useScreenInput((input, key) => {
     if (key.escape || input === "u" || input === "U") {
       onClose();
       return;
