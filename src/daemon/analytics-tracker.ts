@@ -31,6 +31,8 @@ import {
   createAnalyticsRecord,
   type AgentAnalyticsRecord,
 } from "../lib/analytics";
+import { existsSync } from "node:fs";
+import { captureHead, measureLineChanges } from "../lib/analytics-git";
 import type { UsageRecord } from "../lib/token-collector";
 import type { AgentStatus } from "./agent-status";
 import type { DaemonState, InternalAgentState, StatusObserverInfo } from "./state";
@@ -186,6 +188,82 @@ export class AnalyticsTracker {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Build & diff measurements
+  // -------------------------------------------------------------------------
+
+  /**
+   * Capture the immutable baseline HEAD (after worktree preparation, before
+   * the first agent process). Preserved across ordinary retries; each chain
+   * member captures its own starting HEAD. Never replaced by null.
+   */
+  captureBaseline(featureId: string): void {
+    const agent = this.state.getAgent(featureId);
+    if (!agent?.analytics || this.closed || agent.analytics.baseline_head) return;
+    const head = captureHead(agent.worktree);
+    if (!head.head) {
+      this.report(`baseline ${featureId}: ${head.diagnostics.join("; ")}`);
+      return;
+    }
+    this.update(featureId, { baseline_head: head.head });
+  }
+
+  /**
+   * Tier-four re-run: the worktree was reset, so capture a replacement
+   * baseline. Duration and verification timestamps are left untouched.
+   */
+  captureReplacementBaseline(featureId: string): void {
+    const agent = this.state.getAgent(featureId);
+    if (!agent?.analytics || this.closed) return;
+    const head = captureHead(agent.worktree);
+    if (!head.head) {
+      this.report(`replacement baseline ${featureId}: ${head.diagnostics.join("; ")}`);
+      return;
+    }
+    this.update(featureId, { baseline_head: head.head });
+  }
+
+  /** Count one actual build invocation (never fabricates passes). */
+  recordBuild(featureId: string, passed: boolean): void {
+    this.mutate(featureId, (rec) => {
+      rec.build_attempts += 1;
+      if (passed) rec.build_passes += 1;
+      return true;
+    });
+  }
+
+  /**
+   * Measure committed changes baseline..HEAD now. Call at successful
+   * verification BEFORE the verified status is applied ("measured"), or after
+   * a tier-four replacement commit ("replacement"). A failed measurement never
+   * replaces a valid one.
+   */
+  measure(featureId: string, phase: "measured" | "replacement" = "measured"): void {
+    const agent = this.state.getAgent(featureId);
+    if (!agent?.analytics || this.closed) return;
+    if (this.measureInto(agent, phase, {})) this.persist(agent);
+    else if (agent.analytics.measurement_phase === "pending") {
+      agent.analytics.measurement_phase = "unavailable";
+      this.persist(agent);
+    }
+  }
+
+  /**
+   * Best-effort measurement before failure, reaping or cleanup. Only fills in
+   * executions that have no measurement yet.
+   */
+  captureBestEffort(featureId: string): void {
+    const agent = this.state.getAgent(featureId);
+    if (!agent?.analytics || this.closed) return;
+    if (this.measureInto(agent, "measured", { onlyIfUnmeasured: true })) this.persist(agent);
+  }
+
+  /** True if the execution already has a valid (non-null) measurement. */
+  hasMeasurement(featureId: string): boolean {
+    const rec = this.state.getAgent(featureId)?.analytics;
+    return !!rec && rec.additions !== null && rec.deletions !== null;
+  }
+
   /** Mark that the next failure of this agent is a cancellation. */
   markStopRequested(featureId: string, reason: string): void {
     this.stopRequests.set(featureId, reason);
@@ -318,9 +396,49 @@ export class AnalyticsTracker {
   private finish(agent: InternalAgentState, outcome: "failed" | "stopped", _reason?: string): void {
     const rec = agent.analytics;
     if (!rec || rec.outcome !== "running") return;
+    // Best-effort diff before the worktree can be cleaned up.
+    this.measureInto(agent, "measured", { onlyIfUnmeasured: true });
     rec.outcome = outcome;
     rec.merge_outcome = "not_applicable";
     this.persist(agent);
+  }
+
+  /**
+   * Compute baseline..HEAD in the agent's worktree into the record (no
+   * persist). Returns whether a valid measurement was stored. Unknown results
+   * are reported and never overwrite existing values.
+   */
+  private measureInto(
+    agent: InternalAgentState,
+    phase: "measured" | "replacement",
+    opts: { onlyIfUnmeasured?: boolean },
+  ): boolean {
+    const rec = agent.analytics;
+    if (!rec || !rec.baseline_head || !agent.worktree) return false;
+    if (opts.onlyIfUnmeasured && rec.measurement_phase !== "pending" && rec.measurement_phase !== "unavailable") {
+      return false;
+    }
+    if (!existsSync(agent.worktree)) return false;
+    try {
+      const head = captureHead(agent.worktree);
+      if (!head.head) {
+        this.report(`measure ${agent.featureId}: ${head.diagnostics.join("; ")}`);
+        return false;
+      }
+      const m = measureLineChanges(agent.worktree, rec.baseline_head, head.head);
+      if (m.additions === null || m.deletions === null) {
+        this.report(`measure ${agent.featureId}: ${m.diagnostics.join("; ")}`);
+        return false;
+      }
+      rec.additions = m.additions;
+      rec.deletions = m.deletions;
+      rec.measured_head = head.head;
+      rec.measurement_phase = phase;
+      return true;
+    } catch (err) {
+      this.report(`measure ${agent.featureId}: ${errMsg(err)}`);
+      return false;
+    }
   }
 
   private newExecution(featureId: string, ctx: ExecutionContext): AgentAnalyticsRecord {
@@ -368,6 +486,11 @@ export class AnalyticsTracker {
       this.report(`persist ${rec.execution_id}: ${errMsg(err)}`);
     }
     this.state.updateAgent(agent.featureId, { analytics: rec, analyticsUnmonitored: agent.analyticsUnmonitored });
+  }
+
+  /** Surface an analytics-relevant failure without affecting execution. */
+  reportDiagnostic(message: string): void {
+    this.report(message);
   }
 
   private report(message: string): void {

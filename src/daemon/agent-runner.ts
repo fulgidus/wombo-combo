@@ -485,6 +485,11 @@ export class AgentRunner {
         hitlMode as any
       );
 
+      // Capture the immutable analytics baseline after worktree preparation
+      // and before the first agent process (preserved across retries; chain
+      // members start from their predecessor's tip).
+      this.analytics.captureBaseline(featureId);
+
       // Launch the agent process
       this.state.updateAgentStatus(featureId, "running", "Agent spawned");
 
@@ -554,6 +559,9 @@ export class AgentRunner {
     // Skip build verification for fake-agent tasks — go straight to merge
     if (agent.agentName === FAKE_AGENT_SENTINEL) {
       agent.buildPassed = true;
+      // No actual build ran: zero build attempts. Measure before "verified"
+      // makes chain successors eligible to reuse the worktree.
+      this.analytics.measure(featureId);
       this.state.updateAgentStatus(featureId, "verified", "Build skipped (fake-agent)");
       if (this.hasChainSuccessor(featureId)) {
         this.state.updateAgentActivity(featureId, "chain member — deferring merge to chain terminal");
@@ -568,9 +576,15 @@ export class AgentRunner {
     try {
       const result = await runFullVerification(agent.worktree, featureId, this.config);
 
+      // Count the actual build result, independent of browser/TDD outcomes.
+      this.analytics.recordBuild(featureId, result.build.passed);
+
       if (result.overallPassed) {
         agent.buildPassed = true;
         agent.buildOutput = result.combinedErrorSummary || null;
+        // Measure committed changes before "verified" is emitted: successors
+        // can immediately reuse the shared worktree.
+        this.analytics.measure(featureId);
         this.state.updateAgentStatus(featureId, "verified", "Build passed");
 
         this.state.emit("evt:build-result", {
@@ -621,9 +635,29 @@ export class AgentRunner {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      this.analytics.reportDiagnostic(`verification of ${featureId} threw: ${msg}`);
       this.state.updateAgentStatus(featureId, "failed", `Verification error: ${msg}`);
       this.state.updateAgent(featureId, { error: msg });
       this.rescueChainPredecessors(featureId);
+    }
+  }
+
+  /**
+   * Run a build in a conflict-resolution tier, counting the invocation
+   * exactly once. Exceptions are reported, counted as a failed attempt (never
+   * a pass) and re-thrown so existing behavior is unchanged.
+   */
+  private async trackedBuild(featureId: string, wtPath: string): Promise<Awaited<ReturnType<typeof runBuild>>> {
+    try {
+      const result = await runBuild(wtPath, this.config);
+      this.analytics.recordBuild(featureId, result.passed);
+      return result;
+    } catch (err) {
+      this.analytics.recordBuild(featureId, false);
+      this.analytics.reportDiagnostic(
+        `conflict-tier build for ${featureId} threw: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
     }
   }
 
@@ -719,6 +753,10 @@ export class AgentRunner {
   ): void {
     const agent = this.state.getAgent(featureId);
     if (!agent) return;
+
+    // Persist a best-effort diff (only if none was captured at verification)
+    // before the worktree and branches are cleaned up below.
+    this.analytics.captureBestEffort(featureId);
 
     this.state.updateAgentStatus(featureId, "merged", `${label} (${commitHash?.slice(0, 7)})`);
     this.state.updateAgent(featureId, { completedAt: new Date().toISOString() });
@@ -1076,7 +1114,7 @@ export class AgentRunner {
     this.state.updateAgentActivity(featureId, `tier 3 resolver exited (code ${resolverExitCode}) — re-verifying build...`);
 
     // Re-verify build
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 3 POST-CONFLICT BUILD FAILED");
       return "build-failed";
@@ -1231,7 +1269,7 @@ export class AgentRunner {
     }
 
     // Verify build after rebase
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 3.5 POST-REBASE BUILD FAILED");
       return "failed";
@@ -1281,6 +1319,10 @@ export class AgentRunner {
       return "failed";
     }
 
+    // The reset invalidated the original baseline: capture a replacement one.
+    // Verification timestamps and duration are intentionally left unchanged.
+    this.analytics.captureReplacementBaseline(featureId);
+
     this.state.updateAgentActivity(featureId, "tier 4: re-implementing feature from scratch...");
 
     // Generate the tier 4 prompt
@@ -1311,7 +1353,7 @@ export class AgentRunner {
     this.state.updateAgentActivity(featureId, `tier 4 agent exited (code ${exitCode}) — verifying build...`);
 
     // Verify build
-    const rebuildResult = await runBuild(agent.worktree, this.config);
+    const rebuildResult = await this.trackedBuild(featureId, agent.worktree);
     if (!rebuildResult.passed) {
       this.state.updateAgentActivity(featureId, "tier 4 BUILD FAILED");
       return "failed";
@@ -1323,6 +1365,10 @@ export class AgentRunner {
       `git diff --cached --quiet || git commit -m "feat(${agent.featureId}): re-implement ${task.title} (tier 4)"`,
       agent.worktree
     );
+
+    // Measure the replacement implementation after its commit and before
+    // merge cleanup can remove the worktree/branch.
+    this.analytics.measure(featureId, "replacement");
 
     // Merge into base
     this.state.updateAgentActivity(featureId, "tier 4 build passed — merging into base...");
@@ -1483,6 +1529,8 @@ export class AgentRunner {
         this.state.emit("evt:log", { level: "warn", message: `Agent ${agent.featureId} PID ${agent.pid} is dead — reaping` });
         // Reset task back to "planned" so scheduler picks it up again
         this.resetTaskToPlanned(agent.featureId);
+        // Persist a best-effort diff before the worktree disappears
+        this.analytics.captureBestEffort(agent.featureId);
         // Clean up worktree if present
         if (agent.worktree) {
           try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
@@ -1496,6 +1544,7 @@ export class AgentRunner {
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
         if (agent.retries >= agent.maxRetries) {
+          this.analytics.captureBestEffort(agent.featureId);
           this.resetTaskToPlanned(agent.featureId);
           if (agent.worktree) {
             try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
