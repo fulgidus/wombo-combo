@@ -19,5 +19,7 @@ dist/
 .claude/worktrees/
 .wombo-combo/analytics/
 
-# graphify local backups of the previous graph (dated folders)
+# graphify local-only files: dated backups of the previous graph, and the
+# per-machine stat cache (file mtimes; churns on every run)
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+graphify-out/cache/stat-index.json
