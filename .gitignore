@@ -20,6 +20,7 @@ dist/
 .wombo-combo/analytics/
 
 # graphify local-only files: dated backups of the previous graph, and the
-# per-machine stat cache (file mtimes; churns on every run)
+# per-machine incremental caches (file mtimes; churn on every run)
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 graphify-out/cache/stat-index.json
+graphify-out/manifest.json
