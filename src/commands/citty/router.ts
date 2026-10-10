@@ -29,6 +29,7 @@ import { completionCommand } from "./completion";
 import { launchCommand } from "./launch";
 import { resumeCommand } from "./resume";
 import { retryCommand } from "./retry";
+import { mergeCommand } from "./merge";
 import { tasksCommand } from "./tasks";
 import { questCommand } from "./quest";
 import { genesisCommand } from "./genesis";
@@ -76,6 +77,9 @@ const CITTY_COMMANDS = new Set([
     "r",
     "retry",
     "re",
+    // --- Merge command ---
+    "merge",
+    "m",          // alias for merge
     // --- Tasks command (with subcommands) ---
     "tasks",
     "t",          // alias for tasks
@@ -280,6 +284,11 @@ export async function runCittyCommand(
         case "retry":
         case "re":
             await runCommand(retryCommand, { rawArgs });
+            break;
+
+        case "merge":
+        case "m":
+            await runCommand(mergeCommand, { rawArgs });
             break;
 
         case "tasks":

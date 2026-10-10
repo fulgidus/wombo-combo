@@ -14,16 +14,16 @@ description: |
   Run bun run typecheck, bun run build, bun test, and read-only bun dev merge
   --help / describe smoke checks. Record any unrelated baseline failures
   without widening this quest.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - daemon-post-merge
   - merge-command
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:47:19.273Z
+ended_at: 2026-10-10T01:52:54.578Z
 constraints:
   - No real GitHub PR creation, external pushes, or authentication changes during tests.
   - Acceptance tests must assert skipped and unknown tests are not reported as passed.

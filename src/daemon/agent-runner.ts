@@ -16,7 +16,7 @@
  */
 
 import { execSync } from "node:child_process";
-import type { WomboConfig, MaxEscalationTier } from "../config";
+import { normalizePostMergeConfig, type WomboConfig, type MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
@@ -49,7 +49,15 @@ import {
   cleanupRebaseBranch,
   finalizeRebase,
   pushBaseBranch,
+  type MergeResult,
 } from "../lib/merger";
+import { computeOperationId, runPostMerge, type PostMergeDeps } from "../lib/post-merge";
+import { verificationSummaryFromResult } from "../lib/merge-report";
+import type {
+  MergeReportTask,
+  PostMergeResult,
+  VerificationSummary,
+} from "../lib/post-merge-types";
 import type { Tier25Result } from "../lib/conflict-hunks";
 import { buildDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
 import { prepareAgentDefinitions, writeAgentToWorktree, isSpecializedAgent } from "../lib/agent-registry";
@@ -70,7 +78,24 @@ import { createDaemonAgentState } from "./state";
 export interface AgentRunnerConfig {
   projectRoot: string;
   config: WomboConfig;
+  /** Injectable runner/clock for the post-merge coordinator (tests) */
+  postMergeDeps?: PostMergeDeps;
+  /** Injectable collaborators for post-merge handling (tests) */
+  overrides?: {
+    runPostMerge?: typeof runPostMerge;
+    pushBaseBranch?: typeof pushBaseBranch;
+  };
 }
+
+/**
+ * Verification evidence for fake agents: nothing was actually built or tested,
+ * so every check is explicitly skipped rather than passed.
+ */
+const FAKE_AGENT_VERIFICATION: VerificationSummary = {
+  build: { status: "skipped", reason: "fake agent" },
+  unitTests: { status: "skipped", reason: "fake agent" },
+  browser: { status: "skipped", reason: "fake agent" },
+};
 
 // ---------------------------------------------------------------------------
 // Standalone helpers (pure functions, no class dependency)
@@ -144,6 +169,14 @@ export class AgentRunner {
 
   private maxRetriesOverride: number | null = null;
 
+  /** Post-merge coordinator wiring (overridable in tests). */
+  private postMergeDeps: PostMergeDeps | undefined;
+  private runPostMergeFn: typeof runPostMerge;
+  private pushBaseFn: typeof pushBaseBranch;
+
+  /** Destination-branch tip captured just before each merge, keyed by feature ID. */
+  private mergeBefore = new Map<string, string | null>();
+
   /** Stagger delay between concurrent launch starts (ms). */
   private static readonly LAUNCH_STAGGER_MS = 250;
 
@@ -155,6 +188,9 @@ export class AgentRunner {
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
     this.state = state;
+    this.postMergeDeps = opts.postMergeDeps;
+    this.runPostMergeFn = opts.overrides?.runPostMerge ?? runPostMerge;
+    this.pushBaseFn = opts.overrides?.pushBaseBranch ?? pushBaseBranch;
 
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
@@ -544,6 +580,7 @@ export class AgentRunner {
     // Skip build verification for fake-agent tasks — go straight to merge
     if (agent.agentName === FAKE_AGENT_SENTINEL) {
       agent.buildPassed = true;
+      this.state.updateAgent(featureId, { verification: FAKE_AGENT_VERIFICATION });
       this.state.updateAgentStatus(featureId, "verified", "Build skipped (fake-agent)");
       if (this.hasChainSuccessor(featureId)) {
         this.state.updateAgentActivity(featureId, "chain member — deferring merge to chain terminal");
@@ -587,6 +624,7 @@ export class AgentRunner {
       const result = await runFullVerification(agent.worktree, featureId, verifyConfig, {
         testBaseline,
       });
+      this.state.updateAgent(featureId, { verification: verificationSummaryFromResult(result) });
 
       if (result.overallPassed) {
         agent.buildPassed = true;
@@ -688,15 +726,14 @@ export class AgentRunner {
           return;
         }
 
-        const mergeResult = await mergeBranch(
-          this.projectRoot,
+        const mergeResult = await this.mergeIntoBase(
+          featureId,
           agent.branch,
-          agent.baseBranch,
-          this.config
+          agent.baseBranch
         );
 
         if (mergeResult.success) {
-          this.handleMergeSuccess(featureId, mergeResult.commitHash, "MERGED");
+          await this.handleMergeSuccess(featureId, mergeResult.commitHash, "MERGED");
         } else {
           // Direct merge failed unexpectedly (canMerge said OK but merge failed)
           const feature = this.loadTask(featureId);
@@ -729,19 +766,57 @@ export class AgentRunner {
   // -------------------------------------------------------------------------
 
   /**
-   * Handle a successful merge: mark merged, promote chain predecessors,
-   * mark tasks done, clean up worktrees and branches.
+   * Merge a feature branch into its base, remembering the base tip taken just
+   * before the merge so post-merge reporting has explicit before/after SHAs.
+   * Runs inside the caller's enqueueMerge section (never acquires the queue).
    */
-  private handleMergeSuccess(
+  private async mergeIntoBase(
+    featureId: string,
+    branch: string,
+    baseBranch: string
+  ): Promise<MergeResult> {
+    const before = await runSafeCmd(`git rev-parse --verify "refs/heads/${baseBranch}"`, this.projectRoot);
+    const result = await mergeBranch(this.projectRoot, branch, baseBranch, this.config);
+    if (result.success) {
+      this.mergeBefore.set(featureId, before.ok ? before.output.trim() : null);
+    }
+    return result;
+  }
+
+  /**
+   * Handle a successful merge: mark merged, promote chain predecessors,
+   * mark tasks done, clean up worktrees and branches, then run post-merge
+   * publication (changelog / PR / explicitly requested push).
+   *
+   * Every successful merge path (direct merge and all conflict-escalation
+   * tiers) funnels through here and awaits it, inside the serialized merge
+   * lifecycle. Publication problems never change the agent's merged state.
+   */
+  private async handleMergeSuccess(
     featureId: string,
     commitHash: string | null,
     label: string
-  ): void {
+  ): Promise<void> {
     const agent = this.state.getAgent(featureId);
     if (!agent) return;
 
+    // Capture publication evidence BEFORE cleanup deletes branches/worktrees.
+    const chainPredecessors = this.getChainPredecessors(agent);
+    const reportTasks: MergeReportTask[] = [
+      { id: agent.featureId, title: agent.taskTitle, verification: this.evidenceFor(agent) },
+      ...chainPredecessors
+        .filter((p) => p.status === "verified")
+        .map((p) => ({ id: p.featureId, title: p.taskTitle, verification: this.evidenceFor(p) })),
+    ];
+    const beforeSha = this.mergeBefore.get(featureId) ?? null;
+    this.mergeBefore.delete(featureId);
+    const destination = agent.baseBranch;
+
     this.state.updateAgentStatus(featureId, "merged", `${label} (${commitHash?.slice(0, 7)})`);
-    this.state.updateAgent(featureId, { completedAt: new Date().toISOString() });
+    this.state.updateAgent(featureId, {
+      completedAt: new Date().toISOString(),
+      mergeCommitHash: commitHash,
+    });
     this.state.emit("evt:merge-result", { featureId, success: true });
 
     // Mark the task as done on disk
@@ -750,7 +825,6 @@ export class AgentRunner {
     // Walk back the chain and mark all deferred predecessors as merged.
     // Their work was carried forward through branch continuity and is now
     // included in the terminal merge — no separate merge needed.
-    const chainPredecessors = this.getChainPredecessors(agent);
     for (const predAgent of chainPredecessors) {
       if (predAgent.status === "verified") {
         this.state.updateAgentStatus(
@@ -760,6 +834,7 @@ export class AgentRunner {
         );
         this.state.updateAgent(predAgent.featureId, {
           completedAt: new Date().toISOString(),
+          mergeCommitHash: commitHash,
         });
         this.markFeatureDone(predAgent.featureId, predAgent.baseBranch, true);
 
@@ -793,13 +868,95 @@ export class AgentRunner {
       }
     }
 
-    // Auto-push the base branch to origin if requested (fire-and-forget).
-    if (this.autoPush) {
-      pushBaseBranch(this.projectRoot, agent.baseBranch, this.config).catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[daemon] auto-push of ${agent.baseBranch} failed: ${msg}`);
-      });
+    await this.publishAfterMerge(featureId, destination, beforeSha, commitHash, reportTasks);
+  }
+
+  /** Persisted evidence for the report; legacy records only know the build. */
+  private evidenceFor(agent: InternalAgentState): VerificationSummary {
+    if (agent.verification) return agent.verification;
+    const b = agent.buildPassed;
+    return { build: { status: b === true ? "passed" : b === false ? "failed" : "unknown" } };
+  }
+
+  private log(level: "info" | "warn" | "error", message: string): void {
+    this.state.emit("evt:log", { level, message });
+  }
+
+  /**
+   * Post-merge publication: changelog + (open/draft) push and PR via the
+   * shared coordinator, then the explicitly requested auto-push when the
+   * coordinator did not already own the push. Never throws.
+   */
+  private async publishAfterMerge(
+    featureId: string,
+    destination: string,
+    beforeSha: string | null,
+    afterSha: string | null,
+    tasks: MergeReportTask[]
+  ): Promise<void> {
+    const pm = normalizePostMergeConfig(this.config.postMerge);
+    let published: PostMergeResult | null = null;
+
+    try {
+      let before = beforeSha;
+      if (!before && afterSha) {
+        // Fallback: first parent of the merge commit
+        const parent = await runSafeCmd(`git rev-parse --verify "${afterSha}^1"`, this.projectRoot);
+        before = parent.ok ? parent.output.trim() : null;
+      }
+      if (afterSha && before && before !== afterSha) {
+        published = await this.runPostMergeFn(
+          {
+            projectRoot: this.projectRoot,
+            config: this.config,
+            operation: {
+              operationId: computeOperationId(destination, before, afterSha),
+              destinationBranch: destination,
+              beforeSha: before,
+              afterSha,
+              tasks,
+            },
+            mergeSucceeded: true,
+          },
+          this.postMergeDeps
+        );
+        this.logPublication(featureId, destination, published);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.log("warn", `Post-merge publication for ${featureId} failed: ${msg}`);
     }
+
+    // Explicitly requested auto-push. In open/draft mode the coordinator owns
+    // the awaited push, so only push here when it did not attempt one.
+    if (this.autoPush) {
+      const coordinatorOwnedPush =
+        pm.prMode !== "skip" &&
+        published !== null &&
+        (published.push.status === "pushed" || published.push.status === "failed");
+      if (!coordinatorOwnedPush) {
+        try {
+          const ok = await this.pushBaseFn(this.projectRoot, destination, this.config);
+          if (!ok) {
+            this.log("warn", `Auto-push of ${destination} to ${this.config.git.remote} failed`);
+          } else {
+            this.log("info", `Auto-pushed ${destination} to ${this.config.git.remote}`);
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.log("warn", `Auto-push of ${destination} failed: ${msg}`);
+        }
+      }
+    }
+  }
+
+  private logPublication(featureId: string, destination: string, r: PostMergeResult): void {
+    const pr = r.pr.url ? `${r.pr.status} ${r.pr.url}` : r.pr.status;
+    this.log(
+      "info",
+      `Post-merge ${featureId} (${destination}): changelog ${r.changelog.status}, push ${r.push.status}, PR ${pr}`
+    );
+    for (const w of r.warnings) this.log("warn", `Post-merge ${featureId}: ${w}`);
   }
 
   /**
@@ -910,14 +1067,14 @@ export class AgentRunner {
           : `tier 2.5 surgical resolution (${tieredResult.tier25Result?.resolvedHunkCount ?? 0}/${tieredResult.tier25Result?.totalHunks ?? 0} hunks)`;
 
         this.state.updateAgentActivity(featureId, `${tierLabel} — retrying merge...`);
-        const retryMerge = await mergeBranch(this.projectRoot, agent.branch, baseBranch, this.config);
+        const retryMerge = await this.mergeIntoBase(featureId, agent.branch, baseBranch);
         if (retryMerge.success) {
           const successLabel = tieredResult.tier === 1
             ? "MERGED after rebase"
             : tieredResult.tier === 2
             ? "MERGED after trivial auto-resolve"
             : "MERGED after tier 2.5 surgical resolution";
-          this.handleMergeSuccess(featureId, retryMerge.commitHash, successLabel);
+          await this.handleMergeSuccess(featureId, retryMerge.commitHash, successLabel);
           return;
         }
 
@@ -1102,9 +1259,9 @@ export class AgentRunner {
 
     // Retry merge into base
     this.state.updateAgentActivity(featureId, "tier 3 build passed — retrying merge...");
-    const retryMerge = await mergeBranch(this.projectRoot, agent.branch, baseBranch, this.config);
+    const retryMerge = await this.mergeIntoBase(featureId, agent.branch, baseBranch);
     if (retryMerge.success) {
-      this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3 enriched resolution");
+      await this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3 enriched resolution");
       return "merged";
     }
 
@@ -1153,9 +1310,9 @@ export class AgentRunner {
       }
 
       // Retry merge into base
-      const retryMerge = await mergeBranch(this.projectRoot, featureBranch, baseBranch, this.config);
+      const retryMerge = await this.mergeIntoBase(featureId, featureBranch, baseBranch);
       if (retryMerge.success) {
-        this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
+        await this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
         return "merged";
       }
       this.state.updateAgentActivity(featureId, `tier 3.5 merge after rebase failed: ${retryMerge.error?.slice(0, 100)}`);
@@ -1255,9 +1412,9 @@ export class AgentRunner {
     }
 
     // Retry merge into base
-    const retryMerge = await mergeBranch(this.projectRoot, featureBranch, baseBranch, this.config);
+    const retryMerge = await this.mergeIntoBase(featureId, featureBranch, baseBranch);
     if (retryMerge.success) {
-      this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
+      await this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 3.5 rebase");
       return "merged";
     }
 
@@ -1342,9 +1499,9 @@ export class AgentRunner {
 
     // Merge into base
     this.state.updateAgentActivity(featureId, "tier 4 build passed — merging into base...");
-    const retryMerge = await mergeBranch(this.projectRoot, agent.branch, baseBranch, this.config);
+    const retryMerge = await this.mergeIntoBase(featureId, agent.branch, baseBranch);
     if (retryMerge.success) {
-      this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 4 nuclear re-run");
+      await this.handleMergeSuccess(featureId, retryMerge.commitHash, "MERGED after tier 4 nuclear re-run");
       return "merged";
     }
 

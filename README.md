@@ -50,7 +50,7 @@ woco merge                 # merge verified branches
 | `woco resume`                         | Resume a stopped wave                              |
 | `woco status`                         | Show wave status                                   |
 | `woco verify`                         | Run build verification                             |
-| `woco merge`                          | Merge verified branches                            |
+| `woco merge`                          | Merge verified agents, then changelog / PR (--tasks, --dry-run) |
 | `woco retry <id>`                     | Retry a failed agent                               |
 | `woco abort <id>`                     | Kill a running agent (--requeue to return to queue)|
 | `woco logs <id>`                      | View agent logs (--tail N, --follow)               |
@@ -139,6 +139,96 @@ woco launch --tasks "id1,id2"        # specific tasks
 woco launch --interactive            # tmux TUI mode
 woco launch --dry-run                # preview without launching
 ```
+
+## Merge, changelog and pull requests
+
+After a successful merge, wombo-combo can append a `CHANGELOG.md` entry and
+open or update a GitHub pull request with a structured description (summary,
+affected files, test results). Publication is **opt-in**: the default does no
+network or GitHub work at all.
+
+```jsonc
+// .wombo-combo/config.json
+{
+  "postMerge": {
+    "prMode": "skip",       // "skip" (default) | "open" | "draft"
+    "prBaseBranch": null,   // PR target branch; null = the remote's default branch
+    "changelog": true       // append CHANGELOG.md entries (independent of prMode)
+  }
+}
+```
+
+**Merge destination vs. PR target.** Agents merge into their task's base
+branch (`baseBranch`, or a quest branch). That *destination* branch becomes the
+PR **head**. The PR **target** is `postMerge.prBaseBranch`, falling back to the
+default branch of the `git.remote` repository. If the destination and the
+target are the same branch, no PR is created (nothing meaningful to compare)
+and the output explains how to fix it: merge into an integration branch such as
+a quest branch, or point `prBaseBranch` at a different branch. Merges are never
+undone and no same-branch PR is ever invented.
+
+**Modes.**
+
+- `skip` (default): no GitHub CLI, no push, no PR. Changelog generation still
+  happens when `changelog` is true, and a separately requested `--auto-push`
+  keeps working as before.
+- `open` / `draft`: after the changelog commit, the destination branch is
+  pushed to `git.remote` (never forced), and only after a confirmed push is a
+  PR created (as a draft in `draft` mode) or updated.
+
+**Changelog.** Entries are appended to `CHANGELOG.md` (created if missing;
+existing content is never reorganized) and committed as a separate
+`docs(changelog)` commit on the destination branch in a temporary worktree, so
+your working tree is never touched. Each entry carries a hidden
+`<!-- wombo-combo:operation:... -->` marker, which makes reprocessing the same
+merge a no-op.
+
+**One cumulative PR per head/target pair.** Later merges update the same PR
+instead of opening another. Only the automation-owned section of the PR body
+(between `wombo-combo:pr-report` markers) is rewritten; text you add around it
+survives, and a pre-existing PR without that section is left untouched. The
+affected-files list is the real target-to-head comparison; the task list
+combines the recorded merges that are not yet in the target. Test results
+distinguish build, unit-test and browser outcomes: a passing build never
+implies passing tests, and anything not recorded (older state, fake agents,
+disabled tests) is shown as `unknown` or `skipped`.
+
+**Authentication prerequisites (open/draft only).** Install the
+[GitHub CLI](https://cli.github.com) and authenticate non-interactively
+(`gh auth login`, or set `GH_TOKEN`). `git.remote` must point at a `github.com`
+repository and you need push access. wombo-combo never prompts, opens a
+browser or prints tokens. A missing `gh`, missing authentication, a non-GitHub
+remote, or a failed push is reported as an actionable warning; the merge and
+the local changelog commit are kept.
+
+### Entry points
+
+```sh
+woco merge                       # merge every verified agent, publish once
+woco merge --tasks "id1,id2"     # merge selected verified agents only
+woco merge --dry-run             # show the plan; no writes, merges, pushes or gh calls
+woco merge --output json         # machine-readable result
+```
+
+`woco merge` reads the persisted daemon state, refuses to run while a daemon
+is alive (stop it with `woco daemon stop` first), merges sequentially, marks
+agents and tasks done and runs publication **once after a completely
+successful batch**. If any merge fails, the successes are kept and reported but
+nothing is published for the incomplete batch.
+
+The **daemon** publishes after each successful terminal merge (including those
+resolved by conflict escalation): every merge refreshes the changelog and
+updates the one cumulative PR for its destination/target pair. Publication
+errors are logged (`evt:log`, including PR URLs) but never mark an agent failed
+or trigger a retry.
+
+**Recovery.** Publication state is tracked in `.wombo-combo/post-merge.json`
+(a gitignored runtime journal, not a project file). If a push or PR step fails
+(network down, `gh` missing, rejected push), fix the cause and simply re-run
+`woco merge`: with nothing left to merge it retries the interrupted
+publication. Changelog markers, idempotent pushes and PR lookup guarantee no
+duplicate entries or PRs. If the journal is corrupt, the command reports it
+and does not silently overwrite it.
 
 ## License
 

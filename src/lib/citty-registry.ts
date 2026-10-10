@@ -26,6 +26,7 @@ import { initCommand } from "../commands/citty/init";
 import { launchCommand } from "../commands/citty/launch";
 import { resumeCommand } from "../commands/citty/resume";
 import { retryCommand } from "../commands/citty/retry";
+import { mergeCommand } from "../commands/citty/merge";
 import { statusCommand } from "../commands/citty/status";
 import { abortCommand } from "../commands/citty/abort";
 import { cleanupCommand } from "../commands/citty/cleanup";
@@ -181,6 +182,28 @@ const ENTRIES: RegistryEntry[] = [
       flagOverrides: {
         model: { description: "Model to use" },
         dryRun: { description: "Show what would be retried without retrying", default: false },
+      },
+    },
+  },
+
+  // --- merge --------------------------------------------------------------
+  {
+    cittyCmd: mergeCommand,
+    meta: {
+      summary: "Merge verified agents and publish a changelog entry / PR",
+      aliases: ["m"],
+      mutating: true,
+      supportsDryRun: true,
+      completionSummary: "Merge verified agents",
+      description:
+        "Merges persisted verified agents into their destination branch, marks them " +
+        "and their tasks done, then (after a fully successful batch) runs post-merge " +
+        "publication once: a CHANGELOG.md entry and, when postMerge.prMode is open or " +
+        "draft, a push plus one cumulative GitHub PR per destination/target pair. " +
+        "Refuses to run while a daemon is alive. Rerun to retry interrupted publication.",
+      flagOverrides: {
+        tasks: { name: "--tasks", description: "Comma-separated task IDs to merge (default: all verified agents)" },
+        dryRun: { description: "Show what would be merged without merging, writing state, or publishing", default: false },
       },
     },
   },

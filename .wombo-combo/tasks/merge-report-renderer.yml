@@ -13,15 +13,15 @@ description: |
   available, and explicit skipped/unknown states.
   Add tests/merge-report.test.ts for deterministic output, renamed/deleted
   files, unusual filenames, missing historical results, and skipped tests.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - post-merge-contract
 effort: PT25M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T01:21:10.656Z
+ended_at: 2026-10-10T01:24:32.692Z
 constraints:
   - Use argument-array subprocess calls and NUL-delimited Git filename output.
   - A passing build must never be represented as passing unit tests.

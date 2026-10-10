@@ -22,6 +22,7 @@
  *   woco resume                                       (alias: r)
  *   woco status                                       (alias: s)
  *   woco retry <feature-id>                           (alias: re)
+ *   woco merge [--tasks a,b] [--dry-run]              (alias: m)
  *   woco abort <feature-id> [--output json]           (alias: a)
  *   woco logs <feature-id> [--tail N] [--follow]      (alias: lo)
  *   woco cleanup                                      (alias: c)

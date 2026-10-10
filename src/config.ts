@@ -102,12 +102,33 @@ export interface WomboConfig {
   devMode: boolean;
   /** TUI appearance configuration */
   tui: TuiConfig;
+  /**
+   * Post-merge publication (changelog + GitHub PR). Optional so older config
+   * files and manually constructed configs keep working; read it through
+   * normalizePostMergeConfig().
+   */
+  postMerge?: PostMergeConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
     medium?: string | null;
     heavy?: string | null;
   };
+}
+
+/** How a post-merge pull request is published */
+export type PostMergePrMode = "open" | "draft" | "skip";
+
+export const POST_MERGE_PR_MODES: readonly PostMergePrMode[] = ["open", "draft", "skip"];
+
+/** Configuration for changelog generation and PR publication after merges */
+export interface PostMergeConfig {
+  /** open = ready PR, draft = draft PR, skip = no GitHub publication (default) */
+  prMode: PostMergePrMode;
+  /** PR target branch; null = the configured remote's default branch */
+  prBaseBranch: string | null;
+  /** Append a CHANGELOG.md entry after successful merges (independent of prMode) */
+  changelog: boolean;
 }
 
 /** Configuration for browser-based verification and testing */
@@ -273,6 +294,11 @@ export const DEFAULT_CONFIG: WomboConfig = {
   merge: {
     maxEscalation: "tier4",
   },
+  postMerge: {
+    prMode: "skip",
+    prBaseBranch: null,
+    changelog: true,
+  },
   devMode: false,
   tui: {
     theme: "default",
@@ -352,6 +378,24 @@ export function loadConfig(projectRoot: string): WomboConfig {
 }
 
 /**
+ * Fill in post-merge defaults for legacy or manually constructed configs.
+ * Never throws; validateConfig() is responsible for rejecting bad values.
+ */
+export function normalizePostMergeConfig(
+  block?: Partial<PostMergeConfig> | null
+): PostMergeConfig {
+  const d = DEFAULT_CONFIG.postMerge!;
+  const src = block && typeof block === "object" ? block : {};
+  const base =
+    typeof src.prBaseBranch === "string" ? src.prBaseBranch.trim() : src.prBaseBranch;
+  return {
+    prMode: src.prMode ?? d.prMode,
+    prBaseBranch: base === undefined ? d.prBaseBranch : (base as string | null),
+    changelog: src.changelog ?? d.changelog,
+  };
+}
+
+/**
  * Resolve the agent binary path. Priority:
  *   1. config.agent.bin (explicit)
  *   2. OPENCODE_BIN env var
@@ -406,6 +450,26 @@ export function validateConfig(config: WomboConfig): void {
   }
   if (config.tdd.enabled && !config.tdd.testCommand) {
     throw new Error("config.tdd.testCommand must be a non-empty string when TDD is enabled");
+  }
+  if (config.postMerge !== undefined) {
+    const pm = config.postMerge as Partial<PostMergeConfig>;
+    if (pm.prMode !== undefined && !POST_MERGE_PR_MODES.includes(pm.prMode)) {
+      throw new Error(
+        `config.postMerge.prMode must be one of: ${POST_MERGE_PR_MODES.join(", ")}`
+      );
+    }
+    if (pm.changelog !== undefined && typeof pm.changelog !== "boolean") {
+      throw new Error("config.postMerge.changelog must be a boolean");
+    }
+    if (
+      pm.prBaseBranch !== undefined &&
+      pm.prBaseBranch !== null &&
+      (typeof pm.prBaseBranch !== "string" || pm.prBaseBranch.trim() === "")
+    ) {
+      throw new Error(
+        "config.postMerge.prBaseBranch must be null or a non-empty branch name"
+      );
+    }
   }
 }
 
