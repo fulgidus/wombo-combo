@@ -56,6 +56,9 @@ import { prepareAgentDefinitions, writeAgentToWorktree, isSpecializedAgent } fro
 import { resolveQuestConfig, applyQuestConstraintsToTask, getQuestTaskIds } from "../lib/quest";
 import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
 import { patchImportedAgent } from "../lib/templates";
+import { ensureQuestTestBaseline } from "../lib/test-baseline-capture";
+import { loadTestBaseline, toTestBaselineSummary, type TestBaseline } from "../lib/test-baseline";
+import type { Quest } from "../lib/quest";
 import type { QuestHitlMode } from "../lib/quest";
 import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
@@ -351,6 +354,22 @@ export class AgentRunner {
     if (agent.status !== "queued") return;
 
     try {
+      // Quest test baseline prerequisite: no real TDD quest agent may spawn
+      // before a valid snapshot of quest.baseBranch is persisted. Selected by
+      // task.quest (not the mutable session quest) to avoid cross-quest leakage.
+      let testBaseline: TestBaseline | null = null;
+      if (agent.agentName !== FAKE_AGENT_SENTINEL) {
+        this.state.updateAgentStatus(featureId, "installing", "Preparing quest test baseline");
+        try {
+          testBaseline = await this.ensureTaskTestBaseline(featureId, task);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.state.updateAgentStatus(featureId, "failed", `Test baseline unavailable: ${msg}`);
+          this.state.updateAgent(featureId, { error: `Test baseline unavailable: ${msg}` });
+          return;
+        }
+      }
+
       this.state.updateAgentStatus(featureId, "installing", "Creating worktree");
 
       // Reflect in task file so TUI shows in-progress immediately
@@ -408,14 +427,17 @@ export class AgentRunner {
       }
 
       // Resolve quest context if applicable
-      let questContext: any = undefined;
+      let questContext: QuestPromptContext | undefined = undefined;
       let hitlMode: string | undefined = undefined;
+      let promptConfig = this.config;
       if (task.quest) {
         const quest = loadQuest(this.projectRoot, task.quest);
         if (quest) {
           const resolvedTask = applyQuestConstraintsToTask(task, quest);
           Object.assign(task, resolvedTask);
           hitlMode = quest.hitlMode;
+          promptConfig = resolveQuestConfig(this.config, quest);
+          questContext = this.questPromptContext(quest, testBaseline);
         }
       }
 
@@ -452,7 +474,7 @@ export class AgentRunner {
       const prompt = generatePrompt(
         effectiveTask as Feature,
         agent.baseBranch,
-        this.config,
+        promptConfig,
         questContext,
         hitlMode as any
       );
@@ -533,8 +555,38 @@ export class AgentRunner {
 
     this.state.updateAgentActivity(featureId, "Running build verification...");
 
+    // Quest tasks verify with the quest's effective config and, when TDD is
+    // enabled, against the established baseline. A missing or invalid
+    // snapshot blocks verification — it is never recaptured from a modified
+    // branch.
+    let verifyConfig = this.config;
+    let testBaseline: TestBaseline | undefined;
+    const questScope = this.resolveTaskQuestScope(this.loadTask(featureId));
+    if (questScope) {
+      verifyConfig = { ...questScope.config, baseBranch: agent.baseBranch };
+      if (questScope.config.tdd?.enabled) {
+        const loaded = loadTestBaseline(this.projectRoot, questScope.quest.id);
+        if (loaded.status !== "ok") {
+          const detail =
+            loaded.status === "missing"
+              ? `no snapshot at ${loaded.path}`
+              : `${loaded.status}: ${loaded.error}`;
+          const msg = `Test baseline for quest "${questScope.quest.id}" unavailable (${detail}); verification blocked`;
+          agent.buildPassed = false;
+          this.state.updateAgentStatus(featureId, "failed", msg);
+          this.state.updateAgent(featureId, { error: msg });
+          this.state.cancelDownstream(featureId);
+          this.rescueChainPredecessors(featureId);
+          return;
+        }
+        testBaseline = loaded.baseline;
+      }
+    }
+
     try {
-      const result = await runFullVerification(agent.worktree, featureId, this.config);
+      const result = await runFullVerification(agent.worktree, featureId, verifyConfig, {
+        testBaseline,
+      });
 
       if (result.overallPassed) {
         agent.buildPassed = true;
@@ -1303,6 +1355,54 @@ export class AgentRunner {
   /**
    * Build quest context for conflict resolution prompts.
    */
+  /** Quest + effective config for a task's own quest (null when unquested) */
+  private resolveTaskQuestScope(
+    task: Task | null
+  ): { quest: Quest; config: WomboConfig } | null {
+    if (!task?.quest) return null;
+    const quest = loadQuest(this.projectRoot, task.quest);
+    if (!quest) return null;
+    return { quest, config: resolveQuestConfig(this.config, quest) };
+  }
+
+  /**
+   * Ensure the quest test baseline for a task exists (capturing it on first
+   * use). Returns null for unquested tasks or when the quest's effective
+   * config has TDD disabled. Throws when a snapshot cannot be established.
+   */
+  private async ensureTaskTestBaseline(
+    featureId: string,
+    task: Task
+  ): Promise<TestBaseline | null> {
+    const scope = this.resolveTaskQuestScope(task);
+    if (!scope || !scope.config.tdd?.enabled) return null;
+    const { quest, config } = scope;
+    this.state.updateAgentActivity(
+      featureId,
+      `Ensuring test baseline for quest ${quest.id} (${quest.baseBranch})...`
+    );
+    const result = await ensureQuestTestBaseline({
+      projectRoot: this.projectRoot,
+      questId: quest.id,
+      baseBranch: quest.baseBranch,
+      config,
+      log: (msg) => this.state.updateAgentActivity(featureId, msg),
+    });
+    return result.status === "disabled" ? null : result.baseline;
+  }
+
+  /** Prompt context for a task's quest, including the baseline summary */
+  private questPromptContext(quest: Quest, baseline: TestBaseline | null): QuestPromptContext {
+    return {
+      questId: quest.id,
+      goal: quest.goal,
+      addedConstraints: quest.constraints.add ?? [],
+      addedForbidden: quest.constraints.ban ?? [],
+      knowledge: loadQuestKnowledge(this.projectRoot, quest.id),
+      ...(baseline ? { testBaseline: toTestBaselineSummary(baseline) } : {}),
+    };
+  }
+
   private buildQuestContext(): QuestPromptContext | undefined {
     const questId = this.state.getQuestId();
     if (!questId) return undefined;
@@ -1329,9 +1429,25 @@ export class AgentRunner {
     if (!agent) return;
 
     if (!agent.sessionId) {
-      // No session — queue for fresh launch
+      // No session — queue for fresh launch (doLaunch enforces the baseline)
       this.state.updateAgentStatus(featureId, "queued", "No session, re-queuing");
       return;
+    }
+
+    // Session-reusing retries bypass doLaunch, so enforce the quest baseline
+    // prerequisite here too. Retries reuse the original snapshot; it is
+    // never recaptured, even if the base branch has advanced.
+    if (agent.agentName !== FAKE_AGENT_SENTINEL) {
+      const scope = this.resolveTaskQuestScope(this.loadTask(featureId));
+      if (scope?.config.tdd?.enabled) {
+        const loaded = loadTestBaseline(this.projectRoot, scope.quest.id);
+        if (loaded.status !== "ok") {
+          const msg = `Test baseline for quest "${scope.quest.id}" unavailable (${loaded.status}); retry blocked`;
+          this.state.updateAgentStatus(featureId, "failed", msg);
+          this.state.updateAgent(featureId, { error: msg });
+          return;
+        }
+      }
     }
 
     try {

@@ -1,14 +1,14 @@
-id: headless-test-01
-title: Headless Test 01
+id: stress-test-02
+title: Stress Test 02
 description: ""
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-10T01:17:37.575Z
 constraints: []
 forbidden: []
 references: []

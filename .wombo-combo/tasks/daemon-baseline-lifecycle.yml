@@ -14,7 +14,7 @@ description: |
   branches. Reuse persisted snapshots after daemon restart and prevent
   cross-quest leakage when session scope changes.
   Add tests/daemon-test-baseline.test.ts for these lifecycle paths.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: hard
 priority: high
@@ -23,7 +23,7 @@ depends_on:
   - baseline-aware-verification
   - baseline-agent-guidance
 effort: PT30M
-started_at: null
+started_at: 2026-10-10T01:16:03.400Z
 ended_at: null
 constraints:
   - No real quest coding agent may spawn before a valid snapshot is persisted.
