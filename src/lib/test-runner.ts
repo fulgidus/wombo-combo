@@ -306,11 +306,12 @@ export function testCaseId(file: string, name: string): string {
   return `${file} > ${name}`;
 }
 
-// Bun file header, e.g. "tests/foo.test.ts:" — prefixed with "##[group]"
-// when Bun detects GitHub Actions
-const BUN_FILE_HEADER = /^(?:##\[group\])?(\S[^:]*?\.(?:[cm]?[jt]sx?)):$/;
+// Bun file header, e.g. "tests/foo.test.ts:". Under GitHub Actions Bun
+// wraps each file in a "::group::" workflow command (GitHub's log viewer
+// displays it as "##[group]"); accept both forms.
+const BUN_FILE_HEADER = /^(?:::group::|##\[group\])?(\S[^:]*?\.(?:[cm]?[jt]sx?)):$/;
 // End of a file's output under GitHub Actions
-const BUN_GROUP_END = /^##\[endgroup\]\s*$/;
+const BUN_GROUP_END = /^(?:::endgroup::|##\[endgroup\])\s*$/;
 // Recap that repeats failures before the summary ("3 tests failed:")
 const BUN_FAILURE_RECAP = /^\d+ tests? failed:\s*$/;
 // Bun result line: "(fail) a > b [1.23ms]" (non-TTY) or "✗ a > b [1.23ms]" (TTY)

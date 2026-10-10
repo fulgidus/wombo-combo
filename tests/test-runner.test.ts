@@ -415,6 +415,16 @@ describe("parseStructuredResults — Bun", () => {
     ]);
   });
 
+  test("raw GitHub Actions workflow commands (::group:: / ::endgroup::)", () => {
+    // What Bun actually writes under GitHub Actions; the log viewer renders
+    // these as ##[group] (reconstructed from a CI debug run, bun v1.4.2)
+    const r = parseStructuredResults("", fixture("bun-failures-gha-raw"), ctx);
+    expect(r.incompleteReasons).toEqual([]);
+    expect(r.comparable).toBe(true);
+    expect(r.failingTestIds).toEqual(["tests/x.test.ts > bad"]);
+    expect(r.tests.map((t) => t.outcome)).toEqual(["pass", "fail"]);
+  });
+
   test("truncated output (missing summary) is non-comparable", () => {
     const cut = fixture("bun-failures").split("\n").slice(0, 20).join("\n");
     const r = parseStructuredResults("", cut, ctx);

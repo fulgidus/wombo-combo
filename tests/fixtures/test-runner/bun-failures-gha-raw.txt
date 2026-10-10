@@ -1,0 +1,21 @@
+bun test v1.4.2 (744846f84)
+
+::group::tests/x.test.ts:
+(pass) ok [0.02ms]
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+
+
+::error::Expected: 2
+Received: 1
+
+(fail) bad [0.10ms]
+
+::endgroup::
+
+ 1 pass
+ 1 fail
+ 1 expect() calls
+Ran 2 tests across 1 file. [2.00ms]

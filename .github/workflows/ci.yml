@@ -53,20 +53,6 @@ jobs:
         # Built before tests so e2e smoke tests also exercise dist/index.js
         run: bun run build
 
-      - name: "TEMP debug: raw nested bun test output"
-        run: |
-          set +e
-          D=$(mktemp -d)
-          mkdir -p "$D/tests"
-          printf 'import { test, expect } from "bun:test";\ntest("ok", () => {});\ntest("bad", () => expect(1).toBe(2));\n' > "$D/tests/x.test.ts"
-          cd "$D"
-          echo "=== env-inherited run (exit code follows)"; bun test > out.txt 2> err.txt; echo "exit=$?"
-          echo "=== stdout"; cat -A out.txt | head -40
-          echo "=== stderr"; cat -A err.txt | head -80
-          cd "$GITHUB_WORKSPACE"
-          bun -e 'const { runTests } = await import("./src/lib/test-runner.ts"); const r = await runTests(process.argv[1], "bun test", 60000); console.log(JSON.stringify({ passed: r.passed, exitCode: r.exitCode, durationMs: r.durationMs, execution: r.execution, structured: { ...r.structured, tests: r.structured?.tests.length } }, null, 1))' "$D"
-        continue-on-error: true
-
       - name: Unit and component tests (incl. Ink TUI components)
         run: bun test --timeout 30000 --path-ignore-patterns 'tests/e2e/**'
 
