@@ -9,14 +9,14 @@ description: |
 
   Add tests in tests/ink/sparkline.test.tsx for formatting, width limits,
   invalid values, zeros, constant values, and both character modes.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT20M
-started_at: null
-ended_at: null
+started_at: 2026-10-10T02:03:13.553Z
+ended_at: 2026-10-10T02:05:18.154Z
 constraints:
   - Output must never exceed the requested graph width.
   - Zero-only data must look flat rather than imply nonzero activity.
