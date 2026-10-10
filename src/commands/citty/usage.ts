@@ -3,12 +3,16 @@
  *
  * Wraps the existing cmdUsage() with citty's defineCommand() for typed args.
  * Config-dependent: requires project initialization.
+ *
+ * Default mode shows token usage (legacy behavior). `--analytics` switches to
+ * per-execution agent analytics; --task/--quest/--wave only apply there.
  */
 
 import { defineCommand } from "citty";
 import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
 import { resolveOutputFormat } from "../../lib/output";
-import { cmdUsage, type UsageGroupBy, VALID_USAGE_GROUP_BY } from "../usage";
+import { cmdUsage, validateUsageOptions, type UsageGroupBy } from "../usage";
+import type { AnalyticsGroupBy } from "../../lib/analytics-summary";
 
 export const usageCommand = defineCommand({
   meta: {
@@ -18,7 +22,8 @@ export const usageCommand = defineCommand({
   args: {
     by: {
       type: "string",
-      description: "Group by: task, model, provider, quest, or harness",
+      description:
+        "Group by: task, model, provider, quest, or harness (with --analytics: task, quest, wave, agent, or model)",
       required: false,
     },
     since: {
@@ -34,6 +39,26 @@ export const usageCommand = defineCommand({
     format: {
       type: "string",
       description: "Usage output format: table (default) or json",
+      required: false,
+    },
+    analytics: {
+      type: "boolean",
+      description: "Show per-execution agent analytics (duration, retries, builds, lines) instead of token usage",
+      required: false,
+    },
+    task: {
+      type: "string",
+      description: "Only executions of this task ID (requires --analytics)",
+      required: false,
+    },
+    quest: {
+      type: "string",
+      description: "Only executions recorded under this quest ID (requires --analytics)",
+      required: false,
+    },
+    wave: {
+      type: "string",
+      description: "Only executions from this wave/session ID (requires --analytics)",
       required: false,
     },
     output: {
@@ -52,10 +77,16 @@ export const usageCommand = defineCommand({
     const config = loadConfig(projectRoot);
     validateConfig(config);
 
-    // Validate --by value
-    const by = args.by as UsageGroupBy | undefined;
-    if (by && !VALID_USAGE_GROUP_BY.includes(by)) {
-      console.error(`Invalid --by value: "${by}". Valid values: ${VALID_USAGE_GROUP_BY.join(", ")}`);
+    // Validate option combinations separately for each mode
+    const invalid = validateUsageOptions({
+      by: args.by,
+      analytics: args.analytics,
+      task: args.task,
+      quest: args.quest,
+      wave: args.wave,
+    });
+    if (invalid) {
+      console.error(invalid);
       process.exit(1);
     }
 
@@ -65,7 +96,11 @@ export const usageCommand = defineCommand({
     await cmdUsage({
       projectRoot,
       config,
-      by,
+      by: args.by as UsageGroupBy | AnalyticsGroupBy | undefined,
+      analytics: args.analytics === true,
+      task: args.task,
+      quest: args.quest,
+      wave: args.wave,
       since: args.since,
       until: args.until,
       usageFormat,
