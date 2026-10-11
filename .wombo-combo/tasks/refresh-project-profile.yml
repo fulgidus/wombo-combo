@@ -5,14 +5,14 @@ description: project.yml still lists neo-blessed as the current TUI framework an
   objectives and conventions to the current architecture (Ink TUI, daemon, quests, test baselines, analytics,
   merge/changelog publication, graphify hook, CI/CD auto-release). This profile feeds agent prompts, so stale content
   misleads agents.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT45M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T02:48:34.790Z
+ended_at: 2026-10-11T02:51:48.441Z
 constraints: []
 forbidden: []
 references: []
