@@ -48,11 +48,25 @@ function stripComments(code: string): string {
 /** t("a.b") / tFn("a.b") / defaultT("a.b") / msg("a.b") / getFixedT(...)("a.b") */
 const KEY_CALL = /(?:^|[^\w$])(?:t|tFn|defaultT|msg)\(\s*(["'`])([A-Za-z][\w]*(?:\.[\w]+)+)\1/g;
 
+/**
+ * Any string literal that starts with a known key domain ("cli.", "status.",
+ * ...). Catches keys passed through helpers (label("cli.x")), tables and
+ * constants, not just direct t() calls. Domains come from the en resource.
+ */
+function domainLiteral(): RegExp {
+  const domains = [...new Set(Object.keys(RESOURCES.en).map((k) => k.split(".")[0]))];
+  return new RegExp(`(["'\`])((?:${domains.join("|")})\\.[A-Za-z]\\w*(?:\\.\\w+)*)\\1`, "g");
+}
+
 export function collectUsedKeys(): { key: string; file: string }[] {
   const used: { key: string; file: string }[] = [];
+  const literal = domainLiteral();
   for (const file of walk(SRC).filter(isSourceFile)) {
     const code = stripComments(readFileSync(file, "utf-8"));
     for (const m of code.matchAll(KEY_CALL)) {
+      used.push({ key: m[2], file: relative(SRC, file) });
+    }
+    for (const m of code.matchAll(literal)) {
       used.push({ key: m[2], file: relative(SRC, file) });
     }
   }

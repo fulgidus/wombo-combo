@@ -48,7 +48,8 @@ export interface InitOptions extends DetectOptions {
 // Detection
 // ---------------------------------------------------------------------------
 
-export const AVAILABLE_LOCALES: readonly string[] = availableLocales();
+/** Locale codes that ship with the package (plus any added via registerLocale). */
+export const AVAILABLE_LOCALES: string[] = availableLocales();
 
 /**
  * Normalise a raw locale string ("it_IT.UTF-8", "pt-BR", "EN") to a shipped
@@ -107,8 +108,6 @@ function createInstance(): I18nInstance {
     resources,
     lng: FALLBACK_LOCALE,
     fallbackLng: FALLBACK_LOCALE,
-    supportedLngs: [...AVAILABLE_LOCALES],
-    nonExplicitSupportedLngs: false,
     initAsync: false,
     keySeparator: false,
     nsSeparator: false,
@@ -144,6 +143,24 @@ export function initI18n(opts: InitOptions = {}): string {
   const lng = detectLocale(opts);
   void instance.changeLanguage(lng);
   return lng;
+}
+
+/**
+ * Register an extra locale at runtime (tests, embedders). Shipped locales
+ * belong in src/locales instead. Missing keys fall back to en.
+ */
+export function registerLocale(locale: string, resource: Record<string, string>): void {
+  instance.addResourceBundle(locale, "translation", resource, true, true);
+  if (!AVAILABLE_LOCALES.includes(locale)) AVAILABLE_LOCALES.push(locale);
+}
+
+/** Remove a locale added with registerLocale() (never a shipped one). */
+export function unregisterLocale(locale: string): void {
+  if (RESOURCES[locale]) return;
+  instance.removeResourceBundle(locale, "translation");
+  const i = AVAILABLE_LOCALES.indexOf(locale);
+  if (i >= 0) AVAILABLE_LOCALES.splice(i, 1);
+  if (getLocale() === locale) setLocale(FALLBACK_LOCALE);
 }
 
 /** The currently active locale code. */

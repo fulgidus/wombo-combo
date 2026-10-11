@@ -19,6 +19,7 @@ import {
 } from "../../lib/tasks";
 import { VALID_DIFFICULTIES } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,13 +43,13 @@ export async function cmdTasksSetDifficulty(opts: TasksSetDifficultyOptions): Pr
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId || !opts.newDifficulty) {
-    outputError(fmt, `Usage: woco tasks set-difficulty <task-id> <difficulty>\nValid difficulties: ${VALID_DIFFICULTIES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setDifficulty.usage", { valid: VALID_DIFFICULTIES.join(", ") }));
     return;
   }
 
   // Validate difficulty
   if (!(VALID_DIFFICULTIES as readonly string[]).includes(opts.newDifficulty)) {
-    outputError(fmt, `Invalid difficulty: "${opts.newDifficulty}"\nValid difficulties: ${VALID_DIFFICULTIES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setDifficulty.invalid", { value: opts.newDifficulty, valid: VALID_DIFFICULTIES.join(", ") }));
     return;
   }
 
@@ -56,7 +57,7 @@ export async function cmdTasksSetDifficulty(opts: TasksSetDifficultyOptions): Pr
   const feature = findFeatureById(data, opts.featureId);
 
   if (!feature) {
-    outputError(fmt, `Task "${opts.featureId}" not found.`);
+    outputError(fmt, msg("cli.tasks.notFound", { id: opts.featureId }));
     return;
   }
 
@@ -64,7 +65,7 @@ export async function cmdTasksSetDifficulty(opts: TasksSetDifficultyOptions): Pr
   const newDifficulty = opts.newDifficulty as Difficulty;
 
   if (oldDifficulty === newDifficulty) {
-    outputMessage(fmt, `Task "${opts.featureId}" already has difficulty "${newDifficulty}".`, {
+    outputMessage(fmt, msg("cli.tasks.setDifficulty.already", { id: opts.featureId, value: newDifficulty }), {
       id: opts.featureId,
       difficulty: newDifficulty,
       changed: false,
@@ -74,7 +75,7 @@ export async function cmdTasksSetDifficulty(opts: TasksSetDifficultyOptions): Pr
 
   // Dry-run: show what would change without writing
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would change "${opts.featureId}" difficulty: ${oldDifficulty} → ${newDifficulty}`, {
+    outputMessage(fmt, msg("cli.tasks.setDifficulty.dryRun", { id: opts.featureId, old: oldDifficulty, new: newDifficulty }), {
       dry_run: true,
       id: opts.featureId,
       old_difficulty: oldDifficulty,
@@ -89,7 +90,7 @@ export async function cmdTasksSetDifficulty(opts: TasksSetDifficultyOptions): Pr
 
   saveFeatures(projectRoot, config, data);
 
-  outputMessage(fmt, `Task "${opts.featureId}" difficulty: ${oldDifficulty} → ${newDifficulty}`, {
+  outputMessage(fmt, msg("cli.tasks.setDifficulty.changed", { id: opts.featureId, old: oldDifficulty, new: newDifficulty }), {
     id: opts.featureId,
     old_difficulty: oldDifficulty,
     new_difficulty: newDifficulty,

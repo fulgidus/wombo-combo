@@ -16,6 +16,7 @@ import {
 } from "../../lib/tasks";
 import { VALID_STATUSES } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,13 +40,13 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId || !opts.newStatus) {
-    outputError(fmt, `Usage: woco tasks set-status <task-id> <new-status>\nValid statuses: ${VALID_STATUSES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setStatus.usage", { valid: VALID_STATUSES.join(", ") }));
     return;
   }
 
   // Validate status
   if (!(VALID_STATUSES as readonly string[]).includes(opts.newStatus)) {
-    outputError(fmt, `Invalid status: "${opts.newStatus}"\nValid statuses: ${VALID_STATUSES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setStatus.invalid", { value: opts.newStatus, valid: VALID_STATUSES.join(", ") }));
     return;
   }
 
@@ -53,7 +54,7 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
   const feature = findFeatureById(data, opts.featureId);
 
   if (!feature) {
-    outputError(fmt, `Task "${opts.featureId}" not found.`);
+    outputError(fmt, msg("cli.tasks.notFound", { id: opts.featureId }));
     return;
   }
 
@@ -61,7 +62,7 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
   const newStatus = opts.newStatus as FeatureStatus;
 
   if (oldStatus === newStatus) {
-    outputMessage(fmt, `Task "${opts.featureId}" is already in status "${newStatus}".`, {
+    outputMessage(fmt, msg("cli.tasks.setStatus.already", { id: opts.featureId, value: newStatus }), {
       id: opts.featureId,
       status: newStatus,
       changed: false,
@@ -71,7 +72,7 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
 
   // Dry-run: show what would change without writing
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would change "${opts.featureId}": ${oldStatus} → ${newStatus}`, {
+    outputMessage(fmt, msg("cli.tasks.setStatus.dryRun", { id: opts.featureId, old: oldStatus, new: newStatus }), {
       dry_run: true,
       id: opts.featureId,
       old_status: oldStatus,
@@ -97,7 +98,7 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
 
   saveFeatures(projectRoot, config, data);
 
-  outputMessage(fmt, `Task "${opts.featureId}": ${oldStatus} → ${newStatus}`, {
+  outputMessage(fmt, msg("cli.tasks.setStatus.changed", { id: opts.featureId, old: oldStatus, new: newStatus }), {
     id: opts.featureId,
     old_status: oldStatus,
     new_status: newStatus,

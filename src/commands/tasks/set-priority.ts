@@ -19,6 +19,7 @@ import {
 } from "../../lib/tasks";
 import { VALID_PRIORITIES } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,13 +43,13 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId || !opts.newPriority) {
-    outputError(fmt, `Usage: woco tasks set-priority <task-id> <priority>\nValid priorities: ${VALID_PRIORITIES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setPriority.usage", { valid: VALID_PRIORITIES.join(", ") }));
     return;
   }
 
   // Validate priority
   if (!(VALID_PRIORITIES as readonly string[]).includes(opts.newPriority)) {
-    outputError(fmt, `Invalid priority: "${opts.newPriority}"\nValid priorities: ${VALID_PRIORITIES.join(", ")}`);
+    outputError(fmt, msg("cli.tasks.setPriority.invalid", { value: opts.newPriority, valid: VALID_PRIORITIES.join(", ") }));
     return;
   }
 
@@ -56,7 +57,7 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
   const feature = findFeatureById(data, opts.featureId);
 
   if (!feature) {
-    outputError(fmt, `Task "${opts.featureId}" not found.`);
+    outputError(fmt, msg("cli.tasks.notFound", { id: opts.featureId }));
     return;
   }
 
@@ -64,7 +65,7 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
   const newPriority = opts.newPriority as Priority;
 
   if (oldPriority === newPriority) {
-    outputMessage(fmt, `Task "${opts.featureId}" already has priority "${newPriority}".`, {
+    outputMessage(fmt, msg("cli.tasks.setPriority.already", { id: opts.featureId, value: newPriority }), {
       id: opts.featureId,
       priority: newPriority,
       changed: false,
@@ -74,7 +75,7 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
 
   // Dry-run: show what would change without writing
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would change "${opts.featureId}" priority: ${oldPriority} → ${newPriority}`, {
+    outputMessage(fmt, msg("cli.tasks.setPriority.dryRun", { id: opts.featureId, old: oldPriority, new: newPriority }), {
       dry_run: true,
       id: opts.featureId,
       old_priority: oldPriority,
@@ -89,7 +90,7 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
 
   saveFeatures(projectRoot, config, data);
 
-  outputMessage(fmt, `Task "${opts.featureId}" priority: ${oldPriority} → ${newPriority}`, {
+  outputMessage(fmt, msg("cli.tasks.setPriority.changed", { id: opts.featureId, old: oldPriority, new: newPriority }), {
     id: opts.featureId,
     old_priority: oldPriority,
     new_priority: newPriority,

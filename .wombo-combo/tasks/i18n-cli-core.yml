@@ -5,15 +5,15 @@ description: "Add Msg descriptors (msg(key, vars)) so outputMessage/outputError 
   stable. Initialise the CLI locale once in src/index.ts (config tui.locale + env). Create src/locales/en/cli.json and
   migrate src/commands/tasks/* and src/commands/status.ts (messages, errors, headings, plural counts). Tests: JSON
   output is identical regardless of WOMBO_LOCALE; text output switches."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - i18n-core
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:07:38.566Z
+ended_at: 2026-10-11T14:19:42.324Z
 constraints:
   - -o json output must be byte-identical across locales
   - Existing citty and e2e tests stay green

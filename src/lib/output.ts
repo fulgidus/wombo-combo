@@ -14,6 +14,7 @@
  */
 
 import { renderGeneric } from "./toon";
+import { renderMsg, type Msg } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,6 +25,15 @@ export type OutputFormat = "text" | "json" | "toon";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Render a message for the given output format. Text output uses the active
+ * locale; json/toon are machine output and ALWAYS render in English so that
+ * message text stays stable across locales.
+ */
+export function renderForFormat(format: OutputFormat, message: string | Msg): string {
+  return format === "text" ? renderMsg(message) : renderMsg(message, "en");
+}
 
 /**
  * Determine the output format. Priority:
@@ -74,11 +84,12 @@ export function output(
 }
 
 /**
- * Emit an error. In JSON mode, outputs {"error": message} to stderr.
+ * Emit an error (string or deferred Msg). In JSON mode, outputs {"error": message} to stderr.
  * In TOON mode, outputs "#ERROR message" to stderr.
  * In text mode, outputs the message to stderr normally.
  */
-export function outputError(format: OutputFormat, message: string, exitCode: number = 1): never {
+export function outputError(format: OutputFormat, input: string | Msg, exitCode: number = 1): never {
+  const message = renderForFormat(format, input);
   if (format === "json") {
     console.error(JSON.stringify({ error: message }));
   } else if (format === "toon") {
@@ -96,9 +107,10 @@ export function outputError(format: OutputFormat, message: string, exitCode: num
  */
 export function outputMessage(
   format: OutputFormat,
-  message: string,
+  input: string | Msg,
   extra?: Record<string, unknown>
 ): void {
+  const message = renderForFormat(format, input);
   if (format === "json") {
     console.log(JSON.stringify({ message, ...extra }));
   } else if (format === "toon") {

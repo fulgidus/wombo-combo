@@ -30,6 +30,7 @@ import {
   type SchemaIssue,
 } from "../../lib/task-schema";
 import { output, type OutputFormat } from "../../lib/output";
+import { t } from "../../lib/i18n";
 import { renderTasksCheck } from "../../lib/toon";
 
 // ---------------------------------------------------------------------------
@@ -199,15 +200,15 @@ export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
     fmt,
     checkData,
     () => {
-      console.log(`\nChecking ${config.tasksDir}/ (${allItems.length} items)...\n`);
+      console.log(t("cli.tasks.check.heading", { dir: config.tasksDir, count: allItems.length }));
 
       if (result.errors.length === 0 && result.warnings.length === 0) {
-        console.log("  All checks passed. No issues found.");
+        console.log(t("cli.tasks.check.passed"));
         return;
       }
 
       if (result.errors.length > 0) {
-        console.log(`  ERRORS (${result.errors.length}):`);
+        console.log(t("cli.tasks.check.errors", { count: result.errors.length }));
         for (const e of result.errors) {
           console.log(`    \x1b[31m✗\x1b[0m ${e}`);
         }
@@ -215,7 +216,7 @@ export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
       }
 
       if (result.warnings.length > 0) {
-        console.log(`  WARNINGS (${result.warnings.length}):`);
+        console.log(t("cli.tasks.check.warnings", { count: result.warnings.length }));
         for (const w of result.warnings) {
           console.log(`    \x1b[33m⚠\x1b[0m ${w}`);
         }

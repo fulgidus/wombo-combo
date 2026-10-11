@@ -14,6 +14,7 @@ import {
   type Feature,
 } from "../../lib/tasks";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 import { loadQuest } from "../../lib/quest-store";
 import { getQuestTaskIds } from "../../lib/quest";
 
@@ -53,13 +54,13 @@ export async function cmdTasksArchive(opts: TasksArchiveOptions): Promise<void> 
       if (idx === -1) {
         // Check if already in archive
         if (data.archive.find((f) => f.id === opts.featureId)) {
-          outputMessage(fmt, `Task "${opts.featureId}" is already in the archive.`, {
+          outputMessage(fmt, msg("cli.tasks.archive.already", { id: opts.featureId }), {
             already_archived: true,
             id: opts.featureId,
           });
           return;
         }
-        outputError(fmt, `Task "${opts.featureId}" not found.`);
+        outputError(fmt, msg("cli.tasks.notFound", { id: opts.featureId }));
         return;
       }
       toArchive = [data.tasks[idx]];
@@ -71,12 +72,12 @@ export async function cmdTasksArchive(opts: TasksArchiveOptions): Promise<void> 
     }
 
     if (toArchive.length === 0) {
-      outputMessage(fmt, "No tasks to archive.", { count: 0 });
+      outputMessage(fmt, msg("cli.tasks.archive.none"), { count: 0 });
       return;
     }
 
     if (opts.dryRun) {
-      outputMessage(fmt, `Would archive ${toArchive.length} task(s)`, {
+      outputMessage(fmt, msg("cli.tasks.archive.dryRun", { count: toArchive.length }), {
         dry_run: true,
         count: toArchive.length,
         archived: toArchive.map((f) => ({ id: f.id, title: f.title, status: f.status })),
@@ -97,7 +98,7 @@ export async function cmdTasksArchive(opts: TasksArchiveOptions): Promise<void> 
 
     saveFeatures(projectRoot, config, data);
 
-    outputMessage(fmt, `Archived ${toArchive.length} task(s)`, {
+    outputMessage(fmt, msg("cli.tasks.archive.done", { count: toArchive.length }), {
       count: toArchive.length,
       archived: toArchive.map((f) => ({ id: f.id, title: f.title, status: f.status })),
     });
@@ -120,15 +121,12 @@ export async function cmdTasksArchive(opts: TasksArchiveOptions): Promise<void> 
         if (quest.status === "completed" || quest.status === "abandoned") continue;
         const remaining = getQuestTaskIds(qid, data.tasks);
         if (remaining.length === 0) {
-          console.log(
-            `\n  Quest "${qid}" has no remaining active tasks.` +
-            `\n  Consider completing it: woco quest complete ${qid}`
-          );
+          console.log(t("cli.tasks.archive.questEmpty", { quest: qid }));
         }
       }
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    outputError(fmt, `Archive failed: ${message}`);
+    outputError(fmt, msg("cli.tasks.archive.failed", { message }));
   }
 }
