@@ -133,8 +133,7 @@ function QuestPickerApp({
   }, [selectedIndex, quests, onAction]);
 
   const handleGenesis = useCallback(() => {
-    // The old blessed version showed an input modal for vision text.
-    // With Ink, we'll signal "genesis" and the parent (tui.ts) handles
+    // Signal "genesis"; the parent (tui.ts) handles
     // prompting for vision text. For now, pass a placeholder action
     // that the parent can handle by launching a vision prompt flow.
     onAction({ type: "genesis", vision: "" });

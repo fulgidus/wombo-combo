@@ -1,8 +1,6 @@
 /**
  * quest-wizard.tsx — Ink component for the 6-step quest creation wizard.
  *
- * Migrated from tui-quest-wizard.ts (neo-blessed) to Ink (React-based).
- *
  * Steps: ID → Title → Goal → Priority → Difficulty → HITL
  *
  * Two render modes:

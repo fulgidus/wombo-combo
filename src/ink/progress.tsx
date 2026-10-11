@@ -1,8 +1,7 @@
 /**
  * progress.tsx — Ink ProgressView component for long-running operations.
  *
- * Replaces the neo-blessed ProgressScreen class with a declarative React
- * component. The parent manages state (spinning, status, result, logLines)
+ * Declarative React component. The parent manages state (spinning, status, result, logLines)
  * and passes them as props.
  *
  * Features:

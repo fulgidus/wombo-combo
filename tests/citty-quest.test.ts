@@ -17,20 +17,20 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty quest command", () => {
   test("questCommand is a valid citty CommandDef", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     expect(questCommand).toBeDefined();
     expect(questCommand.meta).toBeDefined();
     expect(questCommand.subCommands).toBeDefined();
   });
 
   test("questCommand has correct meta name", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const meta = await resolveValue(questCommand.meta!);
     expect(meta.name).toBe("quest");
   });
 
   test("questCommand has correct meta description", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const meta = await resolveValue(questCommand.meta!);
     expect(meta.description).toBeDefined();
     expect(meta.description!.length).toBeGreaterThan(0);
@@ -54,7 +54,7 @@ describe("citty quest command", () => {
   });
 
   test("questCommand has no run handler (default subcommand injected by router)", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     // Parent run() was removed to prevent citty's double-execution bug.
     // Default subcommand ("list") is injected by injectDefaultSubcommand() in router.ts.
     expect(questCommand.run).toBeUndefined();
@@ -67,7 +67,7 @@ describe("citty quest command", () => {
 
 describe("citty quest subcommands structure", () => {
   test("create subcommand has id and title positionals and flag args", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["create"]);
     expect(cmd).toBeDefined();
@@ -85,7 +85,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("list subcommand has status filter arg", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["list"]);
     expect(cmd).toBeDefined();
@@ -94,7 +94,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("show subcommand has questId positional and fields arg", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["show"]);
     expect(cmd).toBeDefined();
@@ -105,7 +105,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("plan subcommand has questId positional and model flag", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["plan"]);
     expect(cmd).toBeDefined();
@@ -117,7 +117,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("activate subcommand has questId positional", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["activate"]);
     expect(cmd).toBeDefined();
@@ -127,7 +127,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("pause subcommand has questId positional", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["pause"]);
     expect(cmd).toBeDefined();
@@ -137,7 +137,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("complete subcommand has questId positional and force flag", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["complete"]);
     expect(cmd).toBeDefined();
@@ -148,7 +148,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("abandon subcommand has questId positional and force flag", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["abandon"]);
     expect(cmd).toBeDefined();
@@ -159,7 +159,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("archive subcommand has questId positional and dryRun flag", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const cmd = await resolveValue(subCommands["archive"]);
     expect(cmd).toBeDefined();
@@ -170,7 +170,7 @@ describe("citty quest subcommands structure", () => {
   });
 
   test("each subcommand has a run handler", async () => {
-    const { questCommand } = await import("../src/commands/citty/quest.js");
+    const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     for (const [name, cmdDef] of Object.entries(subCommands)) {
       const cmd = await resolveValue(cmdDef);

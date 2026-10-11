@@ -17,20 +17,20 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty tasks command", () => {
   test("tasksCommand is a valid citty CommandDef", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     expect(tasksCommand).toBeDefined();
     expect(tasksCommand.meta).toBeDefined();
     expect(tasksCommand.subCommands).toBeDefined();
   });
 
   test("tasksCommand has correct meta name", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const meta = await resolveValue(tasksCommand.meta!);
     expect(meta.name).toBe("tasks");
   });
 
   test("tasksCommand has correct meta description", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const meta = await resolveValue(tasksCommand.meta!);
     expect(meta.description).toBeDefined();
     expect(meta.description!.length).toBeGreaterThan(0);
@@ -54,7 +54,7 @@ describe("citty tasks command", () => {
   });
 
   test("tasksCommand has no run handler (default subcommand injected by router)", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     // Parent run() was removed to prevent citty's double-execution bug.
     // Default subcommand ("list") is injected by injectDefaultSubcommand() in router.ts.
     expect(tasksCommand.run).toBeUndefined();
@@ -67,7 +67,7 @@ describe("citty tasks command", () => {
 
 describe("citty tasks subcommands structure", () => {
   test("list subcommand has correct meta and filtering args", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const listCmd = await resolveValue(subCommands["list"]);
     expect(listCmd).toBeDefined();
@@ -82,7 +82,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("add subcommand has id and title positionals and flag args", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const addCmd = await resolveValue(subCommands["add"]);
     expect(addCmd).toBeDefined();
@@ -100,7 +100,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("set-status subcommand has taskId and status positionals", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["set-status"]);
     expect(cmd).toBeDefined();
@@ -113,7 +113,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("set-priority subcommand has taskId and priority positionals", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["set-priority"]);
     expect(cmd).toBeDefined();
@@ -126,7 +126,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("set-difficulty subcommand has taskId and difficulty positionals", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["set-difficulty"]);
     expect(cmd).toBeDefined();
@@ -139,7 +139,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("check subcommand has output arg", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["check"]);
     expect(cmd).toBeDefined();
@@ -148,7 +148,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("archive subcommand has optional taskId positional", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["archive"]);
     expect(cmd).toBeDefined();
@@ -160,7 +160,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("show subcommand has required taskId positional", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["show"]);
     expect(cmd).toBeDefined();
@@ -171,7 +171,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("graph subcommand has status, ascii, mermaid, subtasks args", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     const cmd = await resolveValue(subCommands["graph"]);
     expect(cmd).toBeDefined();
@@ -183,7 +183,7 @@ describe("citty tasks subcommands structure", () => {
   });
 
   test("each subcommand has a run handler", async () => {
-    const { tasksCommand } = await import("../src/commands/citty/tasks.js");
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
     const subCommands = await resolveValue(tasksCommand.subCommands!);
     for (const [name, cmdDef] of Object.entries(subCommands)) {
       const cmd = await resolveValue(cmdDef);

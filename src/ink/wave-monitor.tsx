@@ -1,8 +1,7 @@
 /**
  * wave-monitor.tsx — Ink WaveMonitorView component.
  *
- * Replaces the neo-blessed WomboTUI class with a declarative React
- * component. The parent manages state polling, monitor data, console
+ * Declarative React component. The parent manages state polling, monitor data, console
  * interception, and tmux attachment; this component handles rendering
  * and keybind dispatch.
  *

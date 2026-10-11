@@ -2,8 +2,6 @@
  * wishlist-picker.tsx — Full-screen Ink component for browsing and promoting
  * wishlist items.
  *
- * Replaces the neo-blessed WishlistPicker class from tui-wishlist.ts.
- *
  * Layout:
  *   ┌───────────────────────────────────────────────────────┐
  *   │ wombo-combo Wishlist  │ 5 items                       │

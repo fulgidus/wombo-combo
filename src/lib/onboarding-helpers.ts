@@ -2,7 +2,7 @@
  * onboarding-helpers.ts — Pure business logic for the onboarding wizard.
  *
  * Extracted from tui-onboarding.ts so these functions can be used without
- * importing neo-blessed. Contains:
+ * importing the TUI framework. Contains:
  *   - runBrownfieldScout()  — Auto-scout codebase structure
  *   - runLlmSynthesis()     — LLM-enhanced profile refinement
  */

@@ -1,8 +1,7 @@
 /**
  * usage-overlay.tsx — Ink UsageOverlayView component for token usage stats.
  *
- * Replaces the neo-blessed UsageOverlay class with a declarative React
- * component. The parent manages data loading, grouping state, and selected
+ * Declarative React component. The parent manages data loading, grouping state, and selected
  * index; this component handles rendering and keybind dispatch.
  *
  * Features:

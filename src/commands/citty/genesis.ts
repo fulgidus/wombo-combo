@@ -11,9 +11,9 @@
 
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config.js";
-import { resolveOutputFormat } from "../../lib/output.js";
-import { cmdGenesis } from "../genesis.js";
+import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
+import { resolveOutputFormat } from "../../lib/output";
+import { cmdGenesis } from "../genesis";
 
 export const genesisCommand = defineCommand({
   meta: {

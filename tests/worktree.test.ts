@@ -322,7 +322,7 @@ describe("removeWorktree — safety guard", () => {
   // happens before any git calls.
 
   test("throws when asked to remove project root (exact match)", async () => {
-    const { removeWorktree } = await import("../src/lib/worktree.js");
+    const { removeWorktree } = await import("../src/lib/worktree");
     const root = "/home/user/projects/my-app";
     expect(() => removeWorktree({ projectRoot: root, wtPath: root })).toThrow(
       "SAFETY: refusing to remove project root"
@@ -330,7 +330,7 @@ describe("removeWorktree — safety guard", () => {
   });
 
   test("throws when asked to remove project root (resolved paths)", async () => {
-    const { removeWorktree } = await import("../src/lib/worktree.js");
+    const { removeWorktree } = await import("../src/lib/worktree");
     const root = "/home/user/projects/my-app";
     const messyPath = "/home/user/projects/./my-app";
     expect(() => removeWorktree({ projectRoot: root, wtPath: messyPath })).toThrow(
@@ -339,7 +339,7 @@ describe("removeWorktree — safety guard", () => {
   });
 
   test("throws when asked to remove project root with trailing slash", async () => {
-    const { removeWorktree } = await import("../src/lib/worktree.js");
+    const { removeWorktree } = await import("../src/lib/worktree");
     const root = "/home/user/projects/my-app";
     const trailingSlash = "/home/user/projects/my-app/";
     // resolve() strips trailing slashes

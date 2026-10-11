@@ -128,7 +128,7 @@ const ENTRIES: RegistryEntry[] = [
         maxConcurrent: { type: "number", description: "Max agents running in parallel" },
         model: { description: "Model to use (e.g., anthropic/claude-sonnet-4-20250514)" },
         dryRun: { description: "Show what would be launched without launching", default: false },
-        noTui: { description: "Headless mode without neo-blessed TUI", default: false },
+        noTui: { description: "Headless mode without the interactive TUI", default: false },
         autoPush: { description: "Push base branch to remote after all merges", default: false },
         baseBranch: { description: "Base branch (default: from config)" },
         maxRetries: { type: "number", description: "Max retries per agent" },
@@ -150,7 +150,7 @@ const ENTRIES: RegistryEntry[] = [
       flagOverrides: {
         maxConcurrent: { type: "number", description: "Max agents running in parallel" },
         model: { description: "Model to use" },
-        noTui: { description: "Headless mode without neo-blessed TUI", default: false },
+        noTui: { description: "Headless mode without the interactive TUI", default: false },
         dev: { description: "Enable developer mode (hidden TUI features)", default: false },
       },
     },

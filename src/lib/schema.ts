@@ -79,7 +79,7 @@ let _registry: CommandDef[] | null = null;
 function getRegistry(): CommandDef[] {
   if (!_registry) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { BRIDGE_REGISTRY } = require("./citty-registry.js") as {
+    const { BRIDGE_REGISTRY } = require("./citty-registry") as {
       BRIDGE_REGISTRY: CommandDef[];
     };
     _registry = BRIDGE_REGISTRY;
@@ -119,7 +119,7 @@ export const COMMAND_REGISTRY: CommandDef[] = new Proxy([] as CommandDef[], {
  */
 export function findCommandDef(name: string): CommandDef | undefined {
   // Lazy import to avoid circular dependency
-  const { findBridgeCommandDef } = require("./citty-registry.js") as {
+  const { findBridgeCommandDef } = require("./citty-registry") as {
     findBridgeCommandDef: (name: string) => CommandDef | undefined;
   };
   return findBridgeCommandDef(name);
