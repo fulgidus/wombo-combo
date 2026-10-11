@@ -1,0 +1,27 @@
+id: i18n-key-tests
+title: Key-consistency tests for locale files and code usage
+description: 'Add tests/i18n-keys.test.ts: statically scan src/**/*.ts(x) for t("literal") / msg("literal") / getFixedT
+  usages and assert every literal key exists in the en resources (plural keys resolved through _one/_other suffixes).
+  For every other locale assert the same key set as en, the same {{placeholders}} per key and valid plural suffix forms.
+  Report missing keys with a readable diff message. Must run in the default bun test run.'
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on:
+  - i18n-core
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Scanner must ignore test files and comments
+  - Failure messages list the offending keys and file paths
+forbidden:
+  - Do not weaken the test by whitelisting unknown keys without a comment
+references:
+  - src/lib/i18n.ts
+  - src/locales
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

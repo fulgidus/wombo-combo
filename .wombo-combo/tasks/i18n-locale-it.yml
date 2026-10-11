@@ -1,0 +1,30 @@
+id: i18n-locale-it
+title: Ship complete Italian (it) locale and locale switching
+description: Create src/locales/it/{tui,cli}.json covering every en key including plural forms (_one/_other), register
+  it in AVAILABLE_LOCALES, make the settings screen cycle through available locales (auto, en, it), and add tests that
+  switch locale (TUI strings via getLocaleT, CLI text via WOMBO_LOCALE=it, plurals, interpolation, JSON still English).
+  Key-consistency test must pass with it.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - i18n-key-tests
+  - i18n-tui-migrate
+  - i18n-cli-commands
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Same key set and placeholders as en
+  - Keep command names and flags untranslated
+forbidden:
+  - Do not machine-translate identifiers or paths
+references:
+  - src/locales
+  - src/ink/settings-screen.tsx
+  - tests/i18n-keys.test.ts
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

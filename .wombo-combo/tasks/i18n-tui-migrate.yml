@@ -1,0 +1,31 @@
+id: i18n-tui-migrate
+title: Migrate hard-coded TUI strings to locale files
+description: Go file by file through src/ink/*.tsx and extract user-facing hard-coded strings (titles, hints, labels,
+  empty states, counts) into src/locales/en/tui.json and call t()/useI18n(). Use plural keys with {{count}} wherever a
+  number is displayed with a noun (e.g. N tasks, N agents). Components that cannot take context use the global t.
+  Existing TUI/e2e tests that assert English text must stay green. One commit-sized step per file group; keep t(key)
+  signature unchanged.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - i18n-core
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - Do not change rendered English output
+  - Never concatenate translated fragments, one key per sentence
+  - Keys follow area.thing naming from knowledge.md
+forbidden:
+  - Do not translate identifiers, status enum values used as data, file paths or key hints like ESC
+references:
+  - src/ink
+  - src/locales/en/tui.json
+  - tests/ink
+  - tests/e2e/tui-smoke.test.ts
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

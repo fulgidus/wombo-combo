@@ -1,0 +1,33 @@
+id: i18n-cli-core
+title: "CLI i18n layer: translated text output, stable JSON, tasks and status commands"
+description: "Add Msg descriptors (msg(key, vars)) so outputMessage/outputError in src/lib/output.ts accept string or
+  Msg: text mode renders in the active locale, json/toon always render in en so message text and machine keys are
+  stable. Initialise the CLI locale once in src/index.ts (config tui.locale + env). Create src/locales/en/cli.json and
+  migrate src/commands/tasks/* and src/commands/status.ts (messages, errors, headings, plural counts). Tests: JSON
+  output is identical regardless of WOMBO_LOCALE; text output switches."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - i18n-core
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - -o json output must be byte-identical across locales
+  - Existing citty and e2e tests stay green
+forbidden:
+  - Do not translate JSON field names or enum values
+  - Do not call loadConfig before the command needs it more than once
+references:
+  - src/lib/output.ts
+  - src/index.ts
+  - src/commands/tasks
+  - src/commands/status.ts
+  - tests/output.test.ts
+  - tests/e2e/cli-smoke.test.ts
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []
