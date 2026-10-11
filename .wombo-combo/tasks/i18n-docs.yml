@@ -4,15 +4,15 @@ description: "Write docs/i18n.md: architecture (i18next, flat keys, domains), ho
   naming, pluralization and interpolation rules, detection order, JSON-not-translated rule, dev-mode missing key
   reporting, how to run the key-consistency test. Mention that if docs/ is a Starlight site the page belongs under its
   content dir. Link from README and AGENTS.md project structure."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: medium
 depends_on:
   - i18n-locale-it
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T16:33:08.092Z
 constraints:
   - Examples must match the real API and file layout
 forbidden:

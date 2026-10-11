@@ -257,6 +257,14 @@ plays or pauses, `+`/`-` change the speed (0.5x to 8x; long idle gaps are
 compressed), `d` toggles the scrollable diff pane, `[`/`]` switch between
 executions, `Esc`/`q` close.
 
+## Languages
+
+The TUI and human-readable CLI output are translated (English and Italian).
+Pick a language with `tui.locale` in `.wombo-combo/config.json`, the Settings
+screen, or `WOMBO_LOCALE=it`; `-o json` output is never translated. See
+[docs/src/content/docs/guides/i18n.md](docs/src/content/docs/guides/i18n.md)
+for adding a locale.
+
 ## Launch options
 
 ```sh
