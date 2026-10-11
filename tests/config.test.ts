@@ -23,6 +23,8 @@ import {
   generateDefaultConfig,
   normalizePostMergeConfig,
   normalizeReplayConfig,
+  normalizeSyncGithubConfig,
+  isSyncAuto,
   replayRetentionOptions,
   resolveAgentBin,
 } from "../src/config";
@@ -653,5 +655,52 @@ describe("replay retention config", () => {
       c.replay = { ...c.replay!, ...(bad as any) };
       expect(() => validateConfig(c)).toThrow("config.replay");
     }
+  });
+});
+
+describe("sync.github config", () => {
+  const base = () => ({ ...DEFAULT_CONFIG }) as WomboConfig;
+
+  test("defaults: disabled, manual, 60s, pushOnWrite and pull on, no repo", () => {
+    expect(normalizeSyncGithubConfig(undefined)).toEqual({
+      enabled: false, mode: "manual", intervalSeconds: 60, pushOnWrite: true, pull: true,
+    });
+    expect(normalizeSyncGithubConfig(DEFAULT_CONFIG.sync)).toEqual(normalizeSyncGithubConfig(null));
+  });
+
+  test("normalize clamps the interval, drops junk and keeps repo forms", () => {
+    const n = normalizeSyncGithubConfig({ github: { enabled: true, mode: "auto", intervalSeconds: 5, repo: " a/b " } });
+    expect(n.intervalSeconds).toBe(15);
+    expect(n.repo).toBe("a/b");
+    expect(isSyncAuto(n)).toBe(true);
+    expect(isSyncAuto(normalizeSyncGithubConfig({ github: { mode: "auto" } }))).toBe(false);
+    expect(normalizeSyncGithubConfig({ github: { mode: "weird" as any } }).mode).toBe("manual");
+    expect(normalizeSyncGithubConfig({ github: { repo: { owner: "o", name: "n", host: "h" } } }).repo).toEqual({ owner: "o", name: "n", host: "h" });
+  });
+
+  test("loadConfig deep-merges a partial block", () => {
+    mkdirSync(join(tmpDir, WOMBO_DIR), { recursive: true });
+    writeFileSync(join(tmpDir, CONFIG_FILE), JSON.stringify({ sync: { github: { mode: "auto", enabled: true } } }));
+    const cfg = loadConfig(tmpDir);
+    expect(cfg.sync!.github!.mode).toBe("auto");
+    expect(cfg.sync!.github!.intervalSeconds).toBe(60);
+    expect(() => validateConfig(cfg)).not.toThrow();
+  });
+
+  test("validate rejects bad values", () => {
+    const bad = (github: unknown) => {
+      const c = base();
+      (c as any).sync = { github };
+      return () => validateConfig(c);
+    };
+    expect(bad({ mode: "sometimes" })).toThrow("config.sync.github.mode");
+    expect(bad({ enabled: "yes" })).toThrow("config.sync.github.enabled");
+    expect(bad({ pushOnWrite: 1 })).toThrow("config.sync.github.pushOnWrite");
+    expect(bad({ pull: "no" })).toThrow("config.sync.github.pull");
+    expect(bad({ intervalSeconds: 10 })).toThrow("config.sync.github.intervalSeconds");
+    expect(bad({ intervalSeconds: "60" })).toThrow("config.sync.github.intervalSeconds");
+    expect(bad({ repo: 5 })).toThrow("config.sync.github.repo");
+    expect(bad({ repo: "" })).toThrow("config.sync.github.repo");
+    expect(bad({ repo: "a/b", intervalSeconds: 15 })).not.toThrow();
   });
 });

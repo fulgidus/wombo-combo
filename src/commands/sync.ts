@@ -10,25 +10,44 @@
  * GITHUB_TOKEN, GH_TOKEN or `gh auth token`. The token is never printed.
  */
 
-import { loadConfig } from "../config";
-import { msg, t, type Msg } from "../lib/i18n";
+import { msg, t } from "../lib/i18n";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderGeneric } from "../lib/toon";
 import {
   LABEL_CATALOG,
-  createGitHubClient,
-  detectRepo,
   ensureLabels,
-  resolveToken,
   type GitHubClient,
 } from "../lib/sync/github-client";
+import { loadConfig, normalizeSyncGithubConfig, SYNC_MIN_INTERVAL_SECONDS } from "../config";
+import { configuredRepo, resolveSyncContext, type SyncContext } from "../lib/sync/context";
+import {
+  cycleChangeCount,
+  cycleProblem,
+  runSyncCycle,
+  watchDelayMs,
+  type CycleReport,
+} from "../lib/sync/cycle";
+import { pullFromGitHub, type PullReport } from "../lib/sync/pull";
+import { postRemoteNotices, type NoticeReport } from "../lib/sync/push";
 import { parseSyncRef, pushToGitHub, syncStatus, type PushReport, type SyncStatusReport } from "../lib/sync/push";
+
+export { configuredRepo, resolveSyncContext, watchDelayMs };
+export type { SyncContext };
 
 export interface SyncOptions {
   projectRoot: string;
   outputFmt?: OutputFormat;
   dryRun?: boolean;
   only?: string;
+  /** watch: run a single cycle and return */
+  once?: boolean;
+  /** watch: seconds between cycles (default: config sync.github.intervalSeconds) */
+  intervalSeconds?: number;
+  /** watch test seams */
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  random?: () => number;
+  /** watch: external stop signal (tests); SIGINT/SIGTERM also stop it */
+  signal?: AbortSignal;
   /** Test seam: use this client instead of resolving token and repo */
   client?: GitHubClient;
 }
@@ -36,38 +55,6 @@ export interface SyncOptions {
 const DIM = "\x1b[2m";
 const BOLD = "\x1b[1m";
 const RESET = "\x1b[0m";
-
-/** `sync.github.repo` from config, tolerating an absent or malformed block. */
-export function configuredRepo(projectRoot: string): string | { owner: string; name: string; host?: string } | null {
-  try {
-    const cfg = loadConfig(projectRoot) as unknown as { sync?: { github?: { repo?: unknown } } };
-    const repo = cfg.sync?.github?.repo;
-    if (typeof repo === "string" && repo.trim()) return repo.trim();
-    if (repo && typeof repo === "object") {
-      const r = repo as { owner?: unknown; name?: unknown; host?: unknown };
-      if (typeof r.owner === "string" && typeof r.name === "string") {
-        return { owner: r.owner, name: r.name, ...(typeof r.host === "string" ? { host: r.host } : {}) };
-      }
-    }
-  } catch {
-    // unreadable config: fall back to the git remote
-  }
-  return null;
-}
-
-export type SyncContext = { ok: true; client: GitHubClient } | { ok: false; error: Msg };
-
-/** Resolve repo and token into a client; ok:false carries a clear message. */
-export async function resolveSyncContext(
-  projectRoot: string,
-  env: Record<string, string | undefined> = process.env,
-): Promise<SyncContext> {
-  const repo = detectRepo(projectRoot, configuredRepo(projectRoot));
-  if (!repo) return { ok: false, error: msg("cli.sync.noRepo") };
-  const token = await resolveToken(env);
-  if (!token) return { ok: false, error: msg("cli.sync.noToken") };
-  return { ok: true, client: createGitHubClient({ token, repo }) };
-}
 
 async function clientFor(opts: SyncOptions, fmt: OutputFormat): Promise<GitHubClient> {
   if (opts.client) return opts.client;
@@ -201,4 +188,154 @@ export async function cmdSyncLabels(opts: SyncOptions): Promise<void> {
     );
     for (const n of result.created) console.log(`  + ${n}`);
   }, () => console.log(renderGeneric(data)));
+}
+
+// ---------------------------------------------------------------------------
+// pull
+// ---------------------------------------------------------------------------
+
+function printPull(report: PullReport, notices: NoticeReport, repo: string): void {
+  console.log(`${BOLD}${t(report.dryRun ? "cli.sync.pull.headingDry" : "cli.sync.pull.heading", { repo })}${RESET}`);
+  const section = (key: string, lines: string[]) => {
+    if (lines.length === 0) return;
+    console.log(t(key, { count: lines.length }));
+    for (const l of lines) console.log(`  ${l}`);
+  };
+  section("cli.sync.pull.created", report.tasksCreated);
+  section("cli.sync.pull.updated", report.tasksUpdated);
+  section("cli.sync.pull.status", report.statusChanged.map((s) => `${s.ref}: ${s.from} -> ${s.to}`));
+  section("cli.sync.pull.comments", report.commentsAdded.map((c) => `${c.ref} ${DIM}#${c.githubId}${RESET}`));
+  section("cli.sync.pull.conflicts", report.conflicts.map((c) => `${c.ref}: ${c.fields.join(", ")}`));
+  section("cli.sync.pull.skipped", report.skipped.map((s) => `${s.ref}: ${s.reason}`));
+  if (notices.posted.length > 0) console.log(t("cli.sync.pull.notices", { count: notices.posted.length }));
+  if (report.rateLimited) console.error(t("cli.sync.pull.rateLimited"));
+  const errors = [...report.errors, ...notices.errors];
+  if (errors.length > 0) {
+    console.error(t("cli.sync.pull.errors", { count: errors.length }));
+    for (const e of errors) console.error(`  ${e.ref}: ${e.error}`);
+  }
+}
+
+export async function cmdSyncPull(opts: SyncOptions): Promise<void> {
+  const fmt = opts.outputFmt ?? "text";
+  const client = await clientFor(opts, fmt);
+  let report: PullReport;
+  let notices: NoticeReport;
+  try {
+    report = await pullFromGitHub({ projectRoot: opts.projectRoot, client, dryRun: opts.dryRun });
+    // Pull never writes to GitHub itself; conflict notices go out through the push side.
+    notices = await postRemoteNotices(client, report.pendingRemoteNotices, { dryRun: opts.dryRun, projectRoot: opts.projectRoot });
+  } catch (err) {
+    return failure(fmt, err);
+  }
+  const data = { ...report, noticesPosted: notices.posted, noticeErrors: notices.errors };
+  output(fmt, data, () => printPull(report, notices, repoLabel(client)), () => console.log(renderGeneric(data)));
+  if (report.errors.length > 0 || notices.errors.length > 0 || report.rateLimited) process.exitCode = 1;
+}
+
+// ---------------------------------------------------------------------------
+// run (one cycle) and watch (loop)
+// ---------------------------------------------------------------------------
+
+function pullEnabled(projectRoot: string): boolean {
+  try {
+    return normalizeSyncGithubConfig(loadConfig(projectRoot).sync).pull;
+  } catch {
+    return true;
+  }
+}
+
+function printCycle(r: CycleReport, repo: string): void {
+  if (r.pull) printPull(r.pull, r.notices, repo);
+  printPush(r.push, repo);
+}
+
+export async function cmdSyncRun(opts: SyncOptions): Promise<void> {
+  const fmt = opts.outputFmt ?? "text";
+  const client = await clientFor(opts, fmt);
+  let report: CycleReport;
+  try {
+    report = await runSyncCycle({
+      projectRoot: opts.projectRoot,
+      client,
+      dryRun: opts.dryRun,
+      pull: pullEnabled(opts.projectRoot),
+      warn: (m) => console.error(m),
+    });
+  } catch (err) {
+    return failure(fmt, err);
+  }
+  output(fmt, report, () => printCycle(report, repoLabel(client)), () => console.log(renderGeneric(report)));
+  if (cycleProblem(report)) process.exitCode = 1;
+}
+
+function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const timer = setTimeout(done, ms);
+    function done() {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", done);
+      resolve();
+    }
+    signal.addEventListener("abort", done);
+  });
+}
+
+export async function cmdSyncWatch(opts: SyncOptions): Promise<void> {
+  const fmt = opts.outputFmt ?? "text";
+  const client = await clientFor(opts, fmt);
+  const cfg = normalizeSyncGithubConfig(loadConfig(opts.projectRoot).sync);
+  const interval = Math.max(SYNC_MIN_INTERVAL_SECONDS, opts.intervalSeconds ?? cfg.intervalSeconds);
+  const repo = repoLabel(client);
+  const sleep = opts.sleep ?? abortableSleep;
+  const random = opts.random ?? Math.random;
+
+  const ac = new AbortController();
+  const onStop = () => ac.abort();
+  opts.signal?.addEventListener("abort", onStop);
+  process.on("SIGINT", onStop);
+  process.on("SIGTERM", onStop);
+
+  if (fmt === "text" && !opts.once) console.log(t("cli.sync.watch.started", { repo, seconds: interval }));
+  let failures = 0;
+  let cycle = 0;
+  let lastFailed = false;
+  try {
+    while (!ac.signal.aborted) {
+      cycle++;
+      const stamp = new Date().toISOString();
+      let problem: string | null = null;
+      try {
+        const report = await runSyncCycle({
+          projectRoot: opts.projectRoot,
+          client,
+          dryRun: opts.dryRun,
+          pull: cfg.pull,
+          warn: (m) => console.error(m),
+        });
+        problem = cycleProblem(report);
+        const { pulled, pushed } = cycleChangeCount(report);
+        if (fmt === "text") console.log(t("cli.sync.watch.cycle", { time: stamp, n: cycle, pulled, pushed }));
+        else console.log(JSON.stringify({ cycle, time: stamp, ok: problem === null, ...(problem ? { error: problem } : {}), pulled, pushed }));
+      } catch (err) {
+        problem = err instanceof Error ? err.message : String(err);
+      }
+      lastFailed = problem !== null;
+      failures = problem === null ? 0 : failures + 1;
+      const delay = watchDelayMs(interval, failures, random);
+      if (problem !== null) {
+        if (fmt === "text") console.error(t("cli.sync.watch.failed", { time: stamp, error: problem, seconds: Math.round(delay / 1000) }));
+        else console.log(JSON.stringify({ cycle, time: stamp, ok: false, error: problem, retryInSeconds: Math.round(delay / 1000) }));
+      }
+      if (opts.once) break;
+      await sleep(delay, ac.signal);
+    }
+  } finally {
+    process.off("SIGINT", onStop);
+    process.off("SIGTERM", onStop);
+    opts.signal?.removeEventListener("abort", onStop);
+  }
+  if (fmt === "text" && !opts.once) console.log(t("cli.sync.watch.stopped"));
+  if (opts.once && lastFailed) process.exitCode = 1;
 }

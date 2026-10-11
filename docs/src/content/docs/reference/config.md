@@ -147,6 +147,19 @@ Task and quest comments (.wombo-combo/comments/): recent comments in agent promp
 | `comments.promptMaxChars` | integer | `4000` | Maximum total characters of comment text in the agent prompt (oldest dropped first) Minimum: `1`. |
 | `comments.autoLifecycle` | boolean | `false` | Daemon posts system comments on task lifecycle events (started, failed, merged, retried) |
 
+## `sync`
+
+Integrations that sync woco data with external services
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sync.github.enabled` | boolean | `false` | Master switch for the automatic behaviour (write-through push, daemon cycle) |
+| `sync.github.mode` | string | `"manual"` | manual: only explicit woco sync commands. auto: push changed items right after they are written, and run pull+push every intervalSeconds in the daemon Values: `manual`, `auto`. |
+| `sync.github.repo` | string \| object |  | Repository to sync with, as "owner/name" or { owner, name, host }. Default: the git origin remote |
+| `sync.github.intervalSeconds` | number | `60` | Seconds between automatic pull+push cycles (daemon and woco sync watch) Minimum: `15`. |
+| `sync.github.pushOnWrite` | boolean | `true` | In auto mode, push an item in the background right after a local change to it |
+| `sync.github.pull` | boolean | `true` | In auto mode, cycles also pull remote changes before pushing |
+
 ## `modelRouting`
 
 Per-task model routing by weight class (light/medium/heavy); null/absent = session model

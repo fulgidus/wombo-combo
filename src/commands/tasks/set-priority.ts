@@ -20,6 +20,7 @@ import {
 import { VALID_PRIORITIES } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 import { msg } from "../../lib/i18n";
+import { maybeSyncItem } from "../../lib/sync/auto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,6 +90,7 @@ export async function cmdTasksSetPriority(opts: TasksSetPriorityOptions): Promis
   feature.priority = newPriority;
 
   saveFeatures(projectRoot, config, data);
+  maybeSyncItem(projectRoot, { kind: "task", id: opts.featureId });
 
   outputMessage(fmt, msg("cli.tasks.setPriority.changed", { id: opts.featureId, old: oldPriority, new: newPriority }), {
     id: opts.featureId,

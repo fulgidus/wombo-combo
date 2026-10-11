@@ -52,6 +52,7 @@ import { loadTasksFromStore } from "../lib/task-store";
 import { output, outputError, outputMessage } from "../lib/output";
 import { msg, t } from "../lib/i18n";
 import { validateEnum } from "../lib/validate";
+import { maybeSyncItem } from "../lib/sync/auto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -172,6 +173,7 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
 
   // Save to store
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   outputMessage(fmt, msg("cli.quest.create.created", { id: quest.id, title: quest.title }), {
     id: quest.id,
@@ -443,6 +445,7 @@ async function questActivate(opts: QuestCommandOptions): Promise<void> {
     quest.started_at = new Date().toISOString();
   }
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   outputMessage(fmt, msg("cli.quest.activate.done", { id: quest.id }), {
     id: quest.id,
@@ -490,6 +493,7 @@ async function questPause(opts: QuestCommandOptions): Promise<void> {
 
   quest.status = "paused";
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   outputMessage(fmt, msg("cli.quest.pause.done", { id: quest.id }), { id: quest.id, status: quest.status });
 
@@ -569,6 +573,7 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
   quest.status = "completed";
   quest.ended_at = new Date().toISOString();
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   // Clean up the quest branch (optional, only if merge succeeded)
   if (mergeSuccess && hasBranch) {
@@ -639,6 +644,7 @@ async function questAbandon(opts: QuestCommandOptions): Promise<void> {
   quest.status = "abandoned";
   quest.ended_at = new Date().toISOString();
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   // Optionally delete the branch with --force
   let branchDeleted = false;
@@ -895,6 +901,7 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
 
     // Archive the quest itself
     archiveQuest(projectRoot, q.id);
+    maybeSyncItem(projectRoot, { kind: "quest", id: q.id });
   }
 
   output(outputFmt ?? "text", {

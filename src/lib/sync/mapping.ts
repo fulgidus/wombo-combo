@@ -209,6 +209,9 @@ export function hashComment(c: Pick<Comment, "author" | "role" | "body">): strin
 // Markers
 // ---------------------------------------------------------------------------
 
+/** Comment-marker id prefix of conflict notices woco posts itself; pull never imports them. */
+export const NOTICE_ID_PREFIX = "notice-";
+
 const MARKER_RE_SRC = "<!--\\s*woco:(task|quest|comment):([A-Za-z0-9][A-Za-z0-9._-]*)\\s*-->";
 
 /** '<!-- woco:<kind>:<id> -->'. Throws on a malformed id. */

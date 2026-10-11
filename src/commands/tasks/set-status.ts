@@ -17,6 +17,7 @@ import {
 import { VALID_STATUSES } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 import { msg } from "../../lib/i18n";
+import { maybeSyncItem } from "../../lib/sync/auto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,6 +98,7 @@ export async function cmdTasksSetStatus(opts: TasksSetStatusOptions): Promise<vo
   }
 
   saveFeatures(projectRoot, config, data);
+  maybeSyncItem(projectRoot, { kind: "task", id: opts.featureId });
 
   outputMessage(fmt, msg("cli.tasks.setStatus.changed", { id: opts.featureId, old: oldStatus, new: newStatus }), {
     id: opts.featureId,

@@ -23,6 +23,7 @@ import {
 import { msg, t } from "../lib/i18n";
 import { renderGeneric } from "../lib/toon";
 import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { maybeSyncItem } from "../lib/sync/auto";
 
 /** How many comments `tasks show` / `quest show` print in text mode */
 export const SHOWN_COMMENTS = 5;
@@ -111,6 +112,7 @@ export async function cmdCommentAdd(opts: CommentOptions & { stdin?: boolean }):
   } catch (err) {
     return outputError(fmt, msg("cli.comment.add.failed", { error: err instanceof Error ? err.message : String(err) }));
   }
+  maybeSyncItem(opts.projectRoot, { kind: ref.kind, id: ref.id });
   outputMessage(fmt, msg("cli.comment.add.done", { id: comment.id, ref: refLabel(ref) }), { comment });
 }
 

@@ -1014,7 +1014,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: syncCommand,
     meta: {
-      summary: "Sync tasks and quests with GitHub issues: push, status, labels",
+      summary: "Sync tasks and quests with GitHub issues: push, pull, run, watch, status, labels",
       aliases: [],
       mutating: true,
       supportsDryRun: true,
@@ -1022,7 +1022,8 @@ const ENTRIES: RegistryEntry[] = [
       description:
         "Mirror tasks, quests and their comments to GitHub issues. The repo comes from sync.github.repo in " +
         "config or the git origin remote; the token from GITHUB_TOKEN, GH_TOKEN or 'gh auth token'. " +
-        "Issues carry a woco marker so pushes are idempotent and never duplicate.",
+        "Issues carry a woco marker so pushes are idempotent and never duplicate." +
+        " With sync.github.mode set to auto (and enabled), local changes are pushed in the background right after they are made, and the daemon or 'sync watch' runs pull and push every sync.github.intervalSeconds.",
     },
     subEntries: [
       {
@@ -1036,6 +1037,46 @@ const ENTRIES: RegistryEntry[] = [
           flagOverrides: {
             dryRun: { description: "Show what would change without writing anything", default: false },
             only: { description: "Push a single item: a task ID or quest:<quest-id>" },
+          },
+        },
+      },
+      {
+        subKey: "pull",
+        parentName: "sync",
+        meta: {
+          summary: "Pull GitHub issue changes and comments into tasks",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+          },
+        },
+      },
+      {
+        subKey: "run",
+        parentName: "sync",
+        meta: {
+          summary: "Run one sync cycle: pull from GitHub, then push",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+          },
+        },
+      },
+      {
+        subKey: "watch",
+        parentName: "sync",
+        meta: {
+          summary: "Keep syncing with GitHub on an interval until stopped",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          flagOverrides: {
+            once: { description: "Run a single cycle and exit", default: false },
+            interval: { description: "Seconds between cycles (default: sync.github.intervalSeconds, minimum 15)" },
           },
         },
       },

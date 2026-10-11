@@ -420,6 +420,51 @@
         }
       }
     },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Integrations that sync woco data with external services",
+      "properties": {
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub issue sync (woco sync): tasks, quests and comments as issues. Manual commands always work; mode auto adds write-through pushes and periodic pull+push cycles",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Master switch for the automatic behaviour (write-through push, daemon cycle)"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["manual", "auto"],
+              "default": "manual",
+              "description": "manual: only explicit woco sync commands. auto: push changed items right after they are written, and run pull+push every intervalSeconds in the daemon"
+            },
+            "repo": {
+              "type": ["string", "object"],
+              "description": "Repository to sync with, as \"owner/name\" or { owner, name, host }. Default: the git origin remote"
+            },
+            "intervalSeconds": {
+              "type": "number",
+              "minimum": 15,
+              "default": 60,
+              "description": "Seconds between automatic pull+push cycles (daemon and woco sync watch)"
+            },
+            "pushOnWrite": {
+              "type": "boolean",
+              "default": true,
+              "description": "In auto mode, push an item in the background right after a local change to it"
+            },
+            "pull": {
+              "type": "boolean",
+              "default": true,
+              "description": "In auto mode, cycles also pull remote changes before pushing"
+            }
+          }
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

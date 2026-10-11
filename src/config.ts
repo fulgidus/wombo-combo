@@ -128,6 +128,12 @@ export interface WomboConfig {
    * normalizeCommentsConfig().
    */
   comments?: CommentsConfig;
+  /**
+   * Integrations that sync woco data with external services (GitHub issues).
+   * Optional so older config files keep working; read it through
+   * normalizeSyncGithubConfig().
+   */
+  sync?: SyncConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
@@ -217,6 +223,34 @@ export interface CommentsConfig {
   promptMaxChars: number;
   /** Daemon posts system comments on lifecycle events (started, failed, merged, retried) */
   autoLifecycle: boolean;
+}
+
+export const SYNC_GITHUB_MODES = ["manual", "auto"] as const;
+export type SyncGithubMode = (typeof SYNC_GITHUB_MODES)[number];
+/** Smallest allowed `sync.github.intervalSeconds` */
+export const SYNC_MIN_INTERVAL_SECONDS = 15;
+
+/** A GitHub repository reference: "owner/name" (or "host/owner/name") or an object. */
+export type SyncRepoRef = string | { owner: string; name: string; host?: string };
+
+/** GitHub issue sync (`woco sync`) */
+export interface SyncGithubConfig {
+  /** Master switch for the automatic behaviour (manual `woco sync` commands always work) */
+  enabled: boolean;
+  /** manual: only explicit `woco sync ...`; auto: write-through push, daemon/watch cycles */
+  mode: SyncGithubMode;
+  /** Repository to sync with; unset = the git `origin` remote */
+  repo?: SyncRepoRef;
+  /** Seconds between automatic pull+push cycles (daemon and `sync watch`), minimum 15 */
+  intervalSeconds: number;
+  /** In auto mode, push an item right after it is changed locally */
+  pushOnWrite: boolean;
+  /** In auto mode, cycles also pull remote changes */
+  pull: boolean;
+}
+
+export interface SyncConfig {
+  github?: Partial<SyncGithubConfig>;
 }
 
 /** Retention of recorded agent session replays (.wombo-combo/replays/) */
@@ -415,6 +449,15 @@ export const DEFAULT_CONFIG: WomboConfig = {
     promptMaxChars: 4000,
     autoLifecycle: false,
   },
+  sync: {
+    github: {
+      enabled: false,
+      mode: "manual",
+      intervalSeconds: 60,
+      pushOnWrite: true,
+      pull: true,
+    },
+  },
   devMode: false,
   tui: {
     theme: "default",
@@ -532,6 +575,33 @@ export function normalizeCommentsConfig(block?: Partial<CommentsConfig> | null):
     promptMaxChars: src.promptMaxChars ?? d.promptMaxChars,
     autoLifecycle: src.autoLifecycle ?? d.autoLifecycle,
   };
+}
+
+/** Fill in sync.github defaults for legacy or manually constructed configs. Never throws. */
+export function normalizeSyncGithubConfig(block?: Partial<SyncConfig> | null): SyncGithubConfig {
+  const d = DEFAULT_CONFIG.sync!.github as SyncGithubConfig;
+  const g = (block && typeof block === "object" ? block.github : undefined) ?? {};
+  const src = g && typeof g === "object" ? g : {};
+  const mode = SYNC_GITHUB_MODES.includes(src.mode as SyncGithubMode) ? (src.mode as SyncGithubMode) : d.mode;
+  const iv = typeof src.intervalSeconds === "number" && Number.isFinite(src.intervalSeconds) ? src.intervalSeconds : d.intervalSeconds;
+  const out: SyncGithubConfig = {
+    enabled: typeof src.enabled === "boolean" ? src.enabled : d.enabled,
+    mode,
+    intervalSeconds: Math.max(SYNC_MIN_INTERVAL_SECONDS, iv),
+    pushOnWrite: typeof src.pushOnWrite === "boolean" ? src.pushOnWrite : d.pushOnWrite,
+    pull: typeof src.pull === "boolean" ? src.pull : d.pull,
+  };
+  const repo = src.repo;
+  if (typeof repo === "string" && repo.trim()) out.repo = repo.trim();
+  else if (repo && typeof repo === "object" && typeof repo.owner === "string" && typeof repo.name === "string") {
+    out.repo = { owner: repo.owner, name: repo.name, ...(typeof repo.host === "string" ? { host: repo.host } : {}) };
+  }
+  return out;
+}
+
+/** True when automatic GitHub sync is switched on (enabled and mode auto). */
+export function isSyncAuto(cfg: SyncGithubConfig): boolean {
+  return cfg.enabled && cfg.mode === "auto";
 }
 
 /** Fill in replay retention defaults for legacy or manually constructed configs. */
@@ -780,6 +850,36 @@ export function validateConfig(config: WomboConfig): void {
       const v = cm[k];
       if (v !== undefined && (typeof v !== "number" || !Number.isInteger(v) || v < 1)) {
         throw new Error(`config.comments.${k} must be an integer >= 1`);
+      }
+    }
+  }
+  if (config.sync !== undefined) {
+    if (config.sync === null || typeof config.sync !== "object" || Array.isArray(config.sync)) {
+      throw new Error("config.sync must be an object");
+    }
+    const g = (config.sync as SyncConfig).github;
+    if (g !== undefined) {
+      if (g === null || typeof g !== "object" || Array.isArray(g)) throw new Error("config.sync.github must be an object");
+      for (const k of ["enabled", "pushOnWrite", "pull"] as const) {
+        if (g[k] !== undefined && typeof g[k] !== "boolean") {
+          throw new Error(`config.sync.github.${k} must be a boolean`);
+        }
+      }
+      if (g.mode !== undefined && !SYNC_GITHUB_MODES.includes(g.mode)) {
+        throw new Error(`config.sync.github.mode must be one of: ${SYNC_GITHUB_MODES.join(", ")}`);
+      }
+      if (
+        g.intervalSeconds !== undefined &&
+        (typeof g.intervalSeconds !== "number" || !Number.isFinite(g.intervalSeconds) || g.intervalSeconds < SYNC_MIN_INTERVAL_SECONDS)
+      ) {
+        throw new Error(`config.sync.github.intervalSeconds must be a number >= ${SYNC_MIN_INTERVAL_SECONDS}`);
+      }
+      if (g.repo !== undefined) {
+        const r = g.repo as unknown;
+        const ok =
+          (typeof r === "string" && r.trim().length > 0) ||
+          (r !== null && typeof r === "object" && typeof (r as any).owner === "string" && typeof (r as any).name === "string");
+        if (!ok) throw new Error("config.sync.github.repo must be an \"owner/name\" string or an { owner, name } object");
       }
     }
   }

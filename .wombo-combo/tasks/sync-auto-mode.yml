@@ -9,8 +9,8 @@ description: "Config block sync.github {enabled (default false), mode manual|aut
   runs pull+push every intervalSeconds when mode=auto. Loop prevention (own writes are recognised by markers and
   hashes). Cloud-session behaviour: when no token/gh is available, mode auto degrades to a single warning per run. Tests
   with the fake server and fake timers; i18n en+it."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: medium
 depends_on:
@@ -18,7 +18,7 @@ depends_on:
   - sync-pull
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T23:05:58.357Z
 constraints:
   - A sync failure must never fail a woco command
   - "Single-flight: only one sync cycle per process at a time"

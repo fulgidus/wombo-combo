@@ -102,6 +102,7 @@ import {
 import { renderGlobalHelp, renderCommandHelp } from "./lib/schema";
 import { loadConfig } from "./config";
 import { initI18n } from "./lib/i18n";
+import { flushAutoSync } from "./lib/sync/auto";
 
 /**
  * Resolve the CLI locale once: config `tui.locale` > WOMBO_LOCALE > LC_ALL >
@@ -199,8 +200,13 @@ process.on("unhandledRejection", (reason: any) => {
 
 // Only run main() when executed directly, not when imported as a module
 if (import.meta.main) {
-  main().catch((err) => {
-    console.error("Fatal error:", err.message);
-    process.exit(1);
-  });
+  main()
+    .then(async () => {
+      // Let a pending write-through GitHub push finish (bounded); never changes the exit code.
+      if (!(await flushAutoSync())) process.exit(process.exitCode ?? 0);
+    })
+    .catch((err) => {
+      console.error("Fatal error:", err.message);
+      process.exit(1);
+    });
 }

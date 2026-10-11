@@ -15,6 +15,7 @@ import { loadFeatures, saveFeatures, findFeatureById } from "../../lib/tasks";
 import { loadQuest } from "../../lib/quest-store";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 import { msg, t } from "../../lib/i18n";
+import { maybeSyncItem } from "../../lib/sync/auto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,6 +97,7 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
   }
 
   saveFeatures(projectRoot, config, data);
+  maybeSyncItem(projectRoot, { kind: "task", id: opts.featureId });
 
   outputMessage(fmt, msg("cli.setQuest.done", { id: opts.featureId, from: describe(oldQuest), to: describe(newQuest) }), {
     id: opts.featureId,

@@ -24,6 +24,7 @@ import { outputError, outputMessage, type OutputFormat } from "../../lib/output"
 import { msg, t } from "../../lib/i18n";
 import { validateEnum, validateId } from "../../lib/validate";
 import { loadQuest } from "../../lib/quest-store";
+import { maybeSyncItem } from "../../lib/sync/auto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -152,6 +153,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   // Append to features list
   data.tasks.push(feature);
   saveFeatures(projectRoot, config, data);
+  maybeSyncItem(projectRoot, { kind: "task", id: opts.id });
 
   outputMessage(fmt, msg("cli.tasks.add.added", { id: opts.id, title: opts.title }), {
     id: feature.id,

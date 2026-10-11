@@ -41,17 +41,20 @@ import {
   type GitHubClient,
   type GitHubIssue,
 } from "./github-client";
+import { TRIAGE_LABELS, remoteTaskView as remoteViewOf } from "./hashing";
 import {
   findMarker,
   hashFields,
   hashTask,
   listMappings,
+  NOTICE_ID_PREFIX,
   mergeFields,
   readMapping,
   writeMapping,
   type MappingEntry,
 } from "./mapping";
 import { applyTriageRole, parseIssueToTask, parsedToTask, parseRemoteComment, taskSyncable } from "./render";
+import { parseTriageRole } from "./syncable";
 import { SPEC_LABEL } from "./render";
 import type { RemoteComment, RemoteIssue } from "./types";
 
@@ -83,10 +86,12 @@ export interface PullReport {
   dryRun: boolean;
 }
 
-/** Labels that are triage roles (see LABEL_CATALOG). */
-export const TRIAGE_LABELS = ["needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix"] as const;
+export { TRIAGE_LABELS };
 export const DEFAULT_TRIAGE = "needs-triage";
 export const WOCO_AUTHOR = "woco";
+
+/** Start of the local system comment pull leaves on a conflicted task; push links it to the posted notice. */
+export const conflictCommentPrefix = (issue: number) => `GitHub sync conflict on #${issue} `;
 
 class StopPull extends Error {}
 
@@ -199,6 +204,8 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
         if (mine) {
           comments[mine.id] = rc.id;
           known.add(rc.id);
+        } else if (marker.id.startsWith(NOTICE_ID_PREFIX)) {
+          // A conflict notice woco posted itself: never imported back.
         } else {
           // One of ours that has not reached this clone yet (it arrives via git): never duplicate it.
           report.skipped.push({ ref: rs, reason: `woco comment ${marker.id} not present locally` });
@@ -236,12 +243,8 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
   }
 
   // -- existing task -----------------------------------------------------------
-  function remoteTaskView(issue: RemoteIssue, taskId: string) {
-    const parsed = parseIssueToTask(issue, { triageLabels: TRIAGE_LABELS });
-    parsed.id = taskId;
-    const view = taskSyncable(parsedToTask(parsed));
-    return { parsed, view, hash: hashFields(view) };
-  }
+  const remoteTaskView = (issue: RemoteIssue, taskId: string, localTriage: string | null) =>
+    remoteViewOf(issue, localTriage, taskId);
 
   const knownDeps = (self: string, deps: string[]) => deps.filter((d) => d !== self && usedIds.has(d));
 
@@ -252,7 +255,7 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
       return null;
     }
     const lt = entryLocal.task;
-    const { parsed, view: remoteView, hash: remoteHash } = remoteTaskView(issue, id);
+    const { parsed, view: remoteView, hash: remoteHash } = remoteTaskView(issue, id, parseTriageRole(lt.notes));
     const localView = taskSyncable(lt);
     const localHash = hashTask(lt);
     const stamp = now().toISOString();
@@ -288,7 +291,7 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
           addComment(projectRoot, { kind: "task", id }, {
             author: WOCO_AUTHOR,
             role: "system",
-            body: `GitHub sync conflict on #${issue.number} (${fieldList}). The local values were kept. The GitHub values were:\n${remoteValues}`,
+            body: `${conflictCommentPrefix(issue.number)}(${fieldList}). The local values were kept. The GitHub values were:\n${remoteValues}`,
           });
         } catch (err) {
           report.errors.push({ ref: id, error: `conflict comment: ${(err as Error).message}` });
@@ -364,8 +367,7 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
 
   // -- new task ----------------------------------------------------------------
   function createTask(issue: RemoteIssue): MappingEntry | null {
-    const parsed = parseIssueToTask(issue, { triageLabels: TRIAGE_LABELS });
-    const remoteHash = hashFields(taskSyncable(parsedToTask(parsed)));
+    const { parsed, hash: remoteHash } = remoteViewOf(issue, null);
     let id = parsed.id;
     for (let n = 2; usedIds.has(id); n++) id = `${parsed.id}-${n}`;
     usedIds.add(id);

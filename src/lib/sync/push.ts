@@ -26,13 +26,17 @@ import {
   type GitHubIssue,
   type LabelSpec,
 } from "./github-client";
+import { TRIAGE_LABELS, remoteSyncHash } from "./hashing";
+import { conflictCommentPrefix } from "./pull";
 import {
   SAFE_ID_RE,
   findMappingByIssue,
   findMarker,
   hashFields,
   hashQuest,
+  markerFor,
   hashTask,
+  NOTICE_ID_PREFIX,
   readMapping,
   writeMapping,
   type MappingEntry,
@@ -40,14 +44,11 @@ import {
 } from "./mapping";
 import {
   SPEC_LABEL,
-  parseIssueToQuest,
-  parseIssueToTask,
-  parsedTaskSyncable,
   renderCommentBody,
   renderQuestIssue,
   renderTaskIssue,
 } from "./render";
-import { issueStateToSyncState, parseTriageRole } from "./syncable";
+import { parseTriageRole } from "./syncable";
 import type { IssueDraft, IssueStateReason, RemoteIssue } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -203,7 +204,7 @@ function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-const TRIAGE_CATALOG = ["needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix"];
+const TRIAGE_CATALOG: readonly string[] = TRIAGE_LABELS;
 const MANAGED_PREFIXES = ["priority:", "difficulty:", "quest:"];
 
 export function toRemoteIssue(i: GitHubIssue): RemoteIssue {
@@ -220,23 +221,9 @@ export function toRemoteIssue(i: GitHubIssue): RemoteIssue {
   };
 }
 
-/** Hash of the syncable fields of a remote issue (same shape as the local hash). */
+/** Hash of the syncable fields of a remote issue; shared with pull (see hashing.ts). */
 export function remoteHash(kind: SyncKind, remote: RemoteIssue, localTriage: string | null): string {
-  if (kind === "task") {
-    const triageLabels = localTriage ? [...TRIAGE_CATALOG, localTriage] : TRIAGE_CATALOG;
-    return hashFields(parsedTaskSyncable(parseIssueToTask(remote, { triageLabels })));
-  }
-  const p = parseIssueToQuest(remote);
-  return hashFields({
-    title: p.title,
-    goal: p.goal,
-    state: issueStateToSyncState(remote.state, remote.stateReason),
-    priority: p.priority,
-    difficulty: p.difficulty,
-    depends_on: p.depends_on,
-    constraints_add: p.constraints_add,
-    constraints_ban: p.constraints_ban,
-  });
+  return remoteSyncHash(kind, remote, localTriage);
 }
 
 function isManagedLabel(name: string, draftLabels: readonly string[]): boolean {
@@ -507,6 +494,71 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Remote notices (conflict notices produced by pull)
+// ---------------------------------------------------------------------------
+
+export interface PostedNotice {
+  issue: number;
+  ref: string;
+  githubId?: number;
+}
+
+export interface NoticeReport {
+  posted: PostedNotice[];
+  errors: PushError[];
+}
+
+function linkConflictComment(projectRoot: string, n: { issue: number; ref: string }, url: string): void {
+  try {
+    const prefix = conflictCommentPrefix(n.issue);
+    const mine = listComments(projectRoot, { kind: "task", id: n.ref }).filter(
+      (c) => c.role === "system" && !c.github_url && c.body.startsWith(prefix),
+    );
+    const last = mine[mine.length - 1];
+    if (last) setCommentGithubUrl(projectRoot, last.id, url);
+  } catch {
+    // best effort: worst case the conflict is mentioned twice
+  }
+}
+
+/**
+ * Post the notices a pull produced (`PullReport.pendingRemoteNotices`) as issue
+ * comments. Each carries a `woco:comment:notice-<hash>` marker so pull does not
+ * import it back as a human comment, and a notice already on the issue (same
+ * marker) is not posted twice. A dry run posts nothing. Never throws.
+ */
+export async function postRemoteNotices(
+  client: GitHubClient,
+  notices: ReadonlyArray<{ issue: number; ref: string; body: string }>,
+  opts: { dryRun?: boolean; projectRoot?: string } = {},
+): Promise<NoticeReport> {
+  const out: NoticeReport = { posted: [], errors: [] };
+  for (const n of notices) {
+    try {
+      const id = `${NOTICE_ID_PREFIX}${hashFields({ issue: n.issue, body: n.body }).slice(0, 16)}`;
+      const body = `${n.body.trim()}\n\n${markerFor("comment", id)}`;
+      if (opts.dryRun) {
+        out.posted.push({ issue: n.issue, ref: n.ref });
+        continue;
+      }
+      const existing = await client.listComments(n.issue);
+      const dup = existing.find((c) => {
+        const m = findMarker(c.body ?? "");
+        return m?.kind === "comment" && m.id === id;
+      });
+      if (dup) continue;
+      const created = await client.createComment(n.issue, body);
+      out.posted.push({ issue: n.issue, ref: n.ref, githubId: created.id });
+      // The local system comment pull left for this conflict says the same thing: link it so push does not mirror it too.
+      if (opts.projectRoot) linkConflictComment(opts.projectRoot, n, created.html_url);
+    } catch (err) {
+      out.errors.push({ ref: n.ref, error: errMsg(err) });
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
