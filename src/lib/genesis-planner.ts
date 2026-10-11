@@ -14,12 +14,11 @@
  */
 
 import { loadProjectContext } from "./project-store";
-import { spawn } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config";
-import { resolveAgentBin } from "../config";
+import { launchPlanner, canonicalizeOutput } from "./launcher";
 import type { Priority, Difficulty } from "./tasks";
 import type { QuestHitlMode } from "./quest";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
@@ -487,45 +486,29 @@ export async function runGenesisPlanner(
 
   // Launch the genesis planner agent
   onProgress("Launching genesis planner agent...");
-  const agentBin = resolveAgentBin(config);
   const agentName = "genesis-planner-agent";
 
-  // Verify the agent binary exists before spawning
-  if (!existsSync(agentBin)) {
+  // Route the planner through the "plan" operation profile; verifies the binary / account env first
+  const launch = launchPlanner({
+    config,
+    projectRoot,
+    prompt,
+    agentName,
+    title: "woco: genesis",
+    model: opts?.model,
+  });
+  if (!launch.ok) {
     return {
       success: false,
       quests: [],
       knowledge: null,
       issues: [],
       rawOutput: "",
-      error: `Agent binary not found at: ${agentBin}. Check config.agent.bin or OPENCODE_BIN env var.`,
+      error: launch.error,
     };
   }
 
-  const args = [
-    "run",
-    "--format", "json",
-    "--agent", agentName,
-    "--title", "woco: genesis",
-  ];
-
-  if (opts?.model) {
-    args.push("--model", opts.model);
-  }
-
-  args.push(prompt);
-
-  const child = spawn(agentBin, args, {
-    stdio: ["pipe", "pipe", "pipe"],
-    detached: false,
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      OPENCODE_DIR: projectRoot,
-    },
-  });
-
-  child.stdin?.end();
+  const child = launch.result.process;
 
   // Collect all stdout
   const chunks: Buffer[] = [];
@@ -601,7 +584,7 @@ export async function runGenesisPlanner(
   }
 
   // Extract text events from the JSON output stream
-  const textContent = extractTextFromJsonEvents(rawOutput);
+  const textContent = extractTextFromJsonEvents(canonicalizeOutput(rawOutput, launch.result.route));
 
   // Extract YAML from the text content
   const yamlStr = extractGenesisYaml(textContent);

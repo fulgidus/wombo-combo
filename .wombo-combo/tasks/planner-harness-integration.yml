@@ -8,15 +8,15 @@ description: |
   before the existing text extraction; the quest planner live token/activity
   feed uses the route normalizer. Error messages name the profile and bin.
   Tests exercise a stub harness through the generic adapter.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - launcher-harness-integration
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:21:54.555Z
+ended_at: 2026-10-11T14:27:56.973Z
 constraints:
   - default behavior with no profiles must be identical (same argv, same error text for missing binary)
   - planner timeouts and abort registry unchanged

@@ -32,17 +32,19 @@
  */
 
 import type { ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { WomboConfig } from "../config";
 import { portlessEnv } from "./portless";
 import { hitlDir } from "./hitl-channel";
-import { getHarness } from "./harness";
+import { getHarness, normalizeOutput } from "./harness";
 import type { HarnessCommand, HarnessLaunchRequest, Normalizer } from "./harness/types";
 import type { HarnessId, Operation } from "./harness/ids";
 import { inlineAgentDefinition, spawnHarness } from "./harness/spawn";
 import {
   resolveRoute,
   resolveRouteEnv,
+  selectAvailableRoute,
   type ResolvedRoute,
 } from "./harness/routing";
 
@@ -107,6 +109,8 @@ export interface LaunchResult {
   profile: string;
   /** Stdout line normalizer to hand to ProcessMonitor.addProcess (absent for plain opencode streams) */
   normalize?: Normalizer;
+  /** The route this process was started with */
+  route: ResolvedRoute;
 }
 
 export interface LaunchOptions {
@@ -265,6 +269,7 @@ function spawnPrepared(p: Prepared, env: Record<string, string | undefined>, cwd
     process: child,
     harness: p.route.harness,
     profile: p.route.profile,
+    route: p.route,
     // opencode streams are already canonical: no normalizer, so the monitor keeps its original code path
     normalize: p.route.harness === "opencode" ? undefined : adapter.createNormalizer({ command: p.route.command }),
   };
@@ -389,6 +394,76 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
     title: makeAgentTitle(`conflict-resolve-${opts.featureId}`),
   });
   return spawnPrepared(prepared, agentEnv(opts.worktreePath, opts.featureId, opts.config, undefined, undefined, route), opts.worktreePath);
+}
+
+// ---------------------------------------------------------------------------
+// Planner Launch
+// ---------------------------------------------------------------------------
+
+export interface PlannerLaunchOptions {
+  config: WomboConfig;
+  projectRoot: string;
+  prompt: string;
+  /** Agent definition name (opencode `--agent`; inlined into the prompt elsewhere) */
+  agentName: string;
+  /** Fixed session title */
+  title: string;
+  model?: string;
+}
+
+export type PlannerLaunch =
+  | { ok: true; result: LaunchResult }
+  | { ok: false; error: string };
+
+/**
+ * Launch a planner-style agent (quest, errand, genesis, onboarding synthesis)
+ * in the project root through the "plan" operation profile.
+ *
+ * Verifies the binary (and account env vars) before spawning, walking the
+ * profile's fallback chain. With no profiles configured the error text for a
+ * missing binary is the historical one.
+ */
+export function launchPlanner(opts: PlannerLaunchOptions): PlannerLaunch {
+  const primary = resolveRoute(opts.config, { operation: "plan", sessionModel: opts.model });
+  let route = primary;
+  if (primary.legacy) {
+    if (!existsSync(primary.bin)) {
+      return {
+        ok: false,
+        error: `Agent binary not found at: ${primary.bin}. Check config.agent.bin or OPENCODE_BIN env var.`,
+      };
+    }
+  } else {
+    try {
+      route = selectAvailableRoute(opts.config, primary, { operation: "plan", sessionModel: opts.model }).route;
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const prepared = prepare(route, false, false, {
+    operation: "plan",
+    cwd: opts.projectRoot,
+    prompt: opts.prompt,
+    model: opts.model ?? route.model,
+    agentName: opts.agentName,
+    title: opts.title,
+  });
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    OPENCODE_DIR: opts.projectRoot,
+    ...resolveRouteEnv(route, process.env),
+  };
+  return { ok: true, result: spawnPrepared(prepared, env, opts.projectRoot) };
+}
+
+/**
+ * Convert a planner's raw stdout into canonical opencode-shaped NDJSON for the
+ * text extractors. opencode output is returned untouched.
+ */
+export function canonicalizeOutput(raw: string, route: ResolvedRoute): string {
+  if (route.harness === "opencode") return raw;
+  return normalizeOutput(raw, getHarness(route.harness), { command: route.command });
 }
 
 // ---------------------------------------------------------------------------

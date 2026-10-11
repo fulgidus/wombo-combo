@@ -191,7 +191,7 @@ describe("custom adapter", () => {
 
   test("text output becomes text events; jsonl output is passed through", () => {
     const n = h.createNormalizer({ command: { args: [] } });
-    expect(n("hello  ")).toEqual([{ type: "text", part: { type: "text", text: "hello" } }]);
+    expect(n("hello  ")).toEqual([{ type: "text", part: { type: "text", text: "hello\n" } }]);
     expect(n("   ")).toEqual([]);
     const j = h.createNormalizer({ command: { args: [], output: "opencode-jsonl" } });
     expect(j('{"type":"step_finish","part":{"reason":"stop"}}')).toHaveLength(1);

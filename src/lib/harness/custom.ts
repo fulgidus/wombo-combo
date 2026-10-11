@@ -80,7 +80,7 @@ export const customHarness: HarnessAdapter = {
     if (req?.command?.output === "opencode-jsonl") return opencodeHarness.createNormalizer();
     return (line: string): HarnessEvent[] => {
       const trimmed = line.trimEnd();
-      return trimmed.trim() ? [textEvent(trimmed)] : [];
+      return trimmed.trim() ? [textEvent(trimmed + "\n")] : [];
     };
   },
 };
