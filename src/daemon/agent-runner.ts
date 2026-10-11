@@ -20,6 +20,7 @@ import { normalizePostMergeConfig, type WomboConfig, type MaxEscalationTier } fr
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
+import { resolveRoute, selectAvailableRoute, RouteError, type ResolvedRoute, type RouteSelection } from "../lib/harness/routing";
 import { saveTaskToStore } from "../lib/task-store";
 import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree, worktreeExists } from "../lib/worktree";
 import { launchHeadless, retryHeadless, launchConflictResolver, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
@@ -357,7 +358,18 @@ export class AgentRunner {
     // Per-task model routing: the weight-class table (config.modelRouting)
     // wins over the session model so heavy tasks get capable models and
     // light tasks don't waste them.
-    const model = resolveTaskModel(task, config.modelRouting, this.state.getModel());
+    // With agentProfiles/routing configured the profile's own model wins; the
+    // legacy chain (modelRouting, then session model) still applies otherwise.
+    let model: string | null;
+    let route: ResolvedRoute | null = null;
+    try {
+      route = resolveRoute(config, { operation: "code", task, sessionModel: this.state.getModel() });
+      model = route.model;
+    } catch (err) {
+      // Unknown profile etc.: keep the legacy model; doLaunch re-resolves and reports the error
+      if (!(err instanceof RouteError)) throw err;
+      model = resolveTaskModel(task, config.modelRouting, this.state.getModel());
+    }
 
     const agentState = createDaemonAgentState({
       featureId: task.id,
@@ -373,6 +385,8 @@ export class AgentRunner {
       streamIndex: ctx?.streamIndex ?? null,
       hasChainSuccessor: ctx?.hasChainSuccessor ?? false,
       model,
+      profile: route?.profile ?? null,
+      harness: route?.harness ?? null,
       effortEstimateMs: parseDurationMinutes(task.effort) * 60_000,
     });
 
@@ -550,6 +564,22 @@ export class AgentRunner {
       // members start from their predecessor's tip).
       this.analytics.captureBaseline(featureId);
 
+      // Resolve the agent profile (walking its fallback chain when a binary or
+      // account variable is unavailable). The fake agent bypasses routing.
+      let route: ResolvedRoute | undefined;
+      let launchModel = agent.model ?? this.state.getModel() ?? undefined;
+      if (agent.agentName !== FAKE_AGENT_SENTINEL) {
+        const selected = this.selectRoute("code", featureId, task);
+        route = selected.route;
+        if (selected.skipped.length > 0) {
+          const why = selected.skipped.map((x) => `${x.profile}: ${x.reason}`).join("; ");
+          this.state.updateAgentActivity(featureId, `profile fallback -> ${route.profile} (${why})`.slice(0, 200));
+          launchModel = route.model ?? launchModel;
+          this.state.updateAgent(featureId, { model: route.model ?? agent.model ?? null });
+        }
+        this.state.updateAgent(featureId, { profile: route.profile, harness: route.harness });
+      }
+
       // Launch the agent process
       this.state.updateAgentStatus(featureId, "running", "Agent spawned");
 
@@ -557,11 +587,12 @@ export class AgentRunner {
         worktreePath: wt,
         featureId,
         prompt,
-        model: agent.model ?? this.state.getModel() ?? undefined,
+        model: launchModel,
         config: this.config,
         agentName: agent.agentName ?? undefined,
         hitlMode,
         projectRoot: this.projectRoot,
+        route,
       });
 
       this.state.updateAgent(featureId, {
@@ -574,8 +605,8 @@ export class AgentRunner {
 
       // Register usage context before attaching the process so every record
       // carries quest/model, then register with the monitor.
-      this.registerUsageContext(featureId);
-      this.monitor.addProcess(featureId, result.process);
+      this.registerUsageContext(featureId, result.route);
+      this.monitor.addProcess(featureId, result.process, { normalize: result.normalize });
 
       this.state.emit("evt:task-picked", {
         taskId: featureId,
@@ -1306,6 +1337,7 @@ export class AgentRunner {
     // Resolver token streams are not monitored: usage can only be partial.
     this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
+      route: this.conflictRoute(featureId, task, model),
       worktreePath: agent.worktree,
       featureId: agent.featureId,
       prompt: conflictPrompt,
@@ -1427,6 +1459,7 @@ export class AgentRunner {
 
       this.analytics.markUnmonitoredUsage(featureId);
       const resolverResult = launchConflictResolver({
+        route: this.conflictRoute(featureId, task, model),
         worktreePath: agent.worktree,
         featureId: agent.featureId,
         prompt: commitPrompt,
@@ -1545,6 +1578,7 @@ export class AgentRunner {
     // Launch the agent
     this.analytics.markUnmonitoredUsage(featureId);
     const resolverResult = launchConflictResolver({
+      route: this.conflictRoute(featureId, task, model),
       worktreePath: agent.worktree,
       featureId: agent.featureId,
       prompt: rerunPrompt,
@@ -1703,6 +1737,11 @@ export class AgentRunner {
     }
 
     try {
+      // A session belongs to one harness: retries reuse the profile it started with
+      const route =
+        agent.agentName === FAKE_AGENT_SENTINEL
+          ? undefined
+          : this.resolveAgentRoute("code", featureId, this.loadTask(featureId));
       const result = retryHeadless({
         worktreePath: agent.worktree,
         featureId,
@@ -1710,12 +1749,14 @@ export class AgentRunner {
         buildErrors: agent.error ?? "Previous attempt failed",
         model: agent.model ?? this.state.getModel() ?? undefined,
         config: this.config,
+        agentName: agent.agentName ?? undefined,
+        route,
       });
 
       this.state.updateAgent(featureId, { pid: result.pid });
       this.state.updateAgentStatus(featureId, "running", "Retry launched");
-      this.registerUsageContext(featureId);
-      this.monitor.addProcess(featureId, result.process);
+      this.registerUsageContext(featureId, result.route);
+      this.monitor.addProcess(featureId, result.process, { normalize: result.normalize });
     } catch {
       // Retry launch failed — queue for fresh launch
       this.state.updateAgentStatus(featureId, "queued", "Retry launch failed, re-queuing");
@@ -1773,12 +1814,63 @@ export class AgentRunner {
   // -------------------------------------------------------------------------
 
   /** Register the token collector's per-agent context (quest, model). */
-  private registerUsageContext(featureId: string): void {
+  private registerUsageContext(featureId: string, route?: ResolvedRoute): void {
     const agent = this.state.getAgent(featureId);
     this.monitor.tokenCollector.registerAgent(featureId, {
       quest_id: agent?.analytics?.quest_id ?? null,
       model: agent?.model ?? this.state.getModel() ?? null,
+      provider: route?.provider ?? null,
+      harness: route?.harness ?? agent?.harness ?? null,
     });
+  }
+
+  /**
+   * Resolve the route for an operation on a task. The profile recorded on the
+   * agent state is forced so retries and later operations stay on the same
+   * profile; "default" (the synthesized legacy profile) is never forced.
+   */
+  private resolveAgentRoute(
+    operation: "code" | "conflict",
+    featureId: string,
+    task: Task | null | undefined,
+    sessionModel?: string | null,
+  ): ResolvedRoute {
+    const agent = this.state.getAgent(featureId);
+    const forced = operation === "code" && agent?.profile && agent.profile !== "default" ? agent.profile : undefined;
+    return resolveRoute(this.config, {
+      operation,
+      task: task ?? null,
+      sessionModel: sessionModel ?? agent?.model ?? this.state.getModel(),
+      profile: forced,
+    });
+  }
+
+  /** Resolve the route and walk its fallback chain; legacy routes are not probed. */
+  private selectRoute(operation: "code" | "conflict", featureId: string, task: Task | null, sessionModel?: string | null): RouteSelection {
+    const route = this.resolveAgentRoute(operation, featureId, task, sessionModel);
+    if (route.legacy) return { route, skipped: [] };
+    const agent = this.state.getAgent(featureId);
+    return selectAvailableRoute(this.config, route, {
+      operation,
+      task,
+      sessionModel: sessionModel ?? agent?.model ?? this.state.getModel(),
+      profile: route.profile,
+    });
+  }
+
+  /**
+   * Route for a conflict-resolver launch (operation "conflict"). When no
+   * configured profile can start, the failure is logged on the agent and the
+   * launcher falls back to the legacy agent.bin route.
+   */
+  private conflictRoute(featureId: string, task: Task, model: string | undefined): ResolvedRoute | undefined {
+    try {
+      return this.selectRoute("conflict", featureId, task, model ?? null).route;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.state.updateAgentActivity(featureId, `conflict profile unavailable, using default agent: ${msg}`.slice(0, 200));
+      return undefined;
+    }
   }
 
   /** Restore persisted analytics snapshots (call before startup reconciliation). */

@@ -15,7 +15,8 @@ import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
 import { loadFeatures, selectFeatures } from "../lib/tasks";
-import { computeTaskWeight, resolveTaskModel } from "../lib/task-weight";
+import { computeTaskWeight } from "../lib/task-weight";
+import { resolveRoute } from "../lib/harness/routing";
 import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
 import { branchExists, questBranchExists, createQuestBranch } from "../lib/worktree";
 import type { QuestPromptContext } from "../lib/prompt";
@@ -721,6 +722,15 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   }
 
   if (opts.dryRun) {
+    // Per-task route (profile, harness, model); an unresolvable profile is reported, not fatal
+    const routeInfo = (f: (typeof selected)[number]) => {
+      try {
+        const r = resolveRoute(config, { operation: "code", task: f, sessionModel: opts.model ?? null });
+        return { profile: r.profile, harness: r.harness, model: r.model, route_error: null as string | null };
+      } catch (err) {
+        return { profile: null, harness: null, model: null, route_error: err instanceof Error ? err.message : String(err) };
+      }
+    };
     const dryRunResult = {
       dry_run: true,
       base_branch: opts.baseBranch,
@@ -733,7 +743,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
         difficulty: f.difficulty,
         effort: f.effort,
         weight: computeTaskWeight(f),
-        model: resolveTaskModel(f, config.modelRouting, opts.model ?? null),
+        ...routeInfo(f),
       })),
       schedule_plan: schedulePlan ? {
         streams: schedulePlan.streams.map((s) => s.featureIds),
@@ -750,12 +760,13 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
     output(fmt, dryRunResult, () => {
       console.log("Dry run — not launching agents.");
-      if (config.modelRouting) {
+      if (config.modelRouting || config.agentProfiles || config.routing) {
         for (const f of selected) {
-          const model = resolveTaskModel(f, config.modelRouting, opts.model ?? null);
-          console.log(
-            `  ${f.id}: weight=${computeTaskWeight(f)} model=${model ?? "(agent default)"}`
-          );
+          const info = routeInfo(f);
+          const who = info.route_error
+            ? `ERROR ${info.route_error}`
+            : `${info.harness}${info.profile !== "default" ? `:${info.profile}` : ""} model=${info.model ?? "(agent default)"}`;
+          console.log(`  ${f.id}: weight=${computeTaskWeight(f)} ${who}`);
         }
       }
       const scopeTasks = data.tasks.filter((t) => scopeSet.has(t.id));

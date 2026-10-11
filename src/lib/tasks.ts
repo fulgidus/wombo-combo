@@ -94,6 +94,11 @@ export interface Task {
    */
   agent?: string;
   /**
+   * Optional agent profile name (config `agentProfiles`) that runs this task.
+   * Overrides routing by difficulty/weight. Unknown names fail the launch.
+   */
+  agent_profile?: string;
+  /**
    * Optional quest ID this task belongs to.
    * When set, the task is part of the named quest and will automatically
    * fork from / merge into the quest branch during launch.

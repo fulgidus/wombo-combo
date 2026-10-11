@@ -34,6 +34,8 @@
 #   references  : list[string]  — URLs or file paths for relevant docs.
 #   notes       : list[string]  — Free-form updates (newest first).
 #   subtasks    : list[task]    — Always [] in folder-based storage (legacy).
+#   agent_profile: string|null  — Optional config agentProfiles entry that runs this task
+#                                  (harness + model + account); overrides routing.
 #   agent_type  : string|null   — Optional agent type from registry.
 #   agent       : string|null   — Optional local agent definition name (without
 #                                  .md extension). References a file in

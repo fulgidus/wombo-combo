@@ -193,6 +193,11 @@ export function validateTask(task: unknown): SchemaIssue[] {
     }
   }
 
+  // agent_profile field: name of a config agentProfiles entry
+  if (t?.agent_profile != null && t.agent_profile !== "" && typeof t.agent_profile !== "string") {
+    issues.push({ level: "error", taskId: id, message: "agent_profile must be a string (name of an agentProfiles entry in config.json)" });
+  }
+
   // quest field: must be a valid kebab-case quest ID if present
   if (t?.quest != null && t.quest !== "") {
     if (typeof t.quest !== "string") {
