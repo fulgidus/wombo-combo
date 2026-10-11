@@ -20,6 +20,7 @@ import type { DepGraph, SchedulePlan } from "../lib/dependency-graph";
 import { worktreePath } from "../lib/worktree";
 import { pathsOverlap } from "../lib/file-scopes";
 import { TERMINAL_STATUSES } from "./state";
+import { isClaimedByOther, isTeamEnabled } from "../lib/claims";
 import type { DaemonState, InternalAgentState } from "./state";
 import type { AgentRunner } from "./agent-runner";
 
@@ -365,6 +366,13 @@ export class Scheduler {
 
       // Remove skipped tasks
       tasks = tasks.filter((t) => !this.deps.state.isSkipped(t.id));
+
+      // Team mode: leave tasks claimed by another developer alone
+      if (isTeamEnabled(this.config.config)) {
+        tasks = tasks.filter(
+          (t) => !isClaimedByOther(this.config.projectRoot, this.config.config, t.id)
+        );
+      }
 
       return sortByPriorityThenEffort(tasks);
     } catch {

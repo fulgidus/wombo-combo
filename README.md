@@ -265,6 +265,12 @@ screen, or `WOMBO_LOCALE=it`; `-o json` output is never translated. See
 [docs/src/content/docs/guides/i18n.md](docs/src/content/docs/guides/i18n.md)
 for adding a locale.
 
+## Teams
+
+Several developers can share one repository: task claims are git-tracked files
+and a merge driver removes the timestamp conflicts. See
+[docs/src/content/docs/guides/team.md](docs/src/content/docs/guides/team.md).
+
 ## Launch options
 
 ```sh

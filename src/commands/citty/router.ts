@@ -37,6 +37,7 @@ import { wishlistCommand } from "./wishlist";
 import { tuiCommand } from "./tui";
 import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
+import { teamCommand } from "./team";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -103,6 +104,8 @@ const CITTY_COMMANDS = new Set([
     // --- Session replays ---
     "replay",
     "rp",         // alias for replay
+    // --- Team task claims ---
+    "team",
 ]);
 
 /**
@@ -182,6 +185,7 @@ const DEFAULT_SUBCOMMAND: Record<string, string> = {
     wishlist: "list",
     daemon: "status",
     replay: "list",
+    team: "status",
 };
 
 /**
@@ -330,6 +334,10 @@ export async function runCittyCommand(
         case "replay":
         case "rp":
             await runCommand(replayCommand, { rawArgs: injectDefaultSubcommand("replay", rawArgs) });
+            break;
+
+        case "team":
+            await runCommand(teamCommand, { rawArgs: injectDefaultSubcommand("team", rawArgs) });
             break;
 
         default:

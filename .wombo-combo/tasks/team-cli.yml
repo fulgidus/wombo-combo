@@ -2,15 +2,15 @@ id: team-cli
 title: "woco team: claim, release, status commands"
 description: Add citty command 'team' with claim <task-id>, release <task-id>, status (who owns what, expired claims,
   tasks unclaimed) with -o json support; register in router, COMMAND_REGISTRY and docs:gen; all text via i18n (en+it).
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
   - team-claims
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:40:18.139Z
 constraints: []
 forbidden: []
 references: []

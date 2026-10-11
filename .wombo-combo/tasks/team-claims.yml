@@ -5,14 +5,14 @@ description: "Add src/lib/claims.ts: claim files at .wombo-combo/claims/<task-id
   listClaims, isClaimedByOther, expired detection. Daemon scheduler skips tasks claimed by another developer;
   AgentRunner claims on launch and releases on done/failure. Add config team block (enabled default false, owner
   override) + schema + docs."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT3H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:40:16.784Z
 constraints:
   - Pure-file, git-native
   - no server

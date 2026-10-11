@@ -126,6 +126,16 @@ Retention of recorded agent session replays (.wombo-combo/replays/), applied aft
 | `replay.maxAgeDays` | number \| null | `null` | Delete replays older than this many days; null = no age limit |
 | `replay.maxTotalMB` | number \| null | `null` | Total size cap of all replays in MB (oldest removed first); null = no cap |
 
+## `team`
+
+Multi-developer coordination: git-tracked task claims (.wombo-combo/claims/) so teammates do not work on the same task
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `team.enabled` | boolean | `false` | Enable task claims; the daemon skips tasks claimed by another developer |
+| `team.owner` | string \| null | `null` | Claim owner identity; null = git config user.email |
+| `team.claimTtlHours` | number | `24` | Hours until a claim expires and can be taken over |
+
 ## `modelRouting`
 
 Per-task model routing by weight class (light/medium/heavy); null/absent = session model

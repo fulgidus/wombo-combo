@@ -44,6 +44,7 @@ import { versionCommand } from "../commands/citty/version";
 import { describeCommand } from "../commands/citty/describe";
 import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
+import { teamCommand } from "../commands/citty/team";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -829,6 +830,94 @@ const ENTRIES: RegistryEntry[] = [
           },
           flagOverrides: {
             execution: { description: "Execution: 1-based index (oldest first) or full execution ID (default: latest)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- team ---------------------------------------------------------------
+  {
+    cittyCmd: teamCommand,
+    meta: {
+      summary: "Multi-developer task claims: claim, release, status",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Team task claims",
+      description:
+        "Git-tracked claim files under .wombo-combo/claims/ tell teammates who works on which task. " +
+        "Claims expire after team.claimTtlHours (default 24). With team.enabled the daemon skips tasks " +
+        "claimed by another developer and claims/releases tasks as agents start and finish.",
+    },
+    subEntries: [
+      {
+        subKey: "claim",
+        parentName: "team",
+        meta: {
+          summary: "Claim a task for yourself",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            taskId: { name: "task-id", description: "Task ID to claim" },
+          },
+          flagOverrides: {
+            force: { description: "Take over a claim held by someone else", default: false },
+          },
+        },
+      },
+      {
+        subKey: "release",
+        parentName: "team",
+        meta: {
+          summary: "Release a task claim",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            taskId: { name: "task-id", description: "Task ID to release" },
+          },
+          flagOverrides: {
+            force: { description: "Release a claim held by someone else", default: false },
+          },
+        },
+      },
+      {
+        subKey: "status",
+        parentName: "team",
+        meta: {
+          summary: "Show task claims, expired claims and unclaimed tasks",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "setup",
+        parentName: "team",
+        meta: {
+          summary: "Configure the git merge driver for .wombo-combo task/meta files",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          flagOverrides: {
+            command: { description: "Override the merge driver command (default: woco team merge-meta %O %A %B)" },
+          },
+        },
+      },
+      {
+        subKey: "merge-meta",
+        parentName: "team",
+        meta: {
+          summary: "Git merge driver: merge <base> <ours> <theirs> into <ours> (exit 1 on conflict)",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            base: { name: "base", description: "Common ancestor file (%O)" },
+            ours: { name: "ours", description: "Current version, result is written here (%A)" },
+            theirs: { name: "theirs", description: "Other branch version (%B)" },
           },
         },
       },

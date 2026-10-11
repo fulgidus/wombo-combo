@@ -1362,3 +1362,39 @@ describe("File-scope steering", () => {
     state.destroy();
   });
 });
+
+describe("Scheduler team claims", () => {
+  test("skips tasks claimed by another developer only when team.enabled", async () => {
+    const dir = makeTempDir();
+    try {
+      const { claimTask } = await import("../src/lib/claims");
+      const tasksDir = join(dir, ".wombo-combo", "tasks");
+      mkdirSync(tasksDir, { recursive: true });
+      for (const id of ["mine-1", "theirs-1"]) {
+        writeFileSync(
+          join(tasksDir, `${id}.yml`),
+          `id: ${id}\ntitle: T ${id}\nstatus: planned\npriority: medium\neffort: PT30M\ndepends_on: []\n`,
+        );
+      }
+      const team = (owner: string, enabled: boolean) =>
+        makeConfig({ tasksDir: "tasks", archiveDir: "archive", team: { enabled, owner, claimTtlHours: 24 } });
+      claimTask(dir, team("other@x", true), "theirs-1");
+
+      const candidates = (enabled: boolean) => {
+        const state = new DaemonState(dir);
+        const runner = { setAgentOverride() {} } as unknown as AgentRunner;
+        const s = new Scheduler(
+          { projectRoot: dir, config: team("me@x", enabled), tickIntervalMs: 60000 },
+          { state, runner },
+        );
+        const ids = (s as any).getCandidateTasks().map((t: any) => t.id).sort();
+        state.destroy();
+        return ids;
+      };
+      expect(candidates(true)).toEqual(["mine-1"]);
+      expect(candidates(false)).toEqual(["mine-1", "theirs-1"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

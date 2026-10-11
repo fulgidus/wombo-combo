@@ -117,6 +117,11 @@ export interface WomboConfig {
    * constructed configs keep working; read it through normalizeReplayConfig().
    */
   replay?: ReplayConfig;
+  /**
+   * Multi-developer coordination (git-tracked task claims). Optional so older
+   * config files keep working; read it through normalizeTeamConfig().
+   */
+  team?: TeamConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
@@ -184,6 +189,16 @@ export interface PostMergeConfig {
   prBaseBranch: string | null;
   /** Append a CHANGELOG.md entry after successful merges (independent of prMode) */
   changelog: boolean;
+}
+
+/** Multi-developer coordination via git-tracked claim files (.wombo-combo/claims/) */
+export interface TeamConfig {
+  /** Enable task claims; disabled keeps single-developer behaviour unchanged */
+  enabled: boolean;
+  /** Claim owner override; null = git config user.email */
+  owner: string | null;
+  /** Hours until a claim expires */
+  claimTtlHours: number;
 }
 
 /** Retention of recorded agent session replays (.wombo-combo/replays/) */
@@ -371,6 +386,11 @@ export const DEFAULT_CONFIG: WomboConfig = {
     maxAgeDays: null,
     maxTotalMB: null,
   },
+  team: {
+    enabled: false,
+    owner: null,
+    claimTtlHours: 24,
+  },
   devMode: false,
   tui: {
     theme: "default",
@@ -464,6 +484,17 @@ export function normalizePostMergeConfig(
     prMode: src.prMode ?? d.prMode,
     prBaseBranch: base === undefined ? d.prBaseBranch : (base as string | null),
     changelog: src.changelog ?? d.changelog,
+  };
+}
+
+/** Fill in team defaults for legacy or manually constructed configs. */
+export function normalizeTeamConfig(block?: Partial<TeamConfig> | null): TeamConfig {
+  const d = DEFAULT_CONFIG.team!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    enabled: src.enabled ?? d.enabled,
+    owner: src.owner === undefined ? d.owner : src.owner,
+    claimTtlHours: src.claimTtlHours ?? d.claimTtlHours,
   };
 }
 
@@ -685,6 +716,21 @@ export function validateConfig(config: WomboConfig): void {
       if (v !== undefined && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v <= 0)) {
         throw new Error(`config.replay.${k} must be null or a number > 0`);
       }
+    }
+  }
+  if (config.team !== undefined) {
+    const tm = config.team as Partial<TeamConfig>;
+    if (tm.enabled !== undefined && typeof tm.enabled !== "boolean") {
+      throw new Error("config.team.enabled must be a boolean");
+    }
+    if (tm.owner !== undefined && tm.owner !== null && (typeof tm.owner !== "string" || !tm.owner.trim())) {
+      throw new Error("config.team.owner must be null or a non-empty string");
+    }
+    if (
+      tm.claimTtlHours !== undefined &&
+      (typeof tm.claimTtlHours !== "number" || !Number.isFinite(tm.claimTtlHours) || tm.claimTtlHours <= 0)
+    ) {
+      throw new Error("config.team.claimTtlHours must be a number > 0");
     }
   }
   if (config.postMerge !== undefined) {

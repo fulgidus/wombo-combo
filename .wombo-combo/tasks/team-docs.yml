@@ -2,8 +2,8 @@ id: team-docs
 title: Team collaboration guide
 description: "docs/src/content/docs/guides/team.md: claims, TTL, setup merge driver, recommended workflow; link from
   README; run docs:gen."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on:
@@ -11,7 +11,7 @@ depends_on:
   - team-merge-driver
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:40:21.181Z
 constraints: []
 forbidden: []
 references: []

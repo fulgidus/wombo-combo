@@ -364,6 +364,33 @@
         }
       }
     },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Multi-developer coordination: git-tracked task claims (.wombo-combo/claims/) so teammates do not work on the same task",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable task claims; the daemon skips tasks claimed by another developer"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "default": null,
+          "description": "Claim owner identity; null = git config user.email"
+        },
+        "claimTtlHours": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 24,
+          "description": "Hours until a claim expires and can be taken over"
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

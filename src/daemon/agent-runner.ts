@@ -75,6 +75,7 @@ import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
 import { ReplayRecorder } from "./replay-recorder";
 import { normalizeHarnessEvent } from "../lib/replay";
+import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
 import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
@@ -224,8 +225,38 @@ export class AgentRunner {
         state.emit("evt:log", { level: "warn", message: `[replay] ${message}` }),
     });
 
+    // Team mode: claim a task when its agent starts, release when it ends
+    state.observeStatus((agent, previous, next) => this.syncClaim(agent.featureId, previous, next));
+
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
+  }
+
+  /**
+   * Keep the task claim in step with the agent lifecycle (no-op unless
+   * team.enabled). Claim when launch starts, release once merged or failed.
+   * Claim errors never break the pipeline.
+   */
+  private syncClaim(featureId: string, previous: string, next: string): void {
+    if (!isTeamEnabled(this.config)) return;
+    try {
+      if (next === "installing" && previous !== "installing") {
+        const res = claimTask(this.projectRoot, this.config, featureId);
+        if (!res.ok) {
+          this.state.emit("evt:log", {
+            level: "warn",
+            message: `[team] ${featureId} is claimed by ${res.claim.owner}; launching anyway`,
+          });
+        }
+      } else if (next === "merged" || next === "failed") {
+        releaseTask(this.projectRoot, this.config, featureId);
+      }
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[team] claim sync failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
   }
 
   // -------------------------------------------------------------------------
