@@ -222,7 +222,7 @@ describe("COMMAND_REGISTRY is backed by BRIDGE_REGISTRY", () => {
       "eval",
       "help", "version", "describe", "quest", "genesis", "wishlist", "completion",
       "tasks list", "tasks add", "tasks set-status", "tasks check", "tasks archive",
-      "tasks show", "tasks graph", "tasks set-priority", "tasks set-difficulty",
+      "tasks show", "tasks graph", "tasks set-priority", "tasks set-quest", "tasks set-difficulty",
       "quest create", "quest list", "quest show", "quest plan",
       "quest activate", "quest pause", "quest complete", "quest abandon",
       "wishlist add", "wishlist list", "wishlist delete",

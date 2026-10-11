@@ -33,6 +33,7 @@
  *   woco tasks add <id> <title> [options]             (alias: t a)
  *   woco tasks set-status <task-id> <status>          (alias: t ss)
  *   woco tasks set-priority <task-id> <priority>      (alias: t sp)
+ *   woco tasks set-quest <task-id> <quest-id|none>    (alias: t sq)
  *   woco tasks set-difficulty <task-id> <difficulty>   (alias: t sd)
  *   woco tasks check                                  (alias: t ch)
  *   woco tasks archive [task-id] [--dry-run]          (alias: t ar)

@@ -157,6 +157,38 @@ Modifies project state. Supports `--dry-run`.
 | `--output` | `-o` | string | `"text"` | Output format: text (default), json, or toon. Values: `text`, `json`, `toon`. |
 | `--force` |  | boolean | `false` | Force overwrite / skip safety prompts |
 
+## tasks set-quest
+
+Attach a task to a quest, or detach it with "none"
+
+Aliases: `sq`
+
+```sh
+woco tasks set-quest <task-id> <quest-id> [flags]
+```
+
+Modifies project state. Supports `--dry-run`.
+
+### Arguments
+
+| Argument | Required | Description |
+| --- | --- | --- |
+| `task-id` | yes | Task ID to update |
+| `quest-id` | yes | Quest ID to attach to, or "none" to detach |
+
+### Flags
+
+| Flag | Alias | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--dry-run` |  | boolean | `false` | Show what would change without writing |
+
+### Global flags
+
+| Flag | Alias | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--output` | `-o` | string | `"text"` | Output format: text (default), json, or toon. Values: `text`, `json`, `toon`. |
+| `--force` |  | boolean | `false` | Force overwrite / skip safety prompts |
+
 ## tasks set-difficulty
 
 Change a task's difficulty

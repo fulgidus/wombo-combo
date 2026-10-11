@@ -477,6 +477,39 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
     );
 
     test(
+      "tasks set-quest attaches and detaches a task's quest",
+      () => {
+        expect(woco(["quest", "create", "link-quest", "Link quest", "--goal", "Link via CLI"]).exitCode).toBe(0);
+        expect(woco(["tasks", "add", "link-step", "Link step"]).exitCode).toBe(0);
+
+        const attach = woco(["tasks", "set-quest", "link-step", "link-quest", "-o", "json"]);
+        expect(attach.exitCode).toBe(0);
+        expect(JSON.parse(attach.stdout)).toMatchObject({
+          id: "link-step",
+          old_quest: null,
+          quest: "link-quest",
+          changed: true,
+        });
+        expect(JSON.parse(woco(["tasks", "show", "link-step", "-o", "json"]).stdout).quest).toBe("link-quest");
+
+        const same = woco(["tasks", "set-quest", "link-step", "link-quest", "-o", "json"]);
+        expect(same.exitCode).toBe(0);
+        expect(JSON.parse(same.stdout).changed).toBe(false);
+
+        const bad = woco(["tasks", "set-quest", "link-step", "missing-quest"]);
+        expect(bad.exitCode).toBe(1);
+        expect(bad.output).toContain('Quest "missing-quest" does not exist');
+
+        const detach = woco(["tasks", "set-quest", "link-step", "none", "-o", "json"]);
+        expect(detach.exitCode).toBe(0);
+        expect(JSON.parse(detach.stdout)).toMatchObject({ old_quest: "link-quest", quest: null, changed: true });
+        const shown = JSON.parse(woco(["tasks", "show", "link-step", "-o", "json"]).stdout);
+        expect(shown.quest).toBeUndefined();
+      },
+      TEST_TIMEOUT,
+    );
+
+    test(
       "quest create without --goal exits 1",
       () => {
         const result = woco(["quest", "create", "no-goal", "No goal"]);

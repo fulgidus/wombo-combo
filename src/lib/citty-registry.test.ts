@@ -68,11 +68,11 @@ describe("BRIDGE_REGISTRY", () => {
 // ---------------------------------------------------------------------------
 
 describe("BRIDGE_REGISTRY subcommands", () => {
-  test("tasks command has 9 subcommands", () => {
+  test("tasks command has 10 subcommands", () => {
     const tasks = BRIDGE_REGISTRY.find((c) => c.name === "tasks");
     expect(tasks).toBeDefined();
     expect(tasks!.subcommands).toBeDefined();
-    expect(tasks!.subcommands!.length).toBe(9);
+    expect(tasks!.subcommands!.length).toBe(10);
   });
 
   test("tasks subcommands have expected names", () => {
@@ -82,6 +82,7 @@ describe("BRIDGE_REGISTRY subcommands", () => {
     expect(subNames).toContain("tasks add");
     expect(subNames).toContain("tasks set-status");
     expect(subNames).toContain("tasks set-priority");
+    expect(subNames).toContain("tasks set-quest");
     expect(subNames).toContain("tasks set-difficulty");
     expect(subNames).toContain("tasks check");
     expect(subNames).toContain("tasks archive");

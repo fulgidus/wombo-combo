@@ -49,8 +49,8 @@ describe("citty tasks command", () => {
     expect(subCommandNames).toContain("archive");
     expect(subCommandNames).toContain("show");
     expect(subCommandNames).toContain("graph");
-    // Also has aliases: ls, a, ss, sp, sd, ch, validate, ar, sh, g
-    expect(subCommandNames.length).toBe(19);
+    // Also has aliases: ls, a, ss, sp, sq, sd, ch, validate, ar, sh, g
+    expect(subCommandNames.length).toBe(21);
   });
 
   test("tasksCommand has no run handler (default subcommand injected by router)", async () => {
@@ -122,6 +122,18 @@ describe("citty tasks subcommands structure", () => {
     expect(args.taskId.type).toBe("positional");
     expect(args.priority).toBeDefined();
     expect(args.priority.type).toBe("positional");
+    expect(args.dryRun).toBeDefined();
+  });
+
+  test("set-quest subcommand has taskId and questId positionals", async () => {
+    const { tasksCommand } = await import("../src/commands/citty/tasks");
+    const subCommands = await resolveValue(tasksCommand.subCommands!);
+    const cmd = await resolveValue(subCommands["set-quest"]);
+    expect(cmd).toBeDefined();
+    expect(subCommands.sq).toBe(subCommands["set-quest"]);
+    const args = await resolveValue(cmd.args!);
+    expect(args.taskId.type).toBe("positional");
+    expect(args.questId.type).toBe("positional");
     expect(args.dryRun).toBeDefined();
   });
 

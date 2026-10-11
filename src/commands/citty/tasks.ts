@@ -10,6 +10,7 @@
  *   add (a)            — Add a new task
  *   set-status (ss)    — Change a task's status
  *   set-priority (sp)  — Change a task's priority
+ *   set-quest (sq)     — Attach a task to a quest, or detach it ("none")
  *   set-difficulty (sd) — Change a task's difficulty
  *   check (ch)         — Validate tasks file
  *   archive (ar)       — Archive done/cancelled tasks
@@ -27,6 +28,7 @@ import { cmdTasksList } from "../tasks/list";
 import { cmdTasksAdd } from "../tasks/add";
 import { cmdTasksSetStatus } from "../tasks/set-status";
 import { cmdTasksSetPriority } from "../tasks/set-priority";
+import { cmdTasksSetQuest } from "../tasks/set-quest";
 import { cmdTasksSetDifficulty } from "../tasks/set-difficulty";
 import { cmdTasksCheck } from "../tasks/check";
 import { cmdTasksArchive } from "../tasks/archive";
@@ -330,6 +332,59 @@ const setPriorityCommand = defineCommand({
 });
 
 // ---------------------------------------------------------------------------
+// Subcommand: set-quest
+// ---------------------------------------------------------------------------
+
+const setQuestCommand = defineCommand({
+  meta: {
+    name: "set-quest",
+    description: "Attach a task to a quest, or detach it with \"none\" (also: sq)",
+  },
+  args: {
+    taskId: {
+      type: "positional",
+      description: "Task ID to update",
+      required: true,
+    },
+    questId: {
+      type: "positional",
+      description: "Quest ID to attach to, or \"none\" to detach",
+      required: true,
+    },
+    dryRun: {
+      type: "boolean",
+      description: "Show what would change without writing",
+      required: false,
+    },
+    output: {
+      type: "string",
+      alias: "o",
+      description: "Output format: text (default), json, or toon",
+      required: false,
+    },
+  },
+  async run({ args }) {
+    const projectRoot = resolve(process.cwd());
+    const config = await loadProjectConfig(projectRoot);
+    const fmt = resolveOutputFormat(args.output);
+
+    if (!args.taskId || !args.questId) {
+      outputError(fmt, "Usage: woco tasks set-quest <task-id> <quest-id|none>");
+      return;
+    }
+
+    await cmdTasksSetQuest({
+      projectRoot,
+      config,
+      featureId: args.taskId,
+      questId: args.questId,
+      outputFmt: fmt,
+      dryRun: args.dryRun,
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Subcommand: set-difficulty
 // ---------------------------------------------------------------------------
 
@@ -572,6 +627,7 @@ export const tasksCommand = defineCommand({
     add: addCommand,
     "set-status": setStatusCommand,
     "set-priority": setPriorityCommand,
+    "set-quest": setQuestCommand,
     "set-difficulty": setDifficultyCommand,
     check: checkCommand,
     archive: archiveCommand,
@@ -582,6 +638,7 @@ export const tasksCommand = defineCommand({
     a: addCommand,
     ss: setStatusCommand,
     sp: setPriorityCommand,
+    sq: setQuestCommand,
     sd: setDifficultyCommand,
     ch: checkCommand,
     validate: checkCommand,

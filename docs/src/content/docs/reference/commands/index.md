@@ -32,6 +32,7 @@ so they always match the CLI. Run `woco <command> --help` for the same informati
 | [`quest`](./quest/) | Manage quests (scoped missions with their own task sets) |
 | [`genesis`](./genesis/) | Decompose a project vision into quests |
 | [`wishlist`](./wishlist/) | Quick-capture ideas for later |
+| [`replay`](./replay/) | List and show recorded agent sessions from .wombo-combo/replays/ |
 | [`completion`](./completion/) | Shell completions (install, uninstall, or emit script) |
 | [`daemon`](./daemon/) | Manage the persistent background daemon |
 

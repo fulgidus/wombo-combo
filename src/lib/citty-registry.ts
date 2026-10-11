@@ -435,6 +435,23 @@ const ENTRIES: RegistryEntry[] = [
         },
       },
       {
+        subKey: "set-quest",
+        parentName: "tasks",
+        meta: {
+          summary: "Attach a task to a quest, or detach it with \"none\"",
+          aliases: ["sq"],
+          mutating: true,
+          supportsDryRun: true,
+          positionalOverrides: {
+            taskId: { name: "task-id", description: "Task ID to update" },
+            questId: { name: "quest-id", description: "Quest ID to attach to, or \"none\" to detach" },
+          },
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing", default: false },
+          },
+        },
+      },
+      {
         subKey: "set-difficulty",
         parentName: "tasks",
         meta: {
