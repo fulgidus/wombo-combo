@@ -9,6 +9,7 @@
  * reads code — it never writes to the codebase.
  */
 
+import { loadProjectContext } from "./project-store";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, relative, basename, dirname } from "node:path";
@@ -89,6 +90,13 @@ export async function generatePlannerPrompt(
 
   sections.push(`\n## Quest Goal\n`);
   sections.push(quest.goal.trim());
+
+  // Project profile: tasks must fit the project's rules and conventions
+  const projectContext = loadProjectContext(projectRoot);
+  if (projectContext) {
+    sections.push("");
+    sections.push(projectContext);
+  }
 
   // Previous planning feedback — steer re-plans away from rejected approaches
   if (quest.notes.length > 0) {

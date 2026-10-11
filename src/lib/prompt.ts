@@ -115,13 +115,17 @@ export function formatTestBaselineSection(
  * @param hitlMode - Optional HITL mode. When "cautious" or "supervised", injects
  *                   instructions for using the query_human tool to ask the
  *                   human operator questions.
+ * @param projectContext - Optional formatted project profile (see
+ *                   loadProjectContext in project-store.ts): vision, tech
+ *                   stack, conventions and rules the agent must respect.
  */
 export function generatePrompt(
   feature: Feature,
   baseBranch: string,
   config: WomboConfig,
   quest?: QuestPromptContext,
-  hitlMode?: QuestHitlMode
+  hitlMode?: QuestHitlMode,
+  projectContext?: string | null
 ): string {
   const sections: string[] = [];
 
@@ -213,6 +217,13 @@ export function generatePrompt(
     for (const n of feature.notes) {
       sections.push(`- ${n}`);
     }
+  }
+
+  // Project profile — the project's own rules, conventions and tech stack
+  // (formatted with its own "## Project Context" heading)
+  if (projectContext && projectContext.trim()) {
+    sections.push("");
+    sections.push(projectContext.trim());
   }
 
   // Quest context — injected when this task is part of a quest

@@ -13,6 +13,7 @@
  *   quest-planner   → tasks
  */
 
+import { loadProjectContext } from "./project-store";
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
@@ -90,6 +91,16 @@ export async function generateGenesisPrompt(
 
   sections.push(`\n## Project Vision\n`);
   sections.push(vision.trim());
+
+  // Project profile, unless the caller already passed it as the vision
+  // (the TUI hands genesis the formatted profile)
+  if (!vision.includes("## Project Context")) {
+    const projectContext = loadProjectContext(projectRoot);
+    if (projectContext) {
+      sections.push("");
+      sections.push(projectContext);
+    }
+  }
 
   if (opts?.techStack) {
     sections.push(`\n## Tech Stack\n`);

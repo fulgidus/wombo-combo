@@ -12,6 +12,7 @@
  * Created tasks go directly into the task store (no quest association).
  */
 
+import { loadProjectContext } from "./project-store";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { WomboConfig } from "../config";
@@ -67,6 +68,13 @@ async function generateErrandPrompt(
   sections.push(``);
   sections.push(spec.description.trim());
   sections.push(``);
+
+  // Project profile: errand tasks must fit the project's rules and conventions
+  const projectContext = loadProjectContext(projectRoot);
+  if (projectContext) {
+    sections.push(projectContext);
+    sections.push(``);
+  }
 
   if (spec.scope) {
     sections.push(`## Scope`);

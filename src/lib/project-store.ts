@@ -594,7 +594,10 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
  * Returns a markdown-formatted string suitable for inclusion in any
  * agent prompt (genesis, quest planner, errand planner, task agent).
  */
-export function formatProjectContext(profile: ProjectProfile): string {
+export function formatProjectContext(
+  profile: ProjectProfile,
+  options: { includeCodebaseSummary?: boolean } = {}
+): string {
   const lines: string[] = [];
 
   lines.push("## Project Context");
@@ -687,11 +690,43 @@ export function formatProjectContext(profile: ProjectProfile): string {
   }
 
   // Codebase summary (for brownfield)
-  if (profile.codebase_summary) {
+  if (profile.codebase_summary && options.includeCodebaseSummary !== false) {
     lines.push("### Codebase Summary");
     lines.push(profile.codebase_summary);
     lines.push("");
   }
 
   return lines.join("\n");
+}
+
+/** Default cap for the project context injected into agent prompts */
+export const PROJECT_CONTEXT_MAX_CHARS = 12000;
+
+/**
+ * Load project.yml and format it for prompt injection.
+ *
+ * Returns null when there is no profile or it cannot be read — a broken
+ * profile must never block a launch or a planning run. Output longer than
+ * `maxChars` is cut and marked as truncated.
+ *
+ * The codebase summary is left out by default: planners already embed a
+ * fresh scout outline and task agents explore the tree themselves.
+ */
+export function loadProjectContext(
+  projectRoot: string,
+  options: { maxChars?: number; includeCodebaseSummary?: boolean } = {}
+): string | null {
+  const maxChars = options.maxChars ?? PROJECT_CONTEXT_MAX_CHARS;
+  let profile: ProjectProfile | null;
+  try {
+    profile = loadProject(projectRoot);
+  } catch {
+    return null;
+  }
+  if (!profile) return null;
+  const text = formatProjectContext(profile, {
+    includeCodebaseSummary: options.includeCodebaseSummary ?? false,
+  }).trimEnd();
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars).trimEnd() + "\n\n[... project context truncated]";
 }

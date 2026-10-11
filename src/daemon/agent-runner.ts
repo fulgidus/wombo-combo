@@ -65,6 +65,7 @@ import { resolveQuestConfig, applyQuestConstraintsToTask, getQuestTaskIds } from
 import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
 import { patchImportedAgent } from "../lib/templates";
 import { ensureQuestTestBaseline } from "../lib/test-baseline-capture";
+import { loadProjectContext } from "../lib/project-store";
 import { loadTestBaseline, toTestBaselineSummary, type TestBaseline } from "../lib/test-baseline";
 import type { Quest } from "../lib/quest";
 import type { QuestHitlMode } from "../lib/quest";
@@ -540,7 +541,8 @@ export class AgentRunner {
         agent.baseBranch,
         promptConfig,
         questContext,
-        hitlMode as any
+        hitlMode as any,
+        loadProjectContext(this.projectRoot)
       );
 
       // Capture the immutable analytics baseline after worktree preparation

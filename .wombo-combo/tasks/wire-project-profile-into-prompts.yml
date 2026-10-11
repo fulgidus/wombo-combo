@@ -5,13 +5,13 @@ description: formatProjectContext() (src/lib/project-store.ts) says the profile 
   (src/lib/prompt.ts) and the planners never include project.yml, so agents don't see the project's rules, conventions
   or tech stack. Inject a bounded profile section into task, quest-planner and errand prompts (and the daemon path),
   with tests; keep it optional when no project.yml exists.
-status: backlog
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
-started_at: null
+started_at: 2026-10-11T03:04:09.930Z
 ended_at: null
 constraints: []
 forbidden: []
