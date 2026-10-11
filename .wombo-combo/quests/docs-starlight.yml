@@ -3,7 +3,7 @@ title: Starlight Documentation Site
 goal: "Set up an Astro + Starlight documentation site under docs/ with auto-generated command reference from
   COMMAND_REGISTRY metadata. Deploy to GitHub Pages via CI. Cover: getting started, quest/task workflows, config
   reference, and architecture overview."
-status: active
+status: completed
 priority: low
 difficulty: medium
 depends_on: []
@@ -15,9 +15,9 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-03-20T00:08:57.228Z
-updated_at: 2026-10-11T13:43:46.719Z
+updated_at: 2026-10-11T14:14:54.984Z
 started_at: 2026-10-11T13:42:08.423Z
-ended_at: null
+ended_at: 2026-10-11T14:14:54.984Z
 notes:
   - planning aborted at 2026-10-01T15:52:00.320Z — plan differently next time
   - "plan rejected at 2026-10-01T15:56:00.487Z: 8 tasks discarded (scaffold-starlight, generate-command-reference,
