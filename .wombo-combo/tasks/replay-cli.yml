@@ -6,15 +6,15 @@ description: |
   router.ts, and register it in citty-registry.ts so `woco describe replay`
   works. Text output summarises executions and prints a readable timeline;
   json/toon output returns the structured replay.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - replay-format-store
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:06:44.909Z
+ended_at: 2026-10-11T14:17:38.412Z
 constraints:
   - Follow the wishlist/usage command patterns (ensureInitialized, resolveOutputFormat, output helpers).
   - --execution is a 1-based index into the feature's executions ordered oldest to newest (default latest); a full

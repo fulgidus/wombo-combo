@@ -573,3 +573,57 @@ function summarize(r: LoadedReplay): ReplaySummary {
     diagnostics: r.diagnostics.length,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Labels (shared by the CLI and the TUI viewer)
+// ---------------------------------------------------------------------------
+
+function firstLine(s: string, max = 80): string {
+  const line = s.split("\n").find((l) => l.trim()) ?? "";
+  const t = line.trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+function toolSummary(input: Record<string, unknown> | undefined): string {
+  if (!input) return "";
+  const pick = input.command ?? input.cmd ?? input.filePath ?? input.path ?? input.pattern ?? input.description ?? input.prompt;
+  if (pick !== undefined) return firstLine(String(pick), 60);
+  const first = Object.values(input)[0];
+  return first === undefined ? "" : firstLine(typeof first === "string" ? first : JSON.stringify(first), 60);
+}
+
+/** One-line, plain-text description of a record (no timestamps). */
+export function recordLabel(r: ReplayRecord): string {
+  switch (r.kind) {
+    case "header":
+      return `session ${r.task_id}${r.agent ? ` (${r.agent}${r.model ? `, ${r.model}` : ""})` : ""}`;
+    case "prompt":
+      return `prompt (${r.text.length} chars)`;
+    case "attempt":
+      return r.reason === "start" ? `attempt ${r.n} started` : `attempt ${r.n} (retry)`;
+    case "diff":
+      return `diff: ${r.files.length} file${r.files.length === 1 ? "" : "s"}${r.truncated ? " (truncated)" : ""}`;
+    case "end":
+      return `end: ${r.outcome}${r.detail ? ` - ${firstLine(r.detail, 60)}` : ""}`;
+    case "event": {
+      const e = r.event;
+      switch (e.type) {
+        case "step_start":
+          return "step start";
+        case "text":
+          return `text: ${firstLine(e.text ?? "")}`;
+        case "tool": {
+          const mark = e.status === "error" ? " !" : "";
+          const sum = toolSummary(e.input);
+          return `tool ${e.tool ?? "?"}${sum ? ` ${sum}` : ""}${mark}`;
+        }
+        case "step_finish":
+          return `step finish${e.reason ? ` (${e.reason})` : ""}${e.tokens ? ` ${e.tokens.input}in/${e.tokens.output}out` : ""}`;
+        case "error":
+          return `error: ${firstLine(e.error ?? "")}`;
+        default:
+          return `raw: ${firstLine(e.text ?? "")}`;
+      }
+    }
+  }
+}

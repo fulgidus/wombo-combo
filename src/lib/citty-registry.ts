@@ -43,6 +43,7 @@ import { helpCommand } from "../commands/citty/help";
 import { versionCommand } from "../commands/citty/version";
 import { describeCommand } from "../commands/citty/describe";
 import { daemonCommand } from "../commands/citty/daemon";
+import { replayCommand } from "../commands/citty/replay";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -763,6 +764,55 @@ const ENTRIES: RegistryEntry[] = [
           aliases: ["rm", "del", "d"],
           mutating: true,
           supportsDryRun: false,
+        },
+      },
+    ],
+  },
+
+  // --- replay -------------------------------------------------------------
+  {
+    cittyCmd: replayCommand,
+    meta: {
+      summary: "List and show recorded agent sessions from .wombo-combo/replays/",
+      aliases: ["rp"],
+      mutating: false,
+      supportsDryRun: false,
+      completionSummary: "Agent session replays",
+      description:
+        "Every daemon-run agent execution is recorded (prompt, tool calls, outputs, timing and the final " +
+        "worktree diff) as one JSONL file per execution under .wombo-combo/replays/<feature-id>/. " +
+        "Use 'list' to see recorded executions and 'show <feature-id>' to print one session " +
+        "(--execution N, 1-based oldest first, or an execution ID; default latest). " +
+        "Replay a session interactively from the task browser with the p key.",
+    },
+    subEntries: [
+      {
+        subKey: "list",
+        parentName: "replay",
+        meta: {
+          summary: "List recorded agent executions",
+          aliases: ["ls"],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            featureId: { name: "feature-id", description: "Only executions of this feature/task ID (optional)" },
+          },
+        },
+      },
+      {
+        subKey: "show",
+        parentName: "replay",
+        meta: {
+          summary: "Show one recorded agent session",
+          aliases: ["view"],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            featureId: { name: "feature-id", description: "Feature/task ID to show" },
+          },
+          flagOverrides: {
+            execution: { description: "Execution: 1-based index (oldest first) or full execution ID (default: latest)" },
+          },
         },
       },
     ],
