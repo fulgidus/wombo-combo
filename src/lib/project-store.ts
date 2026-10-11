@@ -717,16 +717,19 @@ export function loadProjectContext(
   options: { maxChars?: number; includeCodebaseSummary?: boolean } = {}
 ): string | null {
   const maxChars = options.maxChars ?? PROJECT_CONTEXT_MAX_CHARS;
-  let profile: ProjectProfile | null;
+  let text: string;
   try {
-    profile = loadProject(projectRoot);
+    // Both steps can throw on a malformed profile (e.g. non-string values)
+    const profile = loadProject(projectRoot);
+    if (!profile) return null;
+    text = formatProjectContext(profile, {
+      includeCodebaseSummary: options.includeCodebaseSummary ?? false,
+    }).trimEnd();
   } catch {
     return null;
   }
-  if (!profile) return null;
-  const text = formatProjectContext(profile, {
-    includeCodebaseSummary: options.includeCodebaseSummary ?? false,
-  }).trimEnd();
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars).trimEnd() + "\n\n[... project context truncated]";
+  const marker = "\n\n[... project context truncated]";
+  // Keep the whole result, marker included, within maxChars
+  return text.slice(0, Math.max(0, maxChars - marker.length)).trimEnd() + marker;
 }

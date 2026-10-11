@@ -158,15 +158,31 @@ describe("loadProjectContext: truncation", () => {
   });
 });
 
-describe("loadProjectContext: known gaps (suspected bugs)", () => {
-  // BUG: formatProjectContext runs outside the try/catch in loadProjectContext.
-  // A non-string convention value (e.g. `naming: 2026` parses as a number)
-  // makes `v.trim()` throw, so a broken profile can block a launch.
-  test.todo("non-string convention value returns null or text instead of throwing");
+describe("loadProjectContext: malformed profiles never throw", () => {
+  test("a non-string convention value returns null or text instead of throwing", () => {
+    const root = makeRoot();
+    const base = richProfile();
+    // `naming: 2026` in YAML loads as a number, which used to crash formatting
+    writeProfile(root, richProfile({
+      conventions: { ...base.conventions, naming: 2026 as unknown as string },
+    }));
 
-  // BUG (minor): the truncation marker is appended after the maxChars slice,
-  // so the total output can exceed the documented cap by the marker length.
-  test.todo("total output including the truncation marker stays within maxChars");
+    let ctx: string | null | undefined;
+    expect(() => {
+      ctx = loadProjectContext(root);
+    }).not.toThrow();
+    expect(ctx === null || typeof ctx === "string").toBe(true);
+  });
+
+  test("total output including the truncation marker stays within maxChars", () => {
+    const root = makeRoot();
+    writeProfile(root, richProfile());
+    for (const maxChars of [60, 120, 500]) {
+      const ctx = loadProjectContext(root, { maxChars })!;
+      expect(ctx.length).toBeLessThanOrEqual(maxChars);
+      expect(ctx.endsWith(TRUNCATION_MARKER)).toBe(true);
+    }
+  });
 });
 
 describe("formatProjectContext", () => {
