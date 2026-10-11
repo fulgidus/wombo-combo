@@ -6,15 +6,15 @@ description: |
   paths via isExcludedPath), a file stat summary and truncated flag;
   never throws, returns diagnostics. Include helpers to classify diff
   lines (add/del/hunk/meta) for the viewer.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
   - replay-format-store
 effort: PT1H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T13:54:39.088Z
+ended_at: 2026-10-11T13:59:56.254Z
 constraints:
   - Use argument arrays with spawnSync (no shell); read-only git commands only.
   - Bound the diff at the byte cap defined in replay.ts and mark truncation explicitly.
