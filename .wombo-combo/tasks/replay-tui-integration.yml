@@ -1,0 +1,32 @@
+id: replay-tui-integration
+title: Open replay viewer from task browser
+description: |
+  Wire the viewer into the task browser: key `p` opens the replay of the
+  selected task (latest execution; [ and ] switch executions) loaded on
+  demand from ReplayStore, with an empty state when nothing is recorded;
+  add the key to the footer help; isActive gating like analytics. Document the
+  feature (README/CONTEXT) and add an e2e CLI smoke check for `replay list`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - replay-viewer-tui
+  - replay-recorder-wiring
+  - replay-cli
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Replays load only when the overlay opens (no polling loop).
+  - Keep the analytics overlay behaviour unchanged.
+forbidden:
+  - Do not change task-browser keys other than adding the replay key.
+references:
+  - src/ink/run-task-browser.tsx
+  - src/ink/task-browser.tsx
+  - tests/ink/analytics-browser.test.tsx
+notes:
+  - ESC menu entry is out of scope (no feature context there); tracked separately.
+subtasks: []
+quest: session-replay

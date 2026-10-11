@@ -1,0 +1,33 @@
+id: replay-format-store
+title: Replay format and store
+description: |
+  Create src/lib/replay.ts: versioned JSONL replay record types (header,
+  prompt, attempt, event, diff, end), the normalized ReplayEvent type,
+  normalizeOpenCodeEvent(OpenCodeEvent) -> ReplayEvent | null, truncation
+  helpers with explicit markers, and ReplayStore (append-only writer with
+  per-file size cap and seq tracking, loadReplay with malformed-line and
+  unsupported-version diagnostics, listReplays, pruneReplays retention).
+  Also add `.wombo-combo/replays/` to .gitignore and to the runtime
+  artifact lists in AGENTS.md (hard constraint 4 and the file layout).
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Pure library, no UI or daemon imports. Keep harness-specific code in normalizeOpenCodeEvent only.
+  - Write each record as one complete line with appendFileSync; reader must tolerate a truncated last line and a missing
+    end record.
+  - Validate execution and feature ids as safe path segments (no traversal).
+forbidden:
+  - Do not modify src/daemon or src/ink in this task.
+references:
+  - src/lib/analytics.ts
+  - src/lib/monitor.ts
+notes:
+  - Tests live in tests/replay-store.test.ts.
+subtasks: []
+quest: session-replay

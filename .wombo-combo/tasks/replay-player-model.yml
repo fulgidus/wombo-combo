@@ -1,0 +1,29 @@
+id: replay-player-model
+title: Replay playback engine
+description: |
+  Create src/lib/replay-player.ts: a pure, timer-free playback model over a
+  loaded replay timeline (reducer over index, playing, speed): seek, step,
+  jump by N, jump to next/previous tool or error event, speed up/down over
+  0.5x..8x, play/pause, tick(elapsedWallMs) advancing by recorded timestamps
+  scaled by speed with long idle gaps compressed, auto-pause at the end.
+  Also pure formatting helpers: timeline row labels, detail text lines,
+  and a windowing helper for bounded rendering.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - replay-format-store
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - No timers, no React, no IO; fully deterministic for tests.
+forbidden:
+  - Do not import from src/ink.
+references:
+  - src/lib/replay.ts
+notes:
+  - Tests in tests/replay-player.test.ts.
+subtasks: []
+quest: session-replay
