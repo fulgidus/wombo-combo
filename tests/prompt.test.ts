@@ -517,3 +517,45 @@ describe("generateConflictResolutionPrompt", () => {
     expect(prompt).toContain("make build");
   });
 });
+
+// ---------------------------------------------------------------------------
+// generatePrompt — project context injection
+// ---------------------------------------------------------------------------
+
+describe("generatePrompt — project context", () => {
+  const PROJECT_CONTEXT = "## Project Context\n\n### Vision\nPROJECT-VISION-MARKER\n\n### Rules\n- **src/:** RULE-MARKER";
+
+  test("includes the project context when one is passed", () => {
+    const prompt = generatePrompt(makeFeature(), "main", makeConfig(), undefined, undefined, PROJECT_CONTEXT);
+    expect(prompt).toContain("## Project Context");
+    expect(prompt).toContain("PROJECT-VISION-MARKER");
+    expect(prompt).toContain("RULE-MARKER");
+  });
+
+  test("places the project context before the Quest Context section", () => {
+    const quest: QuestPromptContext = {
+      questId: "q1",
+      goal: "Quest goal text",
+      addedConstraints: [],
+      addedForbidden: [],
+      knowledge: null,
+    };
+    const prompt = generatePrompt(makeFeature(), "main", makeConfig(), quest, undefined, PROJECT_CONTEXT);
+    const projectIdx = prompt.indexOf("## Project Context");
+    const questIdx = prompt.indexOf("## Quest Context");
+    expect(projectIdx).toBeGreaterThan(-1);
+    expect(questIdx).toBeGreaterThan(-1);
+    expect(projectIdx).toBeLessThan(questIdx);
+  });
+
+  test("without a project context there is no Project Context section", () => {
+    const prompt = generatePrompt(makeFeature(), "main", makeConfig());
+    expect(prompt).not.toContain("## Project Context");
+  });
+
+  test("null or blank project context adds nothing", () => {
+    const base = generatePrompt(makeFeature(), "main", makeConfig());
+    expect(generatePrompt(makeFeature(), "main", makeConfig(), undefined, undefined, null)).toBe(base);
+    expect(generatePrompt(makeFeature(), "main", makeConfig(), undefined, undefined, "   ")).toBe(base);
+  });
+});

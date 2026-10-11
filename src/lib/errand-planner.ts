@@ -48,8 +48,9 @@ export interface ErrandSpec {
 /**
  * Generate the prompt for errand-style task generation.
  * Lighter than a full quest prompt -- no quest context, no branches, no HITL.
+ * exported for tests
  */
-async function generateErrandPrompt(
+export async function generateErrandPrompt(
   spec: ErrandSpec,
   projectRoot: string,
   config: WomboConfig
