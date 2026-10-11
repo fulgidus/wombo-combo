@@ -1,7 +1,8 @@
 name: wombo-combo
 type: brownfield
-description: AI agent orchestration system for parallel feature development — spawns coding agents into isolated git
-  worktrees, coordinates their work through quests and dependency-aware task graphs, and verifies results before merge.
+description: AI agent orchestration CLI for parallel feature development — spawns coding agents into isolated git
+  worktrees (driven by a background daemon), coordinates their work through quests and dependency-aware task graphs,
+  and verifies results before merge.
 vision: "A dual-interface orchestration layer — CLI for LLM agents, TUI for humans — that turns high-level project goals
   into dependency-aware task graphs executed in parallel by autonomous coding agents. The CLI surface must be compact,
   machine-parseable (--output json), and context-efficient so agents can invoke wombo without blowing their context
@@ -12,123 +13,95 @@ vision: "A dual-interface orchestration layer — CLI for LLM agents, TUI for hu
   dashboards, and structured review gates."
 objectives:
   - id: obj-1
-    text: Stabilize TUI onboarding wizard — fix input bugs, Ctrl+S submit, arrow key navigation, snoozable skip
+    text: Multi-harness support — run agents through different coding CLIs (Claude Code, Codex, Gemini CLI, Aider, pi, ...)
+      behind one launcher interface, with per-task agent selection and fallback chains
     priority: high
     status: pending
-    quest_ids: []
+    quest_ids:
+      - multi-cli-support
   - id: obj-2
-    text: Complete onboarding typecheck/build verification gate (last backlog task)
+    text: Multi-provider and model routing — pick provider and model per task difficulty and per operation (planning,
+      coding, conflict resolution, review), extending the current light/medium/heavy modelRouting
     priority: high
     status: pending
     quest_ids: []
   - id: obj-3
-    text: Fix blessed textarea/textbox UX — cursor navigation, proper Enter handling in patched widgets
-    priority: high
+    text: Post-merge publication for this repo — enable the postMerge changelog (CHANGELOG.md) and draft PR flow in
+      .wombo-combo/config.json (opt-in; the auto-pr-changelog quest is completed)
+    priority: medium
     status: pending
-    quest_ids: []
+    quest_ids:
+      - auto-pr-changelog
   - id: obj-4
-    text: Wire project profile into agent prompts via formatProjectContext()
+    text: Full i18n — extract TUI and CLI strings into locale files, integrate i18next, replace the createI18n() skeleton
+      in src/ink/i18n.ts
     priority: medium
     status: pending
-    quest_ids: []
+    quest_ids:
+      - i18n-full
   - id: obj-5
-    text: Multi-harness support — Claude Code, Gemini CLI, Aider adapter integration with token tracking
-    priority: high
+    text: Agent session replay — record prompts, tool calls, outputs and timing to .wombo-combo/replays/, with a TUI
+      replay viewer
+    priority: low
     status: pending
-    quest_ids: []
+    quest_ids:
+      - session-replay
   - id: obj-6
-    text: Quest planner + Genesis planner agents — AI-driven task decomposition from high-level goals
-    priority: high
+    text: Starlight documentation site under docs/ with a command reference generated from COMMAND_REGISTRY, deployed to
+      GitHub Pages
+    priority: low
     status: pending
-    quest_ids: []
+    quest_ids:
+      - docs-starlight
   - id: obj-7
-    text: HITL modes — yolo/cautious/supervised human-in-the-loop for agent oversight
-    priority: medium
-    status: pending
-    quest_ids: []
-  - id: obj-8
-    text: Merge conflict resolver agent — automated conflict resolution in worktrees
-    priority: medium
-    status: pending
-    quest_ids: []
-  - id: obj-9
-    text: Chain-aware orchestration hardening — rescue, deferred merge, branch continuity
-    priority: medium
-    status: pending
-    quest_ids: []
-  - id: obj-10
-    text: TDD verification pipeline — red/green coercion, test detection, agent prompt integration
-    priority: medium
-    status: pending
-    quest_ids: []
-  - id: obj-11
-    text: Support for other coding agent CLIs beyond OpenCode (Claude Code, Gemini CLI, Aider, etc.)
+    text: Team collaboration via git — shared .wombo-combo/ state, task ownership, per-developer daemon instances
     priority: low
     status: pending
-    quest_ids: []
-  - id: obj-12
-    text: Real-time dashboard with graphs and status visualization
-    priority: low
-    status: pending
-    quest_ids: []
-  - id: obj-13
-    text: Self-upgrade mechanism — version check, prompt, and install
-    priority: low
-    status: pending
-    quest_ids: []
-  - id: obj-14
-    text: Wave reconnect — reattach to orphaned agent processes
-    priority: low
-    status: pending
-    quest_ids: []
-  - id: obj-15
-    text: Release changelog generation
-    priority: low
-    status: pending
-    quest_ids: []
-  - id: obj-16
-    text: Agent registry client — discover and install community agent templates
-    priority: low
-    status: pending
-    quest_ids: []
+    quest_ids:
+      - team-collab
 tech_stack:
-  runtime: Bun (>=1.0.0)
-  language: TypeScript (strict mode, ESM only, target ES2022, bundler module resolution)
+  runtime: Bun (>=1.0.0; CI pins bun 1.4.2)
+  language: TypeScript (strict mode, ESM only, target ES2022, bundler module resolution, react-jsx)
   frameworks:
-    - Citty (CLI arg parsing + subcommands — migration target)
-    - Ink (React-based terminal UI — migration target)
-    - neo-blessed (current TUI framework
-    - being migrated away from)
-  tools:
+    - citty (CLI arg parsing + subcommands; command definitions in src/commands/citty/)
+    - Ink 6 + React 19 (terminal UI; components in src/ink/)
     - yaml v2 (YAML parse/stringify)
+  tools:
     - git worktrees (agent isolation)
-    - mermaidtui (Mermaid diagram rendering in TUI)
-    - tmux (terminal multiplexer for agent sessions)
-    - tsc (typecheck --noEmit)
-    - bun build (single-file bundle to dist/)
+    - background daemon (src/daemon: scheduler, agent-runner, state, protocol)
     - bun test (built-in test runner)
-  notes: ""
+    - tsc (typecheck --noEmit)
+    - bun build via scripts/build.ts (single-file bundle to dist/)
+    - mermaidtui (Mermaid diagram rendering, used by `tasks graph`)
+    - graphify knowledge graph (graphify-out/) with a prek pre-push hook
+    - GitHub Actions (.github/workflows/ci.yml, release.yml) with Dependabot for actions
+  notes: "The TUI is Ink only; neo-blessed has been removed (the Ink migration quest is archived as completed). Quests
+    keep knowledge files under .wombo-combo/quests/. TDD verification uses quest test baselines (src/lib/test-baseline*.ts,
+    docs/tdd-baseline.md). Agent analytics live in src/lib/analytics*.ts (`usage --analytics`). The dashboard is realtime.
+    Post-merge changelog/PR publication runs from `merge` and is opt-in via config.postMerge. A fake agent runner
+    (src/lib/fake-agent-runner.ts) is available."
 conventions:
-  commits: "Conventional commits (feat/fix/refactor/chore/docs), scope in parens when applicable, reference feature ID
-    (e.g. feat(tui): fix input handling [tui-onboarding-fixes]). Never skip hooks (--no-verify). Never force push main.
+  commits: "Conventional commits (feat/fix/refactor/chore/docs), scope in parens when applicable, reference the task ID
+    in brackets (e.g. feat(tui): add wishlist overlay [task-id]). Never skip hooks (--no-verify). Never force push main.
     Always typecheck + build before committing."
-  branches: feature/<task-id> for agent work, main is the trunk, develop is the default base branch for worktrees. Branch
-    prefix configurable via config.git.branchPrefix (default "feature/").
-  testing: bun test (built-in runner), tests/ directory at project root, no external test framework. Test files use
-    *.test.ts naming. TDD pipeline available via config.tdd when enabled.
+  branches: "feature/<task-id> for task agent work (config.git.branchPrefix, default feature/); quest/<id> for quests.
+    main is the trunk and the default base branch (config.json baseBranch)."
+  testing: "bun test (built-in runner) over tests/ and colocated src/ink/*.test.ts(x) files. tests/e2e holds CLI and TUI
+    (pseudo-terminal) smoke tests, run in CI. Quests with TDD enabled verify against a test baseline captured on their
+    base branch. Test files use *.test.ts naming."
   coding_style: 'ESM only ("type": "module" in package.json). Use no file extensions in relative import paths (e.g.
     import { foo } from "./foo", NOT "./foo.js"). The tsconfig uses moduleResolution: bundler which resolves extensionless
-    imports to .ts files automatically. The .js extension convention is legacy and must not be used. Prefer Bun APIs
-    (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib equivalents. Minimal dependencies — justify any new addition.
-    Hand-rolled arg parsing is legacy; new commands go in separate files under src/commands/. Keep modules focused and
-    under ~500 lines where practical.'
+    imports to .ts files automatically. Prefer Bun APIs (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib
+    equivalents. Minimal dependencies — justify any new addition. CLI commands are citty definitions in
+    src/commands/citty/, registered in src/commands/citty/router.ts. Keep modules focused and under ~500 lines where
+    practical.'
   naming: "kebab-case for files and task IDs (pattern: ^[a-z0-9]+(-[a-z0-9]+)*$). camelCase for functions and variables.
-    PascalCase for types, classes, and interfaces. Prefix bug tasks with bug-. Prefix TUI modules with tui-. Template
-    files use descriptive kebab-case."
+    PascalCase for types, classes, and interfaces. Prefix bug tasks with bug-. TUI components live in src/ink/ as .tsx
+    files with colocated tests. Template files use descriptive kebab-case."
 rules:
   - id: rule-1
-    text: Always use `bun dev` to test, never the global `woco` binary — it runs stale snapshot code from the last release,
-      not the current working tree
+    text: Always use `bun dev <command>` to run wombo while developing, never the globally installed `woco` or `wombo`
+      binary — it is a snapshot of the last release, not the current working tree
     scope: runtime
     rigidity: hard
     consequences: Testing against old code; bugs appear fixed or broken when they aren't; wasted debugging time
@@ -137,9 +110,9 @@ rules:
       - testing
       - dogfooding
   - id: rule-2
-    text: Never publish manually — publishing is handled by the GitHub Actions release workflow triggered on git tag pushes.
-      Never run `npm publish` manually. To release, bump package.json version, commit, tag (v<version>), push with --tags.
-      Users install via `bun add -g wombo-combo`.
+    text: Never publish manually — never run `npm publish`. Releases are automated by .github/workflows/release.yml. A
+      package.json version bump pushed to main creates the v<version> tag and publishes to npm and GitHub Releases
+      (manual runs from the Actions tab also work). Users install via `bun add -g wombo-combo`.
     scope: distribution
     rigidity: hard
     consequences: Bypasses CI checks; publishes untested code; breaks the release audit trail; may publish without proper
@@ -150,7 +123,7 @@ rules:
       - release
       - ci
   - id: rule-3
-    text: Keep bun.lock committed for reproducible installs
+    text: Keep bun.lock committed; CI installs with --frozen-lockfile
     scope: dependencies
     rigidity: hard
     consequences: Non-deterministic dependency resolution; different machines get different versions; CI breaks
@@ -159,7 +132,9 @@ rules:
       - reproducibility
       - ci
   - id: rule-4
-    text: Always commit .wombo-combo/ contents — we need to keep track of the dogfooded development state
+    text: Always commit .wombo-combo/ project artifacts (config, project profile, tasks, archive, quests, wishlist) — we
+      need to keep track of the dogfooded development state. Runtime artifacts (state.json, logs/, history/,
+      usage.jsonl) stay gitignored
     scope: development
     rigidity: soft
     consequences: Loss of task history, project profile, and wave state used during dogfooded development
@@ -192,7 +167,8 @@ rules:
       - safety
       - main
   - id: rule-7
-    text: Always bump package.json version before creating a git tag — they must stay in sync
+    text: Always bump package.json version in the commit that releases — the release workflow tags v<version> from it, and
+      the tag and package.json version must stay in sync. Never create a tag without the matching bump
     scope: release
     rigidity: hard
     consequences: Version mismatch between tag and runtime; users install wrong version; upgrade detection breaks
@@ -200,26 +176,6 @@ rules:
       - release
       - versioning
   - id: rule-8
-    text: screen.destroy() handles terminal cleanup — never manually call removeAllListeners or setRawMode(false) on stdin
-    scope: tui
-    rigidity: hard
-    consequences: Terminal left in raw mode after exit; stdin listeners leak; subsequent CLI commands misbehave
-    tags:
-      - tui
-      - blessed
-      - cleanup
-  - id: rule-9
-    text: Use element-level key bindings (widget.key()) not screen-level (scr.key()) during blessed input mode — grabKeys
-      blocks screen handlers
-    scope: tui
-    rigidity: hard
-    consequences: Key bindings silently stop working when a textarea or textbox has focus; users cannot navigate or submit
-    tags:
-      - tui
-      - blessed
-      - input
-      - keybindings
-  - id: rule-10
     text: No new dependencies without justification — if you want to use an external framework or library, get user
       permission first by explaining how it helps achieve project goals faster or better
     scope: dependencies
@@ -229,7 +185,7 @@ rules:
       - dependencies
       - architecture
       - approval
-  - id: rule-11
+  - id: rule-9
     text: Never silently work around bugs — when you encounter unexpected behavior or errors in the codebase or tooling,
       either fix the issue immediately or track it (create a task or wishlist item) before proceeding with a workaround.
       Workarounds without tracking are forbidden.
@@ -242,6 +198,16 @@ rules:
       - quality
       - tracking
       - discipline
+  - id: rule-10
+    text: Keep graphify-out/ current — run `graphify update .` after code changes, or install the prek pre-push hook
+      (`uvx prek install`), which refreshes the graph and stops the push when it changed. CI fails when the graph is stale
+    scope: development
+    rigidity: soft
+    consequences: Stale knowledge graph misleads agents doing graph queries; CI knowledge-graph check fails
+    tags:
+      - development
+      - graphify
+      - ci
 codebase_summary: |-
   schemas/ (3 files)
     config.schema.json
@@ -371,5 +337,5 @@ codebase_summary: |-
   README.md
   tsconfig.json
 created_at: 2026-03-14T17:45:36.844Z
-updated_at: 2026-03-14T17:54:39.566Z
+updated_at: 2026-10-11T02:47:52.000Z
 genesis_count: 0
