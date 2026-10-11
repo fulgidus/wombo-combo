@@ -10,6 +10,7 @@
         "src/**/*.ts",
         "src/**/*.tsx",
         "src/templates/**",
+        "src/locales/**",
         "schemas/**"
     ],
     "scripts": {
@@ -45,6 +46,7 @@
     },
     "dependencies": {
         "citty": "^0.2.1",
+        "i18next": "26.4.2",
         "ink": "^6.8.0",
         "mermaidtui": "^0.0.5",
         "react": "^19.2.4",

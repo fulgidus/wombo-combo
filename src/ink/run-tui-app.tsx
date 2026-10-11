@@ -51,6 +51,7 @@ import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
 import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
+import { initI18n } from "../lib/i18n";
 import {
   DashboardScreen,
   DashboardStoreContext,
@@ -186,7 +187,12 @@ export function TuiApp({
   callbacks,
 }: TuiAppProps): React.ReactElement {
   const theme = getTheme(config.tui?.theme ?? "default");
-  const tFn = getLocaleT(config.tui?.locale ?? "en");
+  // Resolve once per render: config > env > en. Also syncs the global t().
+  const activeLocale = React.useMemo(
+    () => initI18n({ configLocale: config.tui?.locale, devMode: config.devMode }),
+    [config.tui?.locale, config.devMode],
+  );
+  const tFn = getLocaleT(activeLocale);
 
   const emptyDashStore: DashboardStore = {
     agents: [],
@@ -368,7 +374,7 @@ export function TuiApp({
                   screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
                   daemonConnected={daemonConnected}
                   daemonStats={daemonStats}
-                  locale={config.tui?.locale ?? "en"}
+                  locale={activeLocale}
                   dashboardAvailable
                 >
                   <ScreenRouter

@@ -24,6 +24,7 @@ import React, {
 } from "react";
 import { Box, Text } from "ink";
 import { t } from "./i18n";
+import { AVAILABLE_LOCALES } from "../lib/i18n";
 import type { ThemeName } from "./theme";
 import { saveConfig } from "../config";
 import { useScreenInput } from "./esc-menu";
@@ -114,7 +115,7 @@ export function SettingsSection({
 // ---------------------------------------------------------------------------
 
 const THEME_OPTIONS: ThemeName[] = ["default", "high-contrast", "minimal"];
-const LOCALE_OPTIONS = ["en"];
+const LOCALE_OPTIONS = ["auto", ...AVAILABLE_LOCALES];
 
 export interface SettingsScreenProps {
   /** Partial (or full) current config — only TUI-relevant fields used */

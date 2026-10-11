@@ -288,7 +288,7 @@ export {
   type ThemeName,
 } from "./theme";
 
-// i18n skeleton (t() helper, English strings, locale context)
+// i18n facade over i18next (t() helper, locale context)
 export {
   t,
   createI18n,

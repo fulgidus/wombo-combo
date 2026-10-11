@@ -69,6 +69,7 @@ import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
 import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
+import { initI18n } from "../lib/i18n";
 import {
   DashboardStoreContext,
   useDashboardStore,
@@ -307,7 +308,12 @@ export function DaemonMonitorShell({
   skipSplash = false,
 }: DaemonMonitorShellProps): React.ReactElement {
   const theme = getTheme(config.tui?.theme ?? "default");
-  const tFn = getLocaleT(config.tui?.locale ?? "en");
+  // Resolve once per render: config > env > en. Also syncs the global t().
+  const activeLocale = React.useMemo(
+    () => initI18n({ configLocale: config.tui?.locale, devMode: config.devMode }),
+    [config.tui?.locale, config.devMode],
+  );
+  const tFn = getLocaleT(activeLocale);
 
   // Use provided store or create an empty one
   const store = storeProp ?? createEmptyStore();
@@ -422,7 +428,7 @@ export function DaemonMonitorShell({
                 screenName={chromeTitle}
                 daemonConnected={true}
                 waveSummary={waveSummary}
-                locale={config.tui?.locale ?? "en"}
+                locale={activeLocale}
                 dashboardAvailable
               >
                 <ScreenRouter
