@@ -196,6 +196,37 @@ When the browser is scoped to a quest the overlay uses the *recorded* quest of
 each execution (so archived or removed tasks still count); the unquested
 errands browser shows only executions without a quest.
 
+## Multiple agent CLIs and models
+
+By default wombo runs [opencode](https://opencode.ai). Agent **profiles** let
+you run tasks through other CLIs (Claude Code, Codex, pi, or any command) and
+route by task difficulty or operation, with fallbacks and per-account API keys:
+
+```json
+{
+  "agentProfiles": {
+    "fast": { "harness": "opencode", "model": "anthropic/claude-haiku-4" },
+    "deep": {
+      "harness": "claude-code",
+      "model": "opus",
+      "envFrom": { "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_WORK" }
+    }
+  },
+  "routing": {
+    "default": "fast",
+    "byWeight": { "heavy": "deep" },
+    "byOperation": { "plan": "deep" },
+    "fallbacks": { "deep": ["fast"] }
+  }
+}
+```
+
+Credentials are never stored in config: `envFrom` names the environment
+variable to read. Existing `agent.bin` and `modelRouting` settings keep working
+unchanged. Only opencode is verified end to end; the other harnesses are
+verified against recorded output only. See [docs/harnesses.md](docs/harnesses.md)
+for every option, the routing order and the verification status.
+
 ## Launch options
 
 ```sh
