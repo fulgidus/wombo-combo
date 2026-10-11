@@ -399,12 +399,16 @@ export function normalizePostMergeConfig(
  * Resolve the agent binary path. Priority:
  *   1. config.agent.bin (explicit)
  *   2. OPENCODE_BIN env var
- *   3. ~/.opencode/bin/opencode (default install location)
+ *   3. ~/.opencode/bin/opencode (default install location, if it exists)
+ *   4. `opencode` found on PATH (absolute path via Bun.which)
+ *   5. ~/.opencode/bin/opencode even if missing (callers report it as not found)
  */
 export function resolveAgentBin(config: WomboConfig): string {
   if (config.agent.bin) return config.agent.bin;
   if (process.env.OPENCODE_BIN) return process.env.OPENCODE_BIN;
-  return resolve(process.env.HOME || "~", ".opencode/bin/opencode");
+  const installed = resolve(process.env.HOME || "~", ".opencode/bin/opencode");
+  if (existsSync(installed)) return installed;
+  return Bun.which("opencode", { PATH: process.env.PATH }) ?? installed;
 }
 
 /**

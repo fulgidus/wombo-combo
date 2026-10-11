@@ -2,14 +2,14 @@ id: portable-agent-bin
 title: Make dogfood agent.bin portable
 description: config.json agent.bin is /usr/bin/opencode, a machine-specific absolute path. Use null (PATH lookup) like
   config.json.orig had, unless something requires an explicit path.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on: []
 effort: PT10M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T02:47:14.935Z
+ended_at: 2026-10-11T02:47:39.536Z
 constraints: []
 forbidden: []
 references: []

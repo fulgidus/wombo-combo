@@ -11,7 +11,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -22,6 +22,7 @@ import {
   WOMBO_DIR,
   generateDefaultConfig,
   normalizePostMergeConfig,
+  resolveAgentBin,
 } from "../src/config";
 import type { WomboConfig } from "../src/config";
 
@@ -403,5 +404,70 @@ describe("postMerge config", () => {
     const config = fresh();
     config.postMerge = { prMode: "open", prBaseBranch: null, changelog: true };
     expect(() => validateConfig(config)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveAgentBin
+// ---------------------------------------------------------------------------
+
+describe("resolveAgentBin", () => {
+  const saved = { HOME: process.env.HOME, PATH: process.env.PATH, OPENCODE_BIN: process.env.OPENCODE_BIN };
+
+  afterEach(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  function configWithBin(bin: string | null): WomboConfig {
+    const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as WomboConfig;
+    config.agent.bin = bin;
+    return config;
+  }
+
+  test("explicit agent.bin wins", () => {
+    process.env.OPENCODE_BIN = "/env/opencode";
+    expect(resolveAgentBin(configWithBin("/explicit/opencode"))).toBe("/explicit/opencode");
+  });
+
+  test("OPENCODE_BIN env is used when agent.bin is null", () => {
+    process.env.OPENCODE_BIN = "/env/opencode";
+    expect(resolveAgentBin(configWithBin(null))).toBe("/env/opencode");
+  });
+
+  test("null agent.bin resolves opencode from PATH when no default install exists", () => {
+    delete process.env.OPENCODE_BIN;
+    const home = join(tmpDir, "home");
+    const pathDir = join(tmpDir, "bin");
+    mkdirSync(home, { recursive: true });
+    mkdirSync(pathDir, { recursive: true });
+    const fake = join(pathDir, "opencode");
+    writeFileSync(fake, "#!/bin/sh\n");
+    chmodSync(fake, 0o755);
+    process.env.HOME = home;
+    process.env.PATH = pathDir;
+    expect(resolveAgentBin(configWithBin(null))).toBe(fake);
+  });
+
+  test("default install location is preferred over PATH", () => {
+    delete process.env.OPENCODE_BIN;
+    const home = join(tmpDir, "home");
+    const installed = join(home, ".opencode", "bin", "opencode");
+    mkdirSync(join(home, ".opencode", "bin"), { recursive: true });
+    writeFileSync(installed, "#!/bin/sh\n");
+    process.env.HOME = home;
+    process.env.PATH = join(tmpDir, "empty");
+    expect(resolveAgentBin(configWithBin(null))).toBe(installed);
+  });
+
+  test("falls back to default install path when nothing is found", () => {
+    delete process.env.OPENCODE_BIN;
+    const home = join(tmpDir, "home");
+    mkdirSync(home, { recursive: true });
+    process.env.HOME = home;
+    process.env.PATH = join(tmpDir, "empty");
+    expect(resolveAgentBin(configWithBin(null))).toBe(join(home, ".opencode", "bin", "opencode"));
   });
 });
