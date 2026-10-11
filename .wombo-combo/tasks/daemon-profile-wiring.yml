@@ -1,0 +1,36 @@
+id: daemon-profile-wiring
+title: Per-task profile selection through the daemon pipeline
+description: |
+  Add optional task field agent_profile (tasks.ts, task-schema.ts,
+  task-store normalization, schemas/task.schema.json). In AgentRunner
+  resolve the route at submitTask (state records profile and harness; model
+  semantics unchanged), pass it to launchHeadless, resume retries with the
+  same profile via retryHeadless, run conflict resolvers with operation
+  conflict, register harness/provider in the token-usage context, and use
+  the fallback chain preflight at launch. Show profile in launch --dry-run
+  output. Fake agent unchanged.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - launcher-harness-integration
+effort: PT4H
+started_at: null
+ended_at: null
+constraints:
+  - state.json and daemon protocol changes are additive and optional
+  - fake-agent paths and existing daemon tests unchanged
+forbidden: []
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/state.ts
+  - src/daemon/protocol.ts
+  - src/lib/tasks.ts
+  - src/lib/task-schema.ts
+  - src/commands/launch.ts
+  - schemas/task.schema.json
+  - tests/daemon-profile-wiring.test.ts
+notes: []
+subtasks: []
+quest: multi-cli-support

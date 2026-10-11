@@ -1,0 +1,28 @@
+id: harness-docs-acceptance
+title: Harness documentation and acceptance tests
+description: |
+  Document agentProfiles/routing/fallbacks/accounts in README.md and a
+  short docs/harnesses.md (supported harnesses, verification status,
+  per-harness flags, secrets policy, examples). Add an acceptance test that
+  drives a config-defined custom-command profile end to end through route
+  resolution, launch, monitor and completion with a stub script.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - planner-harness-integration
+  - daemon-profile-wiring
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - docs must state clearly that only opencode is verified live
+forbidden: []
+references:
+  - README.md
+  - docs/harnesses.md
+  - tests/harness-acceptance.test.ts
+notes: []
+subtasks: []
+quest: multi-cli-support

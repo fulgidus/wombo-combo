@@ -1,0 +1,31 @@
+id: agent-profiles-config
+title: agentProfiles and routing config with validation
+description: |
+  Add agentProfiles, routing (byWeight, byDifficulty, byOperation,
+  fallbacks, default) and the AgentProfile/RoutingConfig types to
+  src/config.ts; extend validateConfig (unknown harness, unknown profile
+  references, fallback cycles, secret-looking env keys, envFrom must be env
+  var names, custom harness needs command) and loadConfig deep-merge. Add
+  agentProfiles/routing/modelRouting to schemas/config.schema.json. Existing
+  configs must load and validate unchanged. Tests in tests/config.test.ts.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - harness-contract-opencode
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - secrets must never be accepted in config; accounts are env var name references
+  - "[object Object]"
+  - DEFAULT_CONFIG must not gain default profiles
+forbidden: []
+references:
+  - src/config.ts
+  - schemas/config.schema.json
+  - tests/config.test.ts
+notes: []
+subtasks: []
+quest: multi-cli-support

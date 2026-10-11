@@ -1,0 +1,37 @@
+id: harness-adapters-external
+title: Claude Code, Codex, pi and custom command adapters
+description: |
+  Implement adapters for claude-code (claude -p --output-format stream-json
+  --verbose, --resume), codex (codex exec --json, exec resume), pi (pi -p
+  --mode json) and a generic custom command adapter (placeholder template
+  with {prompt} {model} {session} {cwd}, output "text" or "opencode-jsonl").
+  Each normalizer maps the CLI's JSON stream to canonical events: session
+  id, tool activity (read/write/edit/bash...), text, step_finish with
+  reason stop and token usage, and error events. Cover with fixture-driven
+  unit tests (fixtures under tests/fixtures/harness/) including partial
+  lines, unknown events and failed turns. No binaries required.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - harness-contract-opencode
+effort: PT4H
+started_at: null
+ended_at: null
+constraints:
+  - never require external CLI binaries in tests
+  - normalizers must ignore unknown events instead of throwing
+  - non-opencode adapters do not pass --agent; capabilities say so
+  - document unverified format assumptions in adapter file headers
+forbidden: []
+references:
+  - src/lib/harness/claude-code.ts
+  - src/lib/harness/codex.ts
+  - src/lib/harness/pi.ts
+  - src/lib/harness/custom.ts
+  - tests/fixtures/harness/
+  - tests/harness-adapters.test.ts
+notes: []
+subtasks: []
+quest: multi-cli-support
