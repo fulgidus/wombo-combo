@@ -1,0 +1,23 @@
+id: inter-agent-comments
+title: Comments on tasks and quests (inter-agent communication log)
+goal: Let agents and humans leave durable, git-tracked comments on woco tasks and quests, so inter-agent communication
+  is kept inside woco (needed to fully support the mattpocock skills architecture where tracker comments carry handoffs,
+  triage notes and answers). Comments are stored as one file per comment (merge-friendly, tracked in git), exposed
+  through a CLI, shown in task/quest views, injected into agent prompts, and mirrored to GitHub issue comments by
+  convention.
+status: draft
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/inter-agent-comments
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-10-11T22:08:48.407Z
+updated_at: 2026-10-11T22:08:48.407Z
+started_at: null
+ended_at: null
+notes: []

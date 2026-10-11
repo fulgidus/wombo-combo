@@ -1,0 +1,23 @@
+id: comments-agent-integration
+title: Inject comments into agent prompts and let agents post them
+description: "src/lib/prompt.ts: include the most recent comments (cap by count and chars, newest last) for the task and
+  its quest in the agent prompt, with instructions on how to add a comment (bun dev comment add) for handoffs, blockers
+  and decisions. Daemon (agent-runner): post a system comment on key lifecycle events (started, failed with reason,
+  merged, retried) when comments.autoLifecycle config is true (default false). Config block 'comments' (enabled default
+  true, promptMaxItems 10, promptMaxChars 4000, autoLifecycle false) + schema + docs:gen. Tests."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - comments-store
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: inter-agent-comments
+paths: []
