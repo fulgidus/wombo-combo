@@ -1,0 +1,21 @@
+id: docs-deploy-ci
+title: Deploy docs to GitHub Pages and check freshness in CI
+description: Add docs.yml workflow with SHA-pinned actions, a CI job verifying the generated reference is up to date, a
+  dependabot npm entry for /docs, and a docs:gen root script.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - docs-gen-command-reference
+  - docs-gen-config-reference
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references:
+  - .github/workflows/ci.yml
+notes: []
+subtasks: []
+quest: docs-starlight

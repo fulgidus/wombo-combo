@@ -1,0 +1,20 @@
+id: docs-gen-command-reference
+title: Generate the command reference from COMMAND_REGISTRY
+description: Add scripts/gen-command-docs.ts with pure deterministic render functions, unit tests in tests/, and the
+  generated pages under docs/src/content/docs/reference/commands.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - docs-scaffold-starlight
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references:
+  - src/lib/schema.ts
+notes: []
+subtasks: []
+quest: docs-starlight

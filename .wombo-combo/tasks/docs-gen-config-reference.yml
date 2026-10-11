@@ -1,0 +1,19 @@
+id: docs-gen-config-reference
+title: Generate the config reference from the JSON schema
+description: Add scripts/gen-config-docs.ts rendering schemas/config.schema.json into a reference page, with unit tests in tests/.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - docs-scaffold-starlight
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references:
+  - schemas/config.schema.json
+notes: []
+subtasks: []
+quest: docs-starlight

@@ -1,0 +1,21 @@
+id: docs-scaffold-starlight
+title: Scaffold the Astro + Starlight site in docs/
+description: Create docs/ as its own package with pinned Astro and Starlight, site/base for GitHub Pages, sidebar,
+  landing page; move docs/tdd-baseline.md into the content tree and fix links in README and AGENTS.md. The docs build
+  must pass.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Root package.json dependencies and bun test must stay unaffected
+forbidden: []
+references:
+  - AGENTS.md
+notes: []
+subtasks: []
+quest: docs-starlight
