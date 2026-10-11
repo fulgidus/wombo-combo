@@ -4,14 +4,14 @@ description: The repo's .wombo-combo/config.json has modelRouting light/medium/h
   fake-medium-model / fake-heavy-model, test placeholders committed with the model-routing feature (52dc3b4). Real
   launches on this repo would request nonexistent models. Set real model ids, or remove modelRouting so tasks fall back
   to the session model. Add a config validation warning for obviously fake/placeholder model names if cheap.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: high
 depends_on: []
 effort: PT20M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T02:46:51.952Z
+ended_at: 2026-10-11T02:46:56.577Z
 constraints: []
 forbidden: []
 references: []

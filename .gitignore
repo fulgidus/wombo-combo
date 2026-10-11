@@ -7,6 +7,8 @@ dist/
 .wombo-combo/evals/
 .wombo-combo/tui-session.json
 .wombo-combo/usage.jsonl
+.wombo-combo/tui-debug.log
+.wombo-combo/*.orig
 *.tmp
 *.bak
 .wombo-combo/daemon-state.json

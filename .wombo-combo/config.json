@@ -19,7 +19,7 @@
     "mergeStrategy": "--no-ff"
   },
   "agent": {
-    "bin": "/usr/bin/opencode",
+    "bin": null,
     "name": "generalist-agent",
     "configFiles": [
       ".opencode/",
@@ -63,10 +63,5 @@
     "testCommand": "bun test",
     "strictTdd": true,
     "testTimeout": 120000
-  },
-  "modelRouting": {
-    "light": "fake-light-model",
-    "medium": "fake-medium-model",
-    "heavy": "fake-heavy-model"
   }
 }
