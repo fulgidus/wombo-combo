@@ -19,6 +19,7 @@ the defaults below. The `$schema` key is accepted for editor validation.
 | `archiveFile` | string |  | DEPRECATED: Legacy single-file path. Use archiveDir instead. |
 | `baseBranch` | string | `"main"` | Base branch to create feature branches from |
 | `devMode` | boolean | `false` | Developer mode: enables hidden features like fake task seeding (F key) in TUI. Can also be enabled via --dev CLI flag. |
+| `agentProfiles` | object |  | Named agent profiles: harness + binary + model + provider + account env references. Never put secrets here. |
 
 ## `build`
 
@@ -114,3 +115,34 @@ Changelog generation and GitHub PR publication after successful merges
 | `postMerge.prMode` | string | `"skip"` | open = ready PR, draft = draft PR, skip = no GitHub publication Values: `open`, `draft`, `skip`. |
 | `postMerge.prBaseBranch` | string \| null | `null` | PR target branch; null = the configured remote's default branch |
 | `postMerge.changelog` | boolean | `true` | Append a CHANGELOG.md entry after successful merges (independent of prMode) |
+
+## `modelRouting`
+
+Per-task model routing by weight class (light/medium/heavy); null/absent = session model
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `modelRouting.light` | string \| null |  |  |
+| `modelRouting.medium` | string \| null |  |  |
+| `modelRouting.heavy` | string \| null |  |  |
+
+## `routing`
+
+Which profile handles which task weight, difficulty or operation, with fallback chains
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `routing.default` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byWeight.light` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byWeight.medium` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byWeight.heavy` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byDifficulty.trivial` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byDifficulty.easy` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byDifficulty.medium` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byDifficulty.hard` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byDifficulty.very_hard` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byOperation.plan` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byOperation.code` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byOperation.conflict` | string |  | Name of a profile defined in agentProfiles |
+| `routing.byOperation.review` | string |  | Name of a profile defined in agentProfiles |
+| `routing.fallbacks` | object |  | profile -&gt; ordered fallback profiles tried when it cannot start |

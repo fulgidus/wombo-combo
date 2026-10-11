@@ -224,7 +224,7 @@ route by task difficulty or operation, with fallbacks and per-account API keys:
 Credentials are never stored in config: `envFrom` names the environment
 variable to read. Existing `agent.bin` and `modelRouting` settings keep working
 unchanged. Only opencode is verified end to end; the other harnesses are
-verified against recorded output only. See [docs/harnesses.md](docs/harnesses.md)
+verified against recorded output only. See [docs/src/content/docs/guides/harnesses.md](docs/src/content/docs/guides/harnesses.md)
 for every option, the routing order and the verification status.
 
 ## Launch options

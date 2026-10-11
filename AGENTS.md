@@ -156,7 +156,7 @@ wombo-combo/
       templates.ts          # Resolves bundled agent templates (src/templates/)
       schema.ts             # Command and flag registry for `woco describe`
       eval-score.ts         # Eval-style scoring of completed daemon sessions
-      harness/              # Agent CLI adapters (opencode, claude-code, codex, pi, custom), routing.ts, spawn.ts; see docs/harnesses.md
+      harness/              # Agent CLI adapters (opencode, claude-code, codex, pi, custom), routing.ts, spawn.ts; see docs/src/content/docs/guides/harnesses.md
     templates/              # Bundled agent definitions, quest.yml and _meta.yml
   tests/
     *.test.ts               # Unit tests (bun test)

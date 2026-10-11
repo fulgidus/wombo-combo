@@ -1,4 +1,8 @@
-# Agent harnesses, profiles and routing
+---
+title: Agent harnesses and routing
+description: Run agents through opencode, Claude Code, Codex, pi or a custom command, and route tasks and operations to profiles.
+---
+
 
 wombo-combo runs agents through a **harness**: an adapter for one agent CLI.
 A **profile** is a named way to run a harness (binary, model, provider,
