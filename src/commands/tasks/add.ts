@@ -22,6 +22,7 @@ import {
 } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
 import { validateEnum, validateId } from "../../lib/validate";
+import { loadQuest } from "../../lib/quest-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +38,12 @@ export interface TasksAddOptions {
   difficulty?: Difficulty;
   effort?: string;
   dependsOn?: string[];
+  /** Quest this task belongs to (must exist) */
+  quest?: string;
+  /** Constraints, forbidden items and reference paths for the agent */
+  constraints?: string[];
+  forbidden?: string[];
+  references?: string[];
   /** Optional agent override (e.g. "fake-agent" for testing). */
   agent?: string;
   outputFmt?: OutputFormat;
@@ -104,6 +111,12 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
     }
   }
 
+  // Validate the quest reference
+  if (opts.quest && !loadQuest(projectRoot, opts.quest)) {
+    outputError(fmt, `Quest "${opts.quest}" does not exist.`);
+    return;
+  }
+
   // Create the feature
   const feature = createBlankFeature(opts.id, opts.title, opts.description ?? "", {
     priority: opts.priority,
@@ -115,6 +128,10 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   if (opts.dependsOn?.length) {
     feature.depends_on = opts.dependsOn;
   }
+  if (opts.quest) feature.quest = opts.quest;
+  if (opts.constraints?.length) feature.constraints = opts.constraints;
+  if (opts.forbidden?.length) feature.forbidden = opts.forbidden;
+  if (opts.references?.length) feature.references = opts.references;
 
   // Dry-run: show what would be added without writing
   if (opts.dryRun) {
@@ -126,6 +143,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
       difficulty: feature.difficulty,
       effort: feature.effort,
       depends_on: feature.depends_on,
+      quest: feature.quest ?? null,
     });
     return;
   }
@@ -141,6 +159,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
     difficulty: feature.difficulty,
     effort: feature.effort,
     depends_on: feature.depends_on,
+    quest: feature.quest ?? null,
   });
 
   if (fmt === "text") {
@@ -148,5 +167,6 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
     if (feature.depends_on.length > 0) {
       console.log(`  depends on: ${feature.depends_on.join(", ")}`);
     }
+    if (feature.quest) console.log(`  quest: ${feature.quest}`);
   }
 }

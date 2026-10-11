@@ -161,6 +161,26 @@ const addCommand = defineCommand({
       description: "Comma-separated dependency IDs",
       required: false,
     },
+    quest: {
+      type: "string",
+      description: "Quest ID this task belongs to",
+      required: false,
+    },
+    constraints: {
+      type: "string",
+      description: "Semicolon-separated constraints the agent must follow",
+      required: false,
+    },
+    forbidden: {
+      type: "string",
+      description: "Semicolon-separated things the agent must not do",
+      required: false,
+    },
+    references: {
+      type: "string",
+      description: "Semicolon-separated reference file paths",
+      required: false,
+    },
     dryRun: {
       type: "boolean",
       description: "Show what would be added without writing",
@@ -179,7 +199,7 @@ const addCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.id || !args.title) {
-      outputError(fmt, "Usage: woco tasks add <id> <title> [--desc <desc>] [--priority <p>] [--difficulty <d>] [--effort <e>] [--depends-on <ids>]");
+      outputError(fmt, "Usage: woco tasks add <id> <title> [--desc <desc>] [--priority <p>] [--difficulty <d>] [--effort <e>] [--depends-on <ids>] [--quest <id>] [--constraints <a;b>] [--forbidden <a;b>] [--references <a;b>]");
       return;
     }
 
@@ -193,6 +213,10 @@ const addCommand = defineCommand({
       difficulty: args.difficulty as Difficulty | undefined,
       effort: args.effort,
       dependsOn: args.dependsOn ? args.dependsOn.split(",").map((s: string) => s.trim()) : undefined,
+      quest: args.quest,
+      constraints: splitList(args.constraints),
+      forbidden: splitList(args.forbidden),
+      references: splitList(args.references),
       outputFmt: fmt,
       dryRun: args.dryRun,
     });
@@ -566,3 +590,10 @@ export const tasksCommand = defineCommand({
     g: graphCommand,
   },
 });
+
+/** Split a semicolon-separated CLI list, dropping empty entries */
+function splitList(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+  const items = value.split(";").map((s) => s.trim()).filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}

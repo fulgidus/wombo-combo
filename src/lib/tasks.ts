@@ -241,8 +241,9 @@ export async function ensureTasksFile(
 
   // Project IS initialized (config.json exists) but tasks store is missing.
   // Auto-create it — this is a partial state, not a "never initialized" state.
-  console.log(`\nTasks store not found: ${WOMBO_DIR}/${config.tasksDir}/`);
-  console.log(`Creating empty tasks store...`);
+  // Notices go to stderr so `--output json` keeps stdout machine-readable.
+  console.error(`\nTasks store not found: ${WOMBO_DIR}/${config.tasksDir}/`);
+  console.error(`Creating empty tasks store...`);
 
   ensureWomboDir(projectRoot);
 
@@ -257,7 +258,7 @@ export async function ensureTasksFile(
       maintainer: "unknown",
     },
   });
-  console.log(`Created ${WOMBO_DIR}/${config.tasksDir}/ with empty task store.`);
+  console.error(`Created ${WOMBO_DIR}/${config.tasksDir}/ with empty task store.`);
 
   // Also create empty archive store if missing
   const archivePath = resolve(projectRoot, WOMBO_DIR, config.archiveDir);
@@ -272,9 +273,9 @@ export async function ensureTasksFile(
         maintainer: "unknown",
       },
     });
-    console.log(`Created ${WOMBO_DIR}/${config.archiveDir}/.`);
+    console.error(`Created ${WOMBO_DIR}/${config.archiveDir}/.`);
   }
-  console.log(); // trailing blank line
+  console.error(); // trailing blank line
 }
 
 // Backward-compat alias

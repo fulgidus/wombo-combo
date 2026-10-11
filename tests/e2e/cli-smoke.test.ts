@@ -423,6 +423,35 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
     );
 
     test(
+      "tasks add --quest attaches the task to a quest with constraints and references",
+      () => {
+        expect(woco(["quest", "create", "plan-quest", "Plan quest", "--goal", "Plan via CLI"]).exitCode).toBe(0);
+        const add = woco([
+          "tasks", "add", "plan-step", "Plan step",
+          "--quest", "plan-quest",
+          "--constraints", "keep it small; add tests",
+          "--forbidden", "no network",
+          "--references", "src/index.ts",
+          "-o", "json",
+        ]);
+        expect(add.exitCode).toBe(0);
+        expect(JSON.parse(add.stdout).quest).toBe("plan-quest");
+
+        const show = woco(["tasks", "show", "plan-step", "-o", "json"]);
+        const task = JSON.parse(show.stdout);
+        expect(task.quest).toBe("plan-quest");
+        expect(task.constraints).toEqual(["keep it small", "add tests"]);
+        expect(task.forbidden).toEqual(["no network"]);
+        expect(task.references).toEqual(["src/index.ts"]);
+
+        const bad = woco(["tasks", "add", "orphan-step", "Orphan", "--quest", "missing-quest"]);
+        expect(bad.exitCode).toBe(1);
+        expect(bad.output).toContain('Quest "missing-quest" does not exist');
+      },
+      TEST_TIMEOUT,
+    );
+
+    test(
       "quest create without --goal exits 1",
       () => {
         const result = woco(["quest", "create", "no-goal", "No goal"]);
