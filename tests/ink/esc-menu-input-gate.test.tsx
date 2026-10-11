@@ -21,6 +21,25 @@ import type { UsageTotals } from "../../src/lib/token-usage";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Polls until `cond` holds. Positive expectations use this instead of fixed
+ * sleeps, so they pass as soon as Ink has flushed the update, however loaded
+ * the machine is.
+ */
+async function waitFor(cond: () => boolean, timeoutMs = 3000): Promise<void> {
+  const start = Date.now();
+  while (!cond()) {
+    if (Date.now() - start > timeoutMs) throw new Error("waitFor: condition not met in time");
+    await wait(5);
+  }
+}
+
+/**
+ * Lets already-written keys reach the screen before asserting that they did
+ * NOT. Negative checks can only pass falsely under load, never flake.
+ */
+const settle = () => wait(60);
+
 function makeStreams() {
   const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
   (stdout as any).columns = 120;
@@ -131,24 +150,23 @@ describe("task-browser input is gated by the ESC menu", () => {
     } as TaskBrowserViewProps;
 
     const h = renderWithMenu(React.createElement(TaskBrowserView, props));
-    await wait(30);
+    await waitFor(() => h.getOutput().includes("Task a"));
 
     h.menu().openMenu();
-    await wait(40);
-    expect(h.getOutput()).toContain("Return to app");
+    await waitFor(() => h.getOutput().includes("Return to app"));
 
     h.stdin.write("\u001b[B"); // down arrow: moves the menu cursor only
-    await wait(30);
     h.stdin.write("q"); // letter: must not quit the screen
-    await wait(30);
+    await settle();
     expect(calls).toEqual([]);
 
     h.menu().closeMenu();
-    await wait(40);
+    await waitFor(() => !h.menu().open);
+    await settle(); // let the screen re-subscribe to input before writing
     h.stdin.write("\u001b[B"); // down arrow reaches the screen again
-    await wait(30);
     h.stdin.write("q");
-    await wait(30);
+    await settle();
+    await waitFor(() => calls.length === 2);
     h.unmount();
     expect(calls).toEqual(["select:1", "quit"]);
   });
@@ -167,26 +185,26 @@ describe("settings-screen input is gated by the ESC menu", () => {
         },
       }),
     );
-    await wait(30);
+    await waitFor(() => h.getOutput().length > 0);
 
     h.menu().openMenu();
-    await wait(40);
-    expect(h.getOutput()).toContain("Return to app");
+    await waitFor(() => h.getOutput().includes("Return to app"));
 
     h.stdin.write("\u001b[B"); // down arrow: moves the menu cursor only
-    await wait(30);
+    await settle();
     expect(saved).toEqual([]);
     expect(backs).toBe(0);
 
     // Enter here activates the menu's "Return to app" item and closes the menu.
     // The settings screen must not also receive it.
     h.stdin.write("\r");
-    await wait(40);
+    await waitFor(() => !h.menu().open);
+    await settle();
     expect(saved).toEqual([]);
 
     // Menu is closed now: Enter reaches the settings screen again.
     h.stdin.write("\r");
-    await wait(30);
+    await waitFor(() => saved.length > 0);
     h.unmount();
     expect(saved.length).toBeGreaterThan(0);
   });
