@@ -41118,7 +41118,7 @@
       "node_kind": "heading",
       "norm_label": "coding conventions",
       "source_file": "AGENTS.md",
-      "source_location": "L142"
+      "source_location": "L198"
     },
     {
       "id": "agents_feature_backlog",
@@ -41130,7 +41130,7 @@
       "node_kind": "heading",
       "norm_label": "feature backlog",
       "source_file": "AGENTS.md",
-      "source_location": "L190"
+      "source_location": "L247"
     },
     {
       "id": "agents_graphify",
@@ -41142,7 +41142,7 @@
       "node_kind": "heading",
       "norm_label": "graphify",
       "source_file": "AGENTS.md",
-      "source_location": "L220"
+      "source_location": "L278"
     },
     {
       "id": "agents_hard_constraints",
@@ -41166,7 +41166,7 @@
       "node_kind": "heading",
       "norm_label": "known quirks",
       "source_file": "AGENTS.md",
-      "source_location": "L180"
+      "source_location": "L236"
     },
     {
       "id": "agents_making_changes",
@@ -41178,7 +41178,7 @@
       "node_kind": "heading",
       "norm_label": "making changes",
       "source_file": "AGENTS.md",
-      "source_location": "L196"
+      "source_location": "L254"
     },
     {
       "id": "agents_project_structure",
@@ -41202,7 +41202,7 @@
       "node_kind": "heading",
       "norm_label": "testing and verification",
       "source_file": "AGENTS.md",
-      "source_location": "L160"
+      "source_location": "L216"
     },
     {
       "id": "agents_user_facing_file_layout",
@@ -41214,7 +41214,7 @@
       "node_kind": "heading",
       "norm_label": "user-facing file layout",
       "source_file": "AGENTS.md",
-      "source_location": "L128"
+      "source_location": "L167"
     },
     {
       "id": "agents_version_and_release",
@@ -41226,7 +41226,7 @@
       "node_kind": "heading",
       "norm_label": "version and release",
       "source_file": "AGENTS.md",
-      "source_location": "L208"
+      "source_location": "L266"
     },
     {
       "id": "src_ink_analytics_overlay",
@@ -136552,7 +136552,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L128",
+      "source_location": "L167",
       "weight": 1.0
     },
     {
@@ -136563,7 +136563,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L142",
+      "source_location": "L198",
       "weight": 1.0
     },
     {
@@ -136574,7 +136574,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L160",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -136585,7 +136585,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L180",
+      "source_location": "L236",
       "weight": 1.0
     },
     {
@@ -136596,7 +136596,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L190",
+      "source_location": "L247",
       "weight": 1.0
     },
     {
@@ -136607,7 +136607,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L196",
+      "source_location": "L254",
       "weight": 1.0
     },
     {
@@ -136618,7 +136618,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L208",
+      "source_location": "L266",
       "weight": 1.0
     },
     {
@@ -136629,7 +136629,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "AGENTS.md",
-      "source_location": "L220",
+      "source_location": "L278",
       "weight": 1.0
     },
     {
@@ -174758,7 +174758,7 @@
       "confidence_score": 0.95,
       "context": "loadTasks()",
       "source_file": "AGENTS.md",
-      "source_location": "L186",
+      "source_location": "L242",
       "weight": 1.0
     },
     {
@@ -176659,5 +176659,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "731d9247cd86e07f547217f5c4d2a342f65d91d0"
+  "built_at_commit": "3b032a7ca531e7d53c0add52681b1459f3af4db2"
 }

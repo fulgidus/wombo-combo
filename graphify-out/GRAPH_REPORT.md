@@ -1,7 +1,7 @@
-# Graph Report - wombo-combo  (2026-10-10)
+# Graph Report - wombo-combo  (2026-10-11)
 
 ## Corpus Check
-- 437 files · ~528,620 words
+- 437 files · ~530,019 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: .log 19, (none) 3, .jsonc 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `731d9247`
+- Built from commit: `3b032a7c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
