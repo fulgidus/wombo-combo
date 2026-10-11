@@ -344,6 +344,12 @@ export interface MonitorCallbacks {
   onQuestion?: (featureId: string, questionText: string) => void;
   /** Called when token usage data is parsed from a step_finish event */
   onUsage?: (featureId: string, record: UsageRecord) => void;
+  /**
+   * Called for every successfully parsed JSON event from the agent, right
+   * after parsing. Exceptions thrown by the callback are swallowed so they
+   * can never break monitoring (used by the session replay recorder).
+   */
+  onEvent?: (featureId: string, event: OpenCodeEvent) => void;
 }
 
 interface MonitoredProcess {
@@ -459,6 +465,12 @@ export class ProcessMonitor {
         if (!trimmed) continue;
         try {
           const event = JSON.parse(trimmed) as OpenCodeEvent;
+
+          try {
+            this.callbacks.onEvent?.(featureId, event);
+          } catch {
+            // Observers must never break monitoring
+          }
 
           if (!monitored.sessionId && event.sessionID) {
             monitored.sessionId = event.sessionID;
