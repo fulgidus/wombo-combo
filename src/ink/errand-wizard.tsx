@@ -1,9 +1,7 @@
 /**
  * errand-wizard.tsx — Multi-step Errand Wizard Ink component.
  *
- * Replaces the duplicated `showErrandWizard()` / `showErrandModal()` blessed
- * modals from tui-quest-picker.ts and tui-browser.ts with a single reusable
- * React component.
+ * Single reusable React component for the errand wizard.
  *
  * 4-step wizard:
  *   1. Description (required, single-line)

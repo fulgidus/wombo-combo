@@ -22,7 +22,7 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty resume command", () => {
   test("resumeCommand is a valid citty CommandDef", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     expect(resumeCommand).toBeDefined();
     expect(resumeCommand.meta).toBeDefined();
     expect(resumeCommand.run).toBeDefined();
@@ -30,13 +30,13 @@ describe("citty resume command", () => {
   });
 
   test("resumeCommand has correct meta name", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const meta = await resolveValue(resumeCommand.meta!);
     expect(meta.name).toBe("resume");
   });
 
   test("resumeCommand meta has description", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const meta = await resolveValue(resumeCommand.meta!);
     expect(meta.description).toBeDefined();
     expect(typeof meta.description).toBe("string");
@@ -49,14 +49,14 @@ describe("citty resume command", () => {
 
 describe("citty resume command args", () => {
   test("defines --max-concurrent as string arg", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const args = await resolveValue(resumeCommand.args!);
     expect(args.maxConcurrent).toBeDefined();
     expect(args.maxConcurrent.type).toBe("string");
   });
 
   test("defines --model / -m as string arg", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const args = await resolveValue(resumeCommand.args!);
     expect(args.model).toBeDefined();
     expect(args.model.type).toBe("string");
@@ -64,7 +64,7 @@ describe("citty resume command args", () => {
   });
 
   test("defines --no-tui as boolean negation of tui (default true)", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const args = await resolveValue(resumeCommand.args!);
     expect(args.tui).toBeDefined();
     expect(args.tui.type).toBe("boolean");
@@ -72,7 +72,7 @@ describe("citty resume command args", () => {
   });
 
   test("defines --output / -o as string arg", async () => {
-    const { resumeCommand } = await import("../src/commands/citty/resume.js");
+    const { resumeCommand } = await import("../src/commands/citty/resume");
     const args = await resolveValue(resumeCommand.args!);
     expect(args.output).toBeDefined();
     expect(args.output.type).toBe("string");
@@ -86,37 +86,37 @@ describe("citty resume command args", () => {
 
 describe("parseResumeArgs", () => {
   test("parses minimal args with defaults", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({});
     expect(result.noTui).toBe(false);
   });
 
   test("parses --max-concurrent as number", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({ maxConcurrent: "4" });
     expect(result.maxConcurrent).toBe(4);
   });
 
   test("parses --model value", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({ model: "gpt-4" });
     expect(result.model).toBe("gpt-4");
   });
 
   test("parses --no-tui flag", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({ noTui: true });
     expect(result.noTui).toBe(true);
   });
 
   test("parses --output value", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({ output: "json" });
     expect(result.outputFmt).toBe("json");
   });
 
   test("parses all flags together", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({
       maxConcurrent: "2",
       model: "anthropic/claude-sonnet-4-20250514",
@@ -130,7 +130,7 @@ describe("parseResumeArgs", () => {
   });
 
   test("undefined values remain undefined", async () => {
-    const { parseResumeArgs } = await import("../src/commands/citty/resume.js");
+    const { parseResumeArgs } = await import("../src/commands/citty/resume");
     const result = parseResumeArgs({});
     expect(result.maxConcurrent).toBeUndefined();
     expect(result.model).toBeUndefined();

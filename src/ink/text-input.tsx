@@ -1,7 +1,7 @@
 /**
  * text-input.tsx — Ink TextInput component with full cursor navigation.
  *
- * A reusable text input component for Ink that replaces blessed-textarea-patch.ts.
+ * A reusable text input component for Ink.
  *
  * Features:
  *   - Arrow key cursor navigation (left/right/up/down)

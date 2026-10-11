@@ -1,8 +1,7 @@
 /**
  * quest-picker.tsx — Ink QuestPickerView component.
  *
- * Replaces the neo-blessed QuestPicker class with a declarative React
- * component. The parent manages data loading, quest operations, and
+ * Declarative React component. The parent manages data loading, quest operations, and
  * selected index; this component handles rendering and keybind dispatch.
  *
  * Layout:

@@ -1,8 +1,7 @@
 /**
  * task-browser.tsx — Ink TaskBrowserView component.
  *
- * Replaces the neo-blessed TaskBrowser class with a declarative React
- * component. The parent manages data loading, task graph building,
+ * Declarative React component. The parent manages data loading, task graph building,
  * session persistence, and selected state; this component handles
  * rendering and keybind dispatch.
  *

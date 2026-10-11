@@ -1,7 +1,6 @@
 /**
  * run-preflight.tsx — Ink preflight confirmation screen.
  *
- * Replaces the neo-blessed tuiPreflightConfirm() with an Ink-based version.
  * Shows tasks being launched, agent assignments, and allows the user to
  * reject specialized agents (in monitored mode) or cycle registry modes.
  *
@@ -241,8 +240,7 @@ function PreflightView({
 // ---------------------------------------------------------------------------
 
 /**
- * Ink-based preflight confirmation. Drop-in replacement for the blessed
- * tuiPreflightConfirm().
+ * Ink-based preflight confirmation dialog.
  */
 export function inkPreflightConfirm(
   tasks: Task[],

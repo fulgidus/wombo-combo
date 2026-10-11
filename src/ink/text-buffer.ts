@@ -1,7 +1,7 @@
 /**
  * text-buffer.ts — Pure data class for text content and cursor management.
  *
- * Extracted from blessed-textarea-patch.ts, this class encapsulates all
+ * This class encapsulates all
  * text manipulation logic (insert, delete, cursor navigation) in a
  * framework-agnostic way. Used by the Ink TextInput component.
  *

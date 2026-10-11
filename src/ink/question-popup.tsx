@@ -1,8 +1,7 @@
 /**
  * question-popup.tsx — Ink QuestionPopupView component for HITL questions.
  *
- * Replaces the neo-blessed QuestionPopup class with a declarative React
- * component. The parent manages state (questions list, current index,
+ * Declarative React component. The parent manages state (questions list, current index,
  * answer text) and passes them as props.
  *
  * Features:

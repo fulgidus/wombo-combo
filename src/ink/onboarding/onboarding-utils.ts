@@ -601,13 +601,13 @@ export function parseSectionEdit(
 }
 
 // ---------------------------------------------------------------------------
-// Section display formatting (plain text for Ink — no blessed tags)
+// Section display formatting (plain text for Ink — no markup tags)
 // ---------------------------------------------------------------------------
 
 /**
  * Format a section of the profile as readable plain text for display.
  *
- * Unlike the blessed version, this uses no markup tags — the Ink components
+ * This uses no markup tags — the Ink components
  * handle styling via React props (bold, color, dimColor).
  *
  * Returns an array of lines that can be rendered by Ink components.
@@ -688,7 +688,7 @@ export function formatSectionForDisplay(
  *
  * Examples:
  *   Identity: wombo-combo (brownfield)
- *   Tech Stack: Bun, TypeScript, neo-blessed
+ *   Tech Stack: Bun, TypeScript, Ink
  *   Rules: 5 rules
  *   Objectives: 3 objectives (1 high)
  */

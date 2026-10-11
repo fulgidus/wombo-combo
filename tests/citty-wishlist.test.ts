@@ -17,20 +17,20 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty wishlist command", () => {
   test("wishlistCommand is a valid citty CommandDef", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     expect(wishlistCommand).toBeDefined();
     expect(wishlistCommand.meta).toBeDefined();
     expect(wishlistCommand.subCommands).toBeDefined();
   });
 
   test("wishlistCommand has correct meta name", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const meta = await resolveValue(wishlistCommand.meta!);
     expect(meta.name).toBe("wishlist");
   });
 
   test("wishlistCommand has correct meta description", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const meta = await resolveValue(wishlistCommand.meta!);
     expect(meta.description).toBeDefined();
     expect(meta.description!.length).toBeGreaterThan(0);
@@ -49,7 +49,7 @@ describe("citty wishlist command", () => {
   });
 
   test("wishlistCommand has no run handler (default subcommand injected by router)", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     // Parent run() was removed to prevent citty's double-execution bug.
     // Default subcommand ("list") is injected by injectDefaultSubcommand() in router.ts.
     expect(wishlistCommand.run).toBeUndefined();
@@ -62,7 +62,7 @@ describe("citty wishlist command", () => {
 
 describe("citty wishlist subcommands structure", () => {
   test("add subcommand has text positional and tag flag", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const subCommands = await resolveValue(wishlistCommand.subCommands!);
     const cmd = await resolveValue(subCommands["add"]);
     expect(cmd).toBeDefined();
@@ -73,7 +73,7 @@ describe("citty wishlist subcommands structure", () => {
   });
 
   test("list subcommand is defined with no required args", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const subCommands = await resolveValue(wishlistCommand.subCommands!);
     const cmd = await resolveValue(subCommands["list"]);
     expect(cmd).toBeDefined();
@@ -82,7 +82,7 @@ describe("citty wishlist subcommands structure", () => {
   });
 
   test("delete subcommand has id positional", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const subCommands = await resolveValue(wishlistCommand.subCommands!);
     const cmd = await resolveValue(subCommands["delete"]);
     expect(cmd).toBeDefined();
@@ -92,7 +92,7 @@ describe("citty wishlist subcommands structure", () => {
   });
 
   test("move subcommand has id and position positionals", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const subCommands = await resolveValue(wishlistCommand.subCommands!);
     const cmd = await resolveValue(subCommands["move"]);
     expect(cmd).toBeDefined();
@@ -104,7 +104,7 @@ describe("citty wishlist subcommands structure", () => {
   });
 
   test("each subcommand has a run handler", async () => {
-    const { wishlistCommand } = await import("../src/commands/citty/wishlist.js");
+    const { wishlistCommand } = await import("../src/commands/citty/wishlist");
     const subCommands = await resolveValue(wishlistCommand.subCommands!);
     for (const [name, cmdDef] of Object.entries(subCommands)) {
       const cmd = await resolveValue(cmdDef);

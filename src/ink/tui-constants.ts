@@ -3,7 +3,7 @@
  * for Quest Picker, Task Browser, and Wave Monitor Ink components.
  *
  * Consolidates duplicated color maps, abbreviation maps, and
- * utility functions from the three neo-blessed TUI classes.
+ * utility functions that were duplicated across those components.
  */
 
 import type { AgentStatus } from "../daemon/agent-status";

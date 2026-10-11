@@ -1,0 +1,18 @@
+id: cleanup-blessed-leftovers
+title: Remove neo-blessed leftovers and .js relative imports
+description: Drop stale neo-blessed wording from user-facing help text and Ink comments, and strip .js extensions from
+  relative imports.
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT20M
+started_at: 2026-10-11T02:53:54.447Z
+ended_at: 2026-10-11T02:57:01.780Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

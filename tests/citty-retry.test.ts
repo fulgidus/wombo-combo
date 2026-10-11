@@ -22,7 +22,7 @@ async function resolveValue<T>(val: T | (() => T) | (() => Promise<T>) | Promise
 
 describe("citty retry command", () => {
   test("retryCommand is a valid citty CommandDef", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     expect(retryCommand).toBeDefined();
     expect(retryCommand.meta).toBeDefined();
     expect(retryCommand.run).toBeDefined();
@@ -30,13 +30,13 @@ describe("citty retry command", () => {
   });
 
   test("retryCommand has correct meta name", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const meta = await resolveValue(retryCommand.meta!);
     expect(meta.name).toBe("retry");
   });
 
   test("retryCommand meta has description", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const meta = await resolveValue(retryCommand.meta!);
     expect(meta.description).toBeDefined();
     expect(typeof meta.description).toBe("string");
@@ -49,7 +49,7 @@ describe("citty retry command", () => {
 
 describe("citty retry command args", () => {
   test("defines feature-id as positional arg", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const args = await resolveValue(retryCommand.args!);
     expect(args.featureId).toBeDefined();
     expect(args.featureId.type).toBe("positional");
@@ -57,7 +57,7 @@ describe("citty retry command args", () => {
   });
 
   test("defines --model / -m as string arg", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const args = await resolveValue(retryCommand.args!);
     expect(args.model).toBeDefined();
     expect(args.model.type).toBe("string");
@@ -65,14 +65,14 @@ describe("citty retry command args", () => {
   });
 
   test("defines --dry-run as boolean arg", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const args = await resolveValue(retryCommand.args!);
     expect(args.dryRun).toBeDefined();
     expect(args.dryRun.type).toBe("boolean");
   });
 
   test("defines --output / -o as string arg", async () => {
-    const { retryCommand } = await import("../src/commands/citty/retry.js");
+    const { retryCommand } = await import("../src/commands/citty/retry");
     const args = await resolveValue(retryCommand.args!);
     expect(args.output).toBeDefined();
     expect(args.output.type).toBe("string");
@@ -86,37 +86,37 @@ describe("citty retry command args", () => {
 
 describe("parseRetryArgs", () => {
   test("parses minimal args with defaults", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({});
     expect(result.dryRun).toBe(false);
   });
 
   test("parses featureId from positional", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({ featureId: "feat-auth" });
     expect(result.featureId).toBe("feat-auth");
   });
 
   test("parses --model value", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({ model: "gpt-4" });
     expect(result.model).toBe("gpt-4");
   });
 
   test("parses --dry-run flag", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({ dryRun: true });
     expect(result.dryRun).toBe(true);
   });
 
   test("parses --output value", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({ output: "json" });
     expect(result.outputFmt).toBe("json");
   });
 
   test("parses all flags together", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({
       featureId: "feat-auth",
       model: "anthropic/claude-sonnet-4-20250514",
@@ -130,7 +130,7 @@ describe("parseRetryArgs", () => {
   });
 
   test("undefined values remain undefined", async () => {
-    const { parseRetryArgs } = await import("../src/commands/citty/retry.js");
+    const { parseRetryArgs } = await import("../src/commands/citty/retry");
     const result = parseRetryArgs({});
     expect(result.featureId).toBeUndefined();
     expect(result.model).toBeUndefined();

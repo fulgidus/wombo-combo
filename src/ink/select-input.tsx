@@ -1,8 +1,7 @@
 /**
  * select-input.tsx — Ink SelectInput component for choosing from a list.
  *
- * A reusable select/list component for Ink that replaces blessed's list widget
- * for enum field selection (priority, difficulty, HITL mode, etc.).
+ * A reusable select/list component for Ink, used for enum field selection (priority, difficulty, HITL mode, etc.).
  *
  * Features:
  *   - Up/Down arrow key navigation

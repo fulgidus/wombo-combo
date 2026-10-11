@@ -2,8 +2,6 @@
  * wishlist-overlay.tsx — Modal popup Ink component for quick wishlist browsing
  * and adding items.
  *
- * Replaces the neo-blessed WishlistOverlay class from tui-wishlist.ts.
- *
  * Layout:
  *   +----------------------------------------------+
  *   | Wishlist (3 items)                            |

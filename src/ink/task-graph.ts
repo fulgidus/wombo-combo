@@ -1,7 +1,7 @@
 /**
  * task-graph.ts — Build a dependency graph from tasks and organize into streams.
  *
- * Extracted from the neo-blessed tui-browser.ts. Produces the `TaskNode[]`
+ * Produces the `TaskNode[]`
  * and `Stream` structures that TaskBrowserView expects.
  *
  * Algorithm:

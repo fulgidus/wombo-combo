@@ -2,8 +2,7 @@
  * text-buffer.test.ts — Tests for the TextBuffer utility class.
  *
  * TextBuffer is a pure data class that manages text content and cursor position.
- * It is the core logic extracted from blessed-textarea-patch.ts, designed to be
- * used by the Ink TextInput component.
+ * It holds the core text logic used by the Ink TextInput component.
  */
 
 import { describe, test, expect } from "bun:test";

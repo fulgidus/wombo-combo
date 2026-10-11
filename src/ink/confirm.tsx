@@ -1,8 +1,7 @@
 /**
  * confirm.tsx — Ink ConfirmDialog component for yes/no confirmations.
  *
- * Replaces the neo-blessed showConfirm() function with a declarative
- * React component. Listens for Y/N/Escape keys and calls onConfirm.
+ * Declarative React component. Listens for Y/N/Escape keys and calls onConfirm.
  *
  * Features:
  *   - Modal with title and message
