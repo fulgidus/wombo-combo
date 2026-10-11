@@ -58,6 +58,8 @@ function domainLiteral(): RegExp {
   return new RegExp(`(["'\`])((?:${domains.join("|")})\\.[A-Za-z]\\w*(?:\\.\\w+)*)\\1`, "g");
 }
 
+const FILE_NAME = /\.(ya?ml|jsonl?|[cm]?[jt]sx?|md|txt|lock|log|pid)$/;
+
 export function collectUsedKeys(): { key: string; file: string }[] {
   const used: { key: string; file: string }[] = [];
   const literal = domainLiteral();
@@ -67,6 +69,7 @@ export function collectUsedKeys(): { key: string; file: string }[] {
       used.push({ key: m[2], file: relative(SRC, file) });
     }
     for (const m of code.matchAll(literal)) {
+      if (FILE_NAME.test(m[2])) continue; // "wishlist.yml" is a file, not a key
       used.push({ key: m[2], file: relative(SRC, file) });
     }
   }

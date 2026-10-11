@@ -209,13 +209,13 @@ export function TuiApp({
 
   // Track current screen for chrome title
   const SCREEN_NAMES: Record<string, string> = {
-    splash: "Loading",
-    "quest-picker": "Quest Picker",
-    "task-browser": "Task Browser",
-    "daemon-monitor": "Daemon Monitor",
-    settings: "Settings",
-    onboarding: "Setup",
-    dashboard: "Dashboard",
+    splash: tFn("screen.loading"),
+    "quest-picker": tFn("screen.questPicker"),
+    "task-browser": tFn("screen.taskBrowser"),
+    "daemon-monitor": tFn("screen.daemonMonitor"),
+    settings: tFn("screen.settings"),
+    onboarding: tFn("screen.setup"),
+    dashboard: tFn("screen.dashboard"),
   };
   const [currentScreenKey, setCurrentScreenKey] = useState<string>(
     initialScreenProp ?? (skipSplash ? "quest-picker" : "splash")

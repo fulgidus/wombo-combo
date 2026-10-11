@@ -34,6 +34,7 @@ import {
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
 import { useScreenInput } from "./esc-menu";
+import { useI18n, type TFunction } from "./i18n";
 
 function agentStatusColor(status: AgentStatus): string {
   switch (status) {
@@ -155,50 +156,49 @@ function Header({
   questTitle?: string;
   hasRunningWave?: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" height={2}>
       <Box>
         {hasRunningWave && (
           <>
-            <Text bold color="yellow">⚡ WAVE RUNNING</Text>
+            <Text bold color="yellow">⚡ {t("taskBrowser.waveRunning")}</Text>
             <Text dimColor>  |  </Text>
           </>
         )}
-        <Text>{totalTaskCount}</Text>
-        <Text> tasks</Text>
+        <Text>{t("taskBrowser.tasks", { count: totalTaskCount })}</Text>
         {hideDone && (
           <>
             <Text> (</Text>
-            <Text>{displayedCount}</Text>
-            <Text> shown)</Text>
+            <Text>{t("taskBrowser.shown", { count: displayedCount })})</Text>
           </>
         )}
         <Text dimColor>  |  </Text>
         <Text color="green">{readyCount}</Text>
-        <Text> ready</Text>
+        <Text> {t("taskBrowser.ready")}</Text>
         <Text dimColor>  |  </Text>
         <Text>{doneCount}</Text>
-        <Text dimColor> done</Text>
+        <Text dimColor> {t("taskBrowser.done")}</Text>
         {selectedCount > 0 && (
           <>
             <Text dimColor>  |  </Text>
             <Text color="cyan">{selectedCount}</Text>
-            <Text> selected</Text>
+            <Text> {t("taskBrowser.selected")}</Text>
           </>
         )}
         {questTitle && (
           <>
             <Text dimColor>  |  </Text>
-            <Text>Quest: </Text>
+            <Text>{t("taskBrowser.quest")} </Text>
             <Text color="cyan">{questTitle}</Text>
           </>
         )}
       </Box>
       <Box>
-        <Text dimColor>Sort: </Text>
+        <Text dimColor>{t("taskBrowser.sort")} </Text>
         <Text color="yellow">{sortBy.padEnd(10)}</Text>
         <Text dimColor> | </Text>
-        <Text>Concurrency: </Text>
+        <Text>{t("taskBrowser.concurrency")} </Text>
         <Text color="yellow">{maxConcurrent === 0 ? "∞" : String(maxConcurrent)}</Text>
       </Box>
     </Box>
@@ -307,7 +307,11 @@ function TaskDetail({
   usage?: UsageTotals;
   agentState?: DaemonAgentState;
 }): React.ReactElement {
+  const t = useI18n();
   const { task, streamId, depth, dependedOnBy, depsReady } = node;
+  /** "  Label:" padded to a fixed column so values align in any language. */
+  const lbl = (key: string) => `  ${t(key)}:`.padEnd(14);
+  const agentLbl = (key: string) => t(key).padEnd(7);
   const sColor = TASK_STATUS_COLORS[task.status] ?? "white";
   const pColor = TASK_PRIORITY_COLORS[task.priority] ?? "white";
 
@@ -318,20 +322,20 @@ function TaskDetail({
       <Text />
 
       {/* Basic info */}
-      <Text>  Status:     <Text color={sColor}>{task.status}</Text></Text>
-      <Text>  Priority:   <Text color={pColor}>{task.priority}</Text></Text>
-      <Text>  Difficulty: {task.difficulty}</Text>
-      <Text>  Effort:     {task.effort}</Text>
-      <Text>  Completion: {task.completion}%</Text>
-      <Text>  Deps ready: {depsReady ? <Text color="green">yes</Text> : <Text color="red">no</Text>}</Text>
-      <Text>  Stream:     {streamId}</Text>
-      <Text>  Depth:      {depth}</Text>
+      <Text>{lbl("taskBrowser.detail.status")}<Text color={sColor}>{task.status}</Text></Text>
+      <Text>{lbl("taskBrowser.detail.priority")}<Text color={pColor}>{task.priority}</Text></Text>
+      <Text>{lbl("taskBrowser.detail.difficulty")}{task.difficulty}</Text>
+      <Text>{lbl("taskBrowser.detail.effort")}{task.effort}</Text>
+      <Text>{lbl("taskBrowser.detail.completion")}{task.completion}%</Text>
+      <Text>{lbl("taskBrowser.detail.depsReady")}{depsReady ? <Text color="green">{t("ui.yes").toLowerCase()}</Text> : <Text color="red">{t("ui.no").toLowerCase()}</Text>}</Text>
+      <Text>{lbl("taskBrowser.detail.stream")}{streamId}</Text>
+      <Text>{lbl("taskBrowser.detail.depth")}{depth}</Text>
       <Text />
 
       {/* Dependencies */}
       {task.depends_on.length > 0 && (
         <>
-          <Text bold>Dependencies:</Text>
+          <Text bold>{t("taskBrowser.detail.dependencies")}</Text>
           {task.depends_on.map((dep, i) => (
             <Text key={`dep-${i}`}>  → {dep}</Text>
           ))}
@@ -342,7 +346,7 @@ function TaskDetail({
       {/* Depended on by */}
       {dependedOnBy.length > 0 && (
         <>
-          <Text bold>Depended on by:</Text>
+          <Text bold>{t("taskBrowser.detail.dependedOnBy")}</Text>
           {dependedOnBy.map((id, i) => (
             <Text key={`revdep-${i}`}>  → {id}</Text>
           ))}
@@ -353,7 +357,7 @@ function TaskDetail({
       {/* Description */}
       {task.description && (
         <>
-          <Text bold>Description:</Text>
+          <Text bold>{t("taskBrowser.detail.description")}</Text>
           <Text>  {task.description}</Text>
           <Text />
         </>
@@ -362,7 +366,7 @@ function TaskDetail({
       {/* Agent type */}
       {task.agent_type && (
         <>
-          <Text bold>Agent: <Text>{task.agent_type}</Text></Text>
+          <Text bold>{t("taskBrowser.detail.agent")} <Text>{task.agent_type}</Text></Text>
           <Text />
         </>
       )}
@@ -370,20 +374,20 @@ function TaskDetail({
       {/* Token usage */}
       {usage && (
         <>
-          <Text bold color="yellow">Token Usage:</Text>
-          <Text>  Input:      <Text color="cyan">{formatTokenCount(usage.input_tokens)}</Text></Text>
-          <Text>  Output:     <Text color="cyan">{formatTokenCount(usage.output_tokens)}</Text></Text>
+          <Text bold color="yellow">{t("taskBrowser.detail.tokenUsage")}</Text>
+          <Text>{lbl("taskBrowser.detail.input")}<Text color="cyan">{formatTokenCount(usage.input_tokens)}</Text></Text>
+          <Text>{lbl("taskBrowser.detail.output")}<Text color="cyan">{formatTokenCount(usage.output_tokens)}</Text></Text>
           {usage.cache_read > 0 && (
-            <Text>  Cache read: <Text dimColor>{formatTokenCount(usage.cache_read)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cacheRead")}<Text dimColor>{formatTokenCount(usage.cache_read)}</Text></Text>
           )}
           {usage.reasoning_tokens > 0 && (
-            <Text>  Reasoning:  <Text color="magenta">{formatTokenCount(usage.reasoning_tokens)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.reasoning")}<Text color="magenta">{formatTokenCount(usage.reasoning_tokens)}</Text></Text>
           )}
-          <Text>  Total:      {formatTokenCount(usage.total_tokens)}</Text>
+          <Text>{lbl("taskBrowser.detail.total")}{formatTokenCount(usage.total_tokens)}</Text>
           {usage.total_cost > 0 && (
-            <Text>  Cost:       <Text color="yellow">{formatCost(usage.total_cost)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatCost(usage.total_cost)}</Text></Text>
           )}
-          <Text>  Steps:      {usage.record_count}</Text>
+          <Text>{lbl("taskBrowser.detail.steps")}{usage.record_count}</Text>
           <Text />
         </>
       )}
@@ -391,7 +395,7 @@ function TaskDetail({
       {/* Constraints */}
       {task.constraints.length > 0 && (
         <>
-          <Text bold>Constraints:</Text>
+          <Text bold>{t("taskBrowser.detail.constraints")}</Text>
           {task.constraints.map((c, i) => (
             <Text key={`c-${i}`}>  • {c}</Text>
           ))}
@@ -401,27 +405,27 @@ function TaskDetail({
       {/* Agent section */}
       {agentState && (
         <Box flexDirection="column" marginTop={1}>
-          <Text bold color="cyan">── Agent ──</Text>
+          <Text bold color="cyan">── {t("taskBrowser.agent.title")} ──</Text>
           <Box flexDirection="row" gap={1}>
-            <Text dimColor>status</Text>
+            <Text dimColor>{t("taskBrowser.agent.status")}</Text>
             <Text color={agentStatusColor(agentState.status)}>{agentState.status}</Text>
-            {agentState.retries > 0 && <Text color="yellow"> (retry {agentState.retries}/{agentState.maxRetries})</Text>}
+            {agentState.retries > 0 && <Text color="yellow"> ({t("taskBrowser.agent.retry", { n: agentState.retries, max: agentState.maxRetries })})</Text>}
           </Box>
           {agentState.activity && (
             <Box>
-              <Text dimColor>doing  </Text>
+              <Text dimColor>{agentLbl("taskBrowser.agent.doing")}</Text>
               <Text color="cyan" wrap="truncate-end">{agentState.activity}</Text>
             </Box>
           )}
           {agentState.error && (
             <Box>
-              <Text dimColor>error  </Text>
+              <Text dimColor>{agentLbl("taskBrowser.agent.error")}</Text>
               <Text color="red" wrap="wrap">{agentState.error.slice(0, 120)}</Text>
             </Box>
           )}
           {agentState.tokenUsage && (
             <Box flexDirection="row" gap={1}>
-              <Text dimColor>tokens </Text>
+              <Text dimColor>{agentLbl("taskBrowser.agent.tokens")}</Text>
               <Text>{agentState.tokenUsage.inputTokens + agentState.tokenUsage.outputTokens}</Text>
               {agentState.tokenUsage.totalCost > 0 && (
                 <Text dimColor>(${agentState.tokenUsage.totalCost.toFixed(4)})</Text>
@@ -430,7 +434,7 @@ function TaskDetail({
           )}
           {agentState.startedAt && (
             <Box>
-              <Text dimColor>since  </Text>
+              <Text dimColor>{agentLbl("taskBrowser.agent.since")}</Text>
               <Text dimColor>{new Date(agentState.startedAt).toLocaleTimeString()}</Text>
             </Box>
           )}
@@ -457,88 +461,89 @@ function StatusBar({
   hasEdit?: boolean;
   questId?: boolean; // unused but kept for future use
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column">
       <Box flexWrap="wrap">
-        <Text bold>Keys:</Text>
+        <Text bold>{t("waveMonitor.keys")}</Text>
         <Text>  </Text>
         <Text dimColor>Space</Text>
-        <Text> plan/unplan</Text>
+        <Text> {t("taskBrowser.key.plan")}</Text>
         <Text>  </Text>
         <Text dimColor>S</Text>
-        <Text> stream</Text>
+        <Text> {t("taskBrowser.key.stream")}</Text>
         <Text>  </Text>
         <Text dimColor>A</Text>
-        <Text> all</Text>
+        <Text> {t("taskBrowser.key.all")}</Text>
         <Text>  </Text>
         <Text dimColor>+/-</Text>
-        <Text> priority</Text>
+        <Text> {t("taskBrowser.key.priority")}</Text>
         <Text>  </Text>
         <Text dimColor>D</Text>
-        <Text> {hideDone ? "show" : "hide"} done</Text>
+        <Text> {hideDone ? t("taskBrowser.key.showDone") : t("taskBrowser.key.hideDone")}</Text>
         <Text>  </Text>
         <Text dimColor>X</Text>
-        <Text> archive done</Text>
+        <Text> {t("taskBrowser.key.archiveDone")}</Text>
         <Text>  </Text>
         <Text dimColor>Shift+X</Text>
-        <Text> remove task</Text>
+        <Text> {t("taskBrowser.key.removeTask")}</Text>
         <Text>  </Text>
         <Text dimColor>C</Text>
-        <Text> concurrency</Text>
+        <Text> {t("taskBrowser.key.concurrency")}</Text>
         {hasErrand && (
           <>
             <Text>  </Text>
             <Text dimColor>E</Text>
-            <Text> errand</Text>
+            <Text> {t("taskBrowser.key.errand")}</Text>
           </>
         )}
         <Text>  </Text>
         <Text dimColor>W</Text>
-        <Text> wishlist</Text>
+        <Text> {t("taskBrowser.key.wishlist")}</Text>
         <Text>  </Text>
         {hasEdit && (
           <>
             <Text>  </Text>
             <Text dimColor>R</Text>
-            <Text> edit</Text>
+            <Text> {t("taskBrowser.key.edit")}</Text>
           </>
         )}
         <Text>  </Text>
         <Text dimColor>T</Text>
-        <Text> retry</Text>
+        <Text> {t("waveMonitor.retry")}</Text>
         <Text>  </Text>
         <Text dimColor>U</Text>
-        <Text> usage</Text>
+        <Text> {t("taskBrowser.key.usage")}</Text>
         <Text>  </Text>
         <Text dimColor>O</Text>
-        <Text> sort</Text>
+        <Text> {t("taskBrowser.key.sort")}</Text>
 
         {hasRunningWave && (
           <>
             <Text>  </Text>
             <Text bold color="yellow">Tab</Text>
-            <Text bold> monitor</Text>
+            <Text bold> {t("taskBrowser.key.monitor")}</Text>
           </>
         )}
         {hasBack && (
           <>
             <Text>  </Text>
             <Text dimColor>B/←</Text>
-            <Text> back</Text>
+            <Text> {t("taskBrowser.key.back")}</Text>
           </>
         )}
         <Text>  </Text>
         <Text dimColor>Q</Text>
-        <Text> quit</Text>
+        <Text> {t("waveMonitor.quit")}</Text>
       </Box>
       <Box>
         {selectedCount > 0 ? (
           <Text>
             <Text color="green">{selectedCount}</Text>
-            <Text> selected</Text>
+            <Text> {t("taskBrowser.selected")}</Text>
           </Text>
         ) : (
-          <Text dimColor>Space to plan/unplan tasks — daemon picks up planned tasks automatically</Text>
+          <Text dimColor>{t("taskBrowser.planHint")}</Text>
         )}
       </Box>
     </Box>
@@ -557,6 +562,7 @@ function StatusBar({
  * the dependency graph, managing session state, and handling launches.
  */
 export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement {
+  const t = useI18n();
   const {
     nodes,
     selectedIndex,
@@ -703,7 +709,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
       <Box flexGrow={1}>
         {/* Task list (left pane, 60%) */}
         <Box flexDirection="column" width="60%" borderStyle="single" borderColor="gray">
-          {canScrollUp && <Text dimColor>  ▲ {scrollOffset} more above</Text>}
+          {canScrollUp && <Text dimColor>  ▲ {t("taskBrowser.moreAbove", { count: scrollOffset })}</Text>}
           {visibleNodes.map((node, i) => (
             <TaskListItem
               key={node.task.id}
@@ -714,10 +720,10 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
             />
           ))}
           {canScrollDown && (
-            <Text dimColor>  ▼ {nodes.length - scrollOffset - visibleNodes.length} more below</Text>
+            <Text dimColor>  ▼ {t("taskBrowser.moreBelow", { count: nodes.length - scrollOffset - visibleNodes.length })}</Text>
           )}
           {nodes.length === 0 && (
-            <Text dimColor>  No tasks found</Text>
+            <Text dimColor>  {t("taskBrowser.noTasks")}</Text>
           )}
         </Box>
 
@@ -730,7 +736,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
               agentState={agentStates?.get(selectedNode.task.id)}
             />
           ) : (
-            <Text dimColor>No task selected</Text>
+            <Text dimColor>{t("taskBrowser.noTaskSelected")}</Text>
           )}
         </Box>
       </Box>

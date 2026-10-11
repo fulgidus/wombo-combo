@@ -23,7 +23,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { Box, Text } from "ink";
-import { t } from "./i18n";
+import { useI18n, type TFunction } from "./i18n";
 import { AVAILABLE_LOCALES } from "../lib/i18n";
 import type { ThemeName } from "./theme";
 import { saveConfig } from "../config";
@@ -132,39 +132,40 @@ type FieldId = "theme" | "locale" | "checkForUpdates" | "autoInstallUpdates" | "
 
 interface FieldDef {
   id: FieldId;
-  label: string;
-  getValue: (cfg: SettingsScreenConfig) => string;
+  /** Locale key of the label (resolved at render so the active locale applies). */
+  labelKey: string;
+  getValue: (cfg: SettingsScreenConfig, t: TFunction) => string;
 }
 
 const FIELDS: FieldDef[] = [
   {
     id: "theme",
-    label: t("settings.theme"),
+    labelKey: "settings.theme",
     getValue: (cfg) => cfg.tui?.theme ?? "default",
   },
   {
     id: "locale",
-    label: t("settings.locale"),
-    getValue: (cfg) => cfg.tui?.locale ?? "en",
+    labelKey: "settings.locale",
+    getValue: (cfg) => cfg.tui?.locale ?? "auto",
   },
   {
     id: "checkForUpdates",
-    label: t("settings.checkForUpdates"),
-    getValue: (cfg) => (cfg.tui?.checkForUpdates ?? true) ? "on" : "off",
+    labelKey: "settings.checkForUpdates",
+    getValue: (cfg, t) => (cfg.tui?.checkForUpdates ?? true) ? t("settings.on") : t("settings.off"),
   },
   {
     id: "autoInstallUpdates",
-    label: t("settings.autoInstallUpdates"),
-    getValue: (cfg) => (cfg.tui?.autoInstallUpdates ? "on" : "off"),
+    labelKey: "settings.autoInstallUpdates",
+    getValue: (cfg, t) => (cfg.tui?.autoInstallUpdates ? t("settings.on") : t("settings.off")),
   },
   {
     id: "devMode",
-    label: t("settings.devMode"),
-    getValue: (cfg) => (cfg.devMode ? "on" : "off"),
+    labelKey: "settings.devMode",
+    getValue: (cfg, t) => (cfg.devMode ? t("settings.on") : t("settings.off")),
   },
   {
     id: "reset",
-    label: "Reset to defaults",
+    labelKey: "settings.reset",
     getValue: () => "",
   },
 ];
@@ -186,6 +187,7 @@ export function SettingsScreen({
   onBack,
   projectRoot,
 }: SettingsScreenProps): React.ReactElement {
+  const t = useI18n();
   const [cfg, setCfg] = useState<SettingsScreenConfig>(initialConfig);
   const [cursor, setCursor] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -237,7 +239,7 @@ export function SettingsScreen({
           return;
         }
         if (field.id === "locale") {
-          const current = cfg.tui?.locale ?? "en";
+          const current = cfg.tui?.locale ?? "auto";
           const idx = LOCALE_OPTIONS.indexOf(current);
           const next = LOCALE_OPTIONS[(idx + 1) % LOCALE_OPTIONS.length];
           const patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
@@ -283,34 +285,34 @@ export function SettingsScreen({
       </Box>
 
       {/* TUI / Appearance section */}
-      <SettingsSection title="TUI / Appearance">
+      <SettingsSection title={t("settings.sectionAppearance")}>
         {FIELDS.filter((f) => APPEARANCE_FIELD_IDS.includes(f.id)).map((field) => {
           const idx = FIELDS.findIndex((x) => x.id === field.id);
           return (
             <SettingsField
               key={field.id}
-              label={field.label}
-              value={field.getValue(cfg)}
+              label={t(field.labelKey)}
+              value={field.getValue(cfg, t)}
               selected={cursor === idx}
               onEdit={() => {}}
-              hint="Enter to cycle"
+              hint={t("settings.hintCycle")}
             />
           );
         })}
       </SettingsSection>
 
       {/* General section */}
-      <SettingsSection title="General">
+      <SettingsSection title={t("settings.sectionGeneral")}>
         {FIELDS.filter((f) => GENERAL_FIELD_IDS.includes(f.id)).map((field) => {
           const idx = FIELDS.findIndex((x) => x.id === field.id);
           return (
             <SettingsField
               key={field.id}
-              label={field.label}
-              value={field.getValue(cfg)}
+              label={t(field.labelKey)}
+              value={field.getValue(cfg, t)}
               selected={cursor === idx}
               onEdit={() => {}}
-              hint="Enter to toggle"
+              hint={t("settings.hintToggle")}
             />
           );
         })}
@@ -321,14 +323,14 @@ export function SettingsScreen({
         <Box flexDirection="row" gap={1}>
           <Text color={cursor === RESET_IDX ? "red" : undefined}>{cursor === RESET_IDX ? ">" : " "}</Text>
           <Text color={cursor === RESET_IDX ? "red" : "gray"} bold={cursor === RESET_IDX}>
-            Reset to defaults
+            {t("settings.reset")}
           </Text>
         </Box>
       </Box>
 
       {/* Footer hint */}
       <Box marginTop={1}>
-        <Text dimColor>↑↓ navigate  Enter edit/cycle  ESC back</Text>
+        <Text dimColor>{t("settings.footer")}</Text>
       </Box>
     </Box>
   );

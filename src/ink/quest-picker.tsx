@@ -34,6 +34,7 @@ import {
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,24 +103,24 @@ function Header({
   activeCount: number;
   totalTaskCount: number;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" height={2}>
       <Box>
-        <Text>{questCount}</Text>
-        <Text> quest{questCount !== 1 ? "s" : ""}</Text>
+        <Text>{t("questPicker.quests", { count: questCount })}</Text>
         {activeCount > 0 && (
           <>
             <Text dimColor>  |  </Text>
             <Text color="green">{activeCount}</Text>
-            <Text> active</Text>
+            <Text> {t("questPicker.active")}</Text>
           </>
         )}
         <Text dimColor>  |  </Text>
         <Text>{totalTaskCount}</Text>
-        <Text> total tasks</Text>
+        <Text> {t("questPicker.totalTasks")}</Text>
       </Box>
       <Text dimColor>
-        Select a quest to filter tasks, or choose "All Tasks" for the full list
+        {t("questPicker.hint")}
       </Text>
     </Box>
   );
@@ -170,13 +171,14 @@ function AllTasksItem({
   totalTaskCount: number;
   isSelected: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box>
       <Text color={isSelected ? "blue" : undefined} bold={isSelected}>
         {isSelected ? "▸ " : "  "}
       </Text>
       <Text color="cyan" bold>◆</Text>
-      <Text bold> All Tasks</Text>
+      <Text bold> {t("questPicker.allTasks")}</Text>
       <Text dimColor> ({totalTaskCount})</Text>
     </Box>
   );
@@ -189,35 +191,38 @@ function AllTasksDetail({
   totalTaskCount: number;
   overallUsage?: UsageTotals | null;
 }): React.ReactElement {
+  const t = useI18n();
+  /** "  Label:" padded to a fixed column so values align in any language. */
+  const lbl = (key: string) => `  ${t(key)}:`.padEnd(14);
   return (
     <Box flexDirection="column">
-      <Text bold color="cyan">All Tasks</Text>
+      <Text bold color="cyan">{t("questPicker.allTasks")}</Text>
       <Text />
-      <Text>  Browse all tasks across all quests</Text>
-      <Text>  and unassigned tasks.</Text>
+      <Text>  {t("questPicker.allTasksLine1")}</Text>
+      <Text>  {t("questPicker.allTasksLine2")}</Text>
       <Text />
-      <Text>  Total: {totalTaskCount} tasks</Text>
+      <Text>  {t("questPicker.total", { count: totalTaskCount })}</Text>
       <Text />
       {overallUsage && (
         <Box flexDirection="column">
-          <Text bold color="yellow">Overall Token Usage:</Text>
-          <Text>  Input:      <Text color="cyan">{formatTokenCount(overallUsage.input_tokens)}</Text></Text>
-          <Text>  Output:     <Text color="cyan">{formatTokenCount(overallUsage.output_tokens)}</Text></Text>
+          <Text bold color="yellow">{t("questPicker.overallUsage")}</Text>
+          <Text>{lbl("taskBrowser.detail.input")}<Text color="cyan">{formatTokenCount(overallUsage.input_tokens)}</Text></Text>
+          <Text>{lbl("taskBrowser.detail.output")}<Text color="cyan">{formatTokenCount(overallUsage.output_tokens)}</Text></Text>
           {overallUsage.cache_read > 0 && (
-            <Text>  Cache read: <Text dimColor>{formatTokenCount(overallUsage.cache_read)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cacheRead")}<Text dimColor>{formatTokenCount(overallUsage.cache_read)}</Text></Text>
           )}
           {overallUsage.reasoning_tokens > 0 && (
-            <Text>  Reasoning:  <Text color="magenta">{formatTokenCount(overallUsage.reasoning_tokens)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.reasoning")}<Text color="magenta">{formatTokenCount(overallUsage.reasoning_tokens)}</Text></Text>
           )}
-          <Text>  Total:      {formatTokenCount(overallUsage.total_tokens)}</Text>
+          <Text>{lbl("taskBrowser.detail.total")}{formatTokenCount(overallUsage.total_tokens)}</Text>
           {overallUsage.total_cost > 0 && (
-            <Text>  Cost:       <Text color="yellow">{formatTokenCount(overallUsage.total_cost)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatTokenCount(overallUsage.total_cost)}</Text></Text>
           )}
-          <Text>  Steps:      {overallUsage.record_count}</Text>
+          <Text>{lbl("taskBrowser.detail.steps")}{overallUsage.record_count}</Text>
           <Text />
         </Box>
       )}
-      <Text>  Press <Text bold>Enter</Text> to open the full task browser.</Text>
+      <Text>  {t("questPicker.pressEnterBrowser", { key: "Enter" })}</Text>
     </Box>
   );
 }
@@ -229,13 +234,14 @@ function ErrandsItem({
   errandCount: number;
   isSelected: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box>
       <Text color={isSelected ? "blue" : undefined} bold={isSelected}>
         {isSelected ? "▸ " : "  "}
       </Text>
       <Text color="yellow" bold>⚡</Text>
-      <Text bold> Errands</Text>
+      <Text bold> {t("questPicker.errands")}</Text>
       <Text dimColor> ({errandCount})</Text>
     </Box>
   );
@@ -246,16 +252,17 @@ function ErrandsDetail({
 }: {
   errandCount: number;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column">
-      <Text bold color="yellow">Errands</Text>
+      <Text bold color="yellow">{t("questPicker.errands")}</Text>
       <Text />
-      <Text>  Quest-less tasks — one-off work</Text>
-      <Text>  not tied to any quest.</Text>
+      <Text>  {t("questPicker.errandsLine1")}</Text>
+      <Text>  {t("questPicker.errandsLine2")}</Text>
       <Text />
-      <Text>  Total: {errandCount} task{errandCount !== 1 ? "s" : ""}</Text>
+      <Text>  {t("questPicker.total", { count: errandCount })}</Text>
       <Text />
-      <Text>  Press <Text bold>Enter</Text> to browse errands.</Text>
+      <Text>  {t("questPicker.pressEnterErrands", { key: "Enter" })}</Text>
     </Box>
   );
 }
@@ -267,6 +274,10 @@ function QuestDetail({
   summary: QuestSummary;
   usage?: UsageTotals;
 }): React.ReactElement {
+  const t = useI18n();
+  /** "  Label:" padded to a fixed column so values align in any language. */
+  const lbl = (key: string) => `  ${t(key)}:`.padEnd(14);
+  const tl = (key: string) => `  ${t(key)}:`.padEnd(11);
   const { quest, totalTasks, doneTasks, completionPct } = summary;
   const sColor = QUEST_STATUS_COLORS[quest.status] ?? "white";
   const pColor = TASK_PRIORITY_COLORS[quest.priority] ?? "white";
@@ -278,43 +289,43 @@ function QuestDetail({
       <Text />
 
       {/* Status & Priority */}
-      <Text>  Status:     <Text color={sColor as any}>{quest.status}</Text></Text>
-      <Text>  Priority:   <Text color={pColor as any}>{quest.priority}</Text></Text>
-      <Text>  Difficulty: {quest.difficulty}</Text>
-      <Text>  HITL:       {quest.hitlMode}</Text>
+      <Text>{lbl("taskBrowser.detail.status")}<Text color={sColor as any}>{quest.status}</Text></Text>
+      <Text>{lbl("taskBrowser.detail.priority")}<Text color={pColor as any}>{quest.priority}</Text></Text>
+      <Text>{lbl("taskBrowser.detail.difficulty")}{quest.difficulty}</Text>
+      <Text>{lbl("questPicker.hitl")}{quest.hitlMode}</Text>
       <Text />
 
       {/* Progress */}
-      <Text bold>Progress:</Text>
+      <Text bold>{t("questPicker.progress")}</Text>
       {totalTasks > 0 ? (
         <>
-          <Text>  Tasks: {doneTasks}/{totalTasks} done ({completionPct}%)</Text>
+          <Text>  {t("questPicker.tasksDone", { done: doneTasks, total: totalTasks, pct: completionPct })}</Text>
           <Text>  [{progressBar(completionPct, 100, 20)}]</Text>
         </>
       ) : (
-        <Text dimColor>  No tasks assigned</Text>
+        <Text dimColor>  {t("questPicker.noTasksAssigned")}</Text>
       )}
       <Text />
 
       {/* Goal */}
       {quest.goal && (
         <>
-          <Text bold>Goal:</Text>
+          <Text bold>{t("cli.quest.show.goal")}</Text>
           <Text>  {quest.goal}</Text>
           <Text />
         </>
       )}
 
       {/* Branch */}
-      <Text bold>Branch:</Text>
+      <Text bold>{t("questPicker.branch")}</Text>
       <Text>  {quest.branch}</Text>
-      <Text>  Base: {quest.baseBranch}</Text>
+      <Text>  {t("questPicker.base", { branch: quest.baseBranch })}</Text>
       <Text />
 
       {/* Constraints */}
       {quest.constraints.add.length > 0 && (
         <>
-          <Text bold>Added Constraints:</Text>
+          <Text bold>{t("questPicker.addedConstraints")}</Text>
           {quest.constraints.add.map((c, i) => (
             <Text key={`add-${i}`}>  + {c}</Text>
           ))}
@@ -323,7 +334,7 @@ function QuestDetail({
       )}
       {quest.constraints.ban.length > 0 && (
         <>
-          <Text bold>Banned:</Text>
+          <Text bold>{t("questPicker.banned")}</Text>
           {quest.constraints.ban.map((b, i) => (
             <Text key={`ban-${i}`}>  - {b}</Text>
           ))}
@@ -334,7 +345,7 @@ function QuestDetail({
       {/* Dependencies */}
       {quest.depends_on.length > 0 && (
         <>
-          <Text bold>Depends on:</Text>
+          <Text bold>{t("questPicker.dependsOn")}</Text>
           {quest.depends_on.map((d, i) => (
             <Text key={`dep-${i}`}>  → {d}</Text>
           ))}
@@ -345,7 +356,7 @@ function QuestDetail({
       {/* Notes */}
       {quest.notes.length > 0 && (
         <>
-          <Text bold>Notes:</Text>
+          <Text bold>{t("cli.quest.show.notes")}</Text>
           {quest.notes.map((n, i) => (
             <Text key={`note-${i}`}>  {n}</Text>
           ))}
@@ -354,29 +365,29 @@ function QuestDetail({
       )}
 
       {/* Timeline */}
-      <Text bold>Timeline:</Text>
-      <Text>  Created: {quest.created_at.slice(0, 10)}</Text>
-      {quest.started_at && <Text>  Started: {quest.started_at.slice(0, 10)}</Text>}
-      {quest.ended_at && <Text>  Ended:   {quest.ended_at.slice(0, 10)}</Text>}
+      <Text bold>{t("questPicker.timeline")}</Text>
+      <Text>{tl("questPicker.created")}{quest.created_at.slice(0, 10)}</Text>
+      {quest.started_at && <Text>{tl("questPicker.started")}{quest.started_at.slice(0, 10)}</Text>}
+      {quest.ended_at && <Text>{tl("questPicker.ended")}{quest.ended_at.slice(0, 10)}</Text>}
       <Text />
 
       {/* Token Usage */}
       {usage && (
         <>
-          <Text bold color="yellow">Token Usage:</Text>
-          <Text>  Input:      <Text color="cyan">{formatTokenCount(usage.input_tokens)}</Text></Text>
-          <Text>  Output:     <Text color="cyan">{formatTokenCount(usage.output_tokens)}</Text></Text>
+          <Text bold color="yellow">{t("taskBrowser.detail.tokenUsage")}</Text>
+          <Text>{lbl("taskBrowser.detail.input")}<Text color="cyan">{formatTokenCount(usage.input_tokens)}</Text></Text>
+          <Text>{lbl("taskBrowser.detail.output")}<Text color="cyan">{formatTokenCount(usage.output_tokens)}</Text></Text>
           {usage.cache_read > 0 && (
-            <Text>  Cache read: <Text dimColor>{formatTokenCount(usage.cache_read)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cacheRead")}<Text dimColor>{formatTokenCount(usage.cache_read)}</Text></Text>
           )}
           {usage.reasoning_tokens > 0 && (
-            <Text>  Reasoning:  <Text color="magenta">{formatTokenCount(usage.reasoning_tokens)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.reasoning")}<Text color="magenta">{formatTokenCount(usage.reasoning_tokens)}</Text></Text>
           )}
-          <Text>  Total:      {formatTokenCount(usage.total_tokens)}</Text>
+          <Text>{lbl("taskBrowser.detail.total")}{formatTokenCount(usage.total_tokens)}</Text>
           {usage.total_cost > 0 && (
-            <Text>  Cost:       <Text color="yellow">{formatTokenCount(usage.total_cost)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatTokenCount(usage.total_cost)}</Text></Text>
           )}
-          <Text>  Steps:      {usage.record_count}</Text>
+          <Text>{lbl("taskBrowser.detail.steps")}{usage.record_count}</Text>
         </>
       )}
     </Box>
@@ -388,47 +399,48 @@ function StatusBar({
 }: {
   devMode?: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" height={3}>
       <Box flexWrap="wrap">
-        <Text bold>Keys:</Text>
+        <Text bold>{t("waveMonitor.keys")}</Text>
         <Text>  </Text>
         <Text dimColor>Enter</Text>
-        <Text> select</Text>
+        <Text> {t("questPicker.key.select")}</Text>
         <Text>  </Text>
         <Text dimColor>C</Text>
-        <Text> create</Text>
+        <Text> {t("questPicker.key.create")}</Text>
         <Text>  </Text>
         <Text dimColor>E</Text>
-        <Text> errand</Text>
+        <Text> {t("taskBrowser.key.errand")}</Text>
         <Text>  </Text>
         <Text dimColor>P</Text>
-        <Text> plan</Text>
+        <Text> {t("questPicker.key.plan")}</Text>
         <Text>  </Text>
         <Text dimColor>G</Text>
-        <Text> genesis</Text>
+        <Text> {t("questPicker.key.genesis")}</Text>
         <Text>  </Text>
         <Text dimColor>A</Text>
-        <Text> activate/pause</Text>
+        <Text> {t("questPicker.key.activatePause")}</Text>
         <Text>  </Text>
         <Text dimColor>D</Text>
-        <Text> delete</Text>
+        <Text> {t("questPicker.key.delete")}</Text>
         <Text>  </Text>
         <Text dimColor>W</Text>
-        <Text> wishlist</Text>
+        <Text> {t("taskBrowser.key.wishlist")}</Text>
         <Text>  </Text>
         <Text dimColor>O</Text>
-        <Text> onboarding</Text>
+        <Text> {t("questPicker.key.onboarding")}</Text>
         {devMode && (
           <>
             <Text>  </Text>
             <Text dimColor>F</Text>
-            <Text> seed-fake</Text>
+            <Text> {t("questPicker.key.seedFake")}</Text>
           </>
         )}
         <Text>  </Text>
         <Text dimColor>Q</Text>
-        <Text> quit</Text>
+        <Text> {t("waveMonitor.quit")}</Text>
       </Box>
     </Box>
   );
@@ -446,6 +458,7 @@ function StatusBar({
  * computing summaries, and handling navigation.
  */
 export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement {
+  const t = useI18n();
   const {
     quests,
     totalTaskCount,
@@ -557,7 +570,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
             errandCount={errandCount}
             isSelected={selectedIndex === 1}
           />
-          {quests.length > 0 && <Text dimColor>  ── quests ──</Text>}
+          {quests.length > 0 && <Text dimColor>  ── {t("questPicker.questsDivider")} ──</Text>}
           {quests.map((summary, i) => (
             <QuestListItem
               key={summary.quest.id}
@@ -566,7 +579,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
             />
           ))}
           {quests.length === 0 && (
-            <Text dimColor>  No quests found</Text>
+            <Text dimColor>  {t("questPicker.noQuests")}</Text>
           )}
         </Box>
 
@@ -585,7 +598,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
               usage={selectedQuestUsage}
             />
           ) : (
-            <Text dimColor>No item selected</Text>
+            <Text dimColor>{t("questPicker.noItemSelected")}</Text>
           )}
         </Box>
       </Box>

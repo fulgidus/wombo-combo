@@ -18,6 +18,7 @@ import { Modal } from "./modal";
 import { TextInput } from "./text-input";
 import type { ErrandSpec } from "../lib/errand-planner";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,24 +38,6 @@ export interface ErrandWizardProps {
 }
 
 // ---------------------------------------------------------------------------
-// Step Labels
-// ---------------------------------------------------------------------------
-
-const STEP_TITLES: Record<ErrandWizardStep, string> = {
-  description: "Description",
-  scope: "Scope",
-  objectives: "Objectives",
-  review: "Review",
-};
-
-const STEP_INSTRUCTIONS: Record<ErrandWizardStep, string> = {
-  description: "What needs to be done? (required)",
-  scope: "What areas/files should this focus on? (optional — Enter to skip)",
-  objectives: "Key objectives or acceptance criteria (optional — Enter to skip)",
-  review: "Review your errand details below.",
-};
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -63,6 +46,7 @@ export function ErrandWizard({
   onCancel,
   focus = true,
 }: ErrandWizardProps): React.ReactElement {
+  const t = useI18n();
   const [stepIndex, setStepIndex] = useState(0);
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState("");
@@ -70,7 +54,7 @@ export function ErrandWizard({
   const [error, setError] = useState("");
 
   const step = STEPS[stepIndex];
-  const stepLabel = `Step ${stepIndex + 1}/${STEPS.length}`;
+  const stepNo = { current: stepIndex + 1, total: STEPS.length };
 
   const goBack = useCallback(() => {
     setError("");
@@ -90,13 +74,13 @@ export function ErrandWizard({
     (value: string) => {
       const trimmed = value.trim();
       if (!trimmed) {
-        setError("Description cannot be empty");
+        setError(t("errandWizard.error.descriptionEmpty"));
         return;
       }
       setDescription(trimmed);
       advance();
     },
-    [advance],
+    [advance, t],
   );
 
   const handleScopeSubmit = useCallback(
@@ -146,19 +130,19 @@ export function ErrandWizard({
   // Footer keybind hints
   const footerHint =
     step === "description"
-      ? "Ctrl+S: next  |  Esc: cancel"
+      ? t("errandWizard.footer.first")
       : step === "review"
-        ? "Enter: launch errand planner  |  Esc: go back"
-        : "Ctrl+S: next  |  Esc: go back";
+        ? t("errandWizard.footer.review")
+        : t("errandWizard.footer.step");
 
   return (
-    <Modal title="New Errand" borderColor="magenta" footer={<Text dimColor>{footerHint}</Text>}>
+    <Modal title={t("errandWizard.title")} borderColor="magenta" footer={<Text dimColor>{footerHint}</Text>}>
       {/* Step header */}
       <Box flexDirection="column" marginBottom={1}>
         <Text bold>
-          {stepLabel} — {STEP_TITLES[step]}
+          {t(`errandWizard.stepTitle.${step}`, stepNo)}
         </Text>
-        <Text color="cyan">{STEP_INSTRUCTIONS[step]}</Text>
+        <Text color="cyan">{t(`errandWizard.instruction.${step}`)}</Text>
       </Box>
 
       {/* Error message */}
@@ -174,7 +158,7 @@ export function ErrandWizard({
           value={description}
           onChange={setDescription}
           onSubmit={handleDescriptionSubmit}
-          placeholder="Describe what needs to be done..."
+          placeholder={t("errandWizard.placeholder.description")}
           focus={focus}
         />
       )}
@@ -184,7 +168,7 @@ export function ErrandWizard({
           value={scope}
           onChange={setScope}
           onSubmit={handleScopeSubmit}
-          placeholder="Areas/files to focus on (optional)..."
+          placeholder={t("errandWizard.placeholder.scope")}
           focus={focus}
         />
       )}
@@ -194,7 +178,7 @@ export function ErrandWizard({
           value={objectives}
           onChange={setObjectives}
           onSubmit={handleObjectivesSubmit}
-          placeholder="Objectives or acceptance criteria (optional)..."
+          placeholder={t("errandWizard.placeholder.objectives")}
           focus={focus}
         />
       )}
@@ -203,7 +187,7 @@ export function ErrandWizard({
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text bold color="magenta">
-              Description:
+              {t("errandWizard.review.description")}
             </Text>
           </Box>
           <Box marginBottom={1} marginLeft={2}>
@@ -212,20 +196,20 @@ export function ErrandWizard({
 
           <Box marginBottom={1}>
             <Text bold color="cyan">
-              Scope:
+              {t("errandWizard.review.scope")}
             </Text>
           </Box>
           <Box marginBottom={1} marginLeft={2}>
-            <Text dimColor={!scope}>{scope || "(none)"}</Text>
+            <Text dimColor={!scope}>{scope || t("errandWizard.review.none")}</Text>
           </Box>
 
           <Box marginBottom={1}>
             <Text bold color="cyan">
-              Objectives:
+              {t("errandWizard.review.objectives")}
             </Text>
           </Box>
           <Box marginLeft={2}>
-            <Text dimColor={!objectives}>{objectives || "(none)"}</Text>
+            <Text dimColor={!objectives}>{objectives || t("errandWizard.review.none")}</Text>
           </Box>
         </Box>
       )}

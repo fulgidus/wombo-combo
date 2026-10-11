@@ -152,7 +152,7 @@ describe("task browser analytics overlay", () => {
     expect(h.last()).not.toContain("Agent Analytics");
     await h.press("u");
     expect(h.last()).toContain("Agent Analytics");
-    expect(h.last()).toContain("1 executions");
+    expect(h.last()).toContain("1 execution");
     expect(h.last()).toContain("task-a");
     await h.unmount();
   });
@@ -176,7 +176,7 @@ describe("task browser analytics overlay", () => {
     const loader = countingLoader(result([rec("a")]));
     const h = mount({ analyticsLoader: loader.load, analyticsRefreshMs: 30 });
     await h.press("u");
-    expect(h.last()).toContain("1 executions");
+    expect(h.last()).toContain("1 execution");
 
     loader.state.data = result([rec("a"), rec("b")]);
     await waitFor(() => loader.state.calls > 2 && h.last().includes("2 executions"));
@@ -228,7 +228,7 @@ describe("task browser analytics overlay", () => {
       }),
     });
     await h.press("u");
-    expect(h.last()).toContain("1 executions");
+    expect(h.last()).toContain("1 execution");
     expect(h.last()).toContain("bad.json: malformed");
     await h.unmount();
   });

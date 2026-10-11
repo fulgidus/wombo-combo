@@ -5,15 +5,15 @@ description: Go file by file through src/ink/*.tsx and extract user-facing hard-
   number is displayed with a noun (e.g. N tasks, N agents). Components that cannot take context use the global t.
   Existing TUI/e2e tests that assert English text must stay green. One commit-sized step per file group; keep t(key)
   signature unchanged.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - i18n-core
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:32:30.898Z
+ended_at: 2026-10-11T16:20:06.510Z
 constraints:
   - Do not change rendered English output
   - Never concatenate translated fragments, one key per sentence

@@ -24,12 +24,12 @@ import {
 } from "../../lib/project-store";
 import { TextInput } from "../text-input";
 import {
-  SECTION_NAMES,
   formatSectionForDisplay,
   serializeSectionForEdit,
   parseSectionEdit,
 } from "./onboarding-utils";
 import { useScreenInput } from "../esc-menu";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +60,7 @@ export function ProfileReview({
   onApprove,
   onCancel,
 }: ProfileReviewProps): React.ReactElement {
+  const t = useI18n();
   // Deep-clone the profile so edits are non-destructive until approved
   const [workingProfile, setWorkingProfile] = useState<ProjectProfile>(
     () => JSON.parse(JSON.stringify(profile)),
@@ -79,7 +80,7 @@ export function ProfileReview({
   const [editText, setEditText] = useState("");
 
   const section = PROFILE_SECTIONS[currentIdx];
-  const sectionName = SECTION_NAMES[section];
+  const sectionName = t(`onboarding.section.${section}`);
   const totalSections = PROFILE_SECTIONS.length;
   const approvedCount = Object.values(approvedSections).filter(Boolean).length;
   const isApproved = approvedSections[section];
@@ -196,16 +197,20 @@ export function ProfileReview({
       <Box flexDirection="column" padding={1}>
         {/* Header */}
         <Box marginBottom={1}>
-          <Text bold>Profile Review</Text>
+          <Text bold>{t("onboarding.review.title")}</Text>
           <Text dimColor> | </Text>
-          <Text color="magenta">EDITING</Text>
+          <Text color="magenta">{t("onboarding.review.editing")}</Text>
         </Box>
 
         <Box marginBottom={1}>
           <Text bold>
-            Section {currentIdx + 1}/{totalSections} — {sectionName}
+            {t("onboarding.review.sectionLine", {
+              current: currentIdx + 1,
+              total: totalSections,
+              name: sectionName,
+            })}
           </Text>
-          <Text color="magenta"> ✎ Edit mode</Text>
+          <Text color="magenta">{` ${t("onboarding.review.editModeBadge")}`}</Text>
         </Box>
 
         {/* Editor */}
@@ -222,7 +227,7 @@ export function ProfileReview({
         {/* Key hints */}
         <Box>
           <Text dimColor>
-            Ctrl+S save | Escape discard
+            {t("onboarding.review.editHint")}
           </Text>
         </Box>
       </Box>
@@ -236,21 +241,25 @@ export function ProfileReview({
     <Box flexDirection="column" padding={1}>
       {/* Header */}
       <Box marginBottom={1}>
-        <Text bold>Profile Review</Text>
+        <Text bold>{t("onboarding.review.title")}</Text>
         <Text dimColor> | </Text>
         <Text color="green">{approvedCount}</Text>
-        <Text dimColor>/{totalSections} approved</Text>
+        <Text dimColor>{t("onboarding.review.approvedOf", { total: totalSections })}</Text>
       </Box>
 
       {/* Section counter and name */}
       <Box marginBottom={1}>
         <Text bold>
-          Section {currentIdx + 1}/{totalSections} — {sectionName}
+          {t("onboarding.review.sectionLine", {
+            current: currentIdx + 1,
+            total: totalSections,
+            name: sectionName,
+          })}
         </Text>
         {isApproved ? (
-          <Text color="green"> ✔ APPROVED</Text>
+          <Text color="green">{` ${t("onboarding.review.approvedBadge")}`}</Text>
         ) : (
-          <Text color="yellow"> ● PENDING</Text>
+          <Text color="yellow">{` ${t("onboarding.review.pendingBadge")}`}</Text>
         )}
       </Box>
 
@@ -270,23 +279,23 @@ export function ProfileReview({
         <Text color="green" bold>
           A
         </Text>
-        <Text> approve  </Text>
+        <Text>{` ${t("onboarding.review.approve")}  `}</Text>
         <Text color="magenta" bold>
           R
         </Text>
-        <Text> revise  </Text>
+        <Text>{` ${t("onboarding.review.revise")}  `}</Text>
         {currentIdx > 0 && (
           <>
             <Text color="cyan" bold>
               B
             </Text>
-            <Text> back  </Text>
+            <Text>{` ${t("onboarding.review.back")}  `}</Text>
           </>
         )}
         <Text color="red" bold>
           Q
         </Text>
-        <Text> cancel</Text>
+        <Text>{` ${t("onboarding.review.cancel")}`}</Text>
       </Box>
     </Box>
   );

@@ -16,6 +16,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { Box, Text, useApp, render } from "ink";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { useI18n } from "./i18n";
 import { InitForm, type InitFormDefaults } from "./init-form";
 import {
   detectProjectName,
@@ -55,6 +56,7 @@ type InitState =
  */
 export function InitApp({ projectRoot, force }: InitAppProps): React.ReactElement {
   const app = useApp();
+  const t = useI18n();
 
   // Auto-detect defaults (computed once on mount)
   const detected = useMemo(
@@ -110,19 +112,19 @@ export function InitApp({ projectRoot, force }: InitAppProps): React.ReactElemen
       <Box flexDirection="column" padding={1}>
         <Box marginBottom={1}>
           <Text bold color="green">
-            ✓ Project initialized!
+            {t("init.done")}
           </Text>
         </Box>
         <Box flexDirection="column">
           {state.createdFiles.map((file, idx) => (
             <Text key={idx} dimColor>
-              Created {file}
+              {t("init.created", { file })}
             </Text>
           ))}
         </Box>
         <Box marginTop={1}>
           <Text>
-            Run <Text bold>woco help</Text> to see available commands.
+            {t("init.runHelpBefore")}<Text bold>woco help</Text>{t("init.runHelpAfter")}
           </Text>
         </Box>
       </Box>
@@ -133,7 +135,7 @@ export function InitApp({ projectRoot, force }: InitAppProps): React.ReactElemen
     return (
       <Box flexDirection="column" padding={1}>
         <Text bold color="red">
-          ✗ Init failed: {state.message}
+          {t("init.failed", { message: state.message })}
         </Text>
       </Box>
     );
@@ -142,7 +144,7 @@ export function InitApp({ projectRoot, force }: InitAppProps): React.ReactElemen
   if (state.phase === "cancelled") {
     return (
       <Box padding={1}>
-        <Text dimColor>Init cancelled.</Text>
+        <Text dimColor>{t("init.cancelled")}</Text>
       </Box>
     );
   }

@@ -19,8 +19,9 @@
 import React, { useState } from "react";
 import { Box, Text } from "ink";
 import { PROFILE_SECTIONS, type ProfileSection, type ProjectProfile } from "../../lib/project-store";
-import { SECTION_NAMES, summarizeSection } from "./onboarding-utils";
+import { summarizeSection } from "./onboarding-utils";
 import { useScreenInput } from "../esc-menu";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +58,7 @@ export function SectionPicker({
   onResynthesize,
   onBack,
 }: SectionPickerProps): React.ReactElement {
+  const t = useI18n();
   const [cursor, setCursor] = useState(0);
 
   useScreenInput((input, key) => {
@@ -87,21 +89,21 @@ export function SectionPicker({
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="magenta">
-          Edit Profile
+          {t("onboarding.picker.title")}
         </Text>
       </Box>
 
       {/* Instructions */}
       <Box marginBottom={1}>
         <Text dimColor>
-          Select a section to edit. Use arrow keys to navigate, Enter to select.
+          {t("onboarding.picker.instructions")}
         </Text>
       </Box>
 
       {/* Section list */}
       <Box flexDirection="column">
         {PROFILE_SECTIONS.map((section, idx) => {
-          const name = SECTION_NAMES[section];
+          const name = t(`onboarding.section.${section}`);
           const summary = summarizeSection(section, profile);
           const isSelected = idx === cursor;
 
@@ -126,16 +128,16 @@ export function SectionPicker({
             color={cursor === PROFILE_SECTIONS.length ? "magenta" : undefined}
           >
             {cursor === PROFILE_SECTIONS.length ? "❯ " : "  "}
-            Re-run LLM synthesis
+            {t("onboarding.picker.resynthesize")}
           </Text>
-          <Text dimColor> — regenerate profile from scratch</Text>
+          <Text dimColor>{` — ${t("onboarding.picker.resynthesizeDesc")}`}</Text>
         </Box>
       </Box>
 
       {/* Navigation hint */}
       <Box marginTop={1}>
         <Text dimColor>
-          Enter: select  |  Esc: back
+          {t("onboarding.picker.hint")}
         </Text>
       </Box>
     </Box>

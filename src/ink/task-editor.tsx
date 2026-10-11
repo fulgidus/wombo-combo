@@ -20,6 +20,7 @@ import { useTextInput } from "./use-text-input";
 import type { Task, TaskStatus, Priority } from "../lib/tasks";
 import { VALID_STATUSES, VALID_PRIORITIES } from "../lib/task-schema";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -53,6 +54,7 @@ function cycleIdx<T>(arr: readonly T[], current: T, delta: number): number {
 // ---------------------------------------------------------------------------
 
 export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): React.ReactElement {
+  const t = useI18n();
   const [focused, setFocused] = useState<Field>(0);
 
   // Text fields
@@ -125,26 +127,26 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
   return (
     <Box width={70}>
       <Modal
-          title="✏  Edit Task"
+          title={`✏  ${t("taskEditor.title")}`}
           borderColor="cyan"
           footer={
             <Box flexDirection="row" gap={2}>
-              <Text dimColor>Tab</Text><Text> next field</Text>
-              <Text dimColor>  ← →</Text><Text> cycle enum</Text>
-              <Text dimColor>  Ctrl+S</Text><Text> save</Text>
-              <Text dimColor>  ESC</Text><Text> cancel</Text>
+              <Text dimColor>Tab</Text><Text> {t("taskEditor.nextField")}</Text>
+              <Text dimColor>  ← →</Text><Text> {t("taskEditor.cycleEnum")}</Text>
+              <Text dimColor>  Ctrl+S</Text><Text> {t("wishlist.key.save")}</Text>
+              <Text dimColor>  ESC</Text><Text> {t("reviewList.key.cancel")}</Text>
             </Box>
           }
         >
           {/* ID (read-only) */}
           <Box marginBottom={1}>
-            <Text dimColor>id  </Text>
+            <Text dimColor>{t("taskEditor.id")}  </Text>
             <Text dimColor>{task.id}</Text>
           </Box>
 
           {/* Title */}
           <Box flexDirection="column" marginBottom={1}>
-            <Text color={fc(0)} bold={focused === 0}>Title</Text>
+            <Text color={fc(0)} bold={focused === 0}>{t("taskEditor.titleField")}</Text>
             <Box borderStyle="round" borderColor={focused === 0 ? "cyan" : "gray"} paddingX={1} width={62}>
               <TextInput
                 value={titleInput.value}
@@ -157,7 +159,7 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
 
           {/* Description */}
           <Box flexDirection="column" marginBottom={1}>
-            <Text color={fc(1)} bold={focused === 1}>Description</Text>
+            <Text color={fc(1)} bold={focused === 1}>{t("taskEditor.description")}</Text>
             <Box borderStyle="round" borderColor={focused === 1 ? "cyan" : "gray"} paddingX={1} width={62}>
               <TextInput
                 value={descInput.value}
@@ -170,7 +172,7 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
 
           {/* Status */}
           <Box flexDirection="row" gap={1} marginBottom={1}>
-            <Text color={fc(2)} bold={focused === 2}>Status:</Text>
+            <Text color={fc(2)} bold={focused === 2}>{t("taskEditor.status")}</Text>
             <Text color={focused === 2 ? "yellow" : "gray"}>←</Text>
             <Text bold color={STATUS_COLORS[currentStatus] ?? "white"}> {currentStatus} </Text>
             <Text color={focused === 2 ? "yellow" : "gray"}>→</Text>
@@ -178,7 +180,7 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
 
           {/* Priority */}
           <Box flexDirection="row" gap={1} marginBottom={1}>
-            <Text color={fc(3)} bold={focused === 3}>Priority:</Text>
+            <Text color={fc(3)} bold={focused === 3}>{t("taskEditor.priority")}</Text>
             <Text color={focused === 3 ? "yellow" : "gray"}>←</Text>
             <Text bold color={PRIORITY_COLORS[currentPriority] ?? "white"}> {currentPriority} </Text>
             <Text color={focused === 3 ? "yellow" : "gray"}>→</Text>
@@ -186,7 +188,7 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
 
           {/* Effort */}
           <Box flexDirection="column" marginBottom={1}>
-            <Text color={fc(4)} bold={focused === 4}>Effort <Text dimColor>(ISO 8601, e.g. PT2H PT30M)</Text></Text>
+            <Text color={fc(4)} bold={focused === 4}>{t("taskEditor.effort")} <Text dimColor>({t("taskEditor.effortHint")})</Text></Text>
             <Box borderStyle="round" borderColor={focused === 4 ? "cyan" : "gray"} paddingX={1} width={40}>
               <TextInput
                 value={effortInput.value}
@@ -200,14 +202,14 @@ export function TaskEditor({ task, onConfirm, onCancel }: TaskEditorProps): Reac
           {/* Notes — append a note */}
           <Box flexDirection="column">
             <Text color={fc(5)} bold={focused === 5}>
-              Add note <Text dimColor>({task.notes?.length ?? 0} existing)</Text>
+              {t("taskEditor.addNote")} <Text dimColor>({t("taskEditor.existing", { count: task.notes?.length ?? 0 })})</Text>
             </Text>
             <Box borderStyle="round" borderColor={focused === 5 ? "cyan" : "gray"} paddingX={1} width={62}>
               <TextInput
                 value={noteInput.value}
                 onChange={noteInput.onChange}
                 onSubmit={handleConfirm}
-                placeholder="(leave empty to skip)"
+                placeholder={t("taskEditor.notePlaceholder")}
                 focus={focused === 5}
               />
             </Box>

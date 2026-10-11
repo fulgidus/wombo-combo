@@ -133,6 +133,7 @@ export {
   reviewItemToQuest,
   buildGenesisConfig,
   GENESIS_EDIT_FIELDS,
+  buildGenesisEditFields,
   GenesisReviewApp,
   type GenesisReviewAppProps,
 } from "./genesis-review";
@@ -141,6 +142,7 @@ export {
   reviewItemToTask,
   buildPlanConfig,
   PLAN_EDIT_FIELDS,
+  buildPlanEditFields,
   PlanReviewApp,
   type PlanReviewAppProps,
 } from "./plan-review";

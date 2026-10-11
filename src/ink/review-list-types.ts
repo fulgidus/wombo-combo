@@ -98,6 +98,8 @@ export interface ReviewItem {
 
 /** A simple key-value field for the detail pane. */
 export interface DetailField {
+  /** Stable identifier; logic must key on this, never on the (translated) label. */
+  id?: string;
   label: string;
   value: string;
   color?: string;
@@ -105,6 +107,8 @@ export interface DetailField {
 
 /** A section with a title and list of text lines for the detail pane. */
 export interface DetailSection {
+  /** Stable identifier; logic must key on this, never on the (translated) label. */
+  id?: string;
   label: string;
   items: string[];
   /** Prefix for each item (e.g., "+" for constraints, "-" for forbidden). */
