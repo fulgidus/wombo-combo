@@ -6,12 +6,22 @@ import { basename } from "node:path";
 import { HARNESS_IDS, type HarnessId } from "./ids";
 import type { HarnessAdapter } from "./types";
 import { opencodeHarness } from "./opencode";
+import { claudeCodeHarness } from "./claude-code";
+import { codexHarness } from "./codex";
+import { piHarness } from "./pi";
+import { customHarness } from "./custom";
 
 export * from "./ids";
 export * from "./types";
 export { normalizeOutput } from "./output";
 
-const REGISTRY = new Map<HarnessId, HarnessAdapter>([["opencode", opencodeHarness]]);
+const REGISTRY = new Map<HarnessId, HarnessAdapter>([
+  ["opencode", opencodeHarness],
+  ["claude-code", claudeCodeHarness],
+  ["codex", codexHarness],
+  ["pi", piHarness],
+  ["custom", customHarness],
+]);
 
 export function getHarness(id: HarnessId): HarnessAdapter {
   const adapter = REGISTRY.get(id);

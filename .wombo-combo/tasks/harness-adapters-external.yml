@@ -10,15 +10,15 @@ description: |
   reason stop and token usage, and error events. Cover with fixture-driven
   unit tests (fixtures under tests/fixtures/harness/) including partial
   lines, unknown events and failed turns. No binaries required.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - harness-contract-opencode
 effort: PT4H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T13:55:24.156Z
+ended_at: 2026-10-11T14:00:25.600Z
 constraints:
   - never require external CLI binaries in tests
   - normalizers must ignore unknown events instead of throwing
