@@ -101,7 +101,7 @@ bug is invisible and will never be fixed.
 wombo-combo/
   package.json              # name: wombo-combo, version in sync with git tags
   schemas/                  # JSON schemas: config, meta, task
-  docs/                     # Project docs (e.g. tdd-baseline.md)
+  docs/                     # Astro + Starlight docs site (own package; pages in src/content/docs/)
   scripts/
     build.ts                # Builds dist/index.js (CLI) and dist/daemon/daemon.js
     stubs/                  # Build-time stubs (react-devtools-core)

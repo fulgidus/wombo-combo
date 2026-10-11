@@ -1,4 +1,7 @@
-# Quest test baselines
+---
+title: Quest test baselines
+description: How wombo-combo records pre-existing test failures so TDD verification only flags regressions.
+---
 
 A quest with TDD enabled may already have failing tests on its base branch.
 Without a baseline, every verification of its tasks would fail on those

@@ -11,3 +11,13 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+  # The Starlight docs site is its own package (docs/package.json, docs/bun.lock).
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+    groups:
+      docs-site:
+        patterns: ["*"]
+    commit-message:
+      prefix: docs
