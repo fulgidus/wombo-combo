@@ -10,10 +10,11 @@
  *  - hash-differs:   the item changed since the last sync (local_hash differs)
  */
 
-import type { WomboConfig } from "../../config";
+import { normalizeSyncGithubConfig, type WomboConfig } from "../../config";
 import { listComments } from "../comments";
 import { loadAllArchivedQuests, loadAllQuests } from "../quest-store";
 import { loadFeatures, type Task } from "../tasks";
+import { isFinishedQuest, isFinishedTask } from "./syncable";
 import { hashQuest, hashTask, listMappings, readMapping, type SyncKind } from "./mapping";
 
 export type MirrorFindingKind = "unmapped" | "orphan-mapping" | "comment-no-id" | "hash-differs";
@@ -34,14 +35,15 @@ export function checkMirror(projectRoot: string, config: WomboConfig): MirrorFin
   const out: MirrorFinding[] = [];
   const data = loadFeatures(projectRoot, config);
   const known = new Set<string>();
+  const includeFinished = normalizeSyncGithubConfig(config.sync).includeFinished;
 
-  const visit = (item: SyncKind, id: string, archived: boolean, hash: () => string) => {
+  const visit = (item: SyncKind, id: string, archived: boolean, hash: () => string, finished: boolean) => {
     known.add(`${item}:${id}`);
     const mapping = readMapping(projectRoot, item, id);
     const ref = refOf(item, id);
     if (!mapping) {
       // Archived items that were never synced are deliberately not pushed.
-      if (!archived) out.push({ kind: "unmapped", ref, item });
+      if (!archived && (includeFinished || !finished)) out.push({ kind: "unmapped", ref, item });
       return;
     }
     let current: string | null = null;
@@ -64,10 +66,10 @@ export function checkMirror(projectRoot: string, config: WomboConfig): MirrorFin
     }
   };
 
-  for (const q of loadAllQuests(projectRoot)) visit("quest", q.id, false, () => hashQuest(q));
-  for (const q of loadAllArchivedQuests(projectRoot)) visit("quest", q.id, true, () => hashQuest(q));
-  for (const t of data.tasks) visit("task", t.id, false, () => hashTask(t as Task));
-  for (const t of data.archive ?? []) visit("task", t.id, true, () => hashTask(t as Task));
+  for (const q of loadAllQuests(projectRoot)) visit("quest", q.id, false, () => hashQuest(q), isFinishedQuest(q));
+  for (const q of loadAllArchivedQuests(projectRoot)) visit("quest", q.id, true, () => hashQuest(q), isFinishedQuest(q));
+  for (const t of data.tasks) visit("task", t.id, false, () => hashTask(t as Task), isFinishedTask(t));
+  for (const t of data.archive ?? []) visit("task", t.id, true, () => hashTask(t as Task), isFinishedTask(t));
 
   for (const item of ["task", "quest"] as const) {
     for (const m of listMappings(projectRoot, item)) {

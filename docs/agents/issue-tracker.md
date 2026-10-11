@@ -14,6 +14,9 @@ The lockstep mirror is done by `bun dev sync` (guide:
 - `bun dev sync run` pulls GitHub changes, then pushes woco changes (tasks,
   quests, comments, labels). Idempotent: issues are matched by a hidden
   `woco:` marker and the mapping files under `.wombo-combo/sync/github/`.
+- Finished work (done/cancelled tasks, completed/abandoned quests, closed
+  issues) with no mapping is not mirrored unless `sync.github.includeFinished`
+  is `true`; already-mapped items keep syncing.
 - **Auto mode** (`sync.github.enabled: true`, `mode: "auto"` in
   `.wombo-combo/config.json`) pushes each change right after the woco command
   that made it, and the daemon (or `bun dev sync watch`) runs the cycle

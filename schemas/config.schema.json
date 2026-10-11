@@ -460,6 +460,11 @@
               "type": "boolean",
               "default": true,
               "description": "In auto mode, cycles also pull remote changes before pushing"
+            },
+            "includeFinished": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also mirror finished work that has no mapping yet (done/cancelled tasks, completed/abandoned quests, closed issues). Already-mapped items keep syncing either way"
             }
           }
         }

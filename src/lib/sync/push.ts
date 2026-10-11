@@ -15,7 +15,7 @@
  */
 
 import { MAX_NOTICE_ATTEMPTS, readPendingNotices, writePendingNotices, type PendingNotice } from "./pending-notices";
-import { loadConfig } from "../../config";
+import { loadConfig, normalizeSyncGithubConfig } from "../../config";
 import { listComments, setCommentGithubUrl, type Comment } from "../comments";
 import { loadAllArchivedQuests, loadAllQuests } from "../quest-store";
 import { loadFeatures } from "../tasks";
@@ -49,7 +49,7 @@ import {
   renderQuestIssue,
   renderTaskIssue,
 } from "./render";
-import { parseTriageRole } from "./syncable";
+import { isFinishedQuest, isFinishedTask, parseTriageRole } from "./syncable";
 import type { IssueDraft, IssueStateReason, RemoteIssue } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -64,6 +64,8 @@ export interface PushItem {
   /** GitHub issue number (absent for a dry-run create) */
   issue?: number;
   url?: string;
+  /** Why the item was left alone (`finished`: unmapped done/cancelled work, see sync.github.includeFinished) */
+  reason?: "finished";
 }
 
 export interface PushedComment {
@@ -140,6 +142,8 @@ interface LocalItem {
   hash: string;
   triage: string | null;
   archived: boolean;
+  /** Task done/cancelled, or quest completed/abandoned */
+  finished: boolean;
   /** Quest this task belongs to (for label bootstrap) */
   quest?: string;
 }
@@ -181,16 +185,17 @@ function collectLocal(projectRoot: string): Collected {
 
   const data = loadFeatures(projectRoot, loadConfig(projectRoot));
   const taskItem = (t: (typeof data.tasks)[number]) => () => ({
+    finished: isFinishedTask(t),
     draft: renderTaskIssue(t),
     hash: hashTask(t),
     triage: parseTriageRole(t.notes),
     quest: t.quest?.trim() || undefined,
   });
   for (const q of loadAllQuests(projectRoot)) {
-    add("quest", q.id, false, () => ({ draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
+    add("quest", q.id, false, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
   }
   for (const q of loadAllArchivedQuests(projectRoot)) {
-    add("quest", q.id, true, () => ({ draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
+    add("quest", q.id, true, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
   }
   for (const t of data.tasks) add("task", t.id, false, taskItem(t));
   for (const t of data.archive ?? []) add("task", t.id, true, taskItem(t));
@@ -284,6 +289,7 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
     errors: [],
   };
 
+  const includeFinished = normalizeSyncGithubConfig(loadConfig(projectRoot).sync).includeFinished;
   const collected = collectLocal(projectRoot);
   report.errors.push(...collected.errors);
   const only = opts.only;
@@ -294,7 +300,10 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
 
   // 1. Labels
   try {
-    const specs = wantedLabels(collected.items);
+    // Quest labels only for items that will actually be synced: unmapped finished
+    // work is skipped (see includeFinished), so its quest gets no label either.
+    const syncable = items.filter((i) => includeFinished || !i.finished || readMapping(projectRoot, i.kind, i.id) !== null);
+    const specs = wantedLabels(syncable);
     if (dryRun) {
       const have = new Set((await client.listLabels()).map((l) => l.name.toLowerCase()));
       report.labelsCreated.push(...specs.filter((s) => !have.has(s.name.toLowerCase())).map((s) => s.name));
@@ -343,6 +352,9 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
       } else {
         report.unchanged.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
       }
+    } else if (item.finished && !includeFinished) {
+      report.unchanged.push({ ...base, reason: "finished" });
+      return;
     } else {
       const found = await findByMarker(item);
       if (found) {
@@ -577,7 +589,9 @@ export async function postRemoteNotices(
 
 export async function syncStatus(opts: { projectRoot: string; client: GitHubClient }): Promise<SyncStatusReport> {
   const { projectRoot, client } = opts;
-  const { items, knownIds } = collectLocal(projectRoot);
+  const includeFinished = normalizeSyncGithubConfig(loadConfig(projectRoot).sync).includeFinished;
+  const { items: allItems, knownIds } = collectLocal(projectRoot);
+  const items = allItems.filter((i) => includeFinished || !i.finished || readMapping(projectRoot, i.kind, i.id) !== null);
   const remote = await client.listIssues({ state: "all" });
   const byNumber = new Map(remote.map((i) => [i.number, i]));
   const have = new Set((await client.listLabels()).map((l) => l.name.toLowerCase()));

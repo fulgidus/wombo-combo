@@ -104,9 +104,22 @@ merged first so the push that follows sends the merged result. `tasks check
 | `intervalSeconds` | number | `60` | seconds between automatic cycles (minimum 15) |
 | `pushOnWrite` | boolean | `true` | in auto mode, push an item right after a local change |
 | `pull` | boolean | `true` | in auto mode, cycles pull before pushing |
+| `includeFinished` | boolean | `false` | also mirror finished work that has no mapping yet (see below) |
 
 Failed cycles back off exponentially (with jitter, up to 15 minutes) and
 recover by themselves.
+
+## Finished work
+
+By default finished work is not mirrored. Push does not create issues for
+tasks that are `done` or `cancelled`, or quests that are `completed` or
+`abandoned`, and pull does not turn closed GitHub issues without a woco marker
+into tasks. `sync status` and `tasks check --mirror` do not report such items
+either. Items that already have a mapping keep syncing, so their issue still
+gets closed or updated.
+
+Set `sync.github.includeFinished` to `true` to backfill finished work in both
+directions.
 
 ## Conflicts
 

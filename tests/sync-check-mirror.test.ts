@@ -93,3 +93,13 @@ describe("tasks check --mirror", () => {
     expect(checkMirror(root, loadConfig(root)).map((x) => x.kind)).toEqual(["unmapped"]);
   });
 });
+
+describe("tasks check --mirror and finished work", () => {
+  test("unmapped finished items are not reported unless includeFinished", async () => {
+    saveTask(mkTask({ id: "t-done", status: "done" }));
+    saveQuest(root, mkQuest({ id: "q-done", status: "completed" }));
+    expect(checkMirror(root, loadConfig(root)).map((f) => f.ref).sort()).toEqual(["quest:q1", "t1"]);
+    writeFileSync(join(root, ".wombo-combo", "config.json"), JSON.stringify({ sync: { github: { includeFinished: true } } }));
+    expect(checkMirror(root, loadConfig(root)).map((f) => f.ref).sort()).toEqual(["quest:q-done", "quest:q1", "t-done", "t1"]);
+  });
+});

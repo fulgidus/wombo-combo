@@ -1,0 +1,17 @@
+id: sync-live-smoke-test
+title: Sync live smoke test (safe to close)
+description: Throwaway task used to verify that woco sync can create and update GitHub issues from this environment.
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT5M
+started_at: null
+ended_at: 2026-10-11T23:52:35.981Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

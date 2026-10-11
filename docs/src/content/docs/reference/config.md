@@ -159,6 +159,7 @@ Integrations that sync woco data with external services
 | `sync.github.intervalSeconds` | number | `60` | Seconds between automatic pull+push cycles (daemon and woco sync watch) Minimum: `15`. |
 | `sync.github.pushOnWrite` | boolean | `true` | In auto mode, push an item in the background right after a local change to it |
 | `sync.github.pull` | boolean | `true` | In auto mode, cycles also pull remote changes before pushing |
+| `sync.github.includeFinished` | boolean | `false` | Also mirror finished work that has no mapping yet (done/cancelled tasks, completed/abandoned quests, closed issues). Already-mapped items keep syncing either way |
 
 ## `modelRouting`
 

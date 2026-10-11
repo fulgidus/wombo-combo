@@ -137,3 +137,13 @@ export function questSyncable(quest: Quest): SyncableQuest {
     constraints_ban: cleanList(quest.constraints?.ban),
   };
 }
+
+// -- finished work ----------------------------------------------------------
+
+/** A task that is done or cancelled. */
+export const isFinishedTask = (task: Pick<Task, "status">): boolean =>
+  task.status === "done" || task.status === "cancelled";
+
+/** A quest that is completed or abandoned. */
+export const isFinishedQuest = (quest: Pick<Quest, "status">): boolean =>
+  quest.status === "completed" || quest.status === "abandoned";

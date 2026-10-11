@@ -324,3 +324,38 @@ describe("concurrent clients", () => {
     expect(readdirSync(join(a, ".wombo-combo", "tasks")).filter((f) => f.endsWith(".yml") && f !== "_meta.yml")).toHaveLength(2);
   });
 });
+
+describe("finished issues (includeFinished)", () => {
+  const closedCfg = (v: boolean) => ({ config: { ...DEFAULT_CONFIG, sync: { github: { includeFinished: v } } } });
+
+  test("closed unmarked issues are skipped as finished; open ones are imported", async () => {
+    const root = mkRoot();
+    fake.seedIssue({ title: "Old thing", body: "done long ago", state: "closed", state_reason: "completed" });
+    fake.seedIssue({ title: "Open thing", body: "todo" });
+    const r = await pull(root);
+    expect(r.tasksCreated).toEqual(["gh-2-open-thing"]);
+    expect(r.skipped).toEqual([{ ref: "#1", reason: "finished" }]);
+    expect(tasksOf(root).map((t) => t.id)).toEqual(["gh-2-open-thing"]);
+  });
+
+  test("includeFinished true imports closed issues", async () => {
+    const root = mkRoot();
+    fake.seedIssue({ title: "Old thing", body: "done long ago", state: "closed", state_reason: "completed" });
+    const r = await pull(root, closedCfg(true));
+    expect(r.tasksCreated).toEqual(["gh-1-old-thing"]);
+    expect(getTask(root, "gh-1-old-thing").status).toBe("done");
+  });
+
+  test("an already mapped task is still closed locally", async () => {
+    const root = mkRoot();
+    saveTaskToStore(root, DEFAULT_CONFIG, createBlankTask("m1", "Mapped"));
+    const issue = pushLike(root, "m1");
+    const gi = fake.issues.find((i) => i.number === issue.number)!;
+    gi.state = "closed";
+    (gi as any).state_reason = "completed";
+    gi.updated_at = new Date(Date.now() + 1000).toISOString();
+    const r = await pull(root);
+    expect(r.skipped).toEqual([]);
+    expect(getTask(root, "m1")?.status ?? loadArchive(root, DEFAULT_CONFIG).tasks.find((t) => t.id === "m1")?.status).toBe("done");
+  });
+});

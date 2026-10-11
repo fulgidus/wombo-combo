@@ -1,0 +1,20 @@
+id: sync-lazy-quest-labels
+title: Only create quest:<id> labels for quests that have synced items
+description: "The live smoke test created a quest:<id> label for all 11 quests (every quest, finished or not) on the
+  first push. With includeFinished false, create quest labels lazily: only for quests referenced by an item that is
+  actually being pushed (and the quest's own spec issue). Add a test with the fake server."
+status: done
+completion: 100
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: 2026-10-11T23:58:33.822Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

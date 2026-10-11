@@ -247,6 +247,11 @@ export interface SyncGithubConfig {
   pushOnWrite: boolean;
   /** In auto mode, cycles also pull remote changes */
   pull: boolean;
+  /**
+   * Mirror finished work (done/cancelled tasks, completed/abandoned quests, closed issues)
+   * that has no mapping yet. Default false: already-mapped items keep syncing.
+   */
+  includeFinished: boolean;
 }
 
 export interface SyncConfig {
@@ -456,6 +461,7 @@ export const DEFAULT_CONFIG: WomboConfig = {
       intervalSeconds: 60,
       pushOnWrite: true,
       pull: true,
+      includeFinished: false,
     },
   },
   devMode: false,
@@ -590,6 +596,7 @@ export function normalizeSyncGithubConfig(block?: Partial<SyncConfig> | null): S
     intervalSeconds: Math.max(SYNC_MIN_INTERVAL_SECONDS, iv),
     pushOnWrite: typeof src.pushOnWrite === "boolean" ? src.pushOnWrite : d.pushOnWrite,
     pull: typeof src.pull === "boolean" ? src.pull : d.pull,
+    includeFinished: typeof src.includeFinished === "boolean" ? src.includeFinished : d.includeFinished,
   };
   const repo = src.repo;
   if (typeof repo === "string" && repo.trim()) out.repo = repo.trim();
@@ -860,7 +867,7 @@ export function validateConfig(config: WomboConfig): void {
     const g = (config.sync as SyncConfig).github;
     if (g !== undefined) {
       if (g === null || typeof g !== "object" || Array.isArray(g)) throw new Error("config.sync.github must be an object");
-      for (const k of ["enabled", "pushOnWrite", "pull"] as const) {
+      for (const k of ["enabled", "pushOnWrite", "pull", "includeFinished"] as const) {
         if (g[k] !== undefined && typeof g[k] !== "boolean") {
           throw new Error(`config.sync.github.${k} must be a boolean`);
         }

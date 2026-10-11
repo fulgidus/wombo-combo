@@ -238,3 +238,59 @@ describe("syncStatus", () => {
     expect(st.items.find((i) => i.ref === "t1")!.pendingComments).toBe(1);
   });
 });
+
+describe("finished work (includeFinished)", () => {
+  const setInclude = (v: boolean) =>
+    writeFileSync(join(root, ".wombo-combo", "config.json"), JSON.stringify({ sync: { github: { includeFinished: v } } }));
+
+  test("unmapped done/cancelled tasks and completed/abandoned quests are not created", async () => {
+    saveTask(mkTask({ id: "t-done", status: "done" }));
+    saveTask(mkTask({ id: "t-can", status: "cancelled" }));
+    saveQuest(root, mkQuest({ id: "q-done", status: "completed" }));
+    saveQuest(root, mkQuest({ id: "q-ab", status: "abandoned" }));
+    const report = await pushToGitHub({ projectRoot: root, client: client() });
+    expect(report.errors).toEqual([]);
+    expect(report.created.map((c) => c.ref).sort()).toEqual(["quest:q1", "t1"]);
+    const skipped = report.unchanged.filter((u) => u.reason === "finished").map((u) => u.ref).sort();
+    expect(skipped).toEqual(["quest:q-ab", "quest:q-done", "t-can", "t-done"]);
+    expect(fake.issues).toHaveLength(2);
+    expect(readMapping(root, "task", "t-done")).toBeNull();
+  });
+
+  test("quest labels are created only for quests with items being pushed", async () => {
+    saveQuest(root, mkQuest({ id: "q-done", status: "completed" }));
+    saveTask(mkTask({ id: "t-old", status: "done", quest: "q-done" }));
+    saveTask(mkTask({ id: "t-new", quest: "q1" }));
+    const report = await pushToGitHub({ projectRoot: root, client: client() });
+    const questLabels = report.labelsCreated.filter((l) => l.startsWith("quest:"));
+    expect(questLabels).toEqual(["quest:q1"]);
+    expect(fake.labels.some((l) => l.name === "quest:q-done")).toBe(false);
+  });
+
+  test("an already mapped item still gets closed", async () => {
+    await pushToGitHub({ projectRoot: root, client: client() });
+    saveTask(mkTask({ status: "done" }));
+    const report = await pushToGitHub({ projectRoot: root, client: client() });
+    expect(report.updated.map((u) => u.ref)).toEqual(["t1"]);
+    expect(fake.issues.find((i) => i.title.startsWith("[t1]"))!.state).toBe("closed");
+  });
+
+  test("includeFinished true creates finished items", async () => {
+    setInclude(true);
+    saveTask(mkTask({ id: "t-done", status: "done" }));
+    saveQuest(root, mkQuest({ id: "q-done", status: "completed" }));
+    const report = await pushToGitHub({ projectRoot: root, client: client() });
+    expect(report.created.map((c) => c.ref).sort()).toEqual(["quest:q-done", "quest:q1", "t-done", "t1"]);
+    expect(report.unchanged.filter((u) => u.reason === "finished")).toEqual([]);
+  });
+
+  test("syncStatus omits unmapped finished items unless included", async () => {
+    saveTask(mkTask({ id: "t-done", status: "done" }));
+    saveQuest(root, mkQuest({ id: "q-done", status: "abandoned" }));
+    const st = await syncStatus({ projectRoot: root, client: client() });
+    expect(st.items.map((i) => i.ref).sort()).toEqual(["quest:q1", "t1"]);
+    setInclude(true);
+    const st2 = await syncStatus({ projectRoot: root, client: client() });
+    expect(st2.items.filter((i) => i.state === "new").map((i) => i.ref).sort()).toEqual(["quest:q-done", "quest:q1", "t-done", "t1"]);
+  });
+});

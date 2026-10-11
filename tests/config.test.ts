@@ -663,7 +663,7 @@ describe("sync.github config", () => {
 
   test("defaults: disabled, manual, 60s, pushOnWrite and pull on, no repo", () => {
     expect(normalizeSyncGithubConfig(undefined)).toEqual({
-      enabled: false, mode: "manual", intervalSeconds: 60, pushOnWrite: true, pull: true,
+      enabled: false, mode: "manual", intervalSeconds: 60, pushOnWrite: true, pull: true, includeFinished: false,
     });
     expect(normalizeSyncGithubConfig(DEFAULT_CONFIG.sync)).toEqual(normalizeSyncGithubConfig(null));
   });
@@ -676,6 +676,12 @@ describe("sync.github config", () => {
     expect(isSyncAuto(normalizeSyncGithubConfig({ github: { mode: "auto" } }))).toBe(false);
     expect(normalizeSyncGithubConfig({ github: { mode: "weird" as any } }).mode).toBe("manual");
     expect(normalizeSyncGithubConfig({ github: { repo: { owner: "o", name: "n", host: "h" } } }).repo).toEqual({ owner: "o", name: "n", host: "h" });
+  });
+
+  test("includeFinished defaults to false, honours booleans, ignores junk", () => {
+    expect(normalizeSyncGithubConfig(undefined).includeFinished).toBe(false);
+    expect(normalizeSyncGithubConfig({ github: { includeFinished: true } }).includeFinished).toBe(true);
+    expect(normalizeSyncGithubConfig({ github: { includeFinished: "yes" as any } }).includeFinished).toBe(false);
   });
 
   test("loadConfig deep-merges a partial block", () => {
@@ -697,6 +703,7 @@ describe("sync.github config", () => {
     expect(bad({ enabled: "yes" })).toThrow("config.sync.github.enabled");
     expect(bad({ pushOnWrite: 1 })).toThrow("config.sync.github.pushOnWrite");
     expect(bad({ pull: "no" })).toThrow("config.sync.github.pull");
+    expect(bad({ includeFinished: "no" })).toThrow("config.sync.github.includeFinished");
     expect(bad({ intervalSeconds: 10 })).toThrow("config.sync.github.intervalSeconds");
     expect(bad({ intervalSeconds: "60" })).toThrow("config.sync.github.intervalSeconds");
     expect(bad({ repo: 5 })).toThrow("config.sync.github.repo");

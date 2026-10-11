@@ -22,7 +22,7 @@
  *    report (`rateLimited: true`).
  */
 
-import { loadConfig, type WomboConfig } from "../../config";
+import { loadConfig, normalizeSyncGithubConfig, type WomboConfig } from "../../config";
 import { addComment, listComments, type CommentRef } from "../comments";
 import { loadQuest, loadArchivedQuest } from "../quest-store";
 import { deleteTaskFile, getArchiveDir } from "../task-store";
@@ -130,6 +130,7 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
   const dryRun = opts.dryRun === true;
   const now = opts.now ?? (() => new Date());
   const config = opts.config ?? loadConfig(projectRoot);
+  const includeFinished = normalizeSyncGithubConfig(config.sync).includeFinished;
   const report: PullReport = {
     tasksCreated: [],
     tasksUpdated: [],
@@ -438,6 +439,10 @@ export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
         if (id === null) {
           if (issue.labels.includes(SPEC_LABEL)) {
             report.skipped.push({ ref: rs, reason: "spec issue without woco quest marker" });
+            continue;
+          }
+          if (issue.state === "closed" && !includeFinished) {
+            report.skipped.push({ ref: rs, reason: "finished" });
             continue;
           }
           isNew = true;
