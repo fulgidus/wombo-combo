@@ -283,6 +283,20 @@ see it. The task schema is in `schemas/task.schema.json` and
 - **Never run `npm publish` manually** — always let the GitHub Actions workflow
   handle publishing. Just bump, commit, push to `main`.
 
+## Agent skills
+
+### Issue tracker
+
+woco tasks and quests are primary (`bun dev tasks …`, `bun dev quest …`), mirrored in lockstep to GitHub Issues on fulgidus/wombo-combo. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix); recorded in task notes and as GitHub labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+single-context. See `docs/agents/domain.md`.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
