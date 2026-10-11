@@ -6,16 +6,16 @@ description: |
   control, event detail pane and scrollable diff pane, plus a small stateful
   wrapper that owns the single playback interval (only while playing,
   cleared on pause and unmount). Bounded rendering for small terminals.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: medium
 depends_on:
   - replay-player-model
   - replay-diff-capture
 effort: PT2H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:23:01.384Z
+ended_at: 2026-10-11T14:34:58.280Z
 constraints:
   - Use useScreenInput so the ESC menu gates input; follow analytics-overlay.tsx layout and Modal.
   - No timer may survive unmount or pause.
