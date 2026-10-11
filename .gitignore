@@ -28,3 +28,4 @@ graphify-out/cache/stat-index.json
 graphify-out/manifest.json
 .wombo-combo/hitl/
 .wombo-combo/agents-cache/
+.wombo-combo/replays/

@@ -36,6 +36,7 @@ import { genesisCommand } from "./genesis";
 import { wishlistCommand } from "./wishlist";
 import { tuiCommand } from "./tui";
 import { daemonCommand } from "./daemon";
+import { replayCommand } from "./replay";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -99,6 +100,9 @@ const CITTY_COMMANDS = new Set([
     // --- Daemon management ---
     "daemon",
     "dm",         // alias for daemon
+    // --- Session replays ---
+    "replay",
+    "rp",         // alias for replay
 ]);
 
 /**
@@ -177,6 +181,7 @@ const DEFAULT_SUBCOMMAND: Record<string, string> = {
     quest: "list",
     wishlist: "list",
     daemon: "status",
+    replay: "list",
 };
 
 /**
@@ -320,6 +325,11 @@ export async function runCittyCommand(
         case "daemon":
         case "dm":
             await runCommand(daemonCommand, { rawArgs: injectDefaultSubcommand("daemon", rawArgs) });
+            break;
+
+        case "replay":
+        case "rp":
+            await runCommand(replayCommand, { rawArgs: injectDefaultSubcommand("replay", rawArgs) });
             break;
 
         default:

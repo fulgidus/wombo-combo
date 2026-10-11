@@ -1,0 +1,35 @@
+id: replay-recorder-wiring
+title: Daemon replay recorder wiring
+description: |
+  Add an optional onEvent callback to ProcessMonitor MonitorCallbacks (fired
+  for each parsed JSON event, exceptions swallowed). Create
+  src/daemon/replay-recorder.ts (ReplayRecorder) that records header, prompt,
+  attempts (start/retry), normalized events, and on verified/failed/stopped/removal
+  the bounded diff and end record, then prunes per retention. Wire it into
+  AgentRunner next to the analytics tracker. Works with fake agents.
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - replay-format-store
+  - replay-diff-capture
+effort: PT2H
+started_at: 2026-10-11T13:59:59.639Z
+ended_at: 2026-10-11T14:06:42.489Z
+constraints:
+  - Recording failures must never affect execution; report through onDiagnostic as evt:log warnings.
+  - Reuse agent.analytics.execution_id; ordinary retries append to the same file, a new execution creates a new file.
+  - Keep monitor changes minimal (onEvent only).
+forbidden:
+  - Do not change analytics behaviour or usage.jsonl handling.
+references:
+  - src/daemon/analytics-tracker.ts
+  - src/daemon/agent-runner.ts
+  - src/lib/monitor.ts
+  - src/lib/fake-agent-runner.ts
+notes:
+  - Tests in tests/replay-recorder.test.ts (unit) and tests/replay-integration.test.ts (AgentRunner with fake agents).
+subtasks: []
+quest: session-replay
+paths: []

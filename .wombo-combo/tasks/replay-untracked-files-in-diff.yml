@@ -1,0 +1,17 @@
+id: replay-untracked-files-in-diff
+title: Include untracked files in captured replay diff
+description: ""
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

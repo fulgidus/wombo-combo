@@ -47,6 +47,7 @@ export interface NumstatEntry {
 /** Paths (prefix match on repo-relative path) excluded from measurement. */
 export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
   ".wombo-combo/analytics/",
+  ".wombo-combo/replays/",
   ".wombo-combo/usage.jsonl",
   ".wombo-combo/state.json",
   ".wombo-combo/daemon-state.json",

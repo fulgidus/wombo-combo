@@ -1,0 +1,32 @@
+id: replay-viewer-tui
+title: Replay viewer Ink component
+description: |
+  Create src/ink/replay-viewer.tsx: ReplayViewerView (Modal-based, props
+  driven) with timeline list, progress/scrub bar, play/pause and speed
+  control, event detail pane and scrollable diff pane, plus a small stateful
+  wrapper that owns the single playback interval (only while playing,
+  cleared on pause and unmount). Bounded rendering for small terminals.
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - replay-player-model
+  - replay-diff-capture
+effort: PT2H
+started_at: 2026-10-11T14:23:01.384Z
+ended_at: 2026-10-11T14:34:58.280Z
+constraints:
+  - Use useScreenInput so the ESC menu gates input; follow analytics-overlay.tsx layout and Modal.
+  - No timer may survive unmount or pause.
+  - Render windows only (never map the whole timeline).
+forbidden:
+  - Do not edit run-task-browser.tsx in this task.
+references:
+  - src/ink/analytics-overlay.tsx
+  - tests/ink/analytics-browser.test.tsx
+notes:
+  - Tests in tests/ink/replay-viewer.test.tsx using the PassThrough pattern.
+subtasks: []
+quest: session-replay
+paths: []

@@ -1,0 +1,17 @@
+id: flaky-minimal-theme-dashboard-test
+title: "Flaky: dashboard-realtime minimal theme test fails under full-suite load"
+description: ""
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

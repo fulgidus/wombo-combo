@@ -1,0 +1,17 @@
+id: flaky-esc-menu-input-gate-test
+title: "Flaky: esc-menu-input-gate test depends on 30ms waits, fails under CPU load"
+description: ""
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

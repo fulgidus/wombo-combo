@@ -73,6 +73,8 @@ import type { QuestHitlMode } from "../lib/quest";
 import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
+import { ReplayRecorder } from "./replay-recorder";
+import { normalizeOpenCodeEvent } from "../lib/replay";
 import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
@@ -172,6 +174,8 @@ export class AgentRunner {
 
   /** Durable per-execution analytics (lifecycle, retries, usage). */
   readonly analytics: AnalyticsTracker;
+  /** Per-execution session replay recording (prompt, events, final diff). */
+  readonly replay: ReplayRecorder;
 
   /** Session-scoped agent-name override (CLI --agent). null = use task.agent. */
   private agentOverride: string | null = null;
@@ -210,6 +214,13 @@ export class AgentRunner {
       waveId: opts.sessionId ?? `runner-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       onDiagnostic: (message) =>
         state.emit("evt:log", { level: "warn", message: `[analytics] ${message}` }),
+    });
+
+    this.replay = new ReplayRecorder({
+      projectRoot: this.projectRoot,
+      state,
+      onDiagnostic: (message) =>
+        state.emit("evt:log", { level: "warn", message: `[replay] ${message}` }),
     });
 
     // Create monitor with daemon-integrated callbacks
@@ -271,6 +282,13 @@ export class AgentRunner {
           this.state.cancelDownstream(featureId);
           this.rescueChainPredecessors(featureId);
         }
+      },
+
+      onEvent: (featureId, event) => {
+        // Harness-specific normalization happens here only; the recorder
+        // stores harness-neutral events.
+        const normalized = normalizeOpenCodeEvent(event);
+        if (normalized) this.replay.recordEvent(featureId, normalized);
       },
 
       onActivity: (featureId, activity) => {
@@ -602,6 +620,8 @@ export class AgentRunner {
       });
 
       this.analytics.recordProcessStart(featureId);
+      this.replay.recordPrompt(featureId, prompt);
+      this.replay.recordAttempt(featureId, "start");
 
       // Register usage context before attaching the process so every record
       // carries quest/model, then register with the monitor.
@@ -1755,6 +1775,7 @@ export class AgentRunner {
 
       this.state.updateAgent(featureId, { pid: result.pid });
       this.state.updateAgentStatus(featureId, "running", "Retry launched");
+      this.replay.recordAttempt(featureId, "retry", agent.error ?? "Previous attempt failed");
       this.registerUsageContext(featureId, result.route);
       this.monitor.addProcess(featureId, result.process, { normalize: result.normalize });
     } catch {
@@ -1882,11 +1903,14 @@ export class AgentRunner {
   interruptAnalytics(reason: string): void {
     this.analytics.interruptAll(reason);
     this.analytics.close();
+    this.replay.interruptAll(reason);
+    this.replay.close();
   }
 
   /** Kill a specific agent's process. */
   cancelAgent(featureId: string): void {
     this.analytics.markStopRequested(featureId, "cancelled");
+    this.replay.markStopRequested(featureId);
     this.monitor.remove(featureId);
   }
 
@@ -1895,6 +1919,7 @@ export class AgentRunner {
     // Mark executions stopped first so exit callbacks from the killed
     // processes cannot alter their snapshots.
     this.analytics.interruptAll("killed");
+    this.replay.interruptAll("killed");
     this.monitor.killAll();
     // Wait for processes to actually die
     await this.monitor.waitAll(500);
@@ -2113,6 +2138,7 @@ export class AgentRunner {
   /** Destroy: clean up resources. */
   destroy(): void {
     this.analytics.close();
+    this.replay.close();
     this.monitor.killAll();
     this.launchQueue = [];
   }
