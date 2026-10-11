@@ -64,18 +64,22 @@ Wombo-combo is dogfooded — we develop it using itself. Project definition file
 under `.wombo-combo/` **are tracked in git**:
 
 - `config.json`, `project.yml` — project configuration and profile
-- `tasks/`, `tasks.yml` — active tasks
-- `archive/`, `archive.yml` — completed/cancelled tasks
-- `quests/` — quest definitions
+- `tasks/` — active tasks (one YAML file per task)
+- `archive/` — completed/cancelled tasks
+- `quests/`, `quest-archive/` — quest definitions and knowledge files
 - `wishlist.yml` — wishlist items
 
 **Runtime artifacts are gitignored** (ephemeral, regenerated each run):
 
-- `state.json` — wave state
+- `state.json`, `daemon-state.json`, `daemon.pid` — wave and daemon state
 - `logs/` — agent log files
 - `history/` — wave history records
-- `tui-session.json` — TUI session state
+- `tui-session.json`, `tui-debug.log` — TUI session state and debug log
 - `usage.jsonl` — token usage data
+- `baselines/`, `analytics/`, `evals/`, `post-merge.json` — quest test
+  baselines, agent analytics, eval scores, publication journal
+- `hitl/`, `agents-cache/` — human-in-the-loop exchanges, downloaded agent
+  definitions
 
 ### 5. Never silently work around bugs
 
@@ -235,9 +239,6 @@ and use `*.test.ts` naming.
 
 ## Known quirks
 
-- **Bun readline + piped stdin:** `rl.question()` silently fails after readline
-  emits `close`. The `Prompter` class in `src/commands/init.ts` works around
-  this using `rl[Symbol.asyncIterator]()` with `process.stdout.write()`.
 - **YAML null vs empty array:** `yaml` parses `tasks:` (no items) as `null`,
   not `[]`. `loadTasks()` normalizes this: `parsed.tasks ?? parsed.features ?? null`.
 - **`import.meta.dir`:** Gives the directory of the current source file in Bun.
