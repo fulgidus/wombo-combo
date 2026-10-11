@@ -395,6 +395,31 @@ describe("CLI smoke (source entry: bun src/index.ts)", () => {
     );
   });
 
+  describe("replay", () => {
+    test(
+      "replay list on a project without recordings exits 0 and explains itself",
+      () => {
+        const result = woco(["replay", "list"]);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("No replays recorded yet");
+      },
+      TEST_TIMEOUT,
+    );
+
+    test(
+      "replay list --output json is a JSON object and replay show of an unknown task fails",
+      () => {
+        const list = woco(["replay", "list", "--output", "json"]);
+        expect(list.exitCode).toBe(0);
+        expect(JSON.parse(list.stdout)).toEqual({ executions: [] });
+        const show = woco(["replay", "show", "nope"]);
+        expect(show.exitCode).not.toBe(0);
+        expect(show.output).toContain('No replays recorded for "nope"');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe("quest", () => {
     test(
       "quest create then list and show a draft quest",

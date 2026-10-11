@@ -57,6 +57,7 @@ woco merge                 # merge verified branches
 | `woco cleanup`                        | Remove worktrees and sessions                      |
 | `woco history`                        | List/view past wave results                        |
 | `woco usage`                          | Show token usage statistics (`--analytics` for agent performance) |
+| `woco replay list` / `show <id>`      | Recorded agent sessions (`--execution N`, `--output json`) |
 | `woco tasks list`                     | List tasks                                         |
 | `woco tasks add <id> <title>`         | Add a task                                         |
 | `woco tasks set-status <id> <status>` | Update task status                                 |
@@ -195,6 +196,35 @@ overlay opens and refreshed every couple of seconds only while it is visible.
 When the browser is scoped to a quest the overlay uses the *recorded* quest of
 each execution (so archived or removed tasks still count); the unquested
 errands browser shows only executions without a quest.
+
+## Session Replay
+
+Every agent execution run by the daemon is recorded into a versioned JSONL
+file under `.wombo-combo/replays/<task-id>/<execution-id>.jsonl` (gitignored).
+The execution id is the same one used by [Agent Analytics](#agent-analytics);
+ordinary retries append to the same file, while explicitly re-running a
+finished task creates a new execution and a new file. Each file holds the
+prompt, normalized agent events (text, tool calls with inputs and outputs, step
+boundaries, errors) with timestamps, attempt markers, a bounded diff of the
+worktree against the execution baseline captured when the execution ends, and
+the final outcome. Large fields are truncated with explicit
+`[truncated N chars]` markers and files are size-capped; the newest 20
+executions per task are kept. Recording works with fake agents too.
+
+```sh
+woco replay list                          # all recorded executions
+woco replay list my-task                  # executions of one task
+woco replay show my-task                  # latest execution: prompt, timeline, diff stat
+woco replay show my-task --execution 1    # 1-based, oldest first (or a full execution id)
+woco replay show my-task --output json    # structured replay (json | toon)
+```
+
+In the TUI task browser press `P` on a task to open the replay viewer:
+`←`/`→` (or `h`/`l`, `j`/`k`) scrub the timeline, `PgUp`/`PgDn` jump by 10,
+`g`/`G` go to start/end, `n`/`N` jump between tool calls and errors, `Space`
+plays or pauses, `+`/`-` change the speed (0.5x to 8x; long idle gaps are
+compressed), `d` toggles the scrollable diff pane, `[`/`]` switch between
+executions, `Esc`/`q` close.
 
 ## Launch options
 

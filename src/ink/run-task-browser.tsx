@@ -19,6 +19,7 @@ import { useTerminalSize } from "./use-terminal-size";
 import { TaskBrowserView, type TaskNode } from "./task-browser";
 import { TaskEditor } from "./task-editor";
 import { AnalyticsOverlayView, nextAnalyticsGrouping } from "./analytics-overlay";
+import { ReplayViewer } from "./replay-viewer";
 import { buildTaskGraph, sortStreams, flattenStreams, type Stream } from "./task-graph";
 import { loadTasks, getDoneTaskIds, loadArchive, areDependenciesMet } from "../lib/tasks";
 import { PRIORITY_ORDER } from "../lib/task-schema";
@@ -27,6 +28,7 @@ import { saveTaskToStore, saveTaskToArchive, removeTaskFromStore, loadTasksFromS
 import { loadUsageRecords, totalUsage, groupBy as groupUsageBy } from "../lib/token-usage";
 import type { UsageTotals } from "../lib/token-usage";
 import { AnalyticsStore, type AnalyticsLoadResult } from "../lib/analytics";
+import { ReplayStore, type LoadedReplay, type ReplaySummary } from "../lib/replay";
 import { summarizeAnalytics, type AnalyticsFilter, type AnalyticsGroupBy } from "../lib/analytics-summary";
 import type { WomboConfig, } from "../config";
 import { WOMBO_DIR } from "../config";
@@ -130,6 +132,11 @@ function TaskBrowserApp({
   const [analyticsData, setAnalyticsData] = useState<AnalyticsLoadResult>({ records: [], diagnostics: [] });
   const [analyticsGroupBy, setAnalyticsGroupBy] = useState<AnalyticsGroupBy>("task");
   const [analyticsSelected, setAnalyticsSelected] = useState(0);
+  const [showReplay, setShowReplay] = useState(false);
+  const [replayTask, setReplayTask] = useState<string | null>(null);
+  const [replayList, setReplayList] = useState<ReplaySummary[]>([]);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [replayData, setReplayData] = useState<LoadedReplay | null>(null);
   const [taskUsage, setTaskUsage] = useState<Map<string, UsageTotals>>(new Map());
   const [agentStates, setAgentStates] = useState<Map<string, DaemonAgentState>>(new Map());
 
@@ -264,6 +271,54 @@ function TaskBrowserApp({
     loadAnalytics();
     setShowAnalytics(true);
   }, [loadAnalytics]);
+
+  // --- Replay viewer (loaded on demand when opened; no polling) ---
+
+  const loadReplayAt = useCallback(
+    (taskId: string, list: ReplaySummary[], index: number) => {
+      const pick = list[index];
+      try {
+        setReplayData(pick ? new ReplayStore(projectRoot).load(pick.task_id, pick.execution_id) : null);
+      } catch {
+        setReplayData(null);
+      }
+    },
+    [projectRoot],
+  );
+
+  const handleOpenReplay = useCallback(() => {
+    const node = displayNodes[selectedIndex];
+    if (!node) return;
+    const taskId = node.task.id;
+    let list: ReplaySummary[] = [];
+    try {
+      list = new ReplayStore(projectRoot).list(taskId);
+    } catch {
+      list = [];
+    }
+    const last = Math.max(0, list.length - 1);
+    setReplayTask(taskId);
+    setReplayList(list);
+    setReplayIndex(last);
+    loadReplayAt(taskId, list, last);
+    setShowReplay(true);
+  }, [displayNodes, selectedIndex, projectRoot, loadReplayAt]);
+
+  const handleCloseReplay = useCallback(() => {
+    setShowReplay(false);
+    setReplayData(null);
+  }, []);
+
+  const handleReplayStep = useCallback(
+    (delta: number) => {
+      if (!replayTask) return;
+      const next = Math.min(Math.max(replayIndex + delta, 0), Math.max(replayList.length - 1, 0));
+      if (next === replayIndex) return;
+      setReplayIndex(next);
+      loadReplayAt(replayTask, replayList, next);
+    },
+    [replayTask, replayIndex, replayList, loadReplayAt],
+  );
 
   const handleCloseAnalytics = useCallback(() => {
     setShowAnalytics(false);
@@ -553,7 +608,8 @@ function TaskBrowserApp({
       onEdit={handleEdit}
       onRetry={handleRetry}
       onUsage={handleOpenAnalytics}
-      isActive={!showEditor && !showAnalytics}
+      onReplay={handleOpenReplay}
+      isActive={!showEditor && !showAnalytics && !showReplay}
     />
     {showAnalytics && (
       <Box
@@ -572,6 +628,25 @@ function TaskBrowserApp({
           onClose={handleCloseAnalytics}
           onCycleGrouping={handleCycleAnalyticsGrouping}
           onSelectIndex={setAnalyticsSelected}
+        />
+      </Box>
+    )}
+    {showReplay && (
+      <Box
+        position="absolute"
+        width={columns}
+        height={rows}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <ReplayViewer
+          replay={replayData}
+          executionLabel={replayList.length > 1 ? `${replayIndex + 1}/${replayList.length}` : undefined}
+          rows={rows}
+          columns={columns}
+          onClose={handleCloseReplay}
+          onPrevExecution={() => handleReplayStep(-1)}
+          onNextExecution={() => handleReplayStep(1)}
         />
       </Box>
     )}

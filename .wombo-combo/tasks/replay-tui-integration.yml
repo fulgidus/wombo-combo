@@ -6,8 +6,8 @@ description: |
   demand from ReplayStore, with an empty state when nothing is recorded;
   add the key to the footer help; isActive gating like analytics. Document the
   feature (README/CONTEXT) and add an e2e CLI smoke check for `replay list`.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
@@ -15,8 +15,8 @@ depends_on:
   - replay-recorder-wiring
   - replay-cli
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:35:00.532Z
+ended_at: 2026-10-11T14:41:37.497Z
 constraints:
   - Replays load only when the overlay opens (no polling loop).
   - Keep the analytics overlay behaviour unchanged.

@@ -122,6 +122,8 @@ export interface TaskBrowserViewProps {
   onDeleteCurrent?: () => void;
   onWishlist?: () => void;
   onUsage?: () => void;
+  /** Open the session replay viewer for the selected task. */
+  onReplay?: () => void;
   onEdit?: () => void;
   onRetry?: () => void;
   /** When false, keyboard input is disabled (e.g. while an overlay is open). */
@@ -447,6 +449,7 @@ function StatusBar({
   hasBack,
   hasErrand,
   hasEdit,
+  hasReplay,
   questId,
 }: {
   selectedCount: number;
@@ -455,6 +458,7 @@ function StatusBar({
   hasBack?: boolean;
   hasErrand?: boolean;
   hasEdit?: boolean;
+  hasReplay?: boolean;
   questId?: boolean; // unused but kept for future use
 }): React.ReactElement {
   return (
@@ -510,6 +514,13 @@ function StatusBar({
         <Text dimColor>U</Text>
         <Text> usage</Text>
         <Text>  </Text>
+        {hasReplay && (
+          <>
+            <Text dimColor>P</Text>
+            <Text> replay</Text>
+            <Text>  </Text>
+          </>
+        )}
         <Text dimColor>O</Text>
         <Text> sort</Text>
 
@@ -587,6 +598,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     onDeleteCurrent,
     onWishlist,
     onUsage,
+    onReplay,
     onEdit,
     onRetry,
     isActive = true,
@@ -633,6 +645,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     if (input === "e") { onErrand?.(); return; }
     if (input === "w") { onWishlist?.(); return; }
     if (input === "u") { onUsage?.(); return; }
+    if (input === "p") { onReplay?.(); return; }
     if (input === "r") { onEdit?.(); return; }
     if (input === "t") { onRetry?.(); return; }
     if (input === "x") { onArchiveDone?.(); return; }
@@ -743,6 +756,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
         hasBack={!!onBack}
         hasErrand={!!onErrand}
         hasEdit={!!onEdit}
+        hasReplay={!!onReplay}
         questId={!!questTitle}
       />
     </Box>
