@@ -4,8 +4,8 @@ description: Create src/locales/it/{tui,cli}.json covering every en key includin
   it in AVAILABLE_LOCALES, make the settings screen cycle through available locales (auto, en, it), and add tests that
   switch locale (TUI strings via getLocaleT, CLI text via WOMBO_LOCALE=it, plurals, interpolation, JSON still English).
   Key-consistency test must pass with it.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
@@ -14,7 +14,7 @@ depends_on:
   - i18n-cli-commands
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T16:27:52.934Z
 constraints:
   - Same key set and placeholders as en
   - Keep command names and flags untranslated

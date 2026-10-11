@@ -10,6 +10,8 @@
 
 import enTui from "./en/tui.json";
 import enCli from "./en/cli.json";
+import itTui from "./it/tui.json";
+import itCli from "./it/cli.json";
 
 export type FlatResource = Record<string, string>;
 
@@ -21,6 +23,7 @@ function merge(...domains: FlatResource[]): FlatResource {
 /** Locale code -> flat key/value resource. `en` is the source of truth. */
 export const RESOURCES: Record<string, FlatResource> = {
   en: merge(enTui, enCli),
+  it: merge(itTui, itCli),
 };
 
 /** Language that every other locale falls back to. */
