@@ -1,17 +1,17 @@
 # Graph Report - wombo-combo  (2026-10-11)
 
 ## Corpus Check
-- 646 files · ~697,695 words
+- 646 files · ~698,931 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 32 file(s) not represented in the graph (top: .log 18, .jsonl 5, (none) 4)
 
 ## Summary
-- 5566 nodes · 16171 edges · 251 communities (213 shown, 38 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 827 edges (avg confidence: 0.91)
+- 5569 nodes · 16193 edges · 247 communities (206 shown, 41 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 828 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d1190400`
+- Built from commit: `927acf65`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -21,20 +21,20 @@
 - browser.ts
 - WomboConfig
 - splash-screen.tsx
-- agent-runner.ts
+- project-store.ts
 - protocol.ts
-- run-tui-app.tsx
-- pull.ts
+- run-daemon-monitor.tsx
+- mapping.ts
 - task-store.ts
-- commands/history.ts
-- router.ts
-- commands/launch.ts
+- DashboardMetricsProvider
+- loadConfig
+- config.md
 - routing.ts
 - commands/sync.ts
-- review-list.tsx
+- ink/index.ts
 - dashboard-metrics.ts
-- t
-- useScreenInput
+- commands/logs.ts
+- ink
 - github-client.ts
 - dashboard.tsx
 - push.ts
@@ -42,11 +42,11 @@
 - lib/i18n.ts
 - worktree.ts
 - lib/tasks.ts
-- monitor.ts
+- ref_node_path
 - hitl-channel.ts
-- index.md
+- json
 - schema.ts
-- UsageTotals
+- genesis-planner.ts
 - DaemonClient
 - agent-registry.ts
 - commands/merge.ts
@@ -67,12 +67,12 @@
 - quest-wizard.tsx
 - analytics-measurements.test.ts
 - test-baseline-capture.ts
-- ref_node_os
+- post-merge-integration.test.ts
 - dashboard-realtime.test.tsx
 - replay-viewer.tsx
-- msg
+- t
 - quest.md
-- run-daemon-monitor.tsx
+- commands/stats.ts
 - prompt.ts
 - TextBuffer
 - commands/tasks.md
@@ -80,7 +80,7 @@
 - init-app.tsx
 - dashboard-provider.tsx
 - commands/status.ts
-- ink/index.ts
+- commands/tui.ts
 - useI18n
 - AGENTS.md — Instructions for AI agents working on wombo-combo
 - monitor-router.test.tsx
@@ -101,8 +101,8 @@
 - tdd-verifier.test.ts
 - Triage
 - commands/completion.ts
-- Requirement: Launch stagger applies only to real-agent launches
-- run-quest-picker.tsx
+- .submitTask
+- TokenCollector
 - esc-menu.tsx
 - test-detection.ts
 - wishlist.md
@@ -116,7 +116,7 @@
 - wombo-combo
 - opsx-explore.prompt.md
 - opsx-explore.md
-- DaemonState
+- .load
 - gen-command-docs.ts
 - multi-cli-support — architecture
 - analytics-integration.test.ts
@@ -128,7 +128,7 @@
 - Scheduler
 - maxConcurrent
 - daemon.md
-- citty-bridge.ts
+- registry-parity.test.ts
 - daemon-agent-runner.test.ts
 - saveTaskToStore
 - wishlist-store.ts
@@ -138,10 +138,10 @@
 - templates/genesis-planner-agent.md
 - commands/team.md
 - replay-viewer.test.tsx
-- tmpDir
+- agent-runner.ts
 - tdd-baseline-integration.test.ts
-- tdd-baseline-pipeline.test.ts
-- scheduler.ts
+- verifier.ts
+- state.ts
 - teach/SKILL.md
 - templates/quest-planner-agent.md
 - errand-planner-agent.md
@@ -149,18 +149,18 @@
 - agents/quest-planner-agent.md
 - comments.ts
 - Process
-- render.ts
+- pull.ts
 - react-devtools-core.ts
 - wishlist-picker.tsx
 - scout.ts
-- ref_node_path
+- gen-config-docs.ts
 - Codebase Design
 - daemon-profile-wiring.test.ts
 - quest-planner.ts
 - merge-resolver-agent.md
 - During the session
 - overview.md
-- github-sync.md
+- replay-browser.test.tsx
 - first-task.md
 - quests.md
 - tdd-baseline.md
@@ -170,41 +170,41 @@
 - docs/tsconfig.json
 - HTML Report Format
 - template.sh
-- daemon-scheduler.test.ts
+- DaemonState
 - replay.md
 - Ask Matt
 - wombo-combo Agent Context
 - Diagnosing Bugs
 - docs-starlight knowledge
-- format-converter.ts
+- sync-pull.test.ts
 - session-replay — knowledge
-- Issue tracker: woco tasks (primary) + GitHub Issues (lockstep mirror)
-- auto.ts
+- hitl-ask.ts
+- config.test.ts
 - CONTEXT.md — For AI agents using wombo as a tool
 - run-task-browser.tsx
-- i18n.md
+- i18n-full — design notes
 - locales/index.ts
 - gh
 - Steps
 - daemon-project-context.test.ts
-- citty-merge.test.ts
-- lib/history.ts
-- openspec/specs/scheduler-concurrency-accounting/spec.md
+- Requirement: Fake-agent tasks bypass inter-launch stagger
+- Requirement: Fake-agent tasks bypass inter-launch stagger
+- .getActiveAgents
 - ref_node_child_process
 - Test-Driven Development
-- 2026-03-21-fix-scheduler-oversubscription/proposal.md
+- guides/team.md
 - Process
 - comment.md
 - writing-for-agents/SKILL.md
-- portless.ts
+- StubDaemonClient
 - Steps
-- json
-- Requirement: Launch stagger applies only to real-agent launches
-- done
+- sync.md
+- What needs to happen next:
+- github-sync.md
 - wayfinder/SKILL.md
 - Domain Docs
-- Domain Docs
-- replay-diff.ts
+- global-output-flag.test.ts
+- replay-recorder.test.ts
 - Process
 - Process
 - Migrate to Shoehorn
@@ -231,15 +231,11 @@
 - writing-fragments/SKILL.md
 - dependencies
 - Issue tracker: GitLab
-- tasks archive
-- merge.md
-- NoLaunchRunner
 - block-dangerous-git.sh
 - implement-spec/SKILL.md
 - CREDITS.md
 - devDependencies
 - Local changes to vendored skills
-- retry.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `t()` - 198 edges
@@ -262,193 +258,197 @@
   .wombo-combo/quests/session-replay/knowledge.md → src/daemon/replay-recorder.ts
 - `Why `concurrencyPinned` doesn't protect persisted state` --references--> `Scheduler`  [INFERRED]
   openspec/changes/archive/2026-03-21-fix-concurrency-boot-reset/design.md → src/daemon/scheduler.ts
-- `Modified Capabilities` --references--> `maxConcurrent()`  [INFERRED]
-  openspec/changes/archive/2026-03-21-fix-concurrency-boot-reset/proposal.md → src/lib/eval-score.ts
+- `Assistant (Build · claude-sonnet-4.6 · 7.5s)` --references--> `DaemonState`  [INFERRED]
+  ._p.md → src/daemon/state.ts
 
 ## Import Cycles
 - 2-file cycle: `src/lib/monitor.ts -> src/lib/token-collector.ts -> src/lib/monitor.ts`
 
-## Communities (251 total, 38 thin omitted)
+## Communities (247 total, 41 thin omitted)
 
 ### Community 0 - "Explore mode guidelines and usage rules"
 Cohesion: 0.02
 Nodes (98): Archive Complete, Assistant (Build · claude-sonnet-4.6 · 11.9s), Assistant (Build · claude-sonnet-4.6 · 12.1s), Assistant (Build · claude-sonnet-4.6 · 13.3s), Assistant (Build · claude-sonnet-4.6 · 13.7s), Assistant (Build · claude-sonnet-4.6 · 13.8s), Assistant (Build · claude-sonnet-4.6 · 14.0s), Assistant (Build · claude-sonnet-4.6 · 14.2s) (+90 more)
 
 ### Community 1 - "AgentRunner"
-Cohesion: 0.08
-Nodes (24): Decision 1: Skip stagger for fake agents at the queue-processing level, ADDED Requirements, Requirement: Fake-agent tasks bypass inter-launch stagger, Scenario: All fake-agent tasks start concurrently, Scenario: Mixed queue preserves stagger only for real agents, Scenario: Real-agent launches are unaffected, 1. AgentRunner — Per-entry stagger flag, 2. TUI — Batch task writes in handleToggleAll (+16 more)
+Cohesion: 0.14
+Nodes (9): Decision 1: Skip stagger for fake agents at the queue-processing level, Assistant (Build · claude-sonnet-4.6 · 6.2s), The actual bug — found it, The REAL bug — partially identified, investigation cut off, AgentRunner, getConflictDiffs(), runSafeCmd(), TaskEditorProps (+1 more)
 
 ### Community 2 - "browser.ts"
-Cohesion: 0.10
-Nodes (18): Daemon and TUI, Commands, Token Usage Tracking, BrowserConfig, allocateDebugPort(), allocatedPorts, BrowserInstance, BrowserManager (+10 more)
+Cohesion: 0.15
+Nodes (12): BrowserConfig, allocatedPorts, BrowserInstance, BrowserManager, BrowserTestResult, BrowserVerifyResult, discoverBrowserBin(), releasePort() (+4 more)
 
 ### Community 3 - "WomboConfig"
 Cohesion: 0.10
-Nodes (37): AbortCommandOptions, cmdAbort(), ParsedLaunchArgs, ParsedMergeArgs, ParsedResumeArgs, ParsedRetryArgs, CleanupOptions, EvalCommandOptions (+29 more)
+Nodes (38): AbortCommandOptions, ParsedLaunchArgs, ParsedMergeArgs, ParsedResumeArgs, ParsedRetryArgs, CleanupOptions, CommentOptions, EvalCommandOptions (+30 more)
 
 ### Community 4 - "splash-screen.tsx"
 Cohesion: 0.06
-Nodes (41): 1. Scope the procedure, 2. Map each stage's journey, 3. Author the wizard, 4. Verify and hand off, Process, Wizard, channelLabel(), ChannelResult (+33 more)
+Nodes (40): 1. Scope the procedure, 2. Map each stage's journey, 3. Author the wizard, 4. Verify and hand off, Process, Wizard, channelLabel(), ChannelResult (+32 more)
 
-### Community 5 - "agent-runner.ts"
-Cohesion: 0.12
-Nodes (34): MaxEscalationTier, FAKE_AGENT_VERIFICATION, isTierAllowed(), Tier25Result, abortRebase(), beginRebase(), canMerge(), cleanupRebaseBranch() (+26 more)
+### Community 5 - "project-store.ts"
+Cohesion: 0.10
+Nodes (32): addObjective(), addRule(), atomicWrite(), bumpGenesisCount(), ensureDir(), formatProjectContext(), linkQuestToObjective(), loadProject() (+24 more)
 
 ### Community 6 - "protocol.ts"
 Cohesion: 0.06
-Nodes (64): startCommand, statusCommand, stopCommand, loadSessionSnapshot(), readPersistedSnapshot(), DaemonClientOptions, EventHandler, ClientData (+56 more)
+Nodes (61): DaemonClientOptions, EventHandler, ClientData, ConnectedClient, DaemonOptions, ServerWebSocket, cleanupPidFile(), DaemonStatus (+53 more)
 
-### Community 7 - "run-tui-app.tsx"
-Cohesion: 0.04
-Nodes (79): saveConfig(), createI18n(), getLocaleT(), StringsMap, TFunction, groupByTask(), latestWhen(), ReplayScreen() (+71 more)
+### Community 7 - "run-daemon-monitor.tsx"
+Cohesion: 0.05
+Nodes (69): DashboardScreen(), EscMenuProvider(), createI18n(), EN_STRINGS, getLocaleT(), I18nContext, StringsMap, TFunction (+61 more)
 
-### Community 8 - "pull.ts"
-Cohesion: 0.08
-Nodes (47): defaultLoadTaskQuests(), assertId(), assertKind(), deleteMapping(), FieldConflict, findMappingByIssue(), hashComment(), hashFields() (+39 more)
+### Community 8 - "mapping.ts"
+Cohesion: 0.15
+Nodes (18): assertId(), assertKind(), deleteMapping(), FieldConflict, findMappingByIssue(), hashComment(), listMappings(), MappingEntry (+10 more)
 
 ### Community 9 - "task-store.ts"
-Cohesion: 0.06
-Nodes (65): `agent`, `agentRegistry`, `backup`, `browser`, `build`, `comments`, `defaults`, `git` (+57 more)
+Cohesion: 0.09
+Nodes (49): Top-level options, Context, Decision 2: Batch task writes in `handleToggleAll`, Decisions, Goals / Non-Goals, Migration Plan, Risks / Trade-offs, Capabilities (+41 more)
 
-### Community 10 - "commands/history.ts"
-Cohesion: 0.44
-Nodes (9): cmdHistory(), FG, formatDate(), formatDurationMs(), pad(), padLeft(), renderWaveDetails(), renderWaveList() (+1 more)
+### Community 10 - "DashboardMetricsProvider"
+Cohesion: 0.13
+Nodes (11): clientState(), DashboardMetricsProvider(), mapConnection(), TimerApi, tickDashboardMetrics(), addInto(), cloneTotals(), DashboardUsageReader (+3 more)
 
-### Community 11 - "router.ts"
-Cohesion: 0.05
-Nodes (76): citty, abortCommand, cleanupCommand, commentCommand, completionCommand, daemonCommand, describeCommand, evalCommand (+68 more)
+### Community 11 - "loadConfig"
+Cohesion: 0.04
+Nodes (90): citty, abortCommand, cleanupCommand, addCommand, commentCommand, ensureInitialized(), linkCommand, listCommand (+82 more)
 
-### Community 12 - "commands/launch.ts"
-Cohesion: 0.10
-Nodes (30): Behavior, Fake Agent, Usage, analyzeBarrelFile(), BarrelFile, cmdLaunch(), detectUnprotectedBarrels(), findIndexFiles() (+22 more)
+### Community 12 - "config.md"
+Cohesion: 0.11
+Nodes (17): `agent`, `agentRegistry`, `backup`, `browser`, `build`, `comments`, `defaults`, `git` (+9 more)
 
 ### Community 13 - "routing.ts"
-Cohesion: 0.10
-Nodes (29): AgentProfile, resolveAgentBin(), Operation, AvailabilityProbes, fallbackChain(), LEGACY_PROFILE, legacyModel(), MissingEnvError (+21 more)
+Cohesion: 0.11
+Nodes (27): AgentProfile, resolveAgentBin(), Operation, AvailabilityProbes, fallbackChain(), LEGACY_PROFILE, legacyModel(), legacyRoute() (+19 more)
 
 ### Community 14 - "commands/sync.ts"
 Cohesion: 0.08
-Nodes (45): clientFor(), cmdSyncLabels(), cmdSyncPull(), cmdSyncPush(), cmdSyncRun(), cmdSyncStatus(), cmdSyncWatch(), failure() (+37 more)
+Nodes (57): ensureInitialized(), labelsCommand, outputArg, pullCommand, pushCommand, runCommand, statusCommand, watchCommand (+49 more)
 
-### Community 15 - "review-list.tsx"
-Cohesion: 0.08
-Nodes (50): buildGenesisConfig(), buildGenesisEditFields(), DIFFICULTIES, GENESIS_EDIT_FIELDS, GenesisReviewApp(), GenesisReviewAppProps, HITL_MODES, PRIORITIES (+42 more)
+### Community 15 - "ink/index.ts"
+Cohesion: 0.06
+Nodes (69): buildGenesisConfig(), buildGenesisEditFields(), DIFFICULTIES, GENESIS_EDIT_FIELDS, GenesisReviewApp(), GenesisReviewAppProps, HITL_MODES, PRIORITIES (+61 more)
 
 ### Community 16 - "dashboard-metrics.ts"
-Cohesion: 0.09
-Nodes (44): AgentStatus, DaemonAgentState, EvtAgentStatusChange, EvtSchedulerStatus, SchedulerStatus, ACTIVE_STATUSES, AgentRemovalObserver, AgentRemovalReason (+36 more)
+Cohesion: 0.11
+Nodes (38): Task file schema, EvtAgentActivity, EvtBuildResult, EvtMergeResult, EvtTaskPicked, initialValue(), advanceThroughput(), alignBucket() (+30 more)
 
-### Community 17 - "t"
-Cohesion: 0.09
-Nodes (37): addCommand, ensureInitialized(), linkCommand, listCommand, outputArg, refArg, showCommand, addCommand (+29 more)
+### Community 17 - "commands/logs.ts"
+Cohesion: 0.36
+Nodes (8): cmdLogs(), colorize(), followLog(), LogLine, LogsCommandOptions, readLogLines(), renderText(), renderLogs()
 
-### Community 18 - "useScreenInput"
-Cohesion: 0.06
-Nodes (94): useChromeHideQuitHint(), useScreenInput(), FakeTaskWizard(), ConfirmDialog(), ConfirmDialogProps, FieldEditor(), FieldEditorProps, CreateFlowPhase (+86 more)
+### Community 18 - "ink"
+Cohesion: 0.07
+Nodes (71): ink, useChromeHideQuitHint(), useScreenInput(), FakeTaskWizard(), FakeTaskWizardProps, Field, TASK_TITLE_POOL, WORKFLOW_DESCRIPTIONS (+63 more)
 
 ### Community 19 - "github-client.ts"
 Cohesion: 0.09
-Nodes (33): apiUrlFor(), createGitHubClient(), paginate(), rateLimitWaitMs(), request(), CreateIssueInput, CreateLabelInput, DetectedRepo (+25 more)
+Nodes (33): apiUrlFor(), createGitHubClient(), paginate(), rateLimitWaitMs(), request(), CreateGitHubClientOptions, CreateIssueInput, CreateLabelInput (+25 more)
 
 ### Community 20 - "dashboard.tsx"
-Cohesion: 0.09
-Nodes (36): clip(), connectionLabel(), DASHBOARD_COMPACT_ROWS, DASHBOARD_NARROW_COLUMNS, DASHBOARD_RESERVED_ROWS, DashboardAgentRow(), DashboardAgentRowProps, DashboardScreen() (+28 more)
+Cohesion: 0.06
+Nodes (49): AgentStatus, clip(), connectionLabel(), DASHBOARD_COMPACT_ROWS, DASHBOARD_NARROW_COLUMNS, DASHBOARD_RESERVED_ROWS, DashboardAgent, DashboardAgentRow() (+41 more)
 
 ### Community 21 - "push.ts"
-Cohesion: 0.08
-Nodes (42): Pending, ensureLabels(), SAFE_ID_RE, SyncKind, MirrorFinding, MAX_NOTICE_ATTEMPTS, PendingNotice, pendingNoticesPath() (+34 more)
+Cohesion: 0.06
+Nodes (56): SyncOptions, loadAllArchivedQuests(), Pending, CycleOptions, ensureLabels(), GitHubClient, labelsForQuest(), hashQuest() (+48 more)
 
 ### Community 22 - "chrome.tsx"
 Cohesion: 0.13
 Nodes (22): ChromeBottomBar(), ChromeBottomBarProps, ChromeHideQuitContext, ChromeLayout(), ChromeLayoutProps, ChromeTitleContext, ChromeTopBar(), ChromeTopBarProps (+14 more)
 
 ### Community 23 - "lib/i18n.ts"
-Cohesion: 0.07
-Nodes (49): Architecture, cmdReplayList(), cmdReplayShow(), fmtTime(), pad(), renderText(), ReplayCommandOptions, resolveExecution() (+41 more)
+Cohesion: 0.10
+Nodes (29): teamMergeCommands, teamMergeMeta, teamSetup, cmdReplayList(), cmdReplayShow(), fmtTime(), pad(), renderText() (+21 more)
 
 ### Community 24 - "worktree.ts"
-Cohesion: 0.14
-Nodes (25): cmdCleanup(), branchHasChanges(), cleanupAllWorktrees(), copyConfigFiles(), createBranch(), createWorktree(), featureBranchName(), installDeps() (+17 more)
+Cohesion: 0.12
+Nodes (29): cmdCleanup(), branchExists(), branchHasChanges(), cleanupAllWorktrees(), copyConfigFiles(), createBranch(), createQuestBranch(), createWorktree() (+21 more)
 
 ### Community 25 - "lib/tasks.ts"
-Cohesion: 0.05
-Nodes (62): addCommand, archiveCommand, checkCommand, graphCommand, listCommand, setDifficultyCommand, setPriorityCommand, setQuestCommand (+54 more)
+Cohesion: 0.04
+Nodes (73): addCommand, archiveCommand, checkCommand, graphCommand, listCommand, setDifficultyCommand, setPriorityCommand, setQuestCommand (+65 more)
 
-### Community 26 - "monitor.ts"
-Cohesion: 0.08
-Nodes (19): UsageOverlayViewProps, extractActivity(), formatEventForLog(), MonitorCallbacks, OpenCodeEvent, ParsedOutput, parseEvents(), shortCmd() (+11 more)
+### Community 26 - "ref_node_path"
+Cohesion: 0.06
+Nodes (35): root, InitWriterConfig, InitWriterResult, UsageOverlayViewProps, buildTaskQuestMap(), normalizeUsageRecord(), TaskQuestLookup, UsageRefreshResult (+27 more)
 
 ### Community 27 - "hitl-channel.ts"
 Cohesion: 0.23
 Nodes (18): answerFilePath(), atomicWriteJson(), cleanupAgent(), cleanupAll(), ensureDir(), getAnswer(), getHitlDir(), getPendingQuestions() (+10 more)
 
-### Community 28 - "index.md"
+### Community 28 - "json"
 Cohesion: 0.05
-Nodes (26): Arguments, Global flags, Arguments, Global flags, Arguments, Global flags, Arguments, Global flags (+18 more)
+Nodes (34): Arguments, Global flags, Arguments, Global flags, Arguments, Global flags, Arguments, Global flags (+26 more)
 
 ### Community 29 - "schema.ts"
-Cohesion: 0.19
-Nodes (20): hasKey(), aliasHint(), allCommandSchemas(), commandToSchema(), descriptionOf(), findCommandDef(), flagDescriptionOf(), flagKeyName() (+12 more)
+Cohesion: 0.26
+Nodes (17): hasKey(), aliasHint(), allCommandSchemas(), descriptionOf(), findCommandDef(), flagDescriptionOf(), flagKeyName(), getVersion() (+9 more)
 
-### Community 30 - "UsageTotals"
-Cohesion: 0.36
-Nodes (7): QuestPickerViewProps, defaultProps(), EMPTY_USAGE, makeQuest(), makeSummary(), QuestSummary, UsageTotals
+### Community 30 - "genesis-planner.ts"
+Cohesion: 0.20
+Nodes (14): detectCycles(), dfs(), extractGenesisYaml(), extractTextFromJsonEvents(), generateDirectoryTree(), generateGenesisPrompt(), GenesisOutput, parseGenesisYaml() (+6 more)
 
 ### Community 31 - "DaemonClient"
-Cohesion: 0.12
-Nodes (5): delegateToDaemon(), waitForDaemonCompletion(), DaemonClient, CommandMap, TuiAppProps
+Cohesion: 0.10
+Nodes (9): delegateToDaemon(), waitForDaemonCompletion(), DaemonClient, CommandMap, EvtStateSnapshot, DaemonMonitorAdapter(), DaemonMonitorShellProps, InkDaemonTUIOptions (+1 more)
 
 ### Community 32 - "agent-registry.ts"
-Cohesion: 0.12
-Nodes (29): AgentRegistryMode, consolePreflightConfirm(), inkPreflightConfirm(), InkPreflightResult, PreflightResult, PreflightRow, PreflightView(), PreflightViewProps (+21 more)
+Cohesion: 0.14
+Nodes (25): AgentRegistryMode, InkPreflightResult, PreflightResult, PreflightViewProps, agentNameFromType(), AgentResolution, cacheAgent(), cacheDir() (+17 more)
 
 ### Community 33 - "commands/merge.ts"
-Cohesion: 0.19
-Nodes (20): agentsById(), branchExists(), chainPredecessors(), cmdMerge(), evidenceFor(), git(), gitOk(), isAncestor() (+12 more)
+Cohesion: 0.15
+Nodes (21): agentsById(), branchExists(), chainPredecessors(), cmdMerge(), defaultIsDaemonAlive(), evidenceFor(), git(), gitOk() (+13 more)
 
 ### Community 34 - "harness/types.ts"
 Cohesion: 0.17
 Nodes (18): Adding a harness, build(), expand(), errorEvent(), normalizeToolInput(), parseJsonLine(), resultText(), stepFinishEvent() (+10 more)
 
 ### Community 35 - "toon.ts"
-Cohesion: 0.06
-Nodes (55): clampScore(), intervalsOverlap(), loadEvalReport(), parseEffortMinutes(), RoutingMismatch, scoreFlow(), ScoreReport, scoreRouting() (+47 more)
+Cohesion: 0.05
+Nodes (74): cmdHistory(), FG, formatDate(), formatDurationMs(), pad(), padLeft(), renderWaveDetails(), renderWaveList() (+66 more)
 
 ### Community 36 - "generate-fake-tasks.ts"
 Cohesion: 0.14
 Nodes (24): ALL_PRESETS, DIFFICULTIES, Difficulty, EFFORTS, FakeTask, generateDeepTree(), generateDiamond(), generateFakeTasks() (+16 more)
 
 ### Community 37 - "github-pr.ts"
-Cohesion: 0.12
-Nodes (35): PostMergePrMode, checkGhAuthenticated(), checkGhAvailable(), commandError(), CommandOptions, CommandResult, CommandRunner, CreateOrUpdatePrOptions (+27 more)
+Cohesion: 0.11
+Nodes (34): PostMergePrMode, checkGhAuthenticated(), checkGhAvailable(), commandError(), CommandOptions, CommandResult, CommandRunner, CreateOrUpdatePrOptions (+26 more)
 
 ### Community 38 - "AnalyticsTracker"
-Cohesion: 0.11
-Nodes (21): allocateExecutionId(), AnalyticsTracker, errMsg(), ExecutionContext, isActive(), isFinished(), InternalAgentState, StatusObserverInfo (+13 more)
+Cohesion: 0.16
+Nodes (10): allocateExecutionId(), AnalyticsTracker, errMsg(), ExecutionContext, isActive(), isFinished(), InternalAgentState, StatusObserverInfo (+2 more)
 
 ### Community 39 - "setup-matt-pocock-skills/SKILL.md"
-Cohesion: 0.17
-Nodes (7): Conventions, Issue tracker: Local Markdown, Wayfinding operations, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker", Setup Matt Pocock's Skills, Triage Labels
+Cohesion: 0.11
+Nodes (12): Before exploring, read these, Domain Docs, File structure, Flag ADR conflicts, Use the glossary's vocabulary, Conventions, Issue tracker: Local Markdown, Wayfinding operations (+4 more)
 
 ### Community 40 - "task-schema.ts"
-Cohesion: 0.14
-Nodes (22): DIFFICULTY_ORDER, META_INNER_REQUIRED_FIELDS, META_REQUIRED_FIELDS, MetaSchema, PRIORITY_ORDER, SchemaIssue, TASK_ARRAY_FIELDS, TASK_REQUIRED_FIELDS (+14 more)
+Cohesion: 0.09
+Nodes (34): cmdTasksAdd(), CheckResult, checkTasks(), hasCycle(), cmdTasksCheck(), collectAllItems(), mergeSchemaIssues(), mirrorMessage() (+26 more)
+
+### Community 41 - "Daemon"
+Cohesion: 0.13
+Nodes (3): Assistant (Build · claude-sonnet-4.6 · 9.4s), Daemon, AutoSyncLoop
 
 ### Community 42 - "test-baseline.ts"
-Cohesion: 0.10
-Nodes (35): assertSafeQuestId(), baselineFailingTestIds(), BASELINES_DIR, BaselineTestResults, compareTestRunToBaseline(), countIds(), EXECUTION_STATUSES, isObject() (+27 more)
+Cohesion: 0.11
+Nodes (33): assertSafeQuestId(), baselineFailingTestIds(), BASELINES_DIR, BaselineTestResults, checkBaselineUsable(), compareTestRunToBaseline(), countIds(), EXECUTION_STATUSES (+25 more)
 
 ### Community 43 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, declaration, esModuleInterop, forceConsistentCasingInFileNames, jsx, module, moduleResolution, noUnusedLocals (+10 more)
 
 ### Community 44 - "analytics-summary.ts"
-Cohesion: 0.24
-Nodes (13): AnalyticsMergeOutcome, AnalyticsOutcome, AnalyticsUsageCoverage, aggregateMetrics, AnalyticsFilter, AnalyticsGroup, dedupeExecutions(), filterExecutions() (+5 more)
+Cohesion: 0.20
+Nodes (15): props(), rec(), sampleRecords(), AnalyticsMergeOutcome, AnalyticsOutcome, AnalyticsUsageCoverage, aggregateMetrics, AnalyticsGroup (+7 more)
 
 ### Community 45 - "merge-report.ts"
-Cohesion: 0.11
-Nodes (42): assertSafeRef(), codeSpan(), collectChangedFiles(), collectComparisonFiles(), collectCumulativeReport(), collectMergeReport(), compareStrings(), CumulativeMergeReport (+34 more)
+Cohesion: 0.10
+Nodes (41): assertSafeRef(), codeSpan(), collectChangedFiles(), collectComparisonFiles(), collectCumulativeReport(), collectMergeReport(), compareStrings(), CumulativeMergeReport (+33 more)
 
 ### Community 46 - "conflict-hunks.ts"
 Cohesion: 0.16
@@ -456,47 +456,47 @@ Nodes (23): applyResolutions(), classifyFileHunks(), classifyHunk(), ConflictHun
 
 ### Community 47 - "lib/replay.ts"
 Cohesion: 0.09
-Nodes (33): ReplayRecorderOptions, Tracked, boundValue(), DEFAULT_KEEP_PER_TASK, FileState, firstLine(), normalizeHarnessEvent(), normalizeOpenCodeEvent() (+25 more)
+Nodes (27): TaskRow, boundValue(), FileState, firstLine(), normalizeHarnessEvent(), normalizeOpenCodeEvent(), num(), recordLabel() (+19 more)
 
 ### Community 48 - "quest-wizard.tsx"
-Cohesion: 0.14
-Nodes (16): buildDifficultyItems(), buildHitlItems(), buildPriorityItems(), PRIORITY_COLORS, QuestWizard(), QuestWizardProps, STEPS, WizardPhase (+8 more)
+Cohesion: 0.08
+Nodes (26): QuestPickerViewProps, QuestSummary, defaultProps(), EMPTY_USAGE, makeQuest(), makeSummary(), QuestSummary, buildDifficultyItems() (+18 more)
 
 ### Community 49 - "analytics-measurements.test.ts"
 Cohesion: 0.23
 Nodes (6): commitFile(), git(), make(), makeTask(), NoLaunchRunner, submit()
 
 ### Community 50 - "test-baseline-capture.ts"
-Cohesion: 0.13
-Nodes (15): BaselineCaptureError, BaselineCaptureErrorCode, ensureInner(), EnsureQuestTestBaselineOptions, EnsureQuestTestBaselineResult, git(), inFlight, resolveCommitSha() (+7 more)
+Cohesion: 0.14
+Nodes (14): BaselineCaptureError, BaselineCaptureErrorCode, ensureInner(), EnsureQuestTestBaselineOptions, EnsureQuestTestBaselineResult, git(), inFlight, resolveCommitSha() (+6 more)
 
-### Community 51 - "ref_node_os"
-Cohesion: 0.08
-Nodes (44): defaultIsDaemonAlive(), SelectedAgentInfo, PostMergeConfig, createDaemonAgentState(), VerificationSummary, createBlankTask(), addVerifiedAgent(), makeAgent() (+36 more)
+### Community 51 - "post-merge-integration.test.ts"
+Cohesion: 0.07
+Nodes (48): SelectedAgentInfo, PostMergeConfig, createDaemonAgentState(), POST_MERGE_JOURNAL, VerificationSummary, createBlankTask(), addVerifiedAgent(), SeedSpec (+40 more)
 
 ### Community 52 - "dashboard-realtime.test.tsx"
 Cohesion: 0.10
 Nodes (10): App, cleanup, eventually(), FakeDaemonClient, makeConfig(), mount(), openDashboard(), setTermSize() (+2 more)
 
 ### Community 53 - "replay-viewer.tsx"
-Cohesion: 0.14
-Nodes (32): entryColor(), fit(), REPLAY_TICK_MS, ReplayViewerProps, ReplayViewerView(), ReplayViewerViewProps, classifyDiffLine(), LoadedReplay (+24 more)
+Cohesion: 0.16
+Nodes (29): entryColor(), fit(), REPLAY_TICK_MS, ReplayViewerProps, ReplayViewerView(), ReplayViewerViewProps, classifyDiffLine(), LoadedReplay (+21 more)
 
-### Community 54 - "msg"
-Cohesion: 0.13
-Nodes (53): cmdCommentAdd(), cmdCommentLink(), parseRefOrFail(), applyGenesisResult(), cmdGenesis(), CreatedQuest, GenesisReviewResult, showGenesisReview() (+45 more)
+### Community 54 - "t"
+Cohesion: 0.10
+Nodes (70): cmdAbort(), startCommand, statusCommand, stopCommand, addCommand, deleteCommand, listCommand, moveCommand (+62 more)
 
 ### Community 55 - "quest.md"
 Cohesion: 0.06
 Nodes (30): Arguments, Arguments, Arguments, Arguments, Arguments, Arguments, Arguments, Flags (+22 more)
 
-### Community 56 - "run-daemon-monitor.tsx"
-Cohesion: 0.11
-Nodes (26): EvtAgentActivity, EvtBuildResult, EvtHitlQuestion, EvtLog, EvtMergeResult, EvtTokenUsage, SchedulerState, DashboardAgent (+18 more)
+### Community 56 - "commands/stats.ts"
+Cohesion: 0.30
+Nodes (11): aggregateByModel(), aggregateStats(), cmdStats(), computeTrend(), filterWavesByDate(), formatDuration(), formatPercent(), formatStatsTable() (+3 more)
 
 ### Community 57 - "prompt.ts"
-Cohesion: 0.11
-Nodes (25): formatHunksForLLM(), portlessUrl(), capComments(), abbreviateConstraintLine(), collapseConsecutiveBlanks(), compressConstraints(), CompressPromptOptions, compressPromptText() (+17 more)
+Cohesion: 0.09
+Nodes (30): normalizeCommentsConfig(), Comment, formatHunksForLLM(), portlessUrl(), capComments(), abbreviateConstraintLine(), collapseConsecutiveBlanks(), compressConstraints() (+22 more)
 
 ### Community 58 - "TextBuffer"
 Cohesion: 0.14
@@ -504,7 +504,7 @@ Nodes (3): lineColToPos(), posToLineCol(), TextBuffer
 
 ### Community 59 - "commands/tasks.md"
 Cohesion: 0.06
-Nodes (31): Arguments, Arguments, Arguments, Arguments, Arguments, Arguments, Flags, Flags (+23 more)
+Nodes (35): Arguments, Arguments, Arguments, Arguments, Arguments, Arguments, Arguments, Flags (+27 more)
 
 ### Community 60 - "permission"
 Cohesion: 0.11
@@ -515,36 +515,36 @@ Cohesion: 0.14
 Nodes (22): InitApp(), InitAppProps, InitState, installAgentTemplate(), renderInitApp(), detectBaseBranch(), detectBuildCommand(), detectInstallCommand() (+14 more)
 
 ### Community 62 - "dashboard-provider.tsx"
-Cohesion: 0.05
-Nodes (29): ConnectionState, EventMap, clientState(), DASHBOARD_EVENTS, DashboardDaemonClient, DashboardMetricsProvider(), DashboardMetricsProviderProps, mapConnection() (+21 more)
+Cohesion: 0.09
+Nodes (20): ConnectionState, EventMap, DashboardMetricsContext, DashboardMetricsValue, useDashboardMetrics(), DASHBOARD_EVENTS, DashboardDaemonClient, DashboardMetricsProviderProps (+12 more)
 
 ### Community 63 - "commands/status.ts"
-Cohesion: 0.23
-Nodes (15): agentToJson(), buildStatusJson(), cmdStatus(), elapsedMs(), formatElapsed(), colorize(), elapsed(), FG (+7 more)
+Cohesion: 0.15
+Nodes (26): agentToJson(), buildStatusJson(), cmdStatus(), elapsedMs(), formatElapsed(), loadSessionSnapshot(), readPersistedSnapshot(), DaemonAgentState (+18 more)
 
-### Community 64 - "ink/index.ts"
-Cohesion: 0.07
-Nodes (64): cmdTui(), handleErrandFlow(), handleGenesisFlow(), handlePlanFlow(), handleWishlistFlow(), maybeDeleteWishlistItem(), NullTree(), promptVisionText() (+56 more)
+### Community 64 - "commands/tui.ts"
+Cohesion: 0.10
+Nodes (39): cmdTui(), handleErrandFlow(), handleGenesisFlow(), handlePlanFlow(), handleWishlistFlow(), maybeDeleteWishlistItem(), NullTree(), promptVisionText() (+31 more)
 
 ### Community 65 - "useI18n"
-Cohesion: 0.07
-Nodes (76): ANALYTICS_GROUPINGS, AnalyticsOverlayView(), AnalyticsOverlayViewProps, coverageWarning(), DEFAULT_MAX_VISIBLE_ROWS, formatAnalyticsDuration(), formatAnalyticsRate(), GROUPING_LABEL_KEYS (+68 more)
+Cohesion: 0.06
+Nodes (83): ANALYTICS_GROUPINGS, AnalyticsOverlayView(), AnalyticsOverlayViewProps, coverageWarning(), DEFAULT_MAX_VISIBLE_ROWS, formatAnalyticsDuration(), formatAnalyticsRate(), GROUPING_LABEL_KEYS (+75 more)
 
 ### Community 66 - "AGENTS.md — Instructions for AI agents working on wombo-combo"
 Cohesion: 0.10
 Nodes (20): 1. Always use `bun dev`, never the global binary, 2. Never publish manually — use the release workflow, 3. Keep bun.lock committed, 4. Commit project artifacts, ignore runtime artifacts, 5. Never silently work around bugs, Agent skills, AGENTS.md — Instructions for AI agents working on wombo-combo, Coding conventions (+12 more)
 
 ### Community 67 - "monitor-router.test.tsx"
-Cohesion: 0.09
-Nodes (9): escMenuCursor(), eventually(), selectFromEscMenu(), waitFor(), LiveFakeClient, makeMinimalConfig(), mountShell(), openDashboardFromMenu() (+1 more)
+Cohesion: 0.08
+Nodes (8): escMenuCursor(), eventually(), selectFromEscMenu(), waitFor(), LiveFakeClient, makeMinimalConfig(), openDashboardFromMenu(), StubDaemonClient
 
 ### Community 68 - "analytics.ts"
 Cohesion: 0.08
-Nodes (30): AnalyticsTrackerOptions, ANALYTICS_DIR, ANALYTICS_MEASUREMENT_PHASES, ANALYTICS_MERGE_OUTCOMES, ANALYTICS_OUTCOMES, ANALYTICS_SCHEMA_VERSION, ANALYTICS_USAGE_COVERAGES, AnalyticsDiagnostic (+22 more)
+Nodes (28): AnalyticsTrackerOptions, ANALYTICS_DIR, ANALYTICS_MEASUREMENT_PHASES, ANALYTICS_MERGE_OUTCOMES, ANALYTICS_OUTCOMES, ANALYTICS_SCHEMA_VERSION, ANALYTICS_USAGE_COVERAGES, AnalyticsDiagnostic (+20 more)
 
 ### Community 69 - "ProcessMonitor"
 Cohesion: 0.11
-Nodes (15): 1. Are agents spawned with `detached: true` and `unref()`?, 2. Does `ProcessMonitor.killAll()` kill child processes?, 3. Does `screen.destroy()` affect agent processes?, Agent Process Lifecycle Audit, Files with Audit Annotations, Findings, Graceful Shutdown (SIGINT / TUI quit / SIGTERM / SIGHUP), Interactive Mode Shutdown (+7 more)
+Nodes (14): 2. Does `ProcessMonitor.killAll()` kill child processes?, 3. Does `screen.destroy()` affect agent processes?, Agent Process Lifecycle Audit, Files with Audit Annotations, Findings, Graceful Shutdown (SIGINT / TUI quit / SIGTERM / SIGHUP), Interactive Mode Shutdown, Recommendations (+6 more)
 
 ### Community 70 - "merge-driver.ts"
 Cohesion: 0.16
@@ -555,16 +555,12 @@ Cohesion: 0.23
 Nodes (12): baseKey(), collectUsedKeys(), describeResource(), domainLiteral(), EN_DESC, isSourceFile(), LOCALES_DIR, OTHER_LOCALES (+4 more)
 
 ### Community 73 - "post-merge.ts"
-Cohesion: 0.10
-Nodes (34): MergeCommandDeps, normalizePostMergeConfig(), AgentRunnerConfig, Git, isComplete(), isJournal(), Journal, JournalOperation (+26 more)
-
-### Community 74 - "InkDaemonTUI"
-Cohesion: 0.11
-Nodes (5): InkDaemonTUI, getStdin(), stdinIsTTY, TuiSession, TuiSessionOptions
+Cohesion: 0.15
+Nodes (28): MergeCommandDeps, normalizePostMergeConfig(), AgentRunnerConfig, sanitizeInline(), Git, isComplete(), isJournal(), Journal (+20 more)
 
 ### Community 75 - "templates.ts"
-Cohesion: 0.20
-Nodes (15): isPortlessAvailable(), AGENT_TEMPLATE_PATH, applyHitlAwareness(), applyPlaceholders(), buildTddBlock(), joinFrontmatter(), PATCH_BODY_END_PATH, PATCH_BODY_START_PATH (+7 more)
+Cohesion: 0.08
+Nodes (37): Behavior, Fake Agent, Usage, AgencyAgentFrontmatter, AgencyAgentSections, cleanEmojiHeaders(), convertAgencyToWoco(), extractSections() (+29 more)
 
 ### Community 76 - "agents/generalist-agent.md"
 Cohesion: 0.14
@@ -583,36 +579,32 @@ Cohesion: 0.22
 Nodes (19): normalizeTeamConfig(), assertSafeId(), Claim, ClaimInfo, ClaimOptions, claimPath(), ClaimResult, CLAIMS_DIR (+11 more)
 
 ### Community 80 - "commands/usage.ts"
-Cohesion: 0.14
-Nodes (31): buildAnalyticsSummary(), cmdUsage(), cmdUsageAnalytics(), coverageNote(), FG, formatAnalyticsDuration(), formatAnalyticsRate(), formatCost() (+23 more)
+Cohesion: 0.15
+Nodes (30): buildAnalyticsSummary(), cmdUsage(), cmdUsageAnalytics(), coverageNote(), FG, formatAnalyticsDuration(), formatAnalyticsRate(), formatCost() (+22 more)
 
 ### Community 81 - "config.ts"
-Cohesion: 0.08
-Nodes (23): cmdInit(), InitOptions, AgentRegistryConfig, CommentsConfig, CONFIG_FILE, deepMerge(), DIFFICULTIES, isPlainObject() (+15 more)
+Cohesion: 0.10
+Nodes (21): cmdInit(), InitOptions, AgentRegistryConfig, CommentsConfig, CONFIG_FILE, deepMerge(), DIFFICULTIES, isPlainObject() (+13 more)
 
 ### Community 82 - "tdd-verifier.test.ts"
-Cohesion: 0.11
-Nodes (28): buildSummary(), extractTddErrorSummary(), isNonTestableChangeOnly(), renderTddVerificationReport(), runTddVerification(), summarizeBaselineComparison(), TddVerificationOptions, TddVerificationResult (+20 more)
+Cohesion: 0.16
+Nodes (21): buildSummary(), extractTddErrorSummary(), isNonTestableChangeOnly(), renderTddVerificationReport(), runTddVerification(), summarizeBaselineComparison(), TddVerificationOptions, TddVerificationResult (+13 more)
 
 ### Community 83 - "Triage"
 Cohesion: 0.06
 Nodes (29): Bad agent brief, Behavioral, not procedural, Complete acceptance criteria, Durability over precision, Examples, Explicit scope boundaries, Good agent brief (bug), Good agent brief (enhancement) (+21 more)
 
 ### Community 84 - "commands/completion.ts"
-Cohesion: 0.18
+Cohesion: 0.19
 Nodes (28): aliasHint(), allCommandNames(), bashScript(), cmdCompletion(), cmdShortName(), collectEnumFlags(), walk(), collectFreeFormFlags() (+20 more)
 
-### Community 85 - "Requirement: Launch stagger applies only to real-agent launches"
-Cohesion: 0.29
-Nodes (6): ADDED Requirements, Requirement: Launch stagger applies only to real-agent launches, Scenario: Default behavior preserves existing stagger, Scenario: skipStagger flag removes the wait, Scenario: submitTask does not set skipStagger for real agents, Scenario: submitTask sets skipStagger for fake agents
-
-### Community 86 - "run-quest-picker.tsx"
-Cohesion: 0.13
-Nodes (16): FakeTaskConfig, generateFakeTasks(), shuffleArr(), shuffledTitles(), QuestPickerAction, QuestPickerApp(), QuestPickerScreenProps, runQuestPickerInk() (+8 more)
+### Community 85 - ".submitTask"
+Cohesion: 0.10
+Nodes (16): ADDED Requirements, Requirement: Launch stagger applies only to real-agent launches, Scenario: Default behavior preserves existing stagger, Scenario: skipStagger flag removes the wait, Scenario: submitTask does not set skipStagger for real agents, Scenario: submitTask sets skipStagger for fake agents, 1. AgentRunner — Per-entry stagger flag, 3. Unit Tests (+8 more)
 
 ### Community 87 - "esc-menu.tsx"
-Cohesion: 0.14
-Nodes (19): defaultEscMenuState, EscMenu(), EscMenuContext, EscMenuItem(), EscMenuItemProps, EscMenuProps, EscMenuProvider(), EscMenuProviderProps (+11 more)
+Cohesion: 0.10
+Nodes (24): defaultEscMenuState, EscMenu(), EscMenuContext, EscMenuItem(), EscMenuItemProps, EscMenuProps, EscMenuProviderProps, EscMenuState (+16 more)
 
 ### Community 88 - "test-detection.ts"
 Cohesion: 0.23
@@ -623,8 +615,8 @@ Cohesion: 0.14
 Nodes (13): Arguments, Arguments, Arguments, Flags, Global flags, Global flags, Global flags, Global flags (+5 more)
 
 ### Community 90 - "ref_bun_test"
-Cohesion: 0.05
-Nodes (49): ink, react, App(), AppProps, ConfirmDialog(), ConfirmDialogProps, ErrandWizard(), ErrandWizardProps (+41 more)
+Cohesion: 0.06
+Nodes (32): react, App(), AppProps, ConfirmDialog(), ConfirmDialogProps, ErrandWizard(), ErrandWizardProps, ErrandWizardStep (+24 more)
 
 ### Community 91 - ".github/skills/openspec-explore/SKILL.md"
 Cohesion: 0.18
@@ -642,10 +634,6 @@ Nodes (19): addWorktree(), AgentCall, agentCalls(), Ctx, FAILING_TEST(), git(), 
 Cohesion: 0.24
 Nodes (11): appendChangelogEntry(), assertValidOperationId(), atomicWrite(), CHANGELOG_FILE, ChangelogEntryInput, ChangelogTask, ChangelogWriteResult, entryDate() (+3 more)
 
-### Community 95 - "ReplayRecorder"
-Cohesion: 0.14
-Nodes (3): errMsg(), ReplayRecorder, ReplayEndOutcome
-
 ### Community 96 - "tui-smoke.test.ts"
 Cohesion: 0.22
 Nodes (8): generateDefaultConfig(), ENTRY, launchTui(), makeProject(), reachQuestPicker(), start(), stripAnsi(), TuiSession
@@ -662,65 +650,65 @@ Nodes (9): Check for context, Ending Discovery, Guardrails, OpenSpec Awareness, 
 Cohesion: 0.20
 Nodes (9): Check for context, Ending Discovery, Guardrails, OpenSpec Awareness, The Stance, What You Don't Have To Do, What You Might Do, When a change exists (+1 more)
 
-### Community 100 - "DaemonState"
-Cohesion: 0.05
-Nodes (32): Files Changed, Minimal, surgical fix, Problem Trace, Solution, State loading sequence (daemon boot), The TUI sequence that triggers the visible symptom, What does NOT change, Why `concurrencyPinned` doesn't protect persisted state (+24 more)
+### Community 100 - ".load"
+Cohesion: 0.07
+Nodes (26): Files Changed, Minimal, surgical fix, Problem Trace, Solution, State loading sequence (daemon boot), The TUI sequence that triggers the visible symptom, What does NOT change, Why `concurrencyPinned` doesn't protect persisted state (+18 more)
 
 ### Community 101 - "gen-command-docs.ts"
-Cohesion: 0.31
-Nodes (15): code(), commandBody(), commandSlug(), escapeCell(), flagTable(), formatDefault(), generateCommandDocs(), GENERATED_BANNER (+7 more)
+Cohesion: 0.33
+Nodes (14): code(), commandBody(), commandSlug(), escapeCell(), flagTable(), formatDefault(), generateCommandDocs(), GENERATED_BANNER (+6 more)
 
 ### Community 102 - "multi-cli-support — architecture"
-Cohesion: 0.24
-Nodes (9): Fallback chains, Routing, plan(), Config (src/config.ts, schemas/config.schema.json), Constraints, Core idea: normalize at the edge, keep the pipeline untouched, File ownership (mostly sequential; tasks 2 and 3 can run in parallel), multi-cli-support — architecture (+1 more)
+Cohesion: 0.25
+Nodes (7): plan(), Config (src/config.ts, schemas/config.schema.json), Constraints, Core idea: normalize at the edge, keep the pipeline untouched, File ownership (mostly sequential; tasks 2 and 3 can run in parallel), multi-cli-support — architecture, Route resolution (pure, src/lib/harness/routing.ts)
 
 ### Community 103 - "analytics-integration.test.ts"
-Cohesion: 0.18
-Nodes (9): commitFile(), FixtureRunner, git(), makeTask(), REPO_ROOT, seedFromRunner(), session(), SRC_ENTRY (+1 more)
+Cohesion: 0.17
+Nodes (10): commitFile(), FixtureRunner, git(), makeTask(), REPO_ROOT, seedFromRunner(), session(), SRC_ENTRY (+2 more)
 
 ### Community 104 - "test-runner.ts"
-Cohesion: 0.26
-Nodes (13): BUN_GLYPHS, classifyExecution(), extractTestErrorSummary(), normalizeTestPath(), parseStructuredResults(), parseTestCounts(), runTests(), stripAnsi() (+5 more)
+Cohesion: 0.20
+Nodes (16): BUN_GLYPHS, classifyExecution(), extractTestErrorSummary(), normalizeTestPath(), parseStructuredResults(), parseTestCounts(), runTests(), stripAnsi() (+8 more)
 
 ### Community 105 - "ReplayStore"
-Cohesion: 0.20
-Nodes (8): assertSafe(), isSafeSegment(), replaysDir(), ReplayStore, seedReplay(), seed(), seed(), SRC_ENTRY
+Cohesion: 0.23
+Nodes (8): assertSafe(), isSafeSegment(), replaysDir(), ReplayStore, summarize(), seedReplay(), seed(), seed()
 
 ### Community 106 - "harness/index.ts"
 Cohesion: 0.16
-Nodes (17): claudeCodeHarness, codexHarness, customHarness, HARNESS_IDS, isHarnessId(), OPERATIONS, detectHarnessFromBin(), getHarness() (+9 more)
+Nodes (15): claudeCodeHarness, codexHarness, customHarness, HARNESS_IDS, isHarnessId(), OPERATIONS, detectHarnessFromBin(), listHarnesses() (+7 more)
 
 ### Community 107 - "lib/launcher.ts"
-Cohesion: 0.10
-Nodes (28): 7. Verify, HarnessId, ResolvedRoute, inlineAgentDefinition(), PROMPT_ARG_MAX, spawnHarness(), SpawnTarget, stripFrontmatter() (+20 more)
+Cohesion: 0.11
+Nodes (32): 1. Are agents spawned with `detached: true` and `unref()`?, DEFAULT_CONFIG, HarnessId, getHarness(), ResolvedRoute, inlineAgentDefinition(), PROMPT_ARG_MAX, spawnHarness() (+24 more)
 
 ### Community 108 - "quest-store.ts"
-Cohesion: 0.24
-Nodes (19): archivedKnowledgeDir(), archivedKnowledgeFilePath(), archivedQuestFilePath(), archiveQuest(), atomicWrite(), deleteQuest(), ensureDir(), getQuestsDir() (+11 more)
+Cohesion: 0.11
+Nodes (38): applyGenesisResult(), createBlankQuest(), deepMerge(), emptyConstraints(), normalizeQuest(), applyPlanToQuest(), QUEST_ARRAY_FIELDS, QUEST_REQUIRED_FIELDS (+30 more)
 
 ### Community 109 - "Scheduler"
-Cohesion: 0.05
-Nodes (50): Context, D1: Pass `initialMaxConcurrent` in `SchedulerConfig`, not as a constructor argument, D2: Mark `concurrencyPinned = true` when `initialMaxConcurrent` is supplied, D3: Read `state.getMaxConcurrent()` in `handleStart()` before destroying the old Scheduler, Decisions, Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+42 more)
+Cohesion: 0.06
+Nodes (34): Context, D1: Pass `initialMaxConcurrent` in `SchedulerConfig`, not as a constructor argument, D2: Mark `concurrencyPinned = true` when `initialMaxConcurrent` is supplied, D3: Read `state.getMaxConcurrent()` in `handleStart()` before destroying the old Scheduler, Decisions, Goals / Non-Goals, Migration Plan, Risks / Trade-offs (+26 more)
 
 ### Community 110 - "maxConcurrent"
-Cohesion: 0.04
-Nodes (67): MODIFIED Requirements, Requirement: Concurrency value is pinned after first set, Scenario: Config value applied on first start, Scenario: Explicit override preserved across start re-trigger, Scenario: Explicit start payload takes precedence, Scenario: Scheduler reconstruction carries forward pinned value, Scenario: Watcher re-triggers start after idle — concurrency preserved, ADDED Requirements (+59 more)
+Cohesion: 0.06
+Nodes (53): MODIFIED Requirements, Requirement: Concurrency value is pinned after first set, Scenario: Config value applied on first start, Scenario: Explicit override preserved across start re-trigger, Scenario: Explicit start payload takes precedence, Scenario: Scheduler reconstruction carries forward pinned value, Scenario: Watcher re-triggers start after idle — concurrency preserved, ADDED Requirements (+45 more)
 
 ### Community 111 - "daemon.md"
 Cohesion: 0.18
 Nodes (10): daemon start, daemon status, daemon stop, Flags, Flags, Flags, Global flags, Global flags (+2 more)
 
-### Community 112 - "citty-bridge.ts"
-Cohesion: 0.23
-Nodes (13): BridgeCommandMeta, camelToKebab(), cittyArgToFlagDef(), cittyArgToPositionalDef(), cittyCommandToCommandDef(), FlagOverride, GLOBAL_FLAG_NAMES, buildRegistry() (+5 more)
+### Community 112 - "registry-parity.test.ts"
+Cohesion: 0.19
+Nodes (13): BridgeCommandMeta, camelToKebab(), cittyArgToFlagDef(), cittyArgToPositionalDef(), cittyCommandToCommandDef(), FlagOverride, GLOBAL_FLAG_NAMES, RegistryEntry (+5 more)
 
 ### Community 113 - "daemon-agent-runner.test.ts"
-Cohesion: 0.11
-Nodes (14): PostMergeRequest, Env, EnvOpts, ReentrantRunner, SpyRunner, TestableAgentRunner, FakeGh, FakeGhOptions (+6 more)
+Cohesion: 0.10
+Nodes (17): defaultCommandRunner(), FAKE_AGENT_SENTINEL, PostMergeRequest, Env, EnvOpts, makeEnv(), ReentrantRunner, SpyRunner (+9 more)
 
 ### Community 114 - "saveTaskToStore"
-Cohesion: 0.07
-Nodes (28): autoSyncBusy(), configureAutoSync(), resetAutoSync(), createTask(), saveTaskToStore(), FakeComment, FakeGitHub, FakeGitHubOptions (+20 more)
+Cohesion: 0.06
+Nodes (31): autoSyncBusy(), configureAutoSync(), resetAutoSync(), createTask(), parseSyncRef(), saveTaskToStore(), loadTasks(), FakeComment (+23 more)
 
 ### Community 115 - "wishlist-store.ts"
 Cohesion: 0.24
@@ -747,24 +735,24 @@ Cohesion: 0.11
 Nodes (17): Arguments, Arguments, Arguments, Flags, Flags, Flags, Global flags, Global flags (+9 more)
 
 ### Community 121 - "replay-viewer.test.tsx"
-Cohesion: 0.17
-Nodes (13): ReplayViewer(), parseReplay(), BASE, Harness, live, makeReplay(), mount(), smallReplay() (+5 more)
+Cohesion: 0.14
+Nodes (17): ReplayViewer(), parseReplay(), buildTimeline(), BASE, Harness, live, makeReplay(), mount() (+9 more)
 
-### Community 122 - "tmpDir"
-Cohesion: 0.06
-Nodes (35): Context, Decision: Apply the same pattern to both `mergeBranch` and `syncQuestBranch`, Decision: Sibling directory next to the project root, Decisions, Goals / Non-Goals, Risks / Trade-offs, Capabilities, Impact (+27 more)
+### Community 122 - "agent-runner.ts"
+Cohesion: 0.04
+Nodes (69): Context, Decision: Apply the same pattern to both `mergeBranch` and `syncQuestBranch`, Decision: Sibling directory next to the project root, Decisions, Goals / Non-Goals, Risks / Trade-offs, Capabilities, Impact (+61 more)
 
 ### Community 123 - "tdd-baseline-integration.test.ts"
 Cohesion: 0.16
 Nodes (12): ensureQuestTestBaseline(), captureMain(), Case, checkoutNewBranch(), commit(), git(), MAIN_SUITE, makeRepo() (+4 more)
 
-### Community 124 - "tdd-baseline-pipeline.test.ts"
-Cohesion: 0.39
-Nodes (7): createTestBaseline(), applyFeatureChanges(), captureBaseline(), git(), makeMainRepo(), tmpDirs, writeRepoFiles()
+### Community 124 - "verifier.ts"
+Cohesion: 0.16
+Nodes (15): extractBrowserErrorSummary(), createTestBaseline(), BuildResult, extractErrorSummary(), FullVerificationOptions, runBuild(), runFullVerification(), truncate() (+7 more)
 
-### Community 125 - "scheduler.ts"
-Cohesion: 0.17
-Nodes (14): SchedulerDeps, TERMINAL_STATUSES, buildChainFrom(), buildDepGraph(), buildSchedulePlan(), computeTopologicalOrder(), DepChain, DepGraph (+6 more)
+### Community 125 - "state.ts"
+Cohesion: 0.15
+Nodes (11): EventType, EvtSchedulerStatus, ACTIVE_STATUSES, AgentRemovalObserver, AgentRemovalReason, DEP_SATISFIED_STATUSES, PersistedDaemonState, StateListener (+3 more)
 
 ### Community 126 - "teach/SKILL.md"
 Cohesion: 0.07
@@ -787,40 +775,40 @@ Cohesion: 0.29
 Nodes (6): Field Reference, Operational Rules, Task Design Principles, What You Must Never Do, YAML Output Schema, Your Task
 
 ### Community 131 - "comments.ts"
-Cohesion: 0.13
-Nodes (26): DEFAULT_CONFIG, addComment(), AddCommentInput, assertSafeId(), CommentRef, COMMENTS_DIR, commentsDir(), compareComments() (+18 more)
+Cohesion: 0.11
+Nodes (35): addComment(), AddCommentInput, assertSafeId(), CommentRef, COMMENTS_DIR, commentsDir(), compareComments(), findCommentPath() (+27 more)
 
 ### Community 132 - "Process"
 Cohesion: 0.07
 Nodes (25): 1. State the question, 2. Isolate the logic in a portable module, 3. Build the shareable HTML file, 4. Hand it over, 5. Capture the answer and the prototype, Anti-patterns, Logic Prototype, Process (+17 more)
 
-### Community 133 - "render.ts"
+### Community 133 - "pull.ts"
 Cohesion: 0.08
-Nodes (57): CommentRole, Quest, QuestStatus, remoteQuestView(), remoteSyncHash(), remoteTaskView, TRIAGE_LABELS, triageLabelsFor() (+49 more)
+Nodes (56): CommentRole, QuestStatus, remoteQuestView(), remoteSyncHash(), remoteTaskView, TRIAGE_LABELS, triageLabelsFor(), findMarker() (+48 more)
 
 ### Community 137 - "wishlist-picker.tsx"
-Cohesion: 0.22
-Nodes (15): UseWishlistStoreResult, formatDate(), truncateText(), AddInput(), OverlayFooter(), OverlayItemList(), WishlistOverlay(), WishlistOverlayProps (+7 more)
+Cohesion: 0.16
+Nodes (19): UseWishlistStoreResult, formatDate(), truncateText(), AddInput(), OverlayFooter(), OverlayItemList(), createTestStreams(), renderLive() (+11 more)
 
 ### Community 139 - "scout.ts"
 Cohesion: 0.14
-Nodes (17): buildKeywords(), shouldIgnoreDir(), walkDir(), DEFAULT_IGNORE_DIRS, extractSymbols(), INDEXABLE_EXTENSIONS, queryScoutIndex(), scoreFile() (+9 more)
+Nodes (18): buildKeywords(), buildScoutIndex(), shouldIgnoreDir(), walkDir(), DEFAULT_IGNORE_DIRS, extractSymbols(), INDEXABLE_EXTENSIONS, queryScoutIndex() (+10 more)
 
-### Community 140 - "ref_node_path"
-Cohesion: 0.07
-Nodes (25): root, code(), ConfigRow, escapeCell(), flattenSchema(), formatType(), GENERATED_BANNER, renderConfigPage() (+17 more)
+### Community 140 - "gen-config-docs.ts"
+Cohesion: 0.29
+Nodes (10): code(), ConfigRow, escapeCell(), flattenSchema(), formatType(), GENERATED_BANNER, renderConfigPage(), row() (+2 more)
 
 ### Community 142 - "Codebase Design"
 Cohesion: 0.09
 Nodes (21): 1. In-process, 2. Local-substitutable, 3. Remote but owned (Ports & Adapters), 4. True external (Mock), Deepening, Dependency categories, Seam discipline, Testing strategy: replace, don't layer (+13 more)
 
 ### Community 143 - "daemon-profile-wiring.test.ts"
-Cohesion: 0.31
+Cohesion: 0.29
 Nodes (6): cfg(), ExposedRunner, heavy, light, routed(), task()
 
 ### Community 144 - "quest-planner.ts"
-Cohesion: 0.07
-Nodes (45): extractTextFromJsonEvents(), generateErrandPrompt(), runErrandPlanner(), detectCycles(), dfs(), extractGenesisYaml(), extractTextFromJsonEvents(), generateDirectoryTree() (+37 more)
+Cohesion: 0.10
+Nodes (32): extractTextFromJsonEvents(), generateErrandPrompt(), runErrandPlanner(), canonicalizeOutput(), launchPlanner(), buildSynthesisPrompt(), extractTextFromJsonEvents(), extractYamlFromFencedBlocks() (+24 more)
 
 ### Community 145 - "merge-resolver-agent.md"
 Cohesion: 0.29
@@ -834,9 +822,9 @@ Nodes (19): ADR Format, Numbering, Optional sections, Template, What qualifies, 
 Cohesion: 0.29
 Nodes (6): Command registry, Daemon, Layers, Runtime files, The pipeline, This documentation site
 
-### Community 148 - "github-sync.md"
-Cohesion: 0.17
-Nodes (11): Authentication, Checking the mirror, Commands, Configuration, Conflicts, Known limits, Labels, Manual and auto mode (+3 more)
+### Community 148 - "replay-browser.test.tsx"
+Cohesion: 0.27
+Nodes (6): Harness, mount(), h, seedTask(), wait(), waitFor()
 
 ### Community 149 - "first-task.md"
 Cohesion: 0.29
@@ -874,9 +862,9 @@ Nodes (18): Call-graph collapse, Candidate card, Cross-section (good for layered
 Cohesion: 0.22
 Nodes (18): ask(), ask_secret(), banner(), _clear(), _existing(), finish(), note(), open_url() (+10 more)
 
-### Community 158 - "daemon-scheduler.test.ts"
-Cohesion: 0.18
-Nodes (3): makeAgent(), makeConfig(), makeScopeScheduler()
+### Community 158 - "DaemonState"
+Cohesion: 0.08
+Nodes (9): SchedulerDeps, DaemonState, setup(), makeAgent(), makeConfig(), makePopulatedState(), makeScopeScheduler(), makeRunner() (+1 more)
 
 ### Community 159 - "replay.md"
 Cohesion: 0.22
@@ -898,73 +886,69 @@ Nodes (14): Completion criterion: a tight loop that goes red, Diagnosing Bugs, M
 Cohesion: 0.50
 Nodes (3): Decisions, docs-starlight knowledge, File ownership
 
-### Community 164 - "format-converter.ts"
-Cohesion: 0.27
-Nodes (11): AgencyAgentFrontmatter, AgencyAgentSections, cleanEmojiHeaders(), convertAgencyToWoco(), extractSections(), isAgencyAgentFormat(), joinContent(), matchesSection() (+3 more)
+### Community 164 - "sync-pull.test.ts"
+Cohesion: 0.31
+Nodes (7): getTask(), mkClient(), pull(), pushLike(), roots, syncedTask(), tasksOf()
 
 ### Community 165 - "session-replay — knowledge"
 Cohesion: 0.29
 Nodes (6): Conventions, File ownership (one task owns each file), Goal, Seams, session-replay — knowledge, Viewer decisions
 
-### Community 166 - "Issue tracker: woco tasks (primary) + GitHub Issues (lockstep mirror)"
-Cohesion: 0.20
-Nodes (9): Claim, progress, resolve, Comments, Issue tracker: woco tasks (primary) + GitHub Issues (lockstep mirror), Pull requests as a triage surface, Rules, The mirror is automated, When a skill says "fetch the relevant ticket", When a skill says "publish a spec to the issue tracker" (+1 more)
-
-### Community 167 - "auto.ts"
-Cohesion: 0.12
-Nodes (23): extractGlobalFlags(), ExtractResult, GlobalFlags, buildCittyArgs(), injectDefaultSubcommand(), isCittyCommand(), ResolvedCommand, resolveGlobalFlagsAndCommand() (+15 more)
+### Community 166 - "hitl-ask.ts"
+Cohesion: 0.29
+Nodes (7): answerFile, args, pollForAnswer(), question, questionFile, sleep(), startTime
 
 ### Community 168 - "CONTEXT.md — For AI agents using wombo as a tool"
-Cohesion: 0.22
-Nodes (8): Configuration, CONTEXT.md — For AI agents using wombo as a tool, How you were launched, Input validation, Querying wombo for state, Rules for agents, Task file schema, What is wombo?
+Cohesion: 0.25
+Nodes (7): Configuration, CONTEXT.md — For AI agents using wombo as a tool, How you were launched, Input validation, Querying wombo for state, Rules for agents, What is wombo?
 
 ### Community 169 - "run-task-browser.tsx"
-Cohesion: 0.07
-Nodes (39): ANALYTICS_REFRESH_MS, analyticsScopeFilter(), CONCURRENCY_LEVELS, PRIORITIES, RunTaskBrowserOptions, SORT_FIELDS, TaskBrowserAction, TaskBrowserApp() (+31 more)
+Cohesion: 0.06
+Nodes (48): defaultLoadTaskQuests(), FakeTaskConfig, generateFakeTasks(), shuffleArr(), shuffledTitles(), QuestPickerAction, QuestPickerApp(), QuestPickerScreenProps (+40 more)
 
-### Community 171 - "i18n.md"
-Cohesion: 0.12
-Nodes (13): Configuration, Custom command template, Profile fields, Secrets never go in config, Supported harnesses and verification status, Adding a locale, Checks, Choosing a language (+5 more)
+### Community 171 - "i18n-full — design notes"
+Cohesion: 0.14
+Nodes (12): Adding a locale, Architecture, Checks, Choosing a language, Writing translatable code, getMissingKeys(), Detection, File ownership (per task) (+4 more)
 
 ### Community 173 - "locales/index.ts"
 Cohesion: 0.18
 Nodes (4): availableLocales(), FALLBACK_LOCALE, FlatResource, ENTRY
 
 ### Community 174 - "gh"
-Cohesion: 0.24
-Nodes (10): Conventions, Issue tracker: GitHub, Pull requests as a triage surface, Wayfinding operations, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker", Entry points, GitHub sync (+2 more)
+Cohesion: 0.20
+Nodes (12): Conventions, Issue tracker: GitHub, Pull requests as a triage surface, Wayfinding operations, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker", Rules, Mirroring to GitHub (+4 more)
 
 ### Community 175 - "Steps"
-Cohesion: 0.17
-Nodes (11): 1. Detect package manager, 2. Install dependencies, 3. Initialize Husky, 4. Create `.husky/pre-commit`, 5. Create `.lintstagedrc`, 6. Create `.prettierrc` (if missing), 8. Commit, Notes (+3 more)
+Cohesion: 0.15
+Nodes (12): 1. Detect package manager, 2. Install dependencies, 3. Initialize Husky, 4. Create `.husky/pre-commit`, 5. Create `.lintstagedrc`, 6. Create `.prettierrc` (if missing), 7. Verify, 8. Commit (+4 more)
 
 ### Community 177 - "daemon-project-context.test.ts"
 Cohesion: 0.25
 Nodes (10): Ctx, git(), launchAndCapturePrompt(), makeTask(), recordedPrompts(), runners, setupProject(), states (+2 more)
 
-### Community 180 - "citty-merge.test.ts"
-Cohesion: 0.22
-Nodes (4): BRIDGE_REGISTRY, findBridgeCommandDef(), matchByNameOrAlias(), buildAliasMap()
+### Community 180 - "Requirement: Fake-agent tasks bypass inter-launch stagger"
+Cohesion: 0.33
+Nodes (5): ADDED Requirements, Requirement: Fake-agent tasks bypass inter-launch stagger, Scenario: All fake-agent tasks start concurrently, Scenario: Mixed queue preserves stagger only for real agents, Scenario: Real-agent launches are unaffected
 
-### Community 184 - "lib/history.ts"
-Cohesion: 0.36
-Nodes (9): computeDuration(), daemonSessionToHistory(), ensureHistoryDir(), exportDaemonHistory(), HistoryAgentSource, historyDir(), listHistory(), loadHistory() (+1 more)
+### Community 184 - "Requirement: Fake-agent tasks bypass inter-launch stagger"
+Cohesion: 0.33
+Nodes (5): ADDED Requirements, Requirement: Fake-agent tasks bypass inter-launch stagger, Scenario: All fake-agent tasks start concurrently, Scenario: Mixed queue preserves stagger only for real agents, Scenario: Real-agent launches are unaffected
 
-### Community 187 - "openspec/specs/scheduler-concurrency-accounting/spec.md"
-Cohesion: 0.25
-Nodes (7): Requirement: Downstream task unblocking is unaffected by this change, Requirement: Retry after merge failure is picked up by the scheduler, Requirement: Scheduler remains active while verified agents await merge, Scenario: allComplete does not return true with verified agents present, Scenario: Downstream task proceeds when dependency reaches verified, Scenario: Merge failure retry is not stranded, Scenario: Scheduler tick continues while agents are verifying
+### Community 187 - ".getActiveAgents"
+Cohesion: 0.05
+Nodes (36): Impact, What Changes, Why, Context, Decision: Add `verified` to `ACTIVE_STATUSES`, remove from `TERMINAL_STATUSES`, Decisions, Goals / Non-Goals, Migration Plan (+28 more)
 
 ### Community 191 - "ref_node_child_process"
-Cohesion: 0.25
-Nodes (4): FAKE_AGENT_SENTINEL, dirs, runners, states
+Cohesion: 0.13
+Nodes (15): EXCLUDED_PATH_PREFIXES, git(), GitResult, HeadCapture, isExcludedPath(), LineChangeMeasurement, measureLineChanges(), NumstatEntry (+7 more)
 
 ### Community 192 - "Test-Driven Development"
 Cohesion: 0.15
 Nodes (10): Designing for Mockability, When to Mock, Anti-patterns, Rules of the loop, Seams: where tests go, Test-Driven Development, What a good test is, Bad Tests (+2 more)
 
-### Community 193 - "2026-03-21-fix-scheduler-oversubscription/proposal.md"
-Cohesion: 0.33
-Nodes (5): Capabilities, Modified Capabilities, New Capabilities, What Changes, Why
+### Community 193 - "guides/team.md"
+Cohesion: 0.40
+Nodes (4): Conflict-free merges, Daemon behaviour, Recommended workflow, Task claims
 
 ### Community 195 - "Process"
 Cohesion: 0.15
@@ -978,25 +962,21 @@ Nodes (15): Arguments, Arguments, Arguments, Arguments, comment add, comment lin
 Cohesion: 0.15
 Nodes (11): Context pointers, Information hierarchy, Leading words, Invocation, Router skills, Skill mechanics, Splitting by invocation, Pruning (+3 more)
 
-### Community 198 - "portless.ts"
-Cohesion: 0.54
-Nodes (7): ensureProxyRunning(), isProxyRunning(), portlessEnv(), portlessRunCommand(), portlessStatus(), resolvePortlessBin(), wrapWithPortless()
-
 ### Community 199 - "Steps"
 Cohesion: 0.11
 Nodes (16): Files, Implementation vs Review, Reference, Steps, 1. Detect the environment, 2. Install dependency-cruiser, 3. Write the config, 4. Wire it into the checks (+8 more)
 
-### Community 200 - "json"
+### Community 200 - "sync.md"
 Cohesion: 0.11
-Nodes (21): Flags, Flags, Flags, Flags, Flags, Global flags, Global flags, Global flags (+13 more)
+Nodes (18): Flags, Flags, Flags, Flags, Flags, Global flags, Global flags, Global flags (+10 more)
 
-### Community 201 - "Requirement: Launch stagger applies only to real-agent launches"
-Cohesion: 0.29
-Nodes (6): ADDED Requirements, Requirement: Launch stagger applies only to real-agent launches, Scenario: Default behavior preserves existing stagger, Scenario: skipStagger flag removes the wait, Scenario: submitTask does not set skipStagger for real agents, Scenario: submitTask sets skipStagger for fake agents
+### Community 201 - "What needs to happen next:"
+Cohesion: 0.50
+Nodes (4): Accomplished, Completed and archived:, Currently in progress:, What needs to happen next:
 
-### Community 202 - "done"
-Cohesion: 0.13
-Nodes (10): Vocabulary, Wayfinding operations (used by `/wayfinder`), Commands, Dependencies and ordering, Fields, Flags, Global flags, tasks list (+2 more)
+### Community 202 - "github-sync.md"
+Cohesion: 0.06
+Nodes (30): Claim, progress, resolve, Comments, Issue tracker: woco tasks (primary) + GitHub Issues (lockstep mirror), Pull requests as a triage surface, The mirror is automated, Vocabulary, Wayfinding operations (used by `/wayfinder`), When a skill says "fetch the relevant ticket" (+22 more)
 
 ### Community 203 - "wayfinder/SKILL.md"
 Cohesion: 0.17
@@ -1006,13 +986,9 @@ Nodes (11): Chart the map, Fog of war, Invocation, Out of scope, Plan, don't do,
 Cohesion: 0.33
 Nodes (5): Before exploring, read these, Domain Docs, File structure, Flag ADR conflicts, Use the glossary's vocabulary
 
-### Community 205 - "Domain Docs"
-Cohesion: 0.33
-Nodes (5): Before exploring, read these, Domain Docs, File structure, Flag ADR conflicts, Use the glossary's vocabulary
-
-### Community 206 - "replay-diff.ts"
-Cohesion: 0.31
-Nodes (10): EXCLUDED_PATH_PREFIXES, captureWorktreeDiff(), DiffLineKind, MAX_UNTRACKED_FILES, parseNumstat(), pathspecs(), runGit(), untrackedPaths() (+2 more)
+### Community 206 - "replay-recorder.test.ts"
+Cohesion: 0.12
+Nodes (19): ReplayRecorderOptions, Tracked, DEFAULT_KEEP_PER_TASK, captureWorktreeDiff(), DiffLineKind, MAX_UNTRACKED_FILES, parseNumstat(), pathspecs() (+11 more)
 
 ### Community 207 - "Process"
 Cohesion: 0.33
@@ -1043,8 +1019,8 @@ Cohesion: 0.22
 Nodes (8): ADDED Requirements, Requirement: Downstream task unblocking is unaffected by this change, Requirement: Retry after merge failure is picked up by the scheduler, Requirement: Scheduler remains active while verified agents await merge, Scenario: allComplete does not return true with verified agents present, Scenario: Downstream task proceeds when dependency reaches verified, Scenario: Merge failure retry is not stranded, Scenario: Scheduler tick continues while agents are verifying
 
 ### Community 215 - "comments.md"
-Cohesion: 0.22
-Nodes (8): Author resolution, CLI, How comments reach agents, In the TUI, Merge-friendliness, Mirroring to GitHub, Roles, Storage layout
+Cohesion: 0.12
+Nodes (14): Author resolution, CLI, How comments reach agents, In the TUI, Merge-friendliness, Roles, Storage layout, Configuration (+6 more)
 
 ### Community 216 - "c"
 Cohesion: 0.25
@@ -1075,8 +1051,8 @@ Cohesion: 0.33
 Nodes (5): Ending the journey, Grounding, Pulling from the pile, What is a beat, Writing rhythm
 
 ### Community 224 - "running-agents.md"
-Cohesion: 0.33
-Nodes (5): Cleanup, Launch, Merge, Monitoring and recovery, Verification
+Cohesion: 0.15
+Nodes (10): Cleanup, Daemon and TUI, Launch, Merge, Monitoring and recovery, Verification, Commands, Token Usage Tracking (+2 more)
 
 ### Community 225 - "loop-me/SKILL.md"
 Cohesion: 0.40
@@ -1110,37 +1086,29 @@ Nodes (7): dependencies, citty, i18next, ink, mermaidtui, react, yaml
 Cohesion: 0.33
 Nodes (6): Conventions, Issue tracker: GitLab, Merge requests as a triage surface, Wayfinding operations, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker"
 
-### Community 233 - "tasks archive"
-Cohesion: 0.50
-Nodes (4): Arguments, Flags, Global flags, tasks archive
-
 ### Community 248 - "devDependencies"
 Cohesion: 0.50
 Nodes (4): devDependencies, @types/bun, @types/react, typescript
 
-### Community 252 - "retry.md"
-Cohesion: 0.50
-Nodes (3): Arguments, Flags, Global flags
-
 ## Knowledge Gaps
 - **4 isolated node(s):** `astro/tsconfigs/strict`, `@types/bun`, `@types/react`, `typescript`
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1784 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **38 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `t()` connect `t` to `WomboConfig`, `splash-screen.tsx`, `agent-runner.ts`, `protocol.ts`, `run-tui-app.tsx`, `task-store.ts`, `commands/history.ts`, `router.ts`, `commands/launch.ts`, `ref_node_path`, `commands/sync.ts`, `review-list.tsx`, `dashboard.tsx`, `lib/i18n.ts`, `worktree.ts`, `lib/tasks.ts`, `schema.ts`, `DaemonClient`, `agent-registry.ts`, `commands/merge.ts`, `auto.ts`, `task-schema.ts`, `i18n.md`, `lib/replay.ts`, `msg`, `run-daemon-monitor.tsx`, `commands/tasks.md`, `commands/status.ts`, `ink/index.ts`, `useI18n`, `portless.ts`, `done`, `templates.ts`, `commands/usage.ts`, `config.ts`, `tdd-verifier.test.ts`, `commands/completion.ts`, `esc-menu.tsx`, `graph.ts`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+- **Why does `t()` connect `t` to `WomboConfig`, `splash-screen.tsx`, `run-daemon-monitor.tsx`, `task-store.ts`, `loadConfig`, `commands/sync.ts`, `ink/index.ts`, `commands/logs.ts`, `dashboard.tsx`, `lib/i18n.ts`, `worktree.ts`, `lib/tasks.ts`, `schema.ts`, `DaemonClient`, `agent-registry.ts`, `commands/merge.ts`, `toon.ts`, `task-schema.ts`, `i18n-full — design notes`, `lib/replay.ts`, `commands/stats.ts`, `commands/tasks.md`, `commands/status.ts`, `commands/tui.ts`, `useI18n`, `github-sync.md`, `templates.ts`, `commands/usage.ts`, `config.ts`, `tdd-verifier.test.ts`, `commands/completion.ts`, `esc-menu.tsx`, `ref_bun_test`, `graph.ts`, `agent-runner.ts`?**
+  _High betweenness centrality (0.068) - this node is a cross-community bridge._
 - **Are the 7 inferred relationships involving `t()` (e.g. with `Architecture` and `Writing translatable code`) actually correct?**
   _`t()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `astro/tsconfigs/strict`, `@types/bun`, `@types/react` to the rest of the system?**
   _4 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Explore mode guidelines and usage rules` be split into smaller, more focused modules?**
   _Cohesion score 0.020202020202020204 - nodes in this community are weakly interconnected._
-- **Why does `WomboConfig` connect `WomboConfig` to `AgentRunner`, `browser.ts`, `comments.ts`, `splash-screen.tsx`, `agent-runner.ts`, `protocol.ts`, `run-tui-app.tsx`, `pull.ts`, `task-store.ts`, `commands/history.ts`, `commands/launch.ts`, `ref_node_path`, `routing.ts`, `commands/sync.ts`, `quest-planner.ts`, `t`, `useScreenInput`, `daemon-profile-wiring.test.ts`, `lib/i18n.ts`, `worktree.ts`, `lib/tasks.ts`, `analytics-lifecycle.test.ts`, `daemon-scheduler.test.ts`, `DaemonClient`, `agent-registry.ts`, `commands/merge.ts`, `toon.ts`, `Daemon`, `run-task-browser.tsx`, `analytics-measurements.test.ts`, `test-baseline-capture.ts`, `daemon-project-context.test.ts`, `ref_node_os`, `msg`, `run-daemon-monitor.tsx`, `prompt.ts`, `commands/status.ts`, `ink/index.ts`, `analytics.ts`, `portless.ts`, `post-merge.ts`, `InkDaemonTUI`, `templates.ts`, `claims.ts`, `commands/usage.ts`, `config.ts`, `tdd-verifier.test.ts`, `run-quest-picker.tsx`, `daemon-test-baseline.test.ts`, `analytics-integration.test.ts`, `lib/launcher.ts`, `daemon-agent-runner.test.ts`, `graph.ts`, `tdd-baseline-integration.test.ts`, `tdd-baseline-pipeline.test.ts`, `scheduler.ts`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
+- **Why does `json()` connect `json` to `wombo-combo`, `genesis.md`, `comment.md`, `sync.md`, `github-sync.md`, `daemon.md`, `github-client.ts`, `quest.md`, `c`, `wishlist.md`, `commands/tasks.md`, `commands/team.md`, `replay.md`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
 - **Should `AgentRunner` be split into smaller, more focused modules?**
-  _Cohesion score 0.08291708291708291 - nodes in this community are weakly interconnected._
-- **Why does `json()` connect `json` to `wombo-combo`, `genesis.md`, `comment.md`, `tasks archive`, `merge.md`, `done`, `commands/team.md`, `daemon.md`, `github-client.ts`, `retry.md`, `quest.md`, `c`, `wishlist.md`, `commands/tasks.md`, `index.md`, `replay.md`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+  _Cohesion score 0.14395527603074773 - nodes in this community are weakly interconnected._
+- **Why does `createGitHubClient()` connect `github-client.ts` to `saveTaskToStore`, `sync-pull.test.ts`, `json`, `commands/sync.ts`?**
+  _High betweenness centrality (0.044) - this node is a cross-community bridge._
