@@ -29,3 +29,4 @@ notes:
   - Tests in tests/ink/replay-viewer.test.tsx using the PassThrough pattern.
 subtasks: []
 quest: session-replay
+paths: []

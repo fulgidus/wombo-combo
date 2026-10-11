@@ -9,14 +9,14 @@ description: |
   unsupported-version diagnostics, listReplays, pruneReplays retention).
   Also add `.wombo-combo/replays/` to .gitignore and to the runtime
   artifact lists in AGENTS.md (hard constraint 4 and the file layout).
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T13:47:42.828Z
+ended_at: 2026-10-11T13:54:29.940Z
 constraints:
   - Pure library, no UI or daemon imports. Keep harness-specific code in normalizeOpenCodeEvent only.
   - Write each record as one complete line with appendFileSync; reader must tolerate a truncated last line and a missing
@@ -31,3 +31,4 @@ notes:
   - Tests live in tests/replay-store.test.ts.
 subtasks: []
 quest: session-replay
+paths: []

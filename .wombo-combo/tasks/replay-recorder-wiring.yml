@@ -32,3 +32,4 @@ notes:
   - Tests in tests/replay-recorder.test.ts (unit) and tests/replay-integration.test.ts (AgentRunner with fake agents).
 subtasks: []
 quest: session-replay
+paths: []

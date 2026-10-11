@@ -30,3 +30,4 @@ notes:
   - Registry parity tests (src/lib/registry-parity.test.ts, citty-registry.test.ts) must stay green.
 subtasks: []
 quest: session-replay
+paths: []

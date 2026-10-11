@@ -76,8 +76,9 @@ under `.wombo-combo/` **are tracked in git**:
 - `history/` — wave history records
 - `tui-session.json`, `tui-debug.log` — TUI session state and debug log
 - `usage.jsonl` — token usage data
-- `baselines/`, `analytics/`, `evals/`, `post-merge.json` — quest test
-  baselines, agent analytics, eval scores, publication journal
+- `baselines/`, `analytics/`, `replays/`, `evals/`, `post-merge.json` — quest
+  test baselines, agent analytics, recorded agent session replays, eval
+  scores, publication journal
 - `hitl/`, `agents-cache/` — human-in-the-loop exchanges, downloaded agent
   definitions
 
@@ -149,6 +150,7 @@ wombo-combo/
       analytics.ts          # Durable per-execution analytics snapshots
       analytics-git.ts      # Git line-change metrics for an execution
       analytics-summary.ts  # Filtering and aggregation over analytics snapshots
+      replay.ts             # Versioned JSONL agent-session replays: format, normalizer, ReplayStore
       merge-report.ts       # Deterministic Markdown merge reports
       changelog.ts          # Idempotent CHANGELOG.md entries for merges
       github-pr.ts          # Creates or updates GitHub PRs through the gh CLI
@@ -190,6 +192,7 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   tui-session.json        # TUI view state across sessions (gitignored)
   baselines/              # Quest test baselines: <quest-id>/tests.json (gitignored)
   analytics/              # Per-execution analytics snapshots (gitignored)
+  replays/                # Recorded agent sessions: <task-id>/<execution-id>.jsonl (gitignored)
   evals/                  # Eval score reports: <wave-id>.json (gitignored)
   post-merge.json         # Post-merge journal (gitignored)
   hitl/                   # Human-in-the-loop question/answer files

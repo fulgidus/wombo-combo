@@ -26,3 +26,4 @@ notes:
   - Tests in tests/replay-diff.test.ts use tests/helpers/git-repo.ts.
 subtasks: []
 quest: session-replay
+paths: []
