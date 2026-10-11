@@ -7,15 +7,15 @@ description: |
   selectAvailableRoute (bin existence preflight, injectable for tests).
   Legacy configs resolve to the synthesized default profile equal to
   today's behavior including modelRouting. Table-driven tests.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - agent-profiles-config
 effort: PT2H
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:07:05.693Z
+ended_at: 2026-10-11T14:15:03.219Z
 constraints:
   - "[object Object]"
   - missing envFrom variables produce a clear error naming the variable, never its value
