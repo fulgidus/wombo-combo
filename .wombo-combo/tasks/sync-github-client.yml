@@ -1,0 +1,32 @@
+id: sync-github-client
+title: GitHub REST client, auth, repo detection, label bootstrap
+description: "src/lib/sync/github-client.ts: interface GitHubClient {listIssues({since,state}), getIssue, createIssue,
+  updateIssue, listComments(issue,{since}), createComment, updateComment, listLabels, createLabel} plus a fetch-based
+  implementation (no new deps). Auth: GITHUB_TOKEN, GH_TOKEN, else 'gh auth token' if the gh CLI exists; never log or
+  persist tokens. API base from GITHUB_API_URL (GHE and tests). Repo from config sync.github.repo or the origin remote
+  (github.com and enterprise hosts). Pagination, ETag-free simple since-filtering, rate-limit handling (honour
+  Retry-After / x-ratelimit-reset with bounded backoff), typed errors (auth, notFound, rateLimited, network).
+  ensureLabels(client, labels): creates any missing label (the 5 triage labels
+  needs-triage/needs-info/ready-for-agent/ready-for-human/wontfix, spec, wayfinder:map,
+  wayfinder:research|prototype|grilling|task, priority:*, difficulty:*, and quest:<id> on demand) with fixed colours;
+  when creation is forbidden warn once and continue without failing. Tests against a local Bun.serve fake GitHub API
+  (put the fake in tests/helpers/fake-github.ts, supporting issues, comments, labels, pagination, 403/429 injection) so
+  every later sync task can reuse it."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - No network in unit tests except the local fake
+  - Token never appears in logs, errors or files
+  - Keep the client interface small and injectable
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

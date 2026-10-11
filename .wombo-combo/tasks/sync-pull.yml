@@ -1,0 +1,31 @@
+id: sync-pull
+title: "Pull engine: GitHub issues and comments into woco"
+description: "src/lib/sync/pull.ts pullFromGitHub({projectRoot, client, dryRun, since}) exporting the engine only (the
+  CLI wiring is done in sync-auto-mode): new issues without a woco marker become backlog tasks (id gh-<number>-<slug>,
+  description from body, notes 'triage: needs-triage' and 'github: #N', labels priority:*/difficulty:* honoured), new
+  GitHub comments without a woco marker become woco comments (author = GitHub login, role human, github_url set,
+  idempotent via the mapping comments map), issue state changes map to task status (closed completed -> done, closed
+  not_planned -> cancelled, reopened -> backlog when it was done/cancelled), edits to title/body/labels are applied
+  three-way against the last-synced hash (only-remote changes applied, both changed -> local wins, conflict reported and
+  a system comment left on both sides, never data loss). Quests' spec issues pull comments only. Must tolerate deleted
+  issues, transferred issues, renamed repo and rate limits. Tests with the fake GitHub server including
+  concurrent-editor scenarios (two simulated clients syncing the same repo converge without duplicates)."
+status: backlog
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - sync-github-client
+  - sync-mapping-model
+effort: PT4H
+started_at: null
+ended_at: null
+constraints:
+  - Idempotent and convergent for multiple clients
+  - Never delete woco data because GitHub data vanished
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []
