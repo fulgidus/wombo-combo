@@ -39,6 +39,7 @@ import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
 import { teamCommand } from "./team";
 import { commentCommand } from "./comment";
+import { syncCommand } from "./sync";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -109,6 +110,8 @@ const CITTY_COMMANDS = new Set([
     "team",
     // --- Comments on tasks and quests ---
     "comment",
+    // --- GitHub issue sync ---
+    "sync",
 ]);
 
 /**
@@ -345,6 +348,10 @@ export async function runCittyCommand(
 
         case "comment":
             await runCommand(commentCommand, { rawArgs });
+            break;
+
+        case "sync":
+            await runCommand(syncCommand, { rawArgs });
             break;
 
         default:

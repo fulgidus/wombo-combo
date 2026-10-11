@@ -4,6 +4,7 @@
  *   woco comment add <ref> <text...> [--role agent|human|system] [--author x] [--reply-to id] [--github-url url] [--stdin]
  *   woco comment list <ref> [--since ts] [--limit n] [--author x]
  *   woco comment show <comment-id>
+ *   woco comment link <comment-id> <github-url>
  *
  * <ref> is a task id or quest:<quest-id>. Stored one file per comment under
  * .wombo-combo/comments/ (see lib/comments.ts).
@@ -15,6 +16,7 @@ import {
   listComments,
   parseRef,
   recentComments,
+  setCommentGithubUrl,
   type Comment,
   type CommentRef,
 } from "../lib/comments";
@@ -154,4 +156,17 @@ export function cmdCommentShow(opts: CommentOptions): void {
     console.log("");
     console.log(comment.body);
   });
+}
+
+export function cmdCommentLink(opts: CommentOptions): void {
+  const fmt = opts.outputFmt ?? "text";
+  if (!opts.id || !opts.githubUrl) return outputError(fmt, msg("cli.comment.link.usage"));
+  if (!getComment(opts.projectRoot, opts.id)) return outputError(fmt, msg("cli.comment.notFound", { id: opts.id }));
+  let comment: Comment;
+  try {
+    comment = setCommentGithubUrl(opts.projectRoot, opts.id, opts.githubUrl);
+  } catch (err) {
+    return outputError(fmt, msg("cli.comment.link.failed", { error: err instanceof Error ? err.message : String(err) }));
+  }
+  outputMessage(fmt, msg("cli.comment.link.done", { id: comment.id, url: comment.github_url ?? "" }), { comment });
 }

@@ -10,8 +10,8 @@ description: "src/lib/sync/pull.ts pullFromGitHub({projectRoot, client, dryRun, 
   a system comment left on both sides, never data loss). Quests' spec issues pull comments only. Must tolerate deleted
   issues, transferred issues, renamed repo and rate limits. Tests with the fake GitHub server including
   concurrent-editor scenarios (two simulated clients syncing the same repo converge without duplicates)."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: medium
 depends_on:
@@ -19,7 +19,7 @@ depends_on:
   - sync-mapping-model
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T22:50:59.788Z
 constraints:
   - Idempotent and convergent for multiple clients
   - Never delete woco data because GitHub data vanished

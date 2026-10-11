@@ -5,6 +5,7 @@
  *   add <ref> <text...>   — Add a comment to a task or quest
  *   list <ref>            — List comments, oldest first
  *   show <comment-id>     — Show one comment
+ *   link <comment-id> <github-url> — Record the GitHub URL of a mirrored comment
  */
 
 import { defineCommand } from "citty";
@@ -12,7 +13,7 @@ import { resolve } from "node:path";
 import { isProjectInitialized, WOMBO_DIR } from "../../config";
 import { resolveOutputFormat } from "../../lib/output";
 import { t } from "../../lib/i18n";
-import { cmdCommentAdd, cmdCommentList, cmdCommentShow } from "../comment";
+import { cmdCommentAdd, cmdCommentLink, cmdCommentList, cmdCommentShow } from "../comment";
 
 function ensureInitialized(projectRoot: string): void {
   if (!isProjectInitialized(projectRoot)) {
@@ -101,12 +102,27 @@ const showCommand = defineCommand({
   },
 });
 
+const linkCommand = defineCommand({
+  meta: { name: "link", description: "Set the GitHub URL of an existing comment" },
+  args: {
+    id: { type: "positional", description: "Comment ID", required: true },
+    url: { type: "positional", description: "URL of the GitHub issue comment", required: true },
+    output: outputArg,
+  },
+  run({ args }) {
+    const projectRoot = resolve(process.cwd());
+    ensureInitialized(projectRoot);
+    cmdCommentLink({ projectRoot, outputFmt: resolveOutputFormat(args.output), id: args.id, githubUrl: args.url });
+  },
+});
+
 /** Comment parent command; a subcommand is required. */
 export const commentCommand = defineCommand({
-  meta: { name: "comment", description: "Comments on tasks and quests: add, list, show" },
+  meta: { name: "comment", description: "Comments on tasks and quests: add, list, show, link" },
   subCommands: {
     add: addCommand,
     list: listCommand,
     show: showCommand,
+    link: linkCommand,
   },
 });

@@ -46,6 +46,7 @@ import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
 import { teamCommand } from "../commands/citty/team";
 import { commentCommand } from "../commands/citty/comment";
+import { syncCommand } from "../commands/citty/sync";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -929,7 +930,7 @@ const ENTRIES: RegistryEntry[] = [
   {
     cittyCmd: commentCommand,
     meta: {
-      summary: "Comments on tasks and quests: add, list, show",
+      summary: "Comments on tasks and quests: add, list, show, link",
       aliases: [],
       mutating: true,
       supportsDryRun: false,
@@ -989,6 +990,75 @@ const ENTRIES: RegistryEntry[] = [
           supportsDryRun: false,
           positionalOverrides: {
             id: { name: "comment-id", description: "Comment ID" },
+          },
+        },
+      },
+      {
+        subKey: "link",
+        parentName: "comment",
+        meta: {
+          summary: "Set the GitHub URL of an existing comment",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            id: { name: "comment-id", description: "Comment ID" },
+            url: { name: "github-url", description: "URL of the GitHub issue comment" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- sync ---------------------------------------------------------------
+  {
+    cittyCmd: syncCommand,
+    meta: {
+      summary: "Sync tasks and quests with GitHub issues: push, status, labels",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: true,
+      completionSummary: "GitHub issue sync",
+      description:
+        "Mirror tasks, quests and their comments to GitHub issues. The repo comes from sync.github.repo in " +
+        "config or the git origin remote; the token from GITHUB_TOKEN, GH_TOKEN or 'gh auth token'. " +
+        "Issues carry a woco marker so pushes are idempotent and never duplicate.",
+    },
+    subEntries: [
+      {
+        subKey: "push",
+        parentName: "sync",
+        meta: {
+          summary: "Push tasks, quests and comments to GitHub issues",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+            only: { description: "Push a single item: a task ID or quest:<quest-id>" },
+          },
+        },
+      },
+      {
+        subKey: "status",
+        parentName: "sync",
+        meta: {
+          summary: "Compare local tasks and quests with GitHub issues (read-only)",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "labels",
+        parentName: "sync",
+        meta: {
+          summary: "Ensure the woco label catalog exists on GitHub",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show which labels would be created without creating them", default: false },
           },
         },
       },

@@ -9,8 +9,8 @@ description: "src/lib/sync/push.ts pushToGitHub({projectRoot, client, dryRun}): 
   router/citty-registry/COMMAND_REGISTRY/docs:gen/completion; i18n keys cli.sync.* and cli.help.sync.* (en+it) via the
   addk.py helper. Tests with the fake GitHub server (tests/helpers/fake-github.ts) and temp-dir projects. Pull and auto
   subcommands are added by later tasks."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: medium
 depends_on:
@@ -18,7 +18,7 @@ depends_on:
   - sync-mapping-model
 effort: PT4H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T22:50:58.618Z
 constraints:
   - "Never block on one failing item: collect errors and continue"
   - "Idempotent: running push twice makes no second change"

@@ -263,6 +263,40 @@ export function getComment(projectRoot: string, id: string): Comment | null {
   return null;
 }
 
+/** Absolute path of a comment file by id across all refs; null when absent. */
+function findCommentPath(projectRoot: string, id: string): string | null {
+  if (!id || !/^[A-Za-z0-9._-]+$/.test(id) || id.startsWith(".")) return null;
+  for (const kind of ["task", "quest"] as const) {
+    const kindDir = join(commentsDir(projectRoot), kind);
+    if (!existsSync(kindDir)) continue;
+    for (const refId of readdirSync(kindDir).sort()) {
+      const path = join(kindDir, refId, `${id}.yml`);
+      if (existsSync(path)) return path;
+    }
+  }
+  return null;
+}
+
+/**
+ * Set (or replace) github_url on an existing comment file, keeping every other
+ * field as stored. Throws on an unknown comment or a non-http(s) url.
+ */
+export function setCommentGithubUrl(projectRoot: string, id: string, url: string): Comment {
+  const trimmed = (url ?? "").trim();
+  if (!/^https?:\/\/\S+$/i.test(trimmed)) throw new Error(`invalid GitHub url: ${JSON.stringify(url)}`);
+  const path = findCommentPath(projectRoot, id);
+  if (!path) throw new Error(`comment not found: ${id}`);
+  const parsed = YAML.parse(readFileSync(path, "utf-8"));
+  if (!parsed || typeof parsed !== "object") throw new Error(`comment file is corrupt: ${id}`);
+  parsed.github_url = trimmed;
+  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmp, YAML.stringify(parsed));
+  renameSync(tmp, path);
+  const c = getComment(projectRoot, id);
+  if (!c) throw new Error(`comment not found: ${id}`);
+  return c;
+}
+
 /** The newest n comments of a ref, oldest first. */
 export function recentComments(projectRoot: string, ref: CommentRef, n: number): Comment[] {
   return listComments(projectRoot, ref, { limit: n });
