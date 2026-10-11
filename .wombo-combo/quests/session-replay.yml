@@ -3,7 +3,7 @@ title: Agent Session Replay
 goal: Record agent sessions (prompts, tool calls, outputs, timing) into a replayable format stored in
   .wombo-combo/replays/. Build a TUI replay viewer with timeline scrubbing, playback speed control, and diff view.
   Useful for debugging failed agents.
-status: active
+status: completed
 priority: low
 difficulty: hard
 depends_on:
@@ -16,7 +16,7 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-03-20T00:09:11.217Z
-updated_at: 2026-10-11T13:47:19.454Z
+updated_at: 2026-10-11T16:42:58.101Z
 started_at: 2026-10-11T13:42:08.757Z
-ended_at: null
+ended_at: 2026-10-11T16:42:58.100Z
 notes: []
