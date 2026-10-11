@@ -108,8 +108,12 @@ describe("agent-runner lifecycle comments", () => {
     const state = new DaemonState(repo);
     new AgentRunner({ projectRoot: repo, config: cfg({ autoLifecycle: true }) }, state);
     state.addAgent(createDaemonAgentState({ featureId: "missing", taskTitle: "T", branch: "b", baseBranch: "main", worktree: repo }));
-    const logs: string[] = [];
-    state.on?.("evt:log" as any, (e: any) => logs.push(e.message));
+    const logs: { level: string; message: string }[] = [];
+    state.subscribe((type, payload: any) => {
+      if (type === "evt:log") logs.push({ level: payload.level, message: payload.message });
+    });
     expect(() => state.updateAgentStatus("missing", "installing")).not.toThrow();
+    const warns = logs.filter((l) => l.level === "warn" && l.message.includes("[comments] lifecycle comment failed for missing"));
+    expect(warns).toHaveLength(1);
   });
 });
