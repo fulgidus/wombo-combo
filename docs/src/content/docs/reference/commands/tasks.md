@@ -80,6 +80,10 @@ Modifies project state. Supports `--dry-run`.
 | `--difficulty` |  | string | `"medium"` | Difficulty level. Values: `trivial`, `easy`, `medium`, `hard`, `very_hard`. |
 | `--effort` |  | string | `"PT1H"` | Effort estimate (ISO 8601 duration, e.g. PT2H) |
 | `--depends-on` |  | string |  | Comma-separated dependency IDs |
+| `--quest` |  | string |  | Quest ID this task belongs to |
+| `--constraints` |  | string |  | Semicolon-separated constraints the agent must follow |
+| `--forbidden` |  | string |  | Semicolon-separated things the agent must not do |
+| `--references` |  | string |  | Semicolon-separated reference file paths |
 | `--dry-run` |  | boolean | `false` | Show what would be added without writing |
 
 ### Global flags

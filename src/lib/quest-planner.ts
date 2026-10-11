@@ -920,9 +920,16 @@ export function applyPlanToQuest(
     quest.started_at = new Date().toISOString();
   }
 
-  // Save knowledge if the planner produced any
+  // Save knowledge if the planner produced any. Never clobber existing
+  // knowledge: the planner sees it in its prompt, so a plan that contains it
+  // is a deliberate rewrite; anything else is appended as new notes.
   if (plan.knowledge) {
-    saveQuestKnowledge(projectRoot, quest.id, plan.knowledge);
+    const existing = loadQuestKnowledge(projectRoot, quest.id)?.trim();
+    const next =
+      existing && !plan.knowledge.includes(existing)
+        ? `${existing}\n\n## Planner notes\n\n${plan.knowledge.trim()}\n`
+        : plan.knowledge;
+    saveQuestKnowledge(projectRoot, quest.id, next);
   }
 
   // Save updated quest
