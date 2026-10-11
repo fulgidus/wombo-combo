@@ -1,8 +1,8 @@
 name: wombo-combo
 type: brownfield
 description: AI agent orchestration CLI for parallel feature development — spawns coding agents into isolated git
-  worktrees (driven by a background daemon), coordinates their work through quests and dependency-aware task graphs,
-  and verifies results before merge.
+  worktrees (driven by a background daemon), coordinates their work through quests and dependency-aware task graphs, and
+  verifies results before merge.
 vision: "A dual-interface orchestration layer — CLI for LLM agents, TUI for humans — that turns high-level project goals
   into dependency-aware task graphs executed in parallel by autonomous coding agents. The CLI surface must be compact,
   machine-parseable (--output json), and context-efficient so agents can invoke wombo without blowing their context
@@ -33,15 +33,15 @@ objectives:
     quest_ids:
       - auto-pr-changelog
   - id: obj-4
-    text: Full i18n — extract TUI and CLI strings into locale files, integrate i18next, replace the createI18n() skeleton
-      in src/ink/i18n.ts
+    text: Full i18n — extract TUI and CLI strings into locale files, integrate i18next, replace the createI18n() skeleton in
+      src/ink/i18n.ts
     priority: medium
     status: pending
     quest_ids:
       - i18n-full
   - id: obj-5
-    text: Agent session replay — record prompts, tool calls, outputs and timing to .wombo-combo/replays/, with a TUI
-      replay viewer
+    text: Agent session replay — record prompts, tool calls, outputs and timing to .wombo-combo/replays/, with a TUI replay
+      viewer
     priority: low
     status: pending
     quest_ids:
@@ -75,22 +75,22 @@ tech_stack:
     - mermaidtui (Mermaid diagram rendering, used by `tasks graph`)
     - graphify knowledge graph (graphify-out/) with a prek pre-push hook
     - GitHub Actions (.github/workflows/ci.yml, release.yml) with Dependabot for actions
-  notes: "The TUI is Ink only; neo-blessed has been removed (the Ink migration quest is archived as completed). Quests
-    keep knowledge files under .wombo-combo/quests/. TDD verification uses quest test baselines (src/lib/test-baseline*.ts,
-    docs/tdd-baseline.md). Agent analytics live in src/lib/analytics*.ts (`usage --analytics`). The dashboard is realtime.
-    Post-merge changelog/PR publication runs from `merge` and is opt-in via config.postMerge. A fake agent runner
-    (src/lib/fake-agent-runner.ts) is available."
+  notes: The TUI is Ink only; neo-blessed has been removed (the Ink migration quest is archived as completed). Quests keep
+    knowledge files under .wombo-combo/quests/. TDD verification uses quest test baselines (src/lib/test-baseline*.ts,
+    docs/tdd-baseline.md). Agent analytics live in src/lib/analytics*.ts (`usage --analytics`). The dashboard is
+    realtime. Post-merge changelog/PR publication runs from `merge` and is opt-in via config.postMerge. A fake agent
+    runner (src/lib/fake-agent-runner.ts) is available.
 conventions:
-  commits: "Conventional commits (feat/fix/refactor/chore/docs), scope in parens when applicable, reference the task ID
-    in brackets (e.g. feat(tui): add wishlist overlay [task-id]). Never skip hooks (--no-verify). Never force push main.
+  commits: "Conventional commits (feat/fix/refactor/chore/docs), scope in parens when applicable, reference the task ID in
+    brackets (e.g. feat(tui): add wishlist overlay [task-id]). Never skip hooks (--no-verify). Never force push main.
     Always typecheck + build before committing."
-  branches: "feature/<task-id> for task agent work (config.git.branchPrefix, default feature/); quest/<id> for quests.
-    main is the trunk and the default base branch (config.json baseBranch)."
-  testing: "bun test (built-in runner) over tests/ and colocated src/ink/*.test.ts(x) files. tests/e2e holds CLI and TUI
+  branches: feature/<task-id> for task agent work (config.git.branchPrefix, default feature/); quest/<id> for quests. main
+    is the trunk and the default base branch (config.json baseBranch).
+  testing: bun test (built-in runner) over tests/ and colocated src/ink/*.test.ts(x) files. tests/e2e holds CLI and TUI
     (pseudo-terminal) smoke tests, run in CI. Quests with TDD enabled verify against a test baseline captured on their
-    base branch. Test files use *.test.ts naming."
-  coding_style: 'ESM only ("type": "module" in package.json). Use no file extensions in relative import paths (e.g.
-    import { foo } from "./foo", NOT "./foo.js"). The tsconfig uses moduleResolution: bundler which resolves extensionless
+    base branch. Test files use *.test.ts naming.
+  coding_style: 'ESM only ("type": "module" in package.json). Use no file extensions in relative import paths (e.g. import
+    { foo } from "./foo", NOT "./foo.js"). The tsconfig uses moduleResolution: bundler which resolves extensionless
     imports to .ts files automatically. Prefer Bun APIs (Bun.file(), Bun.spawn(), Bun.write()) over Node stdlib
     equivalents. Minimal dependencies — justify any new addition. CLI commands are citty definitions in
     src/commands/citty/, registered in src/commands/citty/router.ts. Keep modules focused and under ~500 lines where
@@ -199,8 +199,8 @@ rules:
       - tracking
       - discipline
   - id: rule-10
-    text: Keep graphify-out/ current — run `graphify update .` after code changes, or install the prek pre-push hook
-      (`uvx prek install`), which refreshes the graph and stops the push when it changed. CI fails when the graph is stale
+    text: Keep graphify-out/ current — run `graphify update .` after code changes, or install the prek pre-push hook (`uvx
+      prek install`), which refreshes the graph and stops the push when it changed. CI fails when the graph is stale
     scope: development
     rigidity: soft
     consequences: Stale knowledge graph misleads agents doing graph queries; CI knowledge-graph check fails
@@ -209,133 +209,156 @@ rules:
       - graphify
       - ci
 codebase_summary: |-
-  schemas/ (3 files)
-    config.schema.json
-    meta.schema.json
-    task.schema.json
-  src/ (93 files)
-    commands/ (26 files)
-      tasks/ (9 files)
-        add.ts [2]
-        archive.ts [2]
-        check.ts [2]
-        graph.ts [2]
-        list.ts [2]
-        set-difficulty.ts [2]
-        set-priority.ts [2]
-        set-status.ts [2]
-        show.ts [2]
-      abort.ts [2]
-      cleanup.ts [2]
-      completion.ts [1]
-      genesis.ts [2]
-      history.ts [2]
-      init.ts [2]
-      launch.ts [11]
-      logs.ts [2]
-      merge.ts [2]
-      quest.ts [2]
-      resume.ts [2]
-      retry.ts [2]
-      status.ts [2]
-      tui.ts [2]
-      upgrade.ts [2]
-      usage.ts [4]
-      verify.ts [2]
-    lib/ (55 files)
-      subagents/ (1 files)
-        scout.ts [10]
-      agent-registry.ts [14]
-      blessed-textarea-patch.ts [1]
-      browser-verifier.ts [5]
-      browser.ts [5]
-      dependency-graph.ts [11]
-      errand-planner.ts [3]
-      format-converter.ts [7]
-      genesis-planner.ts [9]
-      history.ts [7]
-      hitl-ask.ts
-      hitl-channel.ts [13]
-      launcher.ts [19]
-      merger.ts [14]
-      monitor.ts [8]
-      tmux.ts [12]
-      output.ts [8]
-      portless.ts [9]
-      preflight.ts [3]
-      project-store.ts [27]
-      prompt-compress.ts [7]
-      prompt.ts [3]
-      quest-planner.ts [10]
-      quest-store.ts [9]
-      quest.ts [17]
-      schema.ts [7]
-      state.ts [20]
-      task-schema.ts [13]
-      task-store.ts [15]
-      tasks.ts [40]
-      tdd-verifier.ts [6]
-      templates.ts [9]
-      test-detection.ts [17]
-      test-runner.ts [5]
-      token-collector.ts [6]
-      token-usage.ts [8]
-      toon-spec.ts [19]
-      toon.ts [16]
-      tui-browser.ts [2]
-      tui-genesis-review.ts [3]
-      tui-onboarding.ts [12]
-      tui-plan-review.ts [3]
-      tui-progress.ts [2]
-      tui-quest-picker.ts [3]
-      tui-quest-wizard.ts [4]
-      tui-question-popup.ts [2]
-      tui-session.ts [5]
-      tui-usage-overlay.ts [2]
-      tui-wishlist.ts [5]
-      tui.ts [2]
-      ui.ts [6]
-      validate.ts [7]
-      verifier.ts [6]
-      wishlist-store.ts [5]
-      worktree.ts [21]
-    templates/ (9 files)
-      _meta.yml
-      generalist-agent.md
-      genesis-planner-agent.md
-      merge-resolver-agent.md
-      quest-planner-agent.md
-      quest.yml
-      wc-patch.body.end.md
-      wc-patch.body.start.md
-      wc-patch.description.end.md
-    config.ts [12]
-    index.ts [6]
-    neo-blessed.d.ts
-  tests/ (15 files)
-    arg-parsing.test.ts
-    config.test.ts
-    features.test.ts
-    output.test.ts
-    prompt.test.ts
-    state-deps.test.ts
-    state.test.ts
-    task-schema.test.ts
-    tdd-verifier.test.ts
-    test-detection.test.ts
-    test-runner.test.ts
-    token-tracking.test.ts
-    validate.test.ts
-    worktree-filtering.test.ts
-    worktree.test.ts
-  .wombo-state.json
-  AGENTS.md
-  CONTEXT.md
-  package.json
-  PROCESS-LIFECYCLE.md
-  QUEST-SYSTEM.yml
-  README.md
-  tsconfig.json
+  docs/ (1 files)
+    tdd-baseline.md
+  graphify-out/ (103 files)
+    cache/ (100 files)
+      ast/ (100 files)
+        v0.9.85-s7-g0fcafffe3c00/ (100 files)
+          015758d1276ced3e4feb42d1c063ad44689c35936c058ea85aac0eee52e50579.json
+          015cc15c4b9863accc65f60306763c380d5df487d1478cc5ffe085a02d8a2cb4.json
+          049d1676ff20c01ea128f90567ff3606726cb9c33b5b89fcf78f680e65d4ef4e.json
+          0bb086b4d6fb9c6c4ab2cab818dc54035af7eb27b085f5c6207173ac11ffced2.json
+          0f379ea9e0645efc98d8ec505f327718f0d1412b9737b10fffda07d704e3166c.json
+          1424c4573f53b1ec10ab0c3eaf3b019bd0a0da96732b56c869ec9cf3349d2f80.json
+          2382c73adba899aadb19d3af7af7f892ef16e84e6b8d677f2e7290432a57d89c.json
+          24a34f175d06fc3311b6ddb266d940711837a215add1073a1d637e3a6290fc1d.json
+          271fdb3a064b010487f4a9fb11b9a84556826cc3c82500f77cb1fb8e38d3f9fc.json
+          28bb3d615d98eb197fb73ff084d92d9f525d6b33c7c8bd2e6b957f5b7fff2f63.json
+          2932cccaf4c8f3e0a5609e296281fa019198a2cc0567942f20c971596d121465.json
+          2a05bfc65db9b045b9b29f974252b029b94e8c80136ef5701f11b1c1073dd755.json
+          2aa763a0a4c2e55025f0d358d437299012bb4b04e1f89d5abe1422dc6e8e8449.json
+          2ae5b9ce89552d131170b3896d4af22d0ae634db31eb5cc6dfe6b7e164f88530.json
+          2b2dcd7abd9618c9a75f4afde6727db9a3a2bf5225ccedd2d367c8fa272a7a1d.json
+          2c3930399527089a6726d10f76859ef9b2a59bd3ee8af5ac577faa56bf0790cb.json
+          2c64fbd73e7ecb011728f447f210f1791d6c4a04d9b6cc7e22cb690b2e3b320b.json
+          2e012dfd24c0fbd25e48c719777aaaff58c90bbbaae7b0ff785c1bfb2be16196.json
+          332160180cfee2623ec6e4b9a3e3dae80aa68e592e2d187108e4a91637802c91.json
+          332bff30368618798497ea5e093d0676954c14d43ed6b83b209049a12ecf2008.json
+          3b6ddbcf83b11a3cfdfa841a3af7989a15d5aaafa9325299687c7a3625ed454a.json
+          3bb12c8c55eae5995cf7d76c66f5bd8c53bc765b74af5d67ae27b988e0701c4c.json
+          3eaea5046ccedc52fbae9d70bc740598f0894260a1d55fe6588b907b531c6ce5.json
+          40a16f4fe6ce1f7b8776a4e27aa5e4baa212941074a4a69621bf497ff82c250c.json
+          42723c660ae86d7575070dfaff47ba7fcccba88a0902b607d70bfb5bbfac2d69.json
+          427b91470586ff078dde98c4437442898bd444400a5b974ecda25fd9ecac06d3.json
+          43effe1723b16bf93ae8b43e86cb36a952ed9deceabe0211a32dfbde8ba6afd6.json
+          44a1f29539499d4e5dbe7d7099f16b6682a3e136d5cf0d7fce16d1631ce198c0.json
+          4a161c4a1ab1a797bee15eb760b40194d6672c49471d0a61c446ea19765c78ce.json
+          53c2df6186604002d59b78565c52ab1a8bff80a943d4f1a52b8bec3a6ada1936.json
+          54bd175e16affe8ddfb0f723c11d8f7a589aa380f9fcfdd82479c329127fc142.json
+          5715ad92f9693e5c1a5120f84171dc1d16cb6060ad188c392aa5de82f7bd3bec.json
+          598ca45f7a6633e66f423c001cb88d5039f7e1b219d35cff7537ffe01563ab81.json
+          5b524dbb0e1f7db714412e197d2a8e5746aa33faccc10fcdc8aebddaf8c4e6c9.json
+          5ba633cd5c42c657b08aef6b8cc9330cdb4be7b4db4589e749e3aa7ca8688183.json
+          601c8456ed83bf8b678644d8cb67ded96b6f167948a92f309a2139add6c088e6.json
+          60833a5da96c093a31bf064aa7c54bb38b6c33cc13d2da68c9fcc4b0e491d2b9.json
+          638ea8e257fa3e759593308208bc60cf363fe2c592f38498e4c5228f57f93bf7.json
+          64d4ebd23cb27d039df8af8b89f4452571325487ca4b07e42bc92742b160f144.json
+          65ed9915b8ba1d244c357befb067e165a0c872acb293e3740f17b0be3959f956.json
+          68798d714041a4b69eb8b15de4983ae5f899bbe5fbf8adfb6b5d8f864f64d9f0.json
+          6a3d2ac816f4a171595bfccce117db4fa0a74dfa852dc5e31553f65f01dff5ed.json
+          6ba260d27659bf68fd56974726d578ca9b13d66a8795ff59daf8f4c60436f0e7.json
+          6cf1933970deb98d619d26244b7b399b615366d61d8b603d168e178ffbe61709.json
+          6fede28dd9e4548995ee54ef8d778454a557973113cbd738d2ea36b370eda075.json
+          726480b0d3aea2d9490685a6d5ef27587e43f270ff6d0f60b275071cb9351283.json
+          7304b27da92d556d9a763308eeec03d62153658df2027c3c7013d6a746c32bd1.json
+          745f6b9b724f44db6b18a708741a43c8bf777df84dfe15f51e8b0d40d9063a7d.json
+          78333d496be2721a8c4e9f67a207a78f5435344bd892500f74a618ca0a7963b9.json
+          7d3c1c27f21814cd7268f3d7b90c52295e0fc2d7f69e2c55d8c5b6c3154146fd.json
+          7e6ac9d5ca75d985b3ae566bdbf4682bc285b55848fcd40550d740772a27da52.json
+          84c86c9fe073502271f604764e9a8ea07d7afeccec68b85240b5043cbce343c5.json
+          8805f13ff882ead3052c307cc179ffa710b5284443826bb3b2f5ecfec8f7b7bf.json
+          888d0742edbe52a1547ea28fca31ead00806adb0fe77f8fba1107f4067fe949a.json
+          89a8a985672b6bd4f95a000fd27f9f882ce55bb7635f87e4af25c6b9de74a4a5.json
+          8aeaae1da023c5034916ab7ccebf9b843193bdd03b380939e51b8ad2d8f12914.json
+          8dec1405a3cfbdb05df4f3e60b7614ff4b0c07bd21aab65e9777423fd27042b1.json
+          90135aaea151b04516e6cd0c0bb6c6566b5d6ab790b4291d64bc3c1db5a09770.json
+          932555a8e9133fc8f01571a24e420253456c35af864ba26ab306d4747c3c094c.json
+          93e0e588a50a6699cb9446da56d0adae1c5175a9bc096a5273f6f8acfc9c475c.json
+          94e8304ee230def9107c74b5d3cedd78873d6d8d03bc61065c4667e40c1af9c2.json
+          96d6465e74781ff6a53bb75d992541c840f65cc15fc080a5c5eade09f4aea2d9.json
+          9a768ef326887f3e628c618e4fa7db5f59dbf7e0869105f2452be39171625f10.json
+          9c2ae1e423d0ab27d8d0bc2b7fbd964c42293395502a1ddb86f6a85e53736c23.json
+          9d2b4e583669fba2cd42858b200240b93461c40aa6f5d32f4c47244ba694dbb4.json
+          9eec4b097f3755c05717f91e5d63afd1251bff4bb4fec9763cdcd30f49afd8fa.json
+          a10fd96da6e484d12684c08a9e41b28f96336c4fcc5b232dee629bddba6085cf.json
+          a2704112766066d84d30490844f22c24699132ef9c71594670c185112a6359f0.json
+          a6e3605a791012cd5ee46f89c6d40876a54207d9eb36a97cbd14e537d20da4b6.json
+          a85e7a4a732a7a7b011050d5ab01311a9c27b6702da995f3e380fe46f63c4d77.json
+          abb889f2be856341932ca2c2b43d1bee58167d35adcb878457a30a2267f025d7.json
+          ac5877002d7111539621f26c05d2330d85d2e35d6d758b7295a970adb7bdd43e.json
+          af232e1442c06d63d9bc23e62c61362402d35587bdfda0de848af8992f3920c6.json
+          b02a3faea2fa67484f5d5c611b5547cb5671b36d1715fa33ccb5d8773b13e45d.json
+          b17036289f522834fb6458ae9e4da4b91889022a50b54c020d8d12917bf8e40d.json
+          b1ff7ede23f46a9012782fe0c637a5078d737d3c9555d88addb439e4b18295d2.json
+          b58108da82d6076efa932fe952695e5493a29ce4471f39193f7fa3afc6f10808.json
+          bd2544b345100e0562015bf8ff222a623fc9ef81f4b8cdce537762282793ff8c.json
+          be077b7e2e538d167f5f7dda03d8963d456eb806143e57e7e50e914e8d806c4a.json
+          c064b53ac3a08bff29e8ec356d97872de8872d4659aef6b4f678f4892288ca15.json
+          c4694d1684f4cda94cdfa6a73aded50af7486703f7b028f5b9efb2b8f936f71c.json
+          c97850a9af1da8bed9f40bd84528ae836bd58013cbb96d0f5aafbc1eba732865.json
+          c9eb61894b7941b9e471d2be0d5b2ef0c9d428ba1a2b02ca1f9e971356790a2e.json
+          cb5bd95ab6635f24feb981d21197e7dc38d3bb5c0b13d925ecbc520ef7f49b5a.json
+          cea95d5d075b3f1b7a744d65e9d1a8e99717a0a5207b65fd8356f115c498c99b.json
+          cf9aabbb23b66816df3021c318373b939ff4db413bef55b9b73b3c08343f77ce.json
+          d60098139e72b676cec60b16bcece07bdbc1c738fc3af21e6ecb800ec180f460.json
+          d6f95882c27aa110ec64c42ddcfb24373d3b4fa4944dcf15032659b4b89a3b42.json
+          d7bad3309ea58792a29dbaea9b9c72a10828f16472c3875e1e64008e2d3a6a0c.json
+          d8218ceb2b82c98bb6e2a8e754f35b0f5c16f2e5e07fb188fc4ae432d2773045.json
+          d98402d69d661594644db744b930583b716993817da6487bf05b31a0fafb8664.json
+          db6043f8268cde619294e9ccda4fad41be8b341fad412ae04319a95d1e45252b.json
+          dcb4d57acb5fb558bd318a4bc4ceee8b3e8d01bf27e9a0b2c3170838862d9ffb.json
+          e230a2a87631a8c0fa482ae4cc67e12ddb653f83bc35edbe7388e01f5b3fc69f.json
+          e9825a9e2e6bad53239a21318d569fdd94f9d62e218f4e126c6e785b031f32c7.json
+          ec23b11c404d50a0a6a12a1839f0d2e9b720a88b9cd1a0181d43d46be5ee0796.json
+          ed90883e3a3f519066164afe79709fedc7ddcf9b62bc467e62df1b0fab2556f1.json
+          f63ab8a287e103056c067b429643e11ee42f4ba51abb07ce8b7efb88d5e0850f.json
+          f7118614b130a7a9b46978fe8d407204ab808d0156754d5878420fb46bfbfa77.json
+          fc62e38f76f76ae64699a1d48da06023f1299d97c60592bded557a6611a46ace.json
+    .graphify_detect.json
+    .graphify_labels.json
+    GRAPH_REPORT.md
+  openspec/ (39 files)
+    changes/ (31 files)
+      archive/ (31 files)
+        2026-03-21-fix-concurrency-boot-reset/ (3 files)
+          design.md
+          proposal.md
+          tasks.md
+        2026-03-21-fix-maxconcurrent-reset-on-rebuild/ (6 files)
+          .openspec.yaml
+          design.md
+          proposal.md
+          specs/scheduler-concurrency-pinning/spec.md
+          specs/scheduler-concurrency-rebuild-preservation/spec.md
+          tasks.md
+        2026-03-21-fix-merge-worktree-leak/ (5 files)
+          .openspec.yaml
+          design.md
+          proposal.md
+          specs/safe-tmp-worktree-placement/spec.md
+          tasks.md
+        2026-03-21-fix-scheduler-launch-and-concurrency/ (6 files)
+          .openspec.yaml
+          design.md
+          proposal.md
+          specs/infinite-concurrency-burst/spec.md
+          specs/scheduler-concurrency-pinning/spec.md
+          tasks.md
+        2026-03-21-fix-scheduler-oversubscription/ (5 files)
+          .openspec.yaml
+          design.md
+          proposal.md
+          specs/scheduler-concurrency-accounting/spec.md
+          tasks.md
+        2026-03-21-fix-wide-fake-task-parallelism/ (6 files)
+          .openspec.yaml
+          design.md
+          proposal.md
+          specs/fake-agent-parallel-burst/spec.md
+          specs/scheduler-launch-stagger/spec.md
+          tasks.md
+    specs/ (7 files)
 created_at: 2026-03-14T17:45:36.844Z
-updated_at: 2026-10-11T02:47:52.000Z
+updated_at: 2026-10-11T03:04:39.243Z
 genesis_count: 0

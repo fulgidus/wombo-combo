@@ -3,14 +3,14 @@ title: Regenerate stale codebase_summary in project.yml
 description: project.yml codebase_summary still lists files removed with neo-blessed (src/lib/blessed-textarea-patch.ts,
   src/neo-blessed.d.ts). It is produced by the onboarding scout; re-run that generation (or fix the scout if it can't
   run non-interactively) instead of hand-editing.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT20M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T03:04:35.682Z
+ended_at: 2026-10-11T03:05:12.218Z
 constraints: []
 forbidden: []
 references: []
