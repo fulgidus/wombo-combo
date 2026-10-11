@@ -8,15 +8,15 @@ description: |
   scaled by speed with long idle gaps compressed, auto-pause at the end.
   Also pure formatting helpers: timeline row labels, detail text lines,
   and a windowing helper for bounded rendering.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - replay-format-store
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T14:18:11.531Z
+ended_at: 2026-10-11T14:22:58.963Z
 constraints:
   - No timers, no React, no IO; fully deterministic for tests.
 forbidden:
