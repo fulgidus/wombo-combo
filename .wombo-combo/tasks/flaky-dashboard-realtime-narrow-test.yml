@@ -1,0 +1,17 @@
+id: flaky-dashboard-realtime-narrow-test
+title: "Flaky: dashboard-realtime short/narrow terminal test times out under full-suite load"
+description: ""
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
