@@ -1,0 +1,21 @@
+id: wire-project-profile-into-prompts
+title: Inject the project profile into agent prompts
+description: formatProjectContext() (src/lib/project-store.ts) says the profile feeds genesis, quest-planner, errand and
+  task agent prompts, but it is only called from src/commands/tui.ts (genesis vision). generatePrompt
+  (src/lib/prompt.ts) and the planners never include project.yml, so agents don't see the project's rules, conventions
+  or tech stack. Inject a bounded profile section into task, quest-planner and errand prompts (and the daemon path),
+  with tests; keep it optional when no project.yml exists.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
