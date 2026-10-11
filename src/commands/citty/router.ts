@@ -38,6 +38,7 @@ import { tuiCommand } from "./tui";
 import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
 import { teamCommand } from "./team";
+import { commentCommand } from "./comment";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -106,6 +107,8 @@ const CITTY_COMMANDS = new Set([
     "rp",         // alias for replay
     // --- Team task claims ---
     "team",
+    // --- Comments on tasks and quests ---
+    "comment",
 ]);
 
 /**
@@ -338,6 +341,10 @@ export async function runCittyCommand(
 
         case "team":
             await runCommand(teamCommand, { rawArgs: injectDefaultSubcommand("team", rawArgs) });
+            break;
+
+        case "comment":
+            await runCommand(commentCommand, { rawArgs });
             break;
 
         default:

@@ -69,6 +69,7 @@ under `.wombo-combo/` **are tracked in git**:
 - `quests/`, `quest-archive/` — quest definitions and knowledge files
 - `wishlist.yml` — wishlist items
 - `claims/` — team task claims (`<task-id>.yml`, tracked so teammates see them)
+- `comments/` — task and quest comments (`<task|quest>/<ref-id>/<id>.yml`, one file per comment)
 
 **Runtime artifacts are gitignored** (ephemeral, regenerated each run):
 
@@ -152,6 +153,7 @@ wombo-combo/
       analytics-git.ts      # Git line-change metrics for an execution
       analytics-summary.ts  # Filtering and aggregation over analytics snapshots
       replay.ts             # Versioned JSONL agent-session replays: format, normalizer, ReplayStore
+      comments.ts           # Git-tracked task/quest comments: one file per comment (parseRef, addComment, listComments)
       merge-report.ts       # Deterministic Markdown merge reports
       changelog.ts          # Idempotent CHANGELOG.md entries for merges
       github-pr.ts          # Creates or updates GitHub PRs through the gh CLI
@@ -183,6 +185,7 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   project.yml             # Project profile: vision, stack, conventions, rules (tracked)
   wishlist.yml            # Wishlist items (tracked)
   claims/                 # Team task claims: <task-id>.yml with owner and TTL (tracked)
+  comments/               # Task/quest comments: <task|quest>/<ref-id>/<id>.yml, one file per comment (tracked)
   tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)
   archive/                # Completed/cancelled tasks: _meta.yml + <task-id>.yml (tracked)
   quests/                 # Quests: <quest-id>.yml + <quest-id>/knowledge.md (tracked)

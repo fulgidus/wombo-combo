@@ -45,6 +45,7 @@ import { describeCommand } from "../commands/citty/describe";
 import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
 import { teamCommand } from "../commands/citty/team";
+import { commentCommand } from "../commands/citty/comment";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -918,6 +919,75 @@ const ENTRIES: RegistryEntry[] = [
             base: { name: "base", description: "Common ancestor file (%O)" },
             ours: { name: "ours", description: "Current version, result is written here (%A)" },
             theirs: { name: "theirs", description: "Other branch version (%B)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- comment ------------------------------------------------------------
+  {
+    cittyCmd: commentCommand,
+    meta: {
+      summary: "Comments on tasks and quests: add, list, show",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Task and quest comments",
+      description:
+        "Durable, git-tracked comments for inter-agent and human communication. One file per comment under " +
+        ".wombo-combo/comments/<task|quest>/<ref-id>/. A ref is a task ID or quest:<quest-id>. " +
+        "The author defaults to WOMBO_AUTHOR, then git user.email, then the OS user.",
+    },
+    subEntries: [
+      {
+        subKey: "add",
+        parentName: "comment",
+        meta: {
+          summary: "Add a comment to a task or quest",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            ref: { name: "ref", description: "Task ID or quest:<quest-id>" },
+            text: { name: "text", description: "Comment text (remaining words are joined)" },
+          },
+          flagOverrides: {
+            role: { description: "Author role: agent (default), human, or system" },
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
+            "reply-to": { description: "Comment ID this comment replies to" },
+            stdin: { description: "Read the comment text from stdin", default: false },
+          },
+        },
+      },
+      {
+        subKey: "list",
+        parentName: "comment",
+        meta: {
+          summary: "List comments of a task or quest, oldest first",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            ref: { name: "ref", description: "Task ID or quest:<quest-id>" },
+          },
+          flagOverrides: {
+            since: { description: "Only comments created after this ISO timestamp" },
+            limit: { description: "Only the newest N comments" },
+            author: { description: "Only comments by this author" },
+          },
+        },
+      },
+      {
+        subKey: "show",
+        parentName: "comment",
+        meta: {
+          summary: "Show one comment",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            id: { name: "comment-id", description: "Comment ID" },
           },
         },
       },

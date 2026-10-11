@@ -19,6 +19,7 @@ import {
 import { output, outputError, filterFields, type OutputFormat } from "../../lib/output";
 import { msg, t } from "../../lib/i18n";
 import { renderTaskShow } from "../../lib/toon";
+import { commentsForShow, printRecentComments } from "../comment";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,10 +105,12 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
   const depsMet = areDependenciesMet(feature, doneIds);
   const effort = formatDuration(parseDurationMinutes(feature.effort));
 
+  const comments = commentsForShow(projectRoot, { kind: "task", id: feature.id });
   const fullData = {
     ...feature,
     deps_met: depsMet,
     effort_formatted: effort,
+    ...(comments.length > 0 ? { comments } : {}),
   };
 
   // If --fields is specified, emit only those fields
@@ -195,6 +198,8 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
           renderSubtask(st, 2);
         }
       }
+
+      printRecentComments(projectRoot, { kind: "task", id: feature.id });
 
       console.log("");
     },

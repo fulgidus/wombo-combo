@@ -11,6 +11,7 @@
  *   woco quest abandon <id>                                   (alias: q ab)
  */
 
+import { commentsForShow, printRecentComments } from "./comment";
 import type { WomboConfig } from "../config";
 import type { Priority, Difficulty, Task } from "../lib/tasks";
 import { loadFeatures, saveFeatures } from "../lib/tasks";
@@ -306,10 +307,12 @@ async function questShow(opts: QuestCommandOptions): Promise<void> {
 
   const knowledge = loadQuestKnowledge(projectRoot, quest.id);
 
+  const comments = commentsForShow(projectRoot, { kind: "quest", id: quest.id });
   const fullData = {
     ...quest,
     has_knowledge: knowledge !== null,
     knowledge_length: knowledge?.length ?? 0,
+    ...(comments.length > 0 ? { comments } : {}),
   };
 
   output(
@@ -386,6 +389,8 @@ async function questShow(opts: QuestCommandOptions): Promise<void> {
       if (knowledge !== null) {
         console.log(`\n  ${BOLD}${t("cli.quest.show.knowledge")}${RESET} ${DIM}${t("cli.common.chars", { count: knowledge.length })}${RESET}`);
       }
+
+      printRecentComments(projectRoot, { kind: "quest", id: quest.id });
 
       console.log("");
     }
