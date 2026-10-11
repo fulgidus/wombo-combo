@@ -24,6 +24,7 @@ import type { WomboConfig } from "../config";
 import { WOMBO_DIR } from "../config";
 import { cleanupAllWorktrees, listWomboWorktrees, worktreesDir, isWorktreesDirEmpty } from "../lib/worktree";
 import { output, type OutputFormat } from "../lib/output";
+import { t } from "../lib/i18n";
 import { renderCleanup } from "../lib/toon";
 
 export interface CleanupOptions {
@@ -67,17 +68,17 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
     };
 
     output(fmt, dryRunResult, () => {
-      console.log("\n[dry-run] Would perform the following cleanup:\n");
-      console.log(`  worktrees to remove: ${matchingWorktrees.length}`);
+      console.log(`\n${t("cli.cleanup.dryRunHeader")}\n`);
+      console.log(`  ${t("cli.cleanup.dryRunWorktrees", { count: matchingWorktrees.length })}`);
       for (const wt of matchingWorktrees) {
         console.log(`    ${wt.path}`);
       }
-      console.log(`  worktrees dir: ${worktreesDir(projectRoot)}`);
+      console.log(`  ${t("cli.cleanup.dryRunWorktreesDir", { path: worktreesDir(projectRoot) })}`);
       for (const f of filesToRemove) {
-        console.log(`  Would remove: ${f}`);
+        console.log(`  ${t("cli.cleanup.dryRunRemove", { file: f })}`);
       }
       if (existsSync(daemonPidPath)) {
-        console.log("  Would stop the daemon if running");
+        console.log(`  ${t("cli.cleanup.dryRunStopDaemon")}`);
       }
     }, () => {
       console.log(renderCleanup(dryRunResult));
@@ -160,32 +161,32 @@ export async function cmdCleanup(opts: CleanupOptions): Promise<void> {
   };
 
   output(fmt, result, () => {
-    console.log("\n--- wombo-combo: Cleanup ---\n");
+    console.log(`\n${t("cli.cleanup.title")}\n`);
     if (daemonStopped) {
-      console.log("Stopped daemon");
+      console.log(t("cli.cleanup.stoppedDaemon"));
     }
-    console.log(`Removed ${removed} worktree(s)`);
+    console.log(t("cli.cleanup.removedWorktrees", { count: removed }));
 
     if (wtDirEmpty) {
-      console.log(`Worktrees directory is clean: ${wtDirPath}`);
+      console.log(t("cli.cleanup.wtDirClean", { path: wtDirPath }));
     } else {
-      console.log(`\x1b[33mWorktrees directory still has contents:\x1b[0m ${wtDirPath}`);
+      console.log(`\x1b[33m${t("cli.cleanup.wtDirNotClean")}\x1b[0m ${wtDirPath}`);
     }
 
     if (remainingBranches.length > 0) {
-      console.log(`\nRemaining feature branches:\n${remainingBranches.map((b) => `  ${b}`).join("\n")}`);
-      console.log('Use "git branch -D <branch>" to remove manually.');
+      console.log(`\n${t("cli.cleanup.remainingBranches")}\n${remainingBranches.map((b) => `  ${b}`).join("\n")}`);
+      console.log(t("cli.cleanup.branchHint"));
     }
 
-    if (daemonStateRemoved) console.log("Removed .wombo-combo/daemon-state.json");
-    if (daemonPidRemoved) console.log("Removed .wombo-combo/daemon.pid");
-    if (stateRemoved) console.log("Removed .wombo-combo/state.json");
-    if (logsRemoved) console.log("Removed .wombo-combo/logs/");
+    if (daemonStateRemoved) console.log(t("cli.cleanup.removed", { file: ".wombo-combo/daemon-state.json" }));
+    if (daemonPidRemoved) console.log(t("cli.cleanup.removed", { file: ".wombo-combo/daemon.pid" }));
+    if (stateRemoved) console.log(t("cli.cleanup.removed", { file: ".wombo-combo/state.json" }));
+    if (logsRemoved) console.log(t("cli.cleanup.removed", { file: ".wombo-combo/logs/" }));
 
-    console.log("\nCleanup complete.");
+    console.log(`\n${t("cli.cleanup.complete")}`);
 
     if (historyPreserved) {
-      console.log("Note: .wombo-combo/history/ is preserved. Use 'woco history' to view past sessions.");
+      console.log(t("cli.cleanup.historyPreserved"));
     }
   }, () => {
     console.log(renderCleanup(result));

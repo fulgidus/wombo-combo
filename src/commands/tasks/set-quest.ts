@@ -14,6 +14,7 @@ import type { WomboConfig } from "../../config";
 import { loadFeatures, saveFeatures, findFeatureById } from "../../lib/tasks";
 import { loadQuest } from "../../lib/quest-store";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +40,7 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId || !opts.questId) {
-    outputError(fmt, "Usage: woco tasks set-quest <task-id> <quest-id|none>");
+    outputError(fmt, msg("cli.setQuest.usage"));
     return;
   }
 
@@ -47,7 +48,7 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
 
   // Validate quest reference
   if (!detach && !loadQuest(projectRoot, opts.questId)) {
-    outputError(fmt, `Quest "${opts.questId}" does not exist.`);
+    outputError(fmt, msg("cli.setQuest.questMissing", { id: opts.questId }));
     return;
   }
 
@@ -55,7 +56,7 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
   const feature = findFeatureById(data, opts.featureId);
 
   if (!feature) {
-    outputError(fmt, `Task "${opts.featureId}" not found.`);
+    outputError(fmt, msg("cli.setQuest.taskNotFound", { id: opts.featureId }));
     return;
   }
 
@@ -63,8 +64,9 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
   const newQuest = detach ? null : opts.questId;
 
   if (oldQuest === newQuest) {
-    const state = newQuest ? `quest "${newQuest}"` : "no quest";
-    outputMessage(fmt, `Task "${opts.featureId}" already has ${state}.`, {
+    outputMessage(fmt, newQuest
+      ? msg("cli.setQuest.alreadyQuest", { id: opts.featureId, quest: newQuest })
+      : msg("cli.setQuest.alreadyNone", { id: opts.featureId }), {
       id: opts.featureId,
       quest: newQuest,
       changed: false,
@@ -72,11 +74,11 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
     return;
   }
 
-  const describe = (q: string | null) => q ?? "(none)";
+  const describe = (q: string | null) => q ?? t("cli.setQuest.none");
 
   // Dry-run: show what would change without writing
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would change "${opts.featureId}" quest: ${describe(oldQuest)} → ${describe(newQuest)}`, {
+    outputMessage(fmt, msg("cli.setQuest.dryRun", { id: opts.featureId, from: describe(oldQuest), to: describe(newQuest) }), {
       dry_run: true,
       id: opts.featureId,
       old_quest: oldQuest,
@@ -95,7 +97,7 @@ export async function cmdTasksSetQuest(opts: TasksSetQuestOptions): Promise<void
 
   saveFeatures(projectRoot, config, data);
 
-  outputMessage(fmt, `Task "${opts.featureId}" quest: ${describe(oldQuest)} → ${describe(newQuest)}`, {
+  outputMessage(fmt, msg("cli.setQuest.done", { id: opts.featureId, from: describe(oldQuest), to: describe(newQuest) }), {
     id: opts.featureId,
     old_quest: oldQuest,
     quest: newQuest,

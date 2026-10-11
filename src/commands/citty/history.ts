@@ -9,6 +9,7 @@ import { defineCommand } from "citty";
 import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
 import { resolveOutputFormat } from "../../lib/output";
 import { cmdHistory } from "../history";
+import { t } from "../../lib/i18n";
 
 export const historyCommand = defineCommand({
   meta: {
@@ -31,7 +32,7 @@ export const historyCommand = defineCommand({
   async run({ args }) {
     const projectRoot = process.cwd();
     if (!isProjectInitialized(projectRoot)) {
-      console.error("Project not initialized. Run 'woco init' first.");
+      console.error(t("cli.common.notInitializedShort"));
       process.exit(1);
     }
     const config = loadConfig(projectRoot);

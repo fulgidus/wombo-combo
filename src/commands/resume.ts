@@ -15,6 +15,7 @@ import { resolve } from "node:path";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR } from "../config";
 import { outputError, type OutputFormat } from "../lib/output";
+import { msg, t } from "../lib/i18n";
 import type { DaemonClient } from "../daemon/client";
 
 export interface ResumeCommandOptions {
@@ -38,12 +39,12 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
   const persisted = existsSync(resolve(projectRoot, WOMBO_DIR, "daemon-state.json"));
   const { getDaemonStatus } = await import("../daemon/launcher");
   if (!getDaemonStatus(projectRoot).running && !persisted) {
-    outputError(fmt, "No daemon session found. Use 'woco launch' to start a new wave.");
+    outputError(fmt, msg("cli.resume.noSession"));
     return; // unreachable — outputError calls process.exit
   }
 
   if (fmt === "text") {
-    console.log("\n--- wombo-combo: Resume ---\n");
+    console.log(`\n${t("cli.resume.title")}\n`);
   }
 
   // Ensure the daemon is running (auto-start reloads persisted state)
@@ -59,7 +60,7 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
     const snapshot = await client.requestState(5_000);
     if (snapshot.agents.length === 0) {
       if (fmt === "text") {
-        console.log("Daemon session has no agents. Use 'woco launch' to start a new wave.");
+        console.log(t("cli.resume.noAgents"));
       }
       return;
     }
@@ -70,8 +71,12 @@ export async function cmdResume(opts: ResumeCommandOptions): Promise<void> {
                a.status === "resolving_conflict" || a.status === "retry"
       ).length;
       const queued = snapshot.agents.filter((a) => a.status === "queued").length;
-      console.log(`Resuming daemon session: ${snapshot.agents.length} agent(s) ` +
-        `(${active} active, ${queued} queued) — scheduler: ${snapshot.scheduler.status}\n`);
+      console.log(`${t("cli.resume.resuming", {
+        total: snapshot.agents.length,
+        active,
+        queued,
+        scheduler: snapshot.scheduler.status,
+      })}\n`);
     }
 
     // Continue the scheduler (applies overrides; no task filter — the

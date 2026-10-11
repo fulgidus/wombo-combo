@@ -32,6 +32,7 @@ import {
 } from "../lib/quest-store";
 import { runGenesisReviewInk, type GenesisReviewAction } from "../ink/run-review";
 import { output, outputError, outputMessage } from "../lib/output";
+import { msg, t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,16 +79,13 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.vision) {
-    outputError(
-      fmt,
-      'Usage: woco genesis "Project vision text" [--tech-stack "..."] [--constraint "..."] [--model "..."] [--dry-run]'
-    );
+    outputError(fmt, msg("cli.genesis.usage"));
     return;
   }
 
   const vision = opts.vision.trim();
   if (!vision) {
-    outputError(fmt, "Vision text cannot be empty.");
+    outputError(fmt, msg("cli.genesis.emptyVision"));
     return;
   }
 
@@ -95,18 +93,18 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
   const existingQuestIds = listQuestIds(projectRoot);
 
   if (fmt === "text") {
-    console.log(`\n${BOLD}Genesis: Project Decomposition${RESET}`);
-    console.log(`  Vision: ${DIM}${vision.slice(0, 100)}${vision.length > 100 ? "..." : ""}${RESET}`);
+    console.log(`\n${BOLD}${t("cli.genesis.title")}${RESET}`);
+    console.log(`  ${t("cli.genesis.vision")} ${DIM}${vision.slice(0, 100)}${vision.length > 100 ? "..." : ""}${RESET}`);
     if (opts.techStack) {
-      console.log(`  Tech stack: ${DIM}${opts.techStack}${RESET}`);
+      console.log(`  ${t("cli.genesis.techStack")} ${DIM}${opts.techStack}${RESET}`);
     }
     if (opts.constraints && opts.constraints.length > 0) {
-      console.log(`  Constraints: ${DIM}${opts.constraints.length} specified${RESET}`);
+      console.log(`  ${t("cli.genesis.constraints")} ${DIM}${t("cli.genesis.constraintsCount", { count: opts.constraints.length })}${RESET}`);
     }
     if (existingQuestIds.length > 0) {
-      console.log(`  Existing quests: ${DIM}${existingQuestIds.length} (${existingQuestIds.join(", ")})${RESET}`);
+      console.log(`  ${t("cli.genesis.existingQuests")} ${DIM}${existingQuestIds.length} (${existingQuestIds.join(", ")})${RESET}`);
     }
-    console.log(`\n  Running genesis planner agent...\n`);
+    console.log(`\n  ${t("cli.genesis.running")}\n`);
   }
 
   // Show a planning spinner
@@ -129,8 +127,8 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
       constraints: opts.constraints,
       existingQuestIds,
       model: opts.model,
-      onProgress: (msg) => {
-        lastProgress = msg;
+      onProgress: (progress) => {
+        lastProgress = progress;
       },
     });
   } catch (err: unknown) {
@@ -139,7 +137,7 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
       process.stdout.write("\r" + " ".repeat(80) + "\r");
     }
     const reason = err instanceof Error ? err.message : String(err);
-    outputError(fmt, `Genesis planner failed: ${reason}`);
+    outputError(fmt, msg("cli.genesis.plannerFailed", { reason }));
     return;
   }
 
@@ -150,12 +148,12 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
 
   // Report initial results
   if (fmt === "text") {
-    console.log(`  Planner produced ${result.quests.length} quests.`);
+    console.log(`  ${t("cli.genesis.produced", { count: result.quests.length })}`);
     if (result.issues.length > 0) {
       const errors = result.issues.filter((i) => i.level === "error").length;
       const warnings = result.issues.filter((i) => i.level === "warning").length;
-      if (errors > 0) console.log(`  ${RED}${errors} validation error(s).${RESET}`);
-      if (warnings > 0) console.log(`  ${YELLOW}${warnings} validation warning(s).${RESET}`);
+      if (errors > 0) console.log(`  ${RED}${t("cli.genesis.validationErrors", { count: errors })}${RESET}`);
+      if (warnings > 0) console.log(`  ${YELLOW}${t("cli.genesis.validationWarnings", { count: warnings })}${RESET}`);
     }
   }
 
@@ -165,7 +163,7 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
       fmt,
       { success: false, quests: [], error: result.error, issues: result.issues },
       () => {
-        console.log(`\n  ${RED}Genesis failed: ${result.error ?? "No quests produced"}${RESET}\n`);
+        console.log(`\n  ${RED}${t("cli.genesis.failed", { reason: result.error ?? t("cli.genesis.noQuests") })}${RESET}\n`);
       }
     );
     return;
@@ -190,18 +188,18 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
         issues: result.issues,
       },
       () => {
-        console.log(`\n  ${BOLD}Proposed Quests:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.genesis.proposed")}${RESET}`);
         for (const q of result.quests) {
           const deps =
-            q.depends_on.length > 0 ? ` ${DIM}deps: ${q.depends_on.join(", ")}${RESET}` : "";
+            q.depends_on.length > 0 ? ` ${DIM}${t("cli.genesis.deps", { deps: q.depends_on.join(", ") })}${RESET}` : "";
           console.log(
             `    ${CYAN}${q.id}${RESET} — ${q.title} [${q.priority}/${q.difficulty}] ${DIM}hitl:${q.hitl_mode}${RESET}${deps}`
           );
         }
         if (result.knowledge) {
-          console.log(`\n  ${BOLD}Knowledge:${RESET} ${DIM}${result.knowledge.length} chars${RESET}`);
+          console.log(`\n  ${BOLD}${t("cli.genesis.knowledge")}${RESET} ${DIM}${t("cli.genesis.chars", { count: result.knowledge.length })}${RESET}`);
         }
-        console.log(`\n  ${GREEN}[dry-run]${RESET} No quests created.\n`);
+        console.log(`\n  ${GREEN}${t("cli.genesis.dryRunTag")}${RESET} ${t("cli.genesis.dryRunNone")}\n`);
       }
     );
     return;
@@ -219,15 +217,15 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
         has_knowledge: result.knowledge !== null,
       },
       () => {
-        console.log(`\n  ${GREEN}Genesis applied!${RESET} Created ${created.length} quest(s).`);
+        console.log(`\n  ${GREEN}${t("cli.genesis.applied")}${RESET} ${t("cli.genesis.created", { count: created.length })}`);
         for (const q of created) {
           console.log(`    ${CYAN}${q.id}${RESET} — ${q.title}`);
         }
         if (result.knowledge) {
-          console.log(`  Saved knowledge to first quest.`);
+          console.log(`  ${t("cli.genesis.savedKnowledge")}`);
         }
-        console.log(`\n  Use ${BOLD}woco quest list${RESET} to see quests.`);
-        console.log(`  Use ${BOLD}woco quest plan <id>${RESET} to plan a quest.\n`);
+        console.log(`\n  ${t("cli.genesis.useList", { cmd: `${BOLD}woco quest list${RESET}` })}`);
+        console.log(`  ${t("cli.genesis.usePlan", { cmd: `${BOLD}woco quest plan <id>${RESET}` })}\n`);
       }
     );
     return;
@@ -235,7 +233,7 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
 
   // Interactive mode — show the Genesis Review TUI
   if (fmt === "text") {
-    console.log(`  Opening genesis review...\n`);
+    console.log(`  ${t("cli.genesis.opening")}\n`);
     await sleep(1000);
   }
 
@@ -245,7 +243,7 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
   const reviewAction = await showGenesisReview(result);
 
   if (reviewAction.type === "cancel") {
-    console.log(`\n  Genesis plan discarded.\n`);
+    console.log(`\n  ${t("cli.genesis.discarded")}\n`);
     return;
   }
 
@@ -266,15 +264,15 @@ export async function cmdGenesis(opts: GenesisCommandOptions): Promise<void> {
       has_knowledge: reviewAction.knowledge !== null,
     },
     () => {
-      console.log(`\n  ${GREEN}Genesis approved!${RESET} Created ${created.length} quest(s).`);
+      console.log(`\n  ${GREEN}${t("cli.genesis.approved")}${RESET} ${t("cli.genesis.created", { count: created.length })}`);
       for (const q of created) {
         console.log(`    ${CYAN}${q.id}${RESET} — ${q.title}`);
       }
       if (reviewAction.knowledge) {
-        console.log(`  Saved knowledge to first quest.`);
+        console.log(`  ${t("cli.genesis.savedKnowledge")}`);
       }
-      console.log(`\n  Use ${BOLD}woco quest list${RESET} to see quests.`);
-      console.log(`  Use ${BOLD}woco quest plan <id>${RESET} to plan individual quests.\n`);
+      console.log(`\n  ${t("cli.genesis.useList", { cmd: `${BOLD}woco quest list${RESET}` })}`);
+      console.log(`  ${t("cli.genesis.usePlanEach", { cmd: `${BOLD}woco quest plan <id>${RESET}` })}\n`);
     }
   );
 }

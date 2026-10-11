@@ -32,6 +32,7 @@ import { resolve, join, basename, dirname } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR } from "../config";
+import { t } from "./i18n";
 import type { Task, TasksFile, ArchiveFile } from "./tasks";
 import { validateTask, validateMeta as validateMetaSchema, type SchemaIssue } from "./task-schema";
 
@@ -576,7 +577,7 @@ function migrateTasksIfNeeded(
 
   if (!legacyPath) return false;
 
-  console.log(`Migrating ${legacyPath} → folder-based storage...`);
+  console.log(t("cli.taskStore.migratingTasks", { path: legacyPath }));
 
   const raw = readFileSync(legacyPath, "utf-8");
   let parsed: any;
@@ -631,13 +632,13 @@ function migrateTasksIfNeeded(
     }
   }
 
-  console.log(`  Migrated ${count} tasks (flattened subtasks) to ${WOMBO_DIR}/${config.tasksDir}/`);
+  console.log(t("cli.taskStore.migratedTasks", { count, path: `${WOMBO_DIR}/${config.tasksDir}` }));
 
   // Rename legacy file to .bak (don't delete, in case something goes wrong)
   const bakPath = legacyPath + ".migrated.bak";
   if (!existsSync(bakPath)) {
     renameSync(legacyPath, bakPath);
-    console.log(`  Renamed ${basename(legacyPath)} → ${basename(bakPath)}`);
+    console.log(t("cli.taskStore.renamed", { from: basename(legacyPath), to: basename(bakPath) }));
   }
 
   return true;
@@ -653,7 +654,7 @@ function migrateArchiveIfNeeded(
   const legacyPath = legacyArchiveFile(projectRoot);
   if (!existsSync(legacyPath)) return false;
 
-  console.log(`Migrating ${legacyPath} → folder-based archive...`);
+  console.log(t("cli.taskStore.migratingArchive", { path: legacyPath }));
 
   const raw = readFileSync(legacyPath, "utf-8");
   let parsed: any;

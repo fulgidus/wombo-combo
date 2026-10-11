@@ -23,6 +23,7 @@ import { resolveOutputFormat } from "../../lib/output";
 import type { Priority, Difficulty } from "../../lib/tasks";
 import type { QuestHitlMode } from "../../lib/quest";
 import { handleQuestSubcommand } from "../quest";
+import { t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Shared: load config, validate
@@ -30,10 +31,7 @@ import { handleQuestSubcommand } from "../quest";
 
 function loadProjectConfigSync(projectRoot: string) {
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-        `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-    );
+    console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
   const config = loadConfig(projectRoot);

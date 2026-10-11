@@ -11,6 +11,8 @@
  *   - Effort strings: ISO 8601 duration pattern only
  */
 
+import { t } from "./i18n";
+
 // ---------------------------------------------------------------------------
 // Patterns
 // ---------------------------------------------------------------------------
@@ -166,7 +168,7 @@ export function validateEnum(
  */
 export function assertValid(result: ValidationResult): void {
   if (!result.valid) {
-    console.error(`Validation error: ${result.error}`);
+    console.error(t("cli.validate.error", { error: result.error ?? "" }));
     process.exit(1);
   }
 }

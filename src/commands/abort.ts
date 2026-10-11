@@ -11,6 +11,7 @@
 import type { WomboConfig } from "../config";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderAbort } from "../lib/toon";
+import { msg, t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,21 +45,14 @@ export async function cmdAbort(opts: AbortCommandOptions): Promise<void> {
     const agent = snapshot.agents.find((a) => a.featureId === featureId);
 
     if (!agent) {
-      outputError(
-        fmt,
-        `Agent not found for feature: ${featureId}. Use 'woco status' to see active agents.`
-      );
+      outputError(fmt, msg("cli.abort.notFound", { id: featureId }));
       return; // unreachable — helps TypeScript narrow
     }
 
     // Only abort agents that are actually active (running, installing, queued, resolving_conflict)
     const abortable = new Set(["running", "installing", "queued", "resolving_conflict"]);
     if (!abortable.has(agent.status)) {
-      outputError(
-        fmt,
-        `Agent ${featureId} is not in an abortable state (current: ${agent.status}). ` +
-          `Only running, installing, queued, or resolving_conflict agents can be aborted.`
-      );
+      outputError(fmt, msg("cli.abort.notAbortable", { id: featureId, status: agent.status }));
       return; // unreachable — helps TypeScript narrow
     }
 
@@ -72,10 +66,10 @@ export async function cmdAbort(opts: AbortCommandOptions): Promise<void> {
     };
 
     output(fmt, result, () => {
-      console.log(`\nAborted agent: ${featureId}`);
-      console.log(`  Previous status: ${agent.status}`);
-      console.log(`  New status: failed`);
-      console.log(`  Use \`woco retry ${featureId}\` to re-queue it.`);
+      console.log(`\n${t("cli.abort.aborted", { id: featureId })}`);
+      console.log(`  ${t("cli.abort.previousStatus", { status: agent.status })}`);
+      console.log(`  ${t("cli.abort.newStatus", { status: "failed" })}`);
+      console.log(`  ${t("cli.abort.retryHint", { id: featureId })}`);
     }, () => {
       console.log(renderAbort(result));
     });

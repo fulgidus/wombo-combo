@@ -16,6 +16,7 @@ import { exec, execSync } from "node:child_process";
 import { existsSync, cpSync, statSync, readdirSync, rmdirSync, mkdirSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
 import type { WomboConfig } from "../config";
+import { t } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -632,7 +633,7 @@ export function cleanupAllWorktrees(
       removeWorktree({ projectRoot, wtPath: wt.path, deleteBranch: false });
       removed++;
     } catch (err: any) {
-      console.error(`Failed to remove worktree ${wt.path}: ${err.message}`);
+      console.error(t("cli.worktree.removeFailed", { path: wt.path, error: err.message }));
     }
   }
   try {

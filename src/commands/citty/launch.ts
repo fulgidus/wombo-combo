@@ -21,6 +21,7 @@ import { ensureTasksFile } from "../../lib/tasks";
 import type { Priority, Difficulty } from "../../lib/tasks";
 import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output";
 import { cmdLaunch, type LaunchCommandOptions } from "../launch";
+import { t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Parsed launch args (intermediate representation before config merge)
@@ -227,10 +228,7 @@ export const launchCommand = defineCommand({
 
     // Guard: project must be initialized
     if (!isProjectInitialized(projectRoot)) {
-      console.error(
-        `\nThis project hasn't been initialized yet.\n` +
-          `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-      );
+      console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
       process.exit(1);
     }
 

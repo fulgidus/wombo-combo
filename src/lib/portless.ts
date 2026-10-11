@@ -23,6 +23,7 @@ import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { WomboConfig } from "../config";
+import { t } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Portless Binary Resolution
@@ -104,7 +105,7 @@ export function ensureProxyRunning(config: WomboConfig): boolean {
   const bin = resolvePortlessBin(config);
   if (!bin) {
     console.warn(
-      "\x1b[33m[portless]\x1b[0m portless not found. Install with: npm install -g portless"
+      `\x1b[33m[portless]\x1b[0m ${t("cli.portless.notFound")}`
     );
     return false;
   }
@@ -132,12 +133,12 @@ export function ensureProxyRunning(config: WomboConfig): boolean {
     });
 
     console.log(
-      `\x1b[32m[portless]\x1b[0m proxy started on port ${config.portless.proxyPort}`
+      `\x1b[32m[portless]\x1b[0m ${t("cli.portless.started", { port: config.portless.proxyPort })}`
     );
     return true;
   } catch (err: any) {
     console.warn(
-      `\x1b[33m[portless]\x1b[0m failed to start proxy: ${err.message?.split("\n")[0]}`
+      `\x1b[33m[portless]\x1b[0m ${t("cli.portless.startFailed", { error: err.message?.split("\n")[0] })}`
     );
     return false;
   }

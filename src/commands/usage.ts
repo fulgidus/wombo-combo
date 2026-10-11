@@ -31,6 +31,7 @@ import {
   type GroupableField,
 } from "../lib/token-usage";
 import { output, outputError, type OutputFormat } from "../lib/output";
+import { t, getFixedT, type TFunction } from "../lib/i18n";
 import { AnalyticsStore, type AnalyticsDiagnostic } from "../lib/analytics";
 import {
   summarizeAnalytics,
@@ -124,6 +125,11 @@ function pad(text: string, width: number): string {
   return text + " ".repeat(width - text.length);
 }
 
+/** Label column padding that never truncates (translations may be longer). */
+function lbl(text: string, width: number): string {
+  return text.padEnd(width - 1) + " ";
+}
+
 function padLeft(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);
   return " ".repeat(width - text.length) + text;
@@ -134,16 +140,16 @@ function padLeft(text: string, width: number): string {
  */
 function renderTotalUsage(totals: UsageTotals): void {
   console.log("");
-  console.log(`${BOLD}Token Usage — Total${RESET}`);
+  console.log(`${BOLD}${t("cli.usage.totalTitle")}${RESET}`);
   console.log("");
-  console.log(`  Input tokens:     ${FG.cyan}${formatNumber(totals.input_tokens)}${RESET}`);
-  console.log(`  Output tokens:    ${FG.green}${formatNumber(totals.output_tokens)}${RESET}`);
-  console.log(`  Cache read:       ${FG.gray}${formatNumber(totals.cache_read)}${RESET}`);
-  console.log(`  Cache write:      ${FG.gray}${formatNumber(totals.cache_write)}${RESET}`);
-  console.log(`  Reasoning:        ${FG.yellow}${formatNumber(totals.reasoning_tokens)}${RESET}`);
-  console.log(`  ${BOLD}Total tokens:     ${formatNumber(totals.total_tokens)}${RESET}`);
-  console.log(`  Total cost:       ${formatCost(totals.total_cost)}`);
-  console.log(`  Steps recorded:   ${totals.record_count}`);
+  console.log(`  ${lbl(t("cli.usage.inputTokens"), 18)}${FG.cyan}${formatNumber(totals.input_tokens)}${RESET}`);
+  console.log(`  ${lbl(t("cli.usage.outputTokens"), 18)}${FG.green}${formatNumber(totals.output_tokens)}${RESET}`);
+  console.log(`  ${lbl(t("cli.usage.cacheRead"), 18)}${FG.gray}${formatNumber(totals.cache_read)}${RESET}`);
+  console.log(`  ${lbl(t("cli.usage.cacheWrite"), 18)}${FG.gray}${formatNumber(totals.cache_write)}${RESET}`);
+  console.log(`  ${lbl(t("cli.usage.reasoning"), 18)}${FG.yellow}${formatNumber(totals.reasoning_tokens)}${RESET}`);
+  console.log(`  ${BOLD}${lbl(t("cli.usage.totalTokens"), 18)}${formatNumber(totals.total_tokens)}${RESET}`);
+  console.log(`  ${lbl(t("cli.usage.totalCost"), 18)}${formatCost(totals.total_cost)}`);
+  console.log(`  ${lbl(t("cli.usage.stepsRecorded"), 18)}${totals.record_count}`);
   console.log("");
 }
 
@@ -155,12 +161,12 @@ function renderGroupedTable(
   groupLabel: string
 ): void {
   if (groups.size === 0) {
-    console.log("\nNo usage data found.\n");
+    console.log(`\n${t("cli.usage.noData")}\n`);
     return;
   }
 
   console.log("");
-  console.log(`${BOLD}Token Usage — by ${groupLabel}${RESET}`);
+  console.log(`${BOLD}${t("cli.usage.byTitle", { group: groupLabel })}${RESET}`);
   console.log("");
 
   // Build column widths
@@ -172,12 +178,12 @@ function renderGroupedTable(
 
   const header = [
     pad(groupLabel.charAt(0).toUpperCase() + groupLabel.slice(1), keyWidth),
-    padLeft("Input", 12),
-    padLeft("Output", 12),
-    padLeft("Cache Read", 12),
-    padLeft("Cache Write", 12),
-    padLeft("Total", 14),
-    padLeft("Cost", 10),
+    padLeft(t("cli.usage.colInput"), 12),
+    padLeft(t("cli.usage.colOutput"), 12),
+    padLeft(t("cli.usage.colCacheRead"), 12),
+    padLeft(t("cli.usage.colCacheWrite"), 12),
+    padLeft(t("cli.usage.colTotal"), 14),
+    padLeft(t("cli.usage.colCost"), 10),
   ].join("  ");
 
   console.log(`${BOLD}${header}${RESET}`);
@@ -225,7 +231,7 @@ function renderGroupedTable(
 
   console.log("-".repeat(header.length));
   const totalRow = [
-    pad(`${BOLD}TOTAL${RESET}`, keyWidth + BOLD.length + RESET.length),
+    pad(`${BOLD}${t("cli.usage.totalRow")}${RESET}`, keyWidth + BOLD.length + RESET.length),
     padLeft(formatNumber(grandTotal.input_tokens), 12),
     padLeft(formatNumber(grandTotal.output_tokens), 12),
     padLeft(formatNumber(grandTotal.cache_read), 12),
@@ -276,13 +282,16 @@ function groupedToJSON(
 export async function cmdUsage(opts: UsageCommandOptions): Promise<void> {
   const { projectRoot, outputFmt, usageFormat } = opts;
 
-  const invalid = validateUsageOptions({
-    by: opts.by,
-    analytics: opts.analytics,
-    task: opts.task,
-    quest: opts.quest,
-    wave: opts.wave,
-  });
+  const invalid = validateUsageOptions(
+    {
+      by: opts.by,
+      analytics: opts.analytics,
+      task: opts.task,
+      quest: opts.quest,
+      wave: opts.wave,
+    },
+    outputFmt === "text" ? t : getFixedT("en"),
+  );
   if (invalid) outputError(outputFmt, invalid);
 
   if (opts.analytics) return cmdUsageAnalytics(opts);
@@ -304,8 +313,8 @@ export async function cmdUsage(opts: UsageCommandOptions): Promise<void> {
     if (usageFormat === "json" || outputFmt === "json") {
       console.log(JSON.stringify({ message: "No usage data found.", groups: [] }));
     } else {
-      console.log("\nNo usage data found.");
-      console.log("Usage data is recorded when agents run via 'woco launch'.\n");
+      console.log(`\n${t("cli.usage.noData")}`);
+      console.log(`${t("cli.usage.noDataHint")}\n`);
     }
     return;
   }
@@ -367,27 +376,28 @@ export interface UsageOptionInput {
  * - Analytics-only options (--task/--quest/--wave) require --analytics.
  * - --by values are validated against the mode's own list.
  */
-export function validateUsageOptions(input: UsageOptionInput): string | null {
+export function validateUsageOptions(input: UsageOptionInput, tf: TFunction = t): string | null {
   if (input.analytics) {
     if (input.by !== undefined && !VALID_ANALYTICS_GROUP_BY.includes(input.by)) {
-      return `Invalid --by value for --analytics: "${input.by}". Valid values: ${VALID_ANALYTICS_GROUP_BY.join(", ")}`;
+      return tf("cli.usage.invalidByAnalytics", { value: input.by, valid: VALID_ANALYTICS_GROUP_BY.join(", ") });
     }
     return null;
   }
   const analyticsOnly = (["task", "quest", "wave"] as const).filter((k) => input[k] !== undefined);
   if (analyticsOnly.length > 0) {
-    return `${analyticsOnly.map((k) => `--${k}`).join(", ")} can only be used with --analytics`;
+    return tf("cli.usage.analyticsOnly", { flags: analyticsOnly.map((k) => `--${k}`).join(", ") });
   }
   if (input.by !== undefined && !VALID_USAGE_GROUP_BY.includes(input.by)) {
-    return `Invalid --by value: "${input.by}". Valid values: ${VALID_USAGE_GROUP_BY.join(", ")}`;
+    return tf("cli.usage.invalidBy", { value: input.by, valid: VALID_USAGE_GROUP_BY.join(", ") });
   }
   return null;
 }
 
-const NA = "n/a";
+/** Localised "n/a" placeholder. */
+const na = (): string => t("cli.usage.a.na");
 
 export function formatAnalyticsDuration(ms: number | null): string {
-  if (ms === null) return NA;
+  if (ms === null) return na();
   const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -397,7 +407,7 @@ export function formatAnalyticsDuration(ms: number | null): string {
 }
 
 export function formatAnalyticsRate(rate: number | null): string {
-  return rate === null ? NA : `${(rate * 100).toFixed(1)}%`;
+  return rate === null ? na() : `${(rate * 100).toFixed(1)}%`;
 }
 
 // TOON rendering: one row per scope (total + each group), null = empty field.
@@ -445,13 +455,13 @@ export function renderAnalyticsToon(summary: AnalyticsSummary): string {
 }
 
 function groupKeyLabel(key: string | null): string {
-  return key === null ? "(none)" : key;
+  return key === null ? t("cli.usage.none") : key;
 }
 
 function coverageNote(m: AggregateMetrics): string {
   const parts: string[] = [];
-  if (m.usage.coverage.partial > 0) parts.push(`${m.usage.coverage.partial} partial`);
-  if (m.usage.missing > 0) parts.push(`${m.usage.missing} without usage data`);
+  if (m.usage.coverage.partial > 0) parts.push(t("cli.usage.covPartial", { count: m.usage.coverage.partial }));
+  if (m.usage.missing > 0) parts.push(t("cli.usage.covMissing", { count: m.usage.missing }));
   return parts.join(", ");
 }
 
@@ -460,17 +470,17 @@ export function renderAnalyticsTotalLines(m: AggregateMetrics): string[] {
   const o = m.outcomes;
   const u = m.usage.totals;
   const lines = [
-    `  Executions:        ${m.executions} (${o.succeeded} succeeded, ${o.failed} failed, ${o.stopped} stopped, ${o.running} running)`,
-    `  Completion time:   ${m.duration.samples > 0 ? `mean ${formatAnalyticsDuration(m.duration.mean_ms)}, total ${formatAnalyticsDuration(m.duration.total_ms)} (${m.duration.samples} successful)` : `${NA} (no successful executions)`}`,
-    `  Retries:           ${m.retries.total}`,
+    `  ${lbl(t("cli.usage.a.executions"), 19)}${t("cli.usage.a.executionsValue", { total: m.executions, succeeded: o.succeeded, failed: o.failed, stopped: o.stopped, running: o.running })}`,
+    `  ${lbl(t("cli.usage.a.completionTime"), 19)}${m.duration.samples > 0 ? t("cli.usage.a.completionValue", { mean: formatAnalyticsDuration(m.duration.mean_ms), total: formatAnalyticsDuration(m.duration.total_ms), samples: m.duration.samples }) : t("cli.usage.a.completionNone", { na: na() })}`,
+    `  ${lbl(t("cli.usage.a.retries"), 19)}${m.retries.total}`,
     m.usage.samples > 0
-      ? `  Tokens:            ${formatNumber(u.total_tokens)} total (in ${formatNumber(u.input_tokens)}, out ${formatNumber(u.output_tokens)}, cache r/w ${formatNumber(u.cache_read)}/${formatNumber(u.cache_write)}, reasoning ${formatNumber(u.reasoning_tokens)}), cost ${formatCost(u.total_cost)} (${m.usage.samples}/${m.executions} executions)`
-      : `  Tokens:            ${NA} (no usage data)`,
-    `  Build pass rate:   ${m.builds.attempts > 0 ? `${formatAnalyticsRate(m.builds.pass_rate)} (${m.builds.passes}/${m.builds.attempts} builds, ${m.builds.samples} executions)` : `${NA} (no builds)`}`,
-    `  Lines changed:     ${m.lines.samples > 0 ? `+${formatNumber(m.lines.additions)} / -${formatNumber(m.lines.deletions)} (${formatNumber(m.lines.changed)} changed, ${m.lines.samples}/${m.executions} executions)` : `${NA} (no measurements)`}`,
+      ? `  ${lbl(t("cli.usage.a.tokens"), 19)}${t("cli.usage.a.tokensValue", { total: formatNumber(u.total_tokens), input: formatNumber(u.input_tokens), output: formatNumber(u.output_tokens), cacheRead: formatNumber(u.cache_read), cacheWrite: formatNumber(u.cache_write), reasoning: formatNumber(u.reasoning_tokens), cost: formatCost(u.total_cost), samples: m.usage.samples, executions: m.executions })}`
+      : `  ${lbl(t("cli.usage.a.tokens"), 19)}${t("cli.usage.a.tokensNone", { na: na() })}`,
+    `  ${lbl(t("cli.usage.a.buildPassRate"), 19)}${m.builds.attempts > 0 ? t("cli.usage.a.buildValue", { rate: formatAnalyticsRate(m.builds.pass_rate), passes: m.builds.passes, attempts: m.builds.attempts, samples: m.builds.samples }) : t("cli.usage.a.buildNone", { na: na() })}`,
+    `  ${lbl(t("cli.usage.a.linesChanged"), 19)}${m.lines.samples > 0 ? t("cli.usage.a.linesValue", { additions: formatNumber(m.lines.additions), deletions: formatNumber(m.lines.deletions), changed: formatNumber(m.lines.changed), samples: m.lines.samples, executions: m.executions }) : t("cli.usage.a.linesNone", { na: na() })}`,
   ];
   const cov = coverageNote(m);
-  if (cov) lines.push(`  Usage coverage:    WARNING ${cov}; token totals may be incomplete`);
+  if (cov) lines.push(`  ${lbl(t("cli.usage.a.coverage"), 19)}${t("cli.usage.a.coverageWarning", { note: cov })}`);
   return lines;
 }
 
@@ -485,13 +495,23 @@ export function renderAnalyticsGroupLines(summary: AnalyticsSummary): string[] {
       `${m.outcomes.succeeded}/${m.outcomes.failed}/${m.outcomes.stopped}`,
       formatAnalyticsDuration(m.duration.mean_ms),
       String(m.retries.total),
-      m.usage.samples > 0 ? formatNumber(m.usage.totals.total_tokens) : NA,
+      m.usage.samples > 0 ? formatNumber(m.usage.totals.total_tokens) : na(),
       formatAnalyticsRate(m.builds.pass_rate),
-      m.lines.samples > 0 ? `+${m.lines.additions}/-${m.lines.deletions}` : NA,
-      coverageNote(m) || "ok",
+      m.lines.samples > 0 ? `+${m.lines.additions}/-${m.lines.deletions}` : na(),
+      coverageNote(m) || t("cli.usage.a.ok"),
     ];
   });
-  const header = [label, "Exec", "OK/Fail/Stop", "Mean time", "Retries", "Tokens", "Build%", "Lines", "Coverage"];
+  const header = [
+    label,
+    t("cli.usage.a.colExec"),
+    t("cli.usage.a.colOutcomes"),
+    t("cli.usage.a.colMeanTime"),
+    t("cli.usage.a.colRetries"),
+    t("cli.usage.a.colTokens"),
+    t("cli.usage.a.colBuild"),
+    t("cli.usage.a.colLines"),
+    t("cli.usage.a.colCoverage"),
+  ];
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
   const fmt = (cells: string[]) => cells.map((c, i) => (i === 0 ? pad(c, widths[i]) : padLeft(c, widths[i]))).join("  ");
   return [fmt(header.map((h, i) => (i === 0 ? h.charAt(0).toUpperCase() + h.slice(1) : h))), "-".repeat(widths.reduce((a, b) => a + b + 2, -2)), ...rows.map(fmt)];
@@ -506,13 +526,13 @@ export function renderAnalyticsText(summary: AnalyticsSummary): string {
   if (f.wave) scope.push(`wave=${f.wave}`);
   if (f.since) scope.push(`since=${String(f.since)}`);
   if (f.until) scope.push(`until=${String(f.until)}`);
-  const title = `Agent Analytics${summary.groupBy ? ` — by ${summary.groupBy}` : " — Total"}${scope.length ? ` (${scope.join(", ")})` : ""}`;
+  const title = `${summary.groupBy ? t("cli.usage.a.titleBy", { group: summary.groupBy }) : t("cli.usage.a.titleTotal")}${scope.length ? ` (${scope.join(", ")})` : ""}`;
   if (summary.total.executions === 0) {
-    return `\n${title}\n\n  No analytics data found.\n  Analytics are recorded per execution when agents run via 'woco launch'.\n  Historical usage/history is not backfilled.\n`;
+    return `\n${title}\n\n  ${t("cli.usage.a.noData")}\n  ${t("cli.usage.a.noDataHint")}\n  ${t("cli.usage.a.noBackfill")}\n`;
   }
   const out = ["", title, ""];
   if (summary.groupBy) {
-    out.push(...renderAnalyticsGroupLines(summary), "", "Total", "");
+    out.push(...renderAnalyticsGroupLines(summary), "", t("cli.usage.a.totalHeading"), "");
   }
   out.push(...renderAnalyticsTotalLines(summary.total), "");
   return out.join("\n");
@@ -545,7 +565,7 @@ async function cmdUsageAnalytics(opts: UsageCommandOptions): Promise<void> {
   }
   // Storage diagnostics always go to stderr so structured stdout stays clean.
   for (const d of built.diagnostics) {
-    console.error(`warning: analytics storage: ${d.file}: ${d.kind}: ${d.message}`);
+    console.error(t("cli.usage.a.storageWarning", { file: d.file, kind: d.kind, message: d.message }));
   }
   const { summary } = built;
   if (usageFormat === "json" && outputFmt === "text") {

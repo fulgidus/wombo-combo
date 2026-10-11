@@ -12,6 +12,7 @@
  */
 
 import { output, outputError, type OutputFormat } from "../lib/output";
+import { msg, t, getFixedT, type TFunction } from "../lib/i18n";
 import { ReplayStore, recordLabel, type LoadedReplay, type ReplaySummary } from "../lib/replay";
 
 export interface ReplayCommandOptions {
@@ -20,16 +21,20 @@ export interface ReplayCommandOptions {
 }
 
 /** Resolve `--execution` (1-based index or full execution id); default latest. */
-export function resolveExecution(summaries: ReplaySummary[], selector?: string): ReplaySummary | string {
-  if (summaries.length === 0) return "no recorded executions";
+export function resolveExecution(
+  summaries: ReplaySummary[],
+  selector?: string,
+  tf: TFunction = t,
+): ReplaySummary | string {
+  if (summaries.length === 0) return tf("cli.replay.noExecutions");
   if (selector === undefined || selector === "") return summaries[summaries.length - 1];
   if (/^\d+$/.test(selector)) {
     const n = Number(selector);
-    if (n < 1 || n > summaries.length) return `execution ${n} out of range (1-${summaries.length})`;
+    if (n < 1 || n > summaries.length) return tf("cli.replay.outOfRange", { n, max: summaries.length });
     return summaries[n - 1];
   }
   const byId = summaries.find((s) => s.execution_id === selector);
-  return byId ?? `unknown execution "${selector}"`;
+  return byId ?? tf("cli.replay.unknownExecution", { selector });
 }
 
 function fmtTime(iso: string | null): string {
@@ -48,12 +53,18 @@ export function cmdReplayList(opts: ReplayCommandOptions & { featureId?: string 
     { executions: rows.map(({ path: _path, ...rest }) => rest) },
     () => {
       if (rows.length === 0) {
-        console.log(opts.featureId ? `No replays recorded for "${opts.featureId}".` : "No replays recorded yet.");
-        console.log("Replays are recorded per execution when agents run via the daemon.");
+        console.log(
+          opts.featureId
+            ? t("cli.replay.list.noneFor", { id: opts.featureId })
+            : t("cli.replay.list.none"),
+        );
+        console.log(t("cli.replay.list.hint"));
         return;
       }
       const idx = new Map<string, number>();
-      console.log(`${pad("TASK", 28)} ${pad("#", 3)} ${pad("OUTCOME", 10)} ${pad("EVENTS", 7)} ${pad("STARTED", 19)} EXECUTION`);
+      console.log(
+        `${pad(t("cli.replay.list.colTask"), 28)} ${pad("#", 3)} ${pad(t("cli.replay.list.colOutcome"), 10)} ${pad(t("cli.replay.list.colEvents"), 7)} ${pad(t("cli.replay.list.colStarted"), 19)} ${t("cli.replay.list.colExecution")}`,
+      );
       for (const r of rows) {
         const n = (idx.get(r.task_id) ?? 0) + 1;
         idx.set(r.task_id, n);
@@ -69,12 +80,18 @@ export function cmdReplayShow(opts: ReplayCommandOptions & { featureId: string; 
   const store = new ReplayStore(opts.projectRoot);
   const summaries = store.list(opts.featureId);
   if (summaries.length === 0) {
-    outputError(opts.outputFmt, `No replays recorded for "${opts.featureId}".`);
+    outputError(opts.outputFmt, msg("cli.replay.list.noneFor", { id: opts.featureId }));
   }
-  const picked = resolveExecution(summaries, opts.execution);
-  if (typeof picked === "string") outputError(opts.outputFmt, `${opts.featureId}: ${picked}.`);
+  const picked = resolveExecution(
+    summaries,
+    opts.execution,
+    opts.outputFmt === "text" ? t : getFixedT("en"),
+  );
+  if (typeof picked === "string") {
+    outputError(opts.outputFmt, msg("cli.replay.show.pickFailed", { id: opts.featureId, reason: picked }));
+  }
   const replay = store.load(picked.task_id, picked.execution_id);
-  if (!replay) outputError(opts.outputFmt, `Could not read replay ${picked.execution_id}.`);
+  if (!replay) outputError(opts.outputFmt, msg("cli.replay.show.unreadable", { id: picked.execution_id }));
 
   const index = summaries.indexOf(picked) + 1;
   output(
@@ -98,29 +115,38 @@ export function cmdReplayShow(opts: ReplayCommandOptions & { featureId: string; 
 
 function renderText(replay: LoadedReplay, index: number, total: number, summary: ReplaySummary): void {
   const h = replay.header;
-  console.log(`Replay ${replay.task_id}  execution ${index}/${total}  ${replay.execution_id}`);
-  console.log(`  outcome: ${summary.outcome}   agent: ${h?.agent ?? "-"}   model: ${h?.model ?? "-"}   started: ${fmtTime(summary.started_at)}`);
+  console.log(t("cli.replay.show.heading", { task: replay.task_id, index, total, execution: replay.execution_id }));
+  console.log(
+    t("cli.replay.show.meta", {
+      outcome: summary.outcome,
+      agent: h?.agent ?? "-",
+      model: h?.model ?? "-",
+      started: fmtTime(summary.started_at),
+    }),
+  );
   if (replay.prompt !== null) {
     const lines = replay.prompt.split("\n");
-    console.log("\nPrompt:");
+    console.log(`\n${t("cli.replay.show.prompt")}`);
     for (const l of lines.slice(0, 12)) console.log(`  ${l}`);
-    if (lines.length > 12) console.log(`  … ${lines.length - 12} more lines`);
+    if (lines.length > 12) console.log(t("cli.replay.show.moreLines", { count: lines.length - 12 }));
   }
   const t0 = Date.parse(replay.records[0]?.t ?? "") || 0;
-  console.log("\nTimeline:");
+  console.log(`\n${t("cli.replay.show.timeline")}`);
   for (const r of replay.records) {
     if (r.kind === "header" || r.kind === "prompt") continue;
     const secs = Math.max(0, (Date.parse(r.t) - t0) / 1000);
     console.log(`  +${secs.toFixed(1).padStart(6)}s  ${recordLabel(r)}`);
   }
   if (replay.diff) {
-    console.log(`\nDiff (${replay.diff.files.length} files${replay.diff.truncated ? ", truncated" : ""}):`);
+    console.log(
+      `\n${t(replay.diff.truncated ? "cli.replay.show.diffTruncated" : "cli.replay.show.diff", { count: replay.diff.files.length })}`,
+    );
     for (const f of replay.diff.files) {
-      console.log(`  ${f.additions === null ? "bin" : `+${f.additions}/-${f.deletions}`}  ${f.path}`);
+      console.log(`  ${f.additions === null ? t("cli.replay.show.binary") : `+${f.additions}/-${f.deletions}`}  ${f.path}`);
     }
   }
   if (replay.diagnostics.length > 0) {
-    console.log(`\n${replay.diagnostics.length} line(s) could not be read (malformed or unsupported version).`);
+    console.log(`\n${t("cli.replay.show.diagnostics", { count: replay.diagnostics.length })}`);
   }
-  if (!replay.end) console.log("\n(no end record: still running or interrupted)");
+  if (!replay.end) console.log(`\n${t("cli.replay.show.noEnd")}`);
 }

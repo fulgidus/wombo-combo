@@ -15,6 +15,7 @@ import { exec } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { WomboConfig } from "../config";
+import { t } from "./i18n";
 import { runTier25, type Tier25Result, type FileHunkResult } from "./conflict-hunks";
 
 // ---------------------------------------------------------------------------
@@ -441,15 +442,15 @@ export async function pushBaseBranch(
   baseBranch: string,
   config: WomboConfig
 ): Promise<boolean> {
-  console.log(`\nPushing ${baseBranch} to ${config.git.remote}...`);
+  console.log(`\n${t("cli.merger.pushing", { branch: baseBranch, remote: config.git.remote })}`);
   const result = await runSafe(
     `git push ${config.git.remote} "${baseBranch}"`,
     projectRoot
   );
   if (result.ok) {
-    console.log(`Pushed ${baseBranch} to ${config.git.remote}.`);
+    console.log(t("cli.merger.pushed", { branch: baseBranch, remote: config.git.remote }));
   } else {
-    console.error(`Push failed: ${result.output}`);
+    console.error(t("cli.merger.pushFailed", { output: result.output }));
   }
   return result.ok;
 }

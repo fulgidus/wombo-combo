@@ -25,6 +25,7 @@ import {
   statSync,
 } from "node:fs";
 import { WOMBO_DIR, type WomboConfig, type AgentRegistryMode } from "../config";
+import { t } from "./i18n";
 import type { Task } from "./tasks";
 
 // ---------------------------------------------------------------------------
@@ -473,11 +474,9 @@ export async function resolveAgentForTask(
     const staleCache = getCachedAgent(projectRoot, config, agentType);
     if (staleCache !== null) {
       console.warn(
-        `\x1b[33m[WARNING]\x1b[0m Failed to fetch agent "${agentType}" from registry: ${fetchError?.message ?? fetchError}`
+        `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentRegistry.fetchFailed", { agent: agentType, error: fetchError?.message ?? fetchError })}`
       );
-      console.warn(
-        `  Using stale cached version (offline fallback).\n`
-      );
+      console.warn(t("cli.agentRegistry.staleCache"));
       return {
         taskId: task.id,
         name,
@@ -524,9 +523,9 @@ export async function prepareAgentDefinitions(
       const failedTask = tasks.find((t) => !resolvedIds.has(t.id));
       if (failedTask) {
         console.warn(
-          `\x1b[33m[WARNING]\x1b[0m Failed to resolve agent for task "${failedTask.id}": ${result.reason?.message ?? result.reason}`
+          `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentRegistry.resolveFailed", { id: failedTask.id, error: result.reason?.message ?? result.reason })}`
         );
-        console.warn(`  Falling back to generalist agent.\n`);
+        console.warn(t("cli.agentRegistry.fallbackGeneralist"));
         results.set(failedTask.id, {
           taskId: failedTask.id,
           name: null,

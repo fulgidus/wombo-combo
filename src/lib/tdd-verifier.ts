@@ -15,6 +15,7 @@
  */
 
 import type { WomboConfig } from "../config";
+import { t } from "./i18n";
 import { runTests, type TestRunResult } from "./test-runner";
 import {
   detectTests,
@@ -362,28 +363,30 @@ export function renderTddVerificationReport(
   result: TddVerificationResult
 ): void {
   if (!result.ran) {
-    console.log(`\n  TDD: ${result.skipReason}\n`);
+    console.log(`\n  ${t("cli.tdd.report.skipped", { reason: result.skipReason ?? "" })}\n`);
     return;
   }
 
   console.log(`\n${"─".repeat(60)}`);
-  console.log(`  TDD Verification Report`);
+  console.log(`  ${t("cli.tdd.report.title")}`);
   console.log(`${"─".repeat(60)}`);
 
   // Test run results
   if (result.testRun) {
     const tr = result.testRun;
     const statusIcon = tr.passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
-    console.log(`\n  ${statusIcon} Test Run: ${tr.passed ? "PASSED" : "FAILED"}`);
-    console.log(`    Command exit code: ${tr.exitCode}`);
-    console.log(`    Duration: ${Math.round(tr.durationMs / 1000)}s`);
+    console.log(`\n  ${statusIcon} ${t("cli.tdd.report.testRun", { status: t(tr.passed ? "cli.tdd.report.passed" : "cli.tdd.report.failed") })}`);
+    console.log(`    ${t("cli.tdd.report.exitCode", { code: tr.exitCode })}`);
+    console.log(`    ${t("cli.tdd.report.duration", { seconds: Math.round(tr.durationMs / 1000) })}`);
 
     if (tr.testCounts.parsed) {
       console.log(
-        `    Results: ${tr.testCounts.passed} passed, ` +
-        `${tr.testCounts.failed} failed, ` +
-        `${tr.testCounts.skipped} skipped ` +
-        `(${tr.testCounts.total} total)`
+        `    ${t("cli.tdd.report.results", {
+          passed: tr.testCounts.passed,
+          failed: tr.testCounts.failed,
+          skipped: tr.testCounts.skipped,
+          total: tr.testCounts.total,
+        })}`
       );
     }
   }
@@ -398,13 +401,13 @@ export function renderTddVerificationReport(
       if (ids.length === 0) return;
       console.log(`    ${label}:`);
       for (const id of ids.slice(0, 20)) console.log(`      - ${id}`);
-      if (ids.length > 20) console.log(`      ... and ${ids.length - 20} more`);
+      if (ids.length > 20) console.log(`      ${t("cli.tdd.report.more", { count: ids.length - 20 })}`);
     };
-    list("New failures", c.newFailures);
-    list("No longer passing (skipped or missing)", c.regressedPasses);
-    list("Fixed baseline failures", c.fixedFailures);
-    list("Baseline failures now skipped (not counted as fixed)", c.skippedBaselineFailures);
-    list("Baseline failures no longer reported (not counted as fixed)", c.missingBaselineFailures);
+    list(t("cli.tdd.report.newFailures"), c.newFailures);
+    list(t("cli.tdd.report.regressedPasses"), c.regressedPasses);
+    list(t("cli.tdd.report.fixedFailures"), c.fixedFailures);
+    list(t("cli.tdd.report.skippedBaselineFailures"), c.skippedBaselineFailures);
+    list(t("cli.tdd.report.missingBaselineFailures"), c.missingBaselineFailures);
     for (const w of c.warnings) console.log(`    \x1b[33m⚠\x1b[0m ${w}`);
   }
 
@@ -417,13 +420,12 @@ export function renderTddVerificationReport(
   const overallIcon = result.passed
     ? "\x1b[32m✓\x1b[0m"
     : "\x1b[31m✗\x1b[0m";
-  const modeLabel = result.strictMode ? " (strict)" : "";
-  console.log(`  ${overallIcon} TDD Overall: ${result.passed ? "PASSED" : "FAILED"}${modeLabel}`);
+  const modeLabel = result.strictMode ? ` ${t("cli.tdd.report.strict")}` : "";
+  console.log(`  ${overallIcon} ${t("cli.tdd.report.overall", { status: t(result.passed ? "cli.tdd.report.passed" : "cli.tdd.report.failed") })}${modeLabel}`);
 
   if (result.hasWarnings) {
     console.log(
-      `  \x1b[33m⚠\x1b[0m Warnings: Some new files are missing tests ` +
-      `(non-blocking — use --strict-tdd to enforce)`
+      `  \x1b[33m⚠\x1b[0m ${t("cli.tdd.report.warnings")}`
     );
   }
 

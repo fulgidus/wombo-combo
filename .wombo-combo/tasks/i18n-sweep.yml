@@ -11,15 +11,15 @@ description: "RUN BY THE ORCHESTRATOR AFTER multi-cli-support, docs-starlight an
   docs-starlight content tree if docs/ became a Starlight site, and fix links. Also grep remaining
   src/commands/{abort,cleanup,completion,eval,genesis,history,init,logs,resume,retry,stats,upgrade,usage}.ts and src/ink
   non-migrated files."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - i18n-docs
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T16:42:49.932Z
 constraints:
   - Run only after the other three quests are merged
   - Add tests for new keys via the key-consistency test

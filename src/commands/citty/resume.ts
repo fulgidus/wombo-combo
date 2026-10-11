@@ -15,6 +15,7 @@ import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../
 import { ensureTasksFile } from "../../lib/tasks";
 import { resolveOutputFormat, type OutputFormat } from "../../lib/output";
 import { cmdResume, type ResumeCommandOptions } from "../resume";
+import { t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Parsed resume args (intermediate representation before config merge)
@@ -102,10 +103,7 @@ export const resumeCommand = defineCommand({
 
     // Guard: project must be initialized
     if (!isProjectInitialized(projectRoot)) {
-      console.error(
-        `\nThis project hasn't been initialized yet.\n` +
-          `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-      );
+      console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
       process.exit(1);
     }
 

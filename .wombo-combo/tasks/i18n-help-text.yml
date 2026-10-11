@@ -1,0 +1,19 @@
+id: i18n-help-text
+title: Translate citty command/arg help descriptions
+description: Citty meta.description and arg descriptions (help text) are still English-only; left out of i18n-sweep on
+  purpose. Needs a lazy t() hook into citty rendering and the COMMAND_REGISTRY in lib/schema.ts.
+status: backlog
+completion: 0
+difficulty: medium
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

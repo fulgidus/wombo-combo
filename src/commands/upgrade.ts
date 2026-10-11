@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
+import { t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -188,10 +189,10 @@ async function confirm(message: string): Promise<boolean> {
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise<boolean>((resolve) => {
-    rl.question(`${message} [Y/n] `, (answer) => {
+    rl.question(`${message} ${t("cli.upgrade.yesNo")} `, (answer) => {
       rl.close();
       const a = answer.trim().toLowerCase();
-      resolve(a === "" || a === "y" || a === "yes");
+      resolve(a === "" || a === "y" || a === "yes" || a === "s" || a === "si" || a === "sì");
     });
   });
 }
@@ -215,7 +216,7 @@ async function checkGithubLatest(): Promise<ChannelResult | null> {
 
 /** Human-readable channel label. */
 function channelLabel(source: InstallSource): string {
-  return source === "github" ? "GitHub" : source === "local" ? "local dev" : "npm";
+  return source === "github" ? "GitHub" : source === "local" ? t("cli.upgrade.localDev") : "npm";
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +248,7 @@ async function installVersion(version: string, newSource: InstallSource, current
   const spec = installSpecifier(version, newSource);
   const sourceLabel = newSource === "github" ? "GitHub" : "npm";
 
-  console.log(`\nInstalling ${PKG_NAME}@${version} from ${sourceLabel}...`);
+  console.log(`\n${t("cli.upgrade.installing", { pkg: PKG_NAME, version, source: sourceLabel })}`);
 
   // Try the straightforward install first — works for same-channel and
   // often works for cross-channel too
@@ -264,7 +265,7 @@ async function installVersion(version: string, newSource: InstallSource, current
     const switching = currentSource != null && currentSource !== newSource && currentSource !== "local";
 
     if (switching) {
-      console.log(`\nDirect install failed. Retrying with source switch (${channelLabel(currentSource!)} -> ${sourceLabel})...`);
+      console.log(`\n${t("cli.upgrade.retrySwitch", { from: channelLabel(currentSource!), to: sourceLabel })}`);
 
       const rmProc = Bun.spawn(["bun", "remove", "-g", PKG_NAME], {
         stdout: "pipe",
@@ -280,7 +281,7 @@ async function installVersion(version: string, newSource: InstallSource, current
 
       if (exitCode !== 0) {
         // Both attempts failed — try to restore what we just removed
-        console.error(`\nInstallation of ${spec} failed. Attempting to restore previous install...`);
+        console.error(`\n${t("cli.upgrade.restoring", { spec })}`);
         const restoreSpec = installSpecifier(getLocalVersion(), currentSource!);
         const restoreProc = Bun.spawn(["bun", "add", "-g", restoreSpec], {
           stdout: "inherit",
@@ -288,25 +289,25 @@ async function installVersion(version: string, newSource: InstallSource, current
         });
         const restoreCode = await restoreProc.exited;
         if (restoreCode === 0) {
-          console.error(`Previous version restored. Upgrade aborted.`);
+          console.error(t("cli.upgrade.restored"));
         } else {
-          console.error(`Could not restore previous version either.`);
-          console.error(`Reinstall manually: bun add -g ${restoreSpec}`);
+          console.error(t("cli.upgrade.restoreFailed"));
+          console.error(t("cli.upgrade.reinstallManually", { spec: restoreSpec }));
         }
         process.exit(1);
         return;
       }
     } else {
       // Same-channel failure — nothing was removed, previous install is intact
-      console.error(`\nInstallation failed (exit code ${exitCode}).`);
-      console.error(`Your current install is unchanged.`);
-      console.error(`You can try manually: bun add -g ${spec}`);
+      console.error(`\n${t("cli.upgrade.installFailed", { code: exitCode })}`);
+      console.error(t("cli.upgrade.unchanged"));
+      console.error(t("cli.upgrade.tryManually", { spec }));
       process.exit(1);
       return;
     }
   }
 
-  console.log(`\nSuccessfully upgraded to ${version}.`);
+  console.log(`\n${t("cli.upgrade.success", { version })}`);
 
   // Shell out to the NEW binary for completion install — this process is
   // still running old code, so we can't import from our own source.
@@ -319,7 +320,7 @@ async function installVersion(version: string, newSource: InstallSource, current
   } catch {
     // New binary might not support completion install yet (upgrading from
     // an older version). Fall back to a one-liner hint.
-    console.log("\nRun this to set up shell completions:");
+    console.log(`\n${t("cli.upgrade.completionsHint")}`);
     console.log("  woco completion install && source ~/.zshrc");
   }
 }
@@ -332,12 +333,12 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   const localVersion = getLocalVersion();
   const source = detectInstallSource();
 
-  console.log(`Current version: v${localVersion} (${channelLabel(source)})`);
+  console.log(t("cli.upgrade.currentVersion", { version: localVersion, channel: channelLabel(source) }));
 
   if (source === "local") {
-    console.log("You are running from a local checkout. Use 'git pull' to update.");
+    console.log(t("cli.upgrade.localCheckout"));
     if (!opts.force) return;
-    console.log("--force: continuing anyway...");
+    console.log(t("cli.upgrade.forceContinue"));
   }
 
   // The effective channel for checking/installing: local upgrades default to npm
@@ -349,10 +350,10 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   // -----------------------------------------------------------------------
   if (opts.tag) {
     const targetTag = opts.tag.startsWith("v") ? opts.tag : `v${opts.tag}`;
-    console.log(`Requested version: ${targetTag}`);
+    console.log(t("cli.upgrade.requested", { tag: targetTag }));
 
     if (compareSemver(localVersion, targetTag) === 0) {
-      console.log("Already at the requested version.");
+      console.log(t("cli.upgrade.alreadyRequested"));
       return;
     }
 
@@ -367,20 +368,20 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
         const onGithub = ghTags.some((t) => compareSemver(t, targetTag) === 0);
 
         if (onGithub) {
-          console.log(`\nVersion ${targetTag} is not available on npm (your current channel).`);
-          console.log(`It was found on GitHub. This may mean npm hasn't propagated yet,`);
-          console.log(`or the release is GitHub-only.`);
+          console.log(`\n${t("cli.upgrade.notOnNpm", { tag: targetTag })}`);
+          console.log(t("cli.upgrade.foundGithub1"));
+          console.log(t("cli.upgrade.foundGithub2"));
 
           if (!opts.force) {
-            const ok = await confirm(`Switch to GitHub and install ${targetTag}?`);
+            const ok = await confirm(t("cli.upgrade.confirmSwitchGithub", { tag: targetTag }));
             if (!ok) {
-              console.log("Upgrade cancelled.");
+              console.log(t("cli.upgrade.cancelled"));
               return;
             }
           }
           targetSource = "github";
         } else {
-          console.error(`Version ${targetTag} not found on npm or GitHub.`);
+          console.error(t("cli.upgrade.notFoundNpmGithub", { tag: targetTag }));
           process.exit(1);
           return;
         }
@@ -395,19 +396,19 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
         const onNpm = await npmVersionExists(targetTag);
 
         if (onNpm) {
-          console.log(`\nVersion ${targetTag} is not available on GitHub (your current channel).`);
-          console.log(`It was found on npm.`);
+          console.log(`\n${t("cli.upgrade.notOnGithub", { tag: targetTag })}`);
+          console.log(t("cli.upgrade.foundNpm"));
 
           if (!opts.force) {
-            const ok = await confirm(`Switch to npm and install ${targetTag}?`);
+            const ok = await confirm(t("cli.upgrade.confirmSwitchNpm", { tag: targetTag }));
             if (!ok) {
-              console.log("Upgrade cancelled.");
+              console.log(t("cli.upgrade.cancelled"));
               return;
             }
           }
           targetSource = "npm";
         } else {
-          console.error(`Version ${targetTag} not found on GitHub or npm.`);
+          console.error(t("cli.upgrade.notFoundGithubNpm", { tag: targetTag }));
           process.exit(1);
           return;
         }
@@ -415,9 +416,9 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
     }
 
     if (!opts.force) {
-      const ok = await confirm(`Install ${targetTag} from ${channelLabel(targetSource)}?`);
+      const ok = await confirm(t("cli.upgrade.confirmInstall", { tag: targetTag, channel: channelLabel(targetSource) }));
       if (!ok) {
-        console.log("Upgrade cancelled.");
+        console.log(t("cli.upgrade.cancelled"));
         return;
       }
     }
@@ -429,7 +430,7 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   // -----------------------------------------------------------------------
   // Default: check for latest version on the user's channel
   // -----------------------------------------------------------------------
-  console.log(`Checking for updates on ${channelLabel(ownChannel)}...`);
+  console.log(t("cli.upgrade.checking", { channel: channelLabel(ownChannel) }));
 
   // Check both channels in parallel for responsiveness
   const [npmResult, ghResult] = await Promise.all([
@@ -446,24 +447,24 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
     const cmp = compareSemver(localVersion, ownVersion);
 
     if (cmp > 0) {
-      console.log(`Local version is ahead of latest ${channelLabel(ownChannel)} release (v${localVersion} > v${ownVersion}).`);
+      console.log(t("cli.upgrade.ahead", { channel: channelLabel(ownChannel), local: localVersion, latest: ownVersion }));
       return;
     }
     if (cmp === 0) {
       // Up to date on own channel — but maybe the other channel is ahead
       if (otherResult && compareSemver(localVersion, otherResult.version) < 0) {
         const otherV = otherResult.version.replace(/^v/, "");
-        console.log(`You are up to date on ${channelLabel(ownChannel)}.`);
-        console.log(`Note: v${otherV} is available on ${channelLabel(otherChannel)}.`);
+        console.log(t("cli.upgrade.upToDateOn", { channel: channelLabel(ownChannel) }));
+        console.log(t("cli.upgrade.noteOther", { version: otherV, channel: channelLabel(otherChannel) }));
 
         if (opts.checkOnly) {
-          console.log(`Run 'woco upgrade --tag v${otherV}' to switch channels.`);
+          console.log(t("cli.upgrade.switchHint", { version: otherV }));
           return;
         }
 
-        const ok = await confirm(`Switch to ${channelLabel(otherChannel)} and install v${otherV}?`);
+        const ok = await confirm(t("cli.upgrade.confirmSwitch", { channel: channelLabel(otherChannel), version: otherV }));
         if (!ok) {
-          console.log("No changes made.");
+          console.log(t("cli.upgrade.noChanges"));
           return;
         }
 
@@ -471,25 +472,25 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
         return;
       }
 
-      console.log("You are already up to date.");
+      console.log(t("cli.upgrade.upToDate"));
       return;
     }
 
     // There is a newer version on the own channel
-    console.log(`Latest version:  v${ownVersion} (${channelLabel(ownChannel)})`);
+    console.log(t("cli.upgrade.latestVersion", { version: ownVersion, channel: channelLabel(ownChannel) }));
 
     if (opts.checkOnly) {
-      console.log(`\nUpdate available: v${localVersion} -> v${ownVersion}`);
-      console.log(`Run 'woco upgrade' to install.`);
+      console.log(`\n${t("cli.upgrade.updateAvailable", { from: localVersion, to: ownVersion })}`);
+      console.log(t("cli.upgrade.runUpgrade"));
       return;
     }
 
-    console.log(`\nUpdate available: v${localVersion} -> v${ownVersion}`);
+    console.log(`\n${t("cli.upgrade.updateAvailable", { from: localVersion, to: ownVersion })}`);
 
     if (!opts.force) {
-      const ok = await confirm(`Upgrade to v${ownVersion}?`);
+      const ok = await confirm(t("cli.upgrade.confirmUpgrade", { version: ownVersion }));
       if (!ok) {
-        console.log("Upgrade cancelled.");
+        console.log(t("cli.upgrade.cancelled"));
         return;
       }
     }
@@ -501,18 +502,18 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
   // -- Case 2: own channel returned nothing, check the other ----------------
   if (otherResult && compareSemver(localVersion, otherResult.version) < 0) {
     const otherV = otherResult.version.replace(/^v/, "");
-    console.log(`Could not reach ${channelLabel(ownChannel)}.`);
-    console.log(`However, v${otherV} is available on ${channelLabel(otherChannel)}.`);
+    console.log(t("cli.upgrade.unreachable", { channel: channelLabel(ownChannel) }));
+    console.log(t("cli.upgrade.howeverOther", { version: otherV, channel: channelLabel(otherChannel) }));
 
     if (opts.checkOnly) {
-      console.log(`\nUpdate available: v${localVersion} -> v${otherV} (${channelLabel(otherChannel)})`);
-      console.log(`Run 'woco upgrade --tag v${otherV}' to switch channels, or try again later.`);
+      console.log(`\n${t("cli.upgrade.updateAvailableOther", { from: localVersion, to: otherV, channel: channelLabel(otherChannel) })}`);
+      console.log(t("cli.upgrade.switchOrLater", { version: otherV }));
       return;
     }
 
-    const ok = await confirm(`Switch to ${channelLabel(otherChannel)} and install v${otherV}?`);
+    const ok = await confirm(t("cli.upgrade.confirmSwitch", { channel: channelLabel(otherChannel), version: otherV }));
     if (!ok) {
-      console.log("Upgrade cancelled. Try again later when your channel is reachable.");
+      console.log(t("cli.upgrade.cancelledLater"));
       return;
     }
 
@@ -522,11 +523,11 @@ export async function cmdUpgrade(opts: UpgradeOptions): Promise<void> {
 
   // -- Case 3: neither channel had anything useful --------------------------
   if (!ownResult && !otherResult) {
-    console.error("Failed to check for updates (neither npm nor GitHub responded).");
+    console.error(t("cli.upgrade.checkFailed"));
     process.exit(1);
     return;
   }
 
   // Both responded but we're up to date (or ahead) on both
-  console.log("You are already up to date.");
+  console.log(t("cli.upgrade.upToDate"));
 }
