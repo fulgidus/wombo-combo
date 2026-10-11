@@ -341,6 +341,10 @@ export interface DaemonAgentState {
   hasChainSuccessor?: boolean;
   /** Per-task resolved model (weight-routed); null = session model applies */
   model?: string | null;
+  /** Agent profile that runs this task ("default" = legacy agent.bin path); absent in older state files */
+  profile?: string | null;
+  /** Harness of that profile (opencode, claude-code, codex, pi, custom) */
+  harness?: string | null;
   dependsOn: string[];
   dependedOnBy: string[];
   agentName: string | null;

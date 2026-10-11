@@ -28,7 +28,7 @@ const sleep = (ms = 40) => new Promise((r) => setTimeout(r, ms));
 const TICK = 1300;
 
 /** Retry an assertion block until it passes (frames render asynchronously). */
-async function eventually(assertions: () => void, timeoutMs = 4000): Promise<void> {
+async function eventually(assertions: () => void, timeoutMs = 20_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try {

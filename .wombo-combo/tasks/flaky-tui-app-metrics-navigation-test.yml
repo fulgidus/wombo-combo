@@ -1,0 +1,17 @@
+id: flaky-tui-app-metrics-navigation-test
+title: "Flaky: tui-app 'metrics provider survives navigation' fails intermittently in the full suite (passes alone)"
+description: ""
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

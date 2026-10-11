@@ -236,6 +236,9 @@ function normalizeTask(t: Task): void {
   if (t.agent === null || t.agent === "") {
     t.agent = undefined;
   }
+  if (t.agent_profile === null || t.agent_profile === "") {
+    t.agent_profile = undefined;
+  }
   if (t.quest === null || t.quest === "") {
     t.quest = undefined;
   }

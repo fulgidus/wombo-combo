@@ -2,7 +2,9 @@
  * launcher.ts — Process spawning for headless agent runs.
  *
  * Responsibilities:
- *   - Launch agent in headless mode (agent run --format json)
+ *   - Launch agent in headless mode through the harness adapter of a resolved
+ *     route (opencode by default; claude-code, codex, pi or a custom command
+ *     when agent profiles are configured — see src/lib/harness/)
  *   - Resume sessions for auto-retry
  *   - Launch conflict-resolver agents
  *
@@ -29,40 +31,40 @@
  *   parent exits, potentially causing agent crashes or lost output.
  */
 
-import { spawn, execSync, type ChildProcess } from "node:child_process";
-import { writeFileSync, unlinkSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+import type { ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import type { WomboConfig } from "../config";
-import { resolveAgentBin } from "../config";
 import { portlessEnv } from "./portless";
 import { hitlDir } from "./hitl-channel";
-import { resolve, dirname, join, basename } from "node:path";
+import { getHarness, normalizeOutput } from "./harness";
+import type { HarnessCommand, HarnessLaunchRequest, Normalizer } from "./harness/types";
+import type { HarnessId, Operation } from "./harness/ids";
+import { inlineAgentDefinition, spawnHarness } from "./harness/spawn";
+import {
+  resolveRoute,
+  resolveRouteEnv,
+  selectAvailableRoute,
+  type ResolvedRoute,
+} from "./harness/routing";
 
 // ---------------------------------------------------------------------------
 // Agent Type Detection
 // ---------------------------------------------------------------------------
 
 /**
- * Supported agent CLI types. Each has different CLI argument syntax:
+ * Legacy agent CLI type (kept for existing callers). New code should use
+ * `detectHarnessFromBin` from ./harness, which also knows codex and pi.
  *
- * - **opencode**: TUI via `opencode [project]` (positional path),
- *   headless via `opencode run --format json` (operates on spawn cwd —
- *   v2 removed the --dir flag; the built-in fake agent still parses it).
- *
- * - **claude**: TUI via `claude` (uses cwd, no path flag),
- *   headless via `claude -p --output-format stream-json`.
- *   Has NO `--dir` flag — always uses cwd.
- *
+ * - **opencode**: headless via `opencode run --format json` (operates on spawn cwd)
+ * - **claude**: headless via `claude -p --output-format stream-json`
  * - **unknown**: Falls back to opencode-style args.
  */
 export type AgentType = "opencode" | "claude" | "unknown";
 
 /**
- * Detect agent type from the resolved binary path.
- *
- * Inspects the basename of the binary (stripping extension) to determine
- * whether it's opencode or claude. This is intentionally simple — we match
- * on the binary name, not on probing `--help` output.
+ * Detect agent type from the resolved binary path (basename match, extension
+ * stripped; no probing of `--help` output).
  */
 export function detectAgentType(binPath: string): AgentType {
   const name = basename(binPath).replace(/\.(exe|cmd|bat)$/i, "").toLowerCase();
@@ -101,6 +103,14 @@ export interface LaunchResult {
   pid: number;
   process: ChildProcess;
   sessionId?: string;
+  /** Harness that runs this process */
+  harness: HarnessId;
+  /** Profile name that was used ("default" for the legacy path, "fake-agent" for the fake agent) */
+  profile: string;
+  /** Stdout line normalizer to hand to ProcessMonitor.addProcess (absent for plain opencode streams) */
+  normalize?: Normalizer;
+  /** The route this process was started with */
+  route: ResolvedRoute;
 }
 
 export interface LaunchOptions {
@@ -115,6 +125,8 @@ export interface LaunchOptions {
   hitlMode?: string;
   /** Project root (for HITL directory path) */
   projectRoot?: string;
+  /** Resolved route (profile/harness); default: the legacy route from config */
+  route?: ResolvedRoute;
 }
 
 export interface RetryOptions {
@@ -130,96 +142,26 @@ export interface RetryOptions {
   projectRoot?: string;
   /** Agent name (used to detect fake-agent sentinel) */
   agentName?: string;
+  /** Resolved route; must be the same profile the session was started with */
+  route?: ResolvedRoute;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function runSilent(cmd: string): string {
-  try {
-    return execSync(cmd, { encoding: "utf-8", stdio: "pipe" }).trim();
-  } catch {
-    return "";
-  }
-}
-
-/**
- * Maximum prompt size (in bytes) that can safely be passed as a CLI argument.
- * Linux's ARG_MAX is ~2MB, but env vars also count against it. Using 128KB
- * as a safe threshold leaves ample room for environment variables.
- */
-const PROMPT_ARG_MAX = 128 * 1024;
-
-/**
- * Spawn an agent process, passing the prompt either as a CLI argument (small
- * prompts) or via stdin (large prompts). This prevents E2BIG errors from
- * exceeding the OS argument length limit.
- *
- * @returns The spawned child process
- */
-function spawnWithPrompt(
-  agentBin: string,
-  args: string[],
-  prompt: string,
-  spawnOpts: {
-    cwd?: string;
-    env?: Record<string, string | undefined>;
-  }
-): ChildProcess {
-  const promptBytes = Buffer.byteLength(prompt, "utf-8");
-
-  if (promptBytes <= PROMPT_ARG_MAX) {
-    // Small prompt — pass as CLI argument (simpler, more reliable)
-    const child = spawn(agentBin, [...args, prompt], {
-      stdio: ["pipe", "pipe", "pipe"],
-      detached: false,
-      cwd: spawnOpts.cwd,
-      env: spawnOpts.env,
-    });
-    child.stdin?.end();
-    return child;
-  }
-
-  // Large prompt — write to temp file and pipe via stdin to avoid E2BIG
-  const tmpDir = mkdtempSync(join(tmpdir(), "woco-prompt-"));
-  const tmpFile = join(tmpDir, "prompt.txt");
-  writeFileSync(tmpFile, prompt);
-
-  const child = spawn(agentBin, args, {
-    stdio: ["pipe", "pipe", "pipe"],
-    detached: false,
-    cwd: spawnOpts.cwd,
-    env: spawnOpts.env,
-  });
-
-  // Pipe the prompt via stdin
-  child.stdin?.write(prompt);
-  child.stdin?.end();
-
-  // Clean up temp file after process exits (or after 60s as fallback)
-  const cleanup = () => {
-    try { unlinkSync(tmpFile); } catch {}
-    try { unlinkSync(tmpDir); } catch {}
-  };
-  child.on("exit", cleanup);
-  setTimeout(cleanup, 60_000);
-
-  console.log(`[launcher] Prompt too large for CLI arg (${Math.round(promptBytes / 1024)}KB) — piped via stdin`);
-
-  return child;
-}
-
 /**
  * Build environment variables for an agent process.
- * Merges process.env with OPENCODE_DIR, portless env vars, and HITL env vars.
+ * Merges process.env with OPENCODE_DIR, portless env vars, HITL env vars and
+ * the route's account variables (envFrom resolved from wombo's own env).
  */
 function agentEnv(
   worktreePath: string,
   featureId: string,
   config: WomboConfig,
   hitlMode?: string,
-  projectRoot?: string
+  projectRoot?: string,
+  route?: ResolvedRoute,
 ): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {
     ...process.env,
@@ -240,6 +182,10 @@ function agentEnv(
     env.WOMBO_HITL_ASK = hitlAskPath;
   }
 
+  if (route) {
+    Object.assign(env, resolveRouteEnv(route, process.env));
+  }
+
   return env;
 }
 
@@ -257,6 +203,90 @@ export function makeAgentTitle(featureId: string): string {
   return `woco: ${featureId}-${Date.now()}`;
 }
 
+/** Route used for the fake agent: opencode-shaped args, executed by `bun`. */
+function fakeRoute(config: WomboConfig): ResolvedRoute {
+  return {
+    profile: FAKE_AGENT_SENTINEL,
+    harness: "opencode",
+    bin: "bun",
+    model: null,
+    provider: null,
+    args: [],
+    env: {},
+    envFrom: {},
+    account: null,
+    capabilities: getHarness("opencode").capabilities,
+    chain: [FAKE_AGENT_SENTINEL],
+    legacy: true,
+  };
+}
+
+interface Prepared {
+  route: ResolvedRoute;
+  command: HarnessCommand;
+  prompt: string;
+  prefixArgs: string[];
+}
+
+/**
+ * Turn a route plus request details into the concrete command and prompt.
+ * Harnesses without named-agent selection get the agent definition inlined
+ * into the prompt instead of an `--agent` flag.
+ */
+function prepare(
+  route: ResolvedRoute,
+  isFake: boolean,
+  resume: boolean,
+  req: Omit<HarnessLaunchRequest, "bin" | "extraArgs" | "command" | "provider" | "passDir">,
+): Prepared {
+  const adapter = getHarness(route.harness);
+  const full: HarnessLaunchRequest = {
+    ...req,
+    bin: route.bin,
+    provider: route.provider,
+    extraArgs: route.args,
+    command: route.command,
+    passDir: isFake,
+  };
+  let prompt = req.prompt;
+  if (!resume && !route.capabilities.agentSelection && !isFake) {
+    prompt = inlineAgentDefinition(prompt, req.agentName, req.cwd);
+  }
+  full.prompt = prompt;
+  return {
+    route,
+    command: resume ? adapter.buildResume(full) : adapter.buildLaunch(full),
+    prompt,
+    prefixArgs: isFake ? [resolveFakeAgentBin()] : [],
+  };
+}
+
+function spawnPrepared(p: Prepared, env: Record<string, string | undefined>, cwd: string): LaunchResult {
+  const adapter = getHarness(p.route.harness);
+  const child = spawnHarness(p.command, p.prompt, { cwd, env, prefixArgs: p.prefixArgs });
+  return {
+    pid: child.pid!,
+    process: child,
+    harness: p.route.harness,
+    profile: p.route.profile,
+    route: p.route,
+    // opencode streams are already canonical: no normalizer, so the monitor keeps its original code path
+    normalize: p.route.harness === "opencode" ? undefined : adapter.createNormalizer({ command: p.route.command }),
+  };
+}
+
+function routeFor(
+  opts: { config: WomboConfig; agentName?: string; route?: ResolvedRoute; model?: string },
+  operation: Operation,
+): { route: ResolvedRoute; isFake: boolean } {
+  const isFake = opts.agentName === FAKE_AGENT_SENTINEL;
+  if (isFake) return { route: fakeRoute(opts.config), isFake };
+  return {
+    route: opts.route ?? resolveRoute(opts.config, { operation, sessionModel: opts.model }),
+    isFake,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Headless Launch
 // ---------------------------------------------------------------------------
@@ -270,57 +300,20 @@ export function makeAgentTitle(featureId: string): string {
  * See module-level documentation for the full lifecycle analysis.
  */
 export function launchHeadless(opts: LaunchOptions): LaunchResult {
-  const isFake = opts.agentName === FAKE_AGENT_SENTINEL;
-  const agentBin = isFake ? "bun" : resolveAgentBin(opts.config);
-  const agentType = isFake ? "unknown" : detectAgentType(agentBin);
-
-  const args: string[] = [];
-
-  // When using fake-agent, the binary is `bun` and first arg is the script path
-  if (isFake) {
-    args.push(resolveFakeAgentBin());
-  }
-
-  // Agent-type-specific headless CLI construction:
-  //
-  // opencode: `opencode run --format json --agent NAME --title TITLE PROMPT`
-  //           (operates on the spawn cwd — v2 dropped the --dir flag;
-  //            the built-in fake agent still parses --dir itself)
-  // claude:   `claude -p --output-format stream-json --agent NAME PROMPT`
-  //           (uses cwd for directory, set via spawn options)
-  //
-  if (agentType === "claude") {
-    args.push(
-      "-p",
-      "--output-format", "stream-json",
-      "--agent", opts.agentName ?? opts.config.agent.name,
-    );
-  } else {
-    // opencode / unknown / fake-agent
-    args.push(
-      "run",
-      "--format", "json",
-      "--agent", opts.agentName ?? opts.config.agent.name,
-      "--title", makeAgentTitle(opts.featureId),
-    );
-    if (isFake) {
-      args.push("--dir", opts.worktreePath);
-    }
-  }
-
-  if (opts.model) {
-    args.push("--model", opts.model);
-  }
-
-  const child = spawnWithPrompt(agentBin, args, opts.prompt, {
+  const { route, isFake } = routeFor(opts, "code");
+  const prepared = prepare(route, isFake, false, {
+    operation: "code",
     cwd: opts.worktreePath,
-    env: agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot),
+    prompt: opts.prompt,
+    model: opts.model ?? (isFake ? undefined : route.model),
+    agentName: opts.agentName ?? opts.config.agent.name,
+    title: makeAgentTitle(opts.featureId),
   });
-
-  return {
-    pid: child.pid!,
-    process: child,
-  };
+  return spawnPrepared(
+    prepared,
+    agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot, isFake ? undefined : route),
+    opts.worktreePath,
+  );
 }
 
 /**
@@ -328,59 +321,33 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
  *
  * Same lifecycle as `launchHeadless` — spawned with `detached: false`,
  * piped stdio, no `unref()`. The child is tied to the parent process.
+ * Harnesses that cannot resume (no session support, or a custom command
+ * without resumeArgs) get a fresh run whose prompt is the retry message.
  */
 export function retryHeadless(opts: RetryOptions): LaunchResult {
-  const isFake = opts.agentName === FAKE_AGENT_SENTINEL;
-  const agentBin = isFake ? "bun" : resolveAgentBin(opts.config);
-  const agentType = isFake ? "unknown" : detectAgentType(agentBin);
+  const { route, isFake } = routeFor(opts, "code");
 
   const retryMessage = `The build failed. Please fix the following errors and run \`${opts.config.build.command}\` again:\n\n\`\`\`\n${opts.buildErrors}\n\`\`\`\n\nFix all errors, then verify the build passes.`;
 
-  const args: string[] = [];
+  const canResume =
+    !!opts.sessionId &&
+    route.capabilities.sessionResume &&
+    (route.harness !== "custom" || !!route.command?.resumeArgs);
 
-  if (isFake) {
-    args.push(resolveFakeAgentBin());
-  }
-
-  // Agent-type-specific retry CLI construction:
-  //
-  // opencode: `opencode run --format json --session ID --continue MSG`
-  // claude:   `claude -p --output-format stream-json --resume ID --continue MSG`
-  //           (both operate on the spawn cwd)
-  //
-  if (agentType === "claude") {
-    args.push(
-      "-p",
-      "--output-format", "stream-json",
-      "--resume", opts.sessionId,
-      "--continue",
-    );
-  } else {
-    // opencode / unknown / fake-agent (opencode v2 operates on spawn cwd)
-    args.push(
-      "run",
-      "--format", "json",
-      "--session", opts.sessionId,
-      "--continue",
-    );
-    if (isFake) {
-      args.push("--dir", opts.worktreePath);
-    }
-  }
-
-  if (opts.model) {
-    args.push("--model", opts.model);
-  }
-
-  const child = spawnWithPrompt(agentBin, args, retryMessage, {
+  const prepared = prepare(route, isFake, canResume, {
+    operation: "code",
     cwd: opts.worktreePath,
-    env: agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot),
+    prompt: retryMessage,
+    model: opts.model ?? (isFake ? undefined : route.model),
+    agentName: opts.agentName ?? opts.config.agent.name,
+    title: makeAgentTitle(opts.featureId),
+    sessionId: opts.sessionId,
   });
-
-  return {
-    pid: child.pid!,
-    process: child,
-  };
+  return spawnPrepared(
+    prepared,
+    agentEnv(opts.worktreePath, opts.featureId, opts.config, opts.hitlMode, opts.projectRoot, isFake ? undefined : route),
+    opts.worktreePath,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -395,6 +362,8 @@ export interface ConflictResolverOptions {
   config: WomboConfig;
   /** Override the agent name for conflict resolution (default: merge-resolver-agent) */
   agentName?: string;
+  /** Resolved route for the "conflict" operation; default: legacy route from config */
+  route?: ResolvedRoute;
 }
 
 /**
@@ -406,8 +375,7 @@ export interface ConflictResolverOptions {
  * leaving conflict markers in the working tree.
  *
  * By default uses the specialized "merge-resolver-agent" definition, which
- * has minimal context and is focused solely on conflict resolution. Falls back
- * to the generalist agent if no merge-resolver-agent is available.
+ * has minimal context and is focused solely on conflict resolution.
  *
  * Same lifecycle as `launchHeadless` — spawned with `detached: false`,
  * piped stdio, no `unref()`. Note: conflict resolver processes are NOT
@@ -415,47 +383,87 @@ export interface ConflictResolverOptions {
  * handleBuildVerification). They are awaited directly via process.on('exit').
  */
 export function launchConflictResolver(opts: ConflictResolverOptions): LaunchResult {
-  const agentBin = resolveAgentBin(opts.config);
-  const agentType = detectAgentType(agentBin);
-
-  // Use the specialized merge-resolver agent by default
+  const route = opts.route ?? resolveRoute(opts.config, { operation: "conflict", sessionModel: opts.model });
   const agentName = opts.agentName ?? "merge-resolver-agent";
-
-  // Agent-type-specific conflict resolver CLI:
-  //
-  // opencode: `opencode run --format json --agent NAME --title TITLE PROMPT`
-  // claude:   `claude -p --output-format stream-json --agent NAME PROMPT`
-  //           (both operate on the spawn cwd)
-  const args: string[] = [];
-
-  if (agentType === "claude") {
-    args.push(
-      "-p",
-      "--output-format", "stream-json",
-      "--agent", agentName,
-    );
-  } else {
-    args.push(
-      "run",
-      "--format", "json",
-      "--agent", agentName,
-      "--title", makeAgentTitle(`conflict-resolve-${opts.featureId}`),
-    );
-  }
-
-  if (opts.model) {
-    args.push("--model", opts.model);
-  }
-
-  const child = spawnWithPrompt(agentBin, args, opts.prompt, {
+  const prepared = prepare(route, false, false, {
+    operation: "conflict",
     cwd: opts.worktreePath,
-    env: agentEnv(opts.worktreePath, opts.featureId, opts.config),
+    prompt: opts.prompt,
+    model: opts.model ?? route.model,
+    agentName,
+    title: makeAgentTitle(`conflict-resolve-${opts.featureId}`),
   });
+  return spawnPrepared(prepared, agentEnv(opts.worktreePath, opts.featureId, opts.config, undefined, undefined, route), opts.worktreePath);
+}
 
-  return {
-    pid: child.pid!,
-    process: child,
+// ---------------------------------------------------------------------------
+// Planner Launch
+// ---------------------------------------------------------------------------
+
+export interface PlannerLaunchOptions {
+  config: WomboConfig;
+  projectRoot: string;
+  prompt: string;
+  /** Agent definition name (opencode `--agent`; inlined into the prompt elsewhere) */
+  agentName: string;
+  /** Fixed session title */
+  title: string;
+  model?: string;
+}
+
+export type PlannerLaunch =
+  | { ok: true; result: LaunchResult }
+  | { ok: false; error: string };
+
+/**
+ * Launch a planner-style agent (quest, errand, genesis, onboarding synthesis)
+ * in the project root through the "plan" operation profile.
+ *
+ * Verifies the binary (and account env vars) before spawning, walking the
+ * profile's fallback chain. With no profiles configured the error text for a
+ * missing binary is the historical one.
+ */
+export function launchPlanner(opts: PlannerLaunchOptions): PlannerLaunch {
+  const primary = resolveRoute(opts.config, { operation: "plan", sessionModel: opts.model });
+  let route = primary;
+  if (primary.legacy) {
+    if (!existsSync(primary.bin)) {
+      return {
+        ok: false,
+        error: `Agent binary not found at: ${primary.bin}. Check config.agent.bin or OPENCODE_BIN env var.`,
+      };
+    }
+  } else {
+    try {
+      route = selectAvailableRoute(opts.config, primary, { operation: "plan", sessionModel: opts.model }).route;
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  const prepared = prepare(route, false, false, {
+    operation: "plan",
+    cwd: opts.projectRoot,
+    prompt: opts.prompt,
+    model: opts.model ?? route.model,
+    agentName: opts.agentName,
+    title: opts.title,
+  });
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    OPENCODE_DIR: opts.projectRoot,
+    ...resolveRouteEnv(route, process.env),
   };
+  return { ok: true, result: spawnPrepared(prepared, env, opts.projectRoot) };
+}
+
+/**
+ * Convert a planner's raw stdout into canonical opencode-shaped NDJSON for the
+ * text extractors. opencode output is returned untouched.
+ */
+export function canonicalizeOutput(raw: string, route: ResolvedRoute): string {
+  if (route.harness === "opencode") return raw;
+  return normalizeOutput(raw, getHarness(route.harness), { command: route.command });
 }
 
 // ---------------------------------------------------------------------------

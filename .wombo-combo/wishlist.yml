@@ -4,17 +4,3 @@
   created_at: 2026-10-11T02:14:18.275Z
   tags: []
   order: 2
-- id: 293f1831-707e-45e1-85d9-3b39a8f56488
-  text: "Multi harness: run agents through different harnesses (pi, Claude Code, Codex, opencode, ...) behind one launcher
-    interface; see draft quest multi-cli-support"
-  created_at: 2026-10-11T02:45:43.766Z
-  tags:
-    - harness
-  order: 3
-- id: 30fbdd13-3e4b-4d29-b60d-e7052e37a52d
-  text: "Multi provider/model routing: pick provider + model per task difficulty and per operation (planning, coding,
-    conflict resolution, review), extending today's weight-class modelRouting"
-  created_at: 2026-10-11T02:45:44.007Z
-  tags:
-    - models
-  order: 4

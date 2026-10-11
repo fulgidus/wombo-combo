@@ -10,12 +10,12 @@
  */
 
 import { loadProjectContext } from "./project-store";
-import { spawn, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { existsSync, readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, relative, basename, dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config";
-import { resolveAgentBin } from "../config";
+import { launchPlanner, canonicalizeOutput } from "./launcher";
 import type { Quest } from "./quest";
 import { getQuestTaskIds } from "./quest";
 import type { Task, Priority, Difficulty } from "./tasks";
@@ -612,45 +612,29 @@ export async function runQuestPlanner(
 
   // Launch the planner agent
   onProgress("Launching quest planner agent...");
-  const agentBin = resolveAgentBin(config);
   const agentName = "quest-planner-agent";
 
-  // Verify the agent binary exists before spawning
-  if (!existsSync(agentBin)) {
+  // Route the planner through the "plan" operation profile; verifies the binary / account env first
+  const launch = launchPlanner({
+    config,
+    projectRoot,
+    prompt,
+    agentName,
+    title: `woco: plan ${quest.id}`,
+    model: opts?.model,
+  });
+  if (!launch.ok) {
     return {
       success: false,
       tasks: [],
       knowledge: null,
       issues: [],
       rawOutput: "",
-      error: `Agent binary not found at: ${agentBin}. Check config.agent.bin or OPENCODE_BIN env var.`,
+      error: launch.error,
     };
   }
 
-  const args = [
-    "run",
-    "--format", "json",
-    "--agent", agentName,
-    "--title", `woco: plan ${quest.id}`,
-  ];
-
-  if (opts?.model) {
-    args.push("--model", opts.model);
-  }
-
-  args.push(prompt);
-
-  const child = spawn(agentBin, args, {
-    stdio: ["pipe", "pipe", "pipe"],
-    detached: false,
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      OPENCODE_DIR: projectRoot,
-    },
-  });
-
-  child.stdin?.end();
+  const child = launch.result.process;
 
   // Track this planner for abortQuestPlanner() (Esc/q during planning)
   activePlanners.set(quest.id, child);
@@ -677,12 +661,16 @@ export async function runQuestPlanner(
   const handleEventLine = (line: string): void => {
     const trimmed = line.trim();
     if (!trimmed) return;
-    let event: OpenCodeEvent;
+    let events: OpenCodeEvent[];
     try {
-      event = JSON.parse(trimmed) as OpenCodeEvent;
+      events = launch.result.normalize ? launch.result.normalize(trimmed) : [JSON.parse(trimmed) as OpenCodeEvent];
     } catch {
       return; // not a JSON event line
     }
+    for (const event of events) ingestEvent(event);
+  };
+
+  const ingestEvent = (event: OpenCodeEvent): void => {
     // Accumulate token usage per completed step
     if (event.type === "step_finish" && event.part?.tokens) {
       tokIn += event.part.tokens.input ?? 0;
@@ -802,7 +790,7 @@ export async function runQuestPlanner(
 
   // Extract text events from the JSON output stream
   // The agent outputs JSON events to stdout; text events contain the plan
-  const textContent = extractTextFromJsonEvents(rawOutput);
+  const textContent = extractTextFromJsonEvents(canonicalizeOutput(rawOutput, launch.result.route));
 
   // Extract YAML from the text content
   const yamlStr = extractPlanYaml(textContent);

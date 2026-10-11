@@ -13,10 +13,8 @@
  */
 
 import { loadProjectContext } from "./project-store";
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import type { WomboConfig } from "../config";
-import { resolveAgentBin } from "../config";
+import { launchPlanner, canonicalizeOutput } from "./launcher";
 import type { ProposedTask, PlanResult } from "./quest-planner";
 import {
   extractPlanYaml,
@@ -190,48 +188,29 @@ export async function runErrandPlanner(
 
   // Launch the errand planner agent
   onProgress("Launching errand planner...");
-  const agentBin = resolveAgentBin(config);
   const agentName = "errand-planner-agent";
 
-  // Verify the agent binary exists before spawning
-  if (!existsSync(agentBin)) {
+  // Route the planner through the "plan" operation profile; verifies the binary / account env first
+  const launch = launchPlanner({
+    config,
+    projectRoot,
+    prompt,
+    agentName,
+    title: "woco: errand",
+    model: opts?.model,
+  });
+  if (!launch.ok) {
     return {
       success: false,
       tasks: [],
       knowledge: null,
       issues: [],
       rawOutput: "",
-      error: `Agent binary not found at: ${agentBin}. Check config.agent.bin or OPENCODE_BIN env var.`,
+      error: launch.error,
     };
   }
 
-  const args = [
-    "run",
-    "--format",
-    "json",
-    "--agent",
-    agentName,
-    "--title",
-    `woco: errand`,
-  ];
-
-  if (opts?.model) {
-    args.push("--model", opts.model);
-  }
-
-  args.push(prompt);
-
-  const child = spawn(agentBin, args, {
-    stdio: ["pipe", "pipe", "pipe"],
-    detached: false,
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      OPENCODE_DIR: projectRoot,
-    },
-  });
-
-  child.stdin?.end();
+  const child = launch.result.process;
 
   // Collect stdout
   const chunks: Buffer[] = [];
@@ -307,7 +286,7 @@ export async function runErrandPlanner(
   }
 
   // Extract text events from JSON output stream
-  const textContent = extractTextFromJsonEvents(rawOutput);
+  const textContent = extractTextFromJsonEvents(canonicalizeOutput(rawOutput, launch.result.route));
 
   // Extract YAML
   const yamlStr = extractPlanYaml(textContent);

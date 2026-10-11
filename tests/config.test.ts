@@ -471,3 +471,129 @@ describe("resolveAgentBin", () => {
     expect(resolveAgentBin(configWithBin(null))).toBe(join(home, ".opencode", "bin", "opencode"));
   });
 });
+
+// ---------------------------------------------------------------------------
+// agentProfiles and routing
+// ---------------------------------------------------------------------------
+
+describe("agentProfiles and routing", () => {
+  const withProfiles = (extra: Partial<WomboConfig>): WomboConfig =>
+    ({ ...DEFAULT_CONFIG, ...extra }) as WomboConfig;
+
+  const good = {
+    agentProfiles: {
+      oc: { harness: "opencode", model: "anthropic/claude-sonnet-4" },
+      cc: {
+        harness: "claude-code",
+        model: "sonnet",
+        envFrom: { ANTHROPIC_API_KEY: "ANTHROPIC_API_KEY_WORK" },
+        account: "work",
+      },
+      cx: { harness: "codex", provider: "openai" },
+      tool: { harness: "custom", bin: "my-agent", command: { args: ["--run", "{prompt}"] } },
+    },
+    routing: {
+      default: "oc",
+      byWeight: { heavy: "cc" },
+      byDifficulty: { very_hard: "cc" },
+      byOperation: { plan: "cc", conflict: "oc" },
+      fallbacks: { cc: ["cx", "oc"] },
+    },
+  } as unknown as Partial<WomboConfig>;
+
+  test("defaults carry no profiles or routing and stay valid", () => {
+    expect(DEFAULT_CONFIG.agentProfiles).toBeUndefined();
+    expect(DEFAULT_CONFIG.routing).toBeUndefined();
+    expect(() => validateConfig(DEFAULT_CONFIG)).not.toThrow();
+  });
+
+  test("a complete valid config passes", () => {
+    expect(() => validateConfig(withProfiles(good))).not.toThrow();
+  });
+
+  test("loadConfig keeps profiles and routing from config.json; legacy keys unchanged", () => {
+    writeConfig(tmpDir, { ...good, agent: { bin: "/x/opencode" }, modelRouting: { light: "m" } });
+    const cfg = loadConfig(tmpDir);
+    expect(cfg.agentProfiles?.cc.harness).toBe("claude-code");
+    expect(cfg.routing?.fallbacks?.cc).toEqual(["cx", "oc"]);
+    expect(cfg.agent.bin).toBe("/x/opencode");
+    expect(cfg.modelRouting?.light).toBe("m");
+    expect(() => validateConfig(cfg)).not.toThrow();
+  });
+
+  test("existing configs without the new keys still load and validate", () => {
+    writeConfig(tmpDir, { agent: { bin: "/usr/bin/claude" }, modelRouting: { heavy: "opus" } });
+    expect(() => validateConfig(loadConfig(tmpDir))).not.toThrow();
+  });
+
+  test("rejects unknown harness", () => {
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "gemini" } } } as any))
+    ).toThrow(/agentProfiles\.a\.harness/);
+  });
+
+  test("rejects secret-looking env keys and values", () => {
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "codex", env: { OPENAI_API_KEY: "x" } } } }))
+    ).toThrow(/looks like a secret/);
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "codex", env: { FOO: "sk-abc123" } } } }))
+    ).toThrow(/looks like a secret/);
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "codex", env: { FOO_MODE: "fast" } } } }))
+    ).not.toThrow();
+  });
+
+  test("envFrom values must be env var names", () => {
+    expect(() =>
+      validateConfig(
+        withProfiles({ agentProfiles: { a: { harness: "codex", envFrom: { OPENAI_API_KEY: "sk-live-123 456" } } } })
+      )
+    ).toThrow(/NAME of an environment variable/);
+    expect(() =>
+      validateConfig(
+        withProfiles({ agentProfiles: { a: { harness: "codex", envFrom: { OPENAI_API_KEY: "OPENAI_KEY_2" } } } })
+      )
+    ).not.toThrow();
+  });
+
+  test("custom harness requires bin and command.args", () => {
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "custom", bin: "x" } } } as any))
+    ).toThrow(/command\.args/);
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "custom", command: { args: [] } } } } as any))
+    ).toThrow(/bin is required/);
+  });
+
+  test("routing references must name defined profiles", () => {
+    const profiles = { a: { harness: "opencode" } } as any;
+    expect(() => validateConfig(withProfiles({ agentProfiles: profiles, routing: { default: "zzz" } }))).toThrow(
+      /routing\.default references unknown profile "zzz"/
+    );
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: profiles, routing: { byOperation: { plan: "zzz" } } }))
+    ).toThrow(/byOperation\.plan/);
+    expect(() => validateConfig(withProfiles({ routing: { default: "a" } }))).toThrow(/unknown profile/);
+  });
+
+  test("routing table keys are validated", () => {
+    const profiles = { a: { harness: "opencode" } } as any;
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: profiles, routing: { byOperation: { deploy: "a" } } as any }))
+    ).toThrow(/unknown key "deploy"/);
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: profiles, routing: { byWeight: { huge: "a" } } as any }))
+    ).toThrow(/unknown key "huge"/);
+  });
+
+  test("fallback chains reject unknown names and cycles", () => {
+    const profiles = { a: { harness: "opencode" }, b: { harness: "codex" } } as any;
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: profiles, routing: { fallbacks: { a: ["nope"] } } }))
+    ).toThrow(/unknown profile "nope"/);
+    expect(() =>
+      validateConfig(withProfiles({ agentProfiles: profiles, routing: { fallbacks: { a: ["b"], b: ["a"] } } }))
+    ).toThrow(/cycle: a -> b -> a/);
+  });
+});

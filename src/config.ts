@@ -7,6 +7,10 @@
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
+import { HARNESS_IDS, OPERATIONS, isHarnessId, type HarnessId, type Operation } from "./lib/harness/ids";
+import type { CustomCommandSpec, HarnessCapabilities } from "./lib/harness/types";
+import type { Difficulty } from "./lib/tasks";
+import type { TaskWeight } from "./lib/task-weight";
 
 // ---------------------------------------------------------------------------
 // .wombo-combo directory constant
@@ -114,6 +118,52 @@ export interface WomboConfig {
     medium?: string | null;
     heavy?: string | null;
   };
+  /**
+   * Named agent profiles (harness + binary + model + provider + account env
+   * references). Optional: without it every operation runs through the legacy
+   * agent.bin / modelRouting path (opencode unless agent.bin is another CLI).
+   */
+  agentProfiles?: Record<string, AgentProfile>;
+  /** Which profile handles which task weight / difficulty / operation, plus fallback chains */
+  routing?: RoutingConfig;
+}
+
+/**
+ * A named way to run an agent. Never contains secrets: credentials are
+ * referenced by environment variable NAME through `envFrom`.
+ */
+export interface AgentProfile {
+  /** Which CLI adapter to use */
+  harness: HarnessId;
+  /** Executable path/name; null/undefined = the harness default (or legacy agent.bin for opencode) */
+  bin?: string | null;
+  /** Model passed to the CLI; null = CLI default */
+  model?: string | null;
+  /** Provider passed to the CLI where it has such a setting */
+  provider?: string | null;
+  /** Extra CLI arguments placed before the prompt */
+  args?: string[];
+  /** Literal, NON-secret environment variables for the child process */
+  env?: Record<string, string>;
+  /** Child env var name -> NAME of a variable in wombo's own environment (account/API key routing) */
+  envFrom?: Record<string, string>;
+  /** Free-form account label shown in the UI */
+  account?: string;
+  /** Override the adapter's capability flags (for example for custom commands) */
+  capabilities?: Partial<HarnessCapabilities>;
+  /** Command template (required for harness "custom") */
+  command?: CustomCommandSpec;
+}
+
+/** Routing from task attributes and operations to profile names */
+export interface RoutingConfig {
+  /** Profile used when nothing more specific matches */
+  default?: string;
+  byWeight?: Partial<Record<TaskWeight, string>>;
+  byDifficulty?: Partial<Record<Difficulty, string>>;
+  byOperation?: Partial<Record<Operation, string>>;
+  /** profile name -> ordered list of profiles to try when it cannot start */
+  fallbacks?: Record<string, string[]>;
 }
 
 /** How a post-merge pull request is published */
@@ -411,6 +461,128 @@ export function resolveAgentBin(config: WomboConfig): string {
   return Bun.which("opencode", { PATH: process.env.PATH }) ?? installed;
 }
 
+const ENV_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const SECRET_KEY_RE = /key|token|secret|passw|credential/i;
+const SECRET_VALUE_RE = /^(sk-|ghp_|gho_|github_pat_|xox[abp]-|AKIA[0-9A-Z]{8})/;
+const WEIGHTS: readonly string[] = ["light", "medium", "heavy"];
+const DIFFICULTIES: readonly string[] = ["trivial", "easy", "medium", "hard", "very_hard"];
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Validate agentProfiles and routing. Throws with a config-path-prefixed message. */
+function validateAgentRouting(config: WomboConfig): void {
+  const profiles = config.agentProfiles;
+  if (profiles !== undefined) {
+    if (!isPlainObject(profiles)) throw new Error("config.agentProfiles must be an object");
+    for (const [name, p] of Object.entries(profiles)) {
+      const at = `config.agentProfiles.${name}`;
+      if (!name.trim()) throw new Error("config.agentProfiles names must be non-empty");
+      if (!isPlainObject(p)) throw new Error(`${at} must be an object`);
+      if (!isHarnessId(p.harness)) {
+        throw new Error(`${at}.harness must be one of: ${HARNESS_IDS.join(", ")}`);
+      }
+      for (const field of ["bin", "model", "provider"] as const) {
+        const v = p[field];
+        if (v !== undefined && v !== null && (typeof v !== "string" || v.trim() === "")) {
+          throw new Error(`${at}.${field} must be null or a non-empty string`);
+        }
+      }
+      if (p.account !== undefined && typeof p.account !== "string") {
+        throw new Error(`${at}.account must be a string`);
+      }
+      if (p.args !== undefined && (!Array.isArray(p.args) || p.args.some((a) => typeof a !== "string"))) {
+        throw new Error(`${at}.args must be an array of strings`);
+      }
+      if (p.env !== undefined) {
+        if (!isPlainObject(p.env)) throw new Error(`${at}.env must be an object of strings`);
+        for (const [k, v] of Object.entries(p.env)) {
+          if (typeof v !== "string") throw new Error(`${at}.env.${k} must be a string`);
+          if (!ENV_NAME_RE.test(k)) throw new Error(`${at}.env key "${k}" is not a valid environment variable name`);
+          if (SECRET_KEY_RE.test(k) || SECRET_VALUE_RE.test(v)) {
+            throw new Error(
+              `${at}.env.${k} looks like a secret; never put secrets in config. Use envFrom to reference an environment variable by name`
+            );
+          }
+        }
+      }
+      if (p.envFrom !== undefined) {
+        if (!isPlainObject(p.envFrom)) throw new Error(`${at}.envFrom must be an object of environment variable names`);
+        for (const [k, v] of Object.entries(p.envFrom)) {
+          if (!ENV_NAME_RE.test(k)) throw new Error(`${at}.envFrom key "${k}" is not a valid environment variable name`);
+          if (typeof v !== "string" || !ENV_NAME_RE.test(v)) {
+            throw new Error(
+              `${at}.envFrom.${k} must be the NAME of an environment variable (not a secret value)`
+            );
+          }
+        }
+      }
+      if (p.capabilities !== undefined) {
+        if (!isPlainObject(p.capabilities)) throw new Error(`${at}.capabilities must be an object`);
+        for (const [k, v] of Object.entries(p.capabilities)) {
+          if (typeof v !== "boolean") throw new Error(`${at}.capabilities.${k} must be a boolean`);
+        }
+      }
+      if (p.harness === "custom") {
+        const c = p.command;
+        if (!isPlainObject(c) || !Array.isArray(c.args) || c.args.some((a) => typeof a !== "string")) {
+          throw new Error(`${at}.command.args (array of strings) is required for harness "custom"`);
+        }
+        if (!p.bin) throw new Error(`${at}.bin is required for harness "custom"`);
+        if (c.output !== undefined && c.output !== "text" && c.output !== "opencode-jsonl") {
+          throw new Error(`${at}.command.output must be "text" or "opencode-jsonl"`);
+        }
+      }
+    }
+  }
+
+  const routing = config.routing;
+  if (routing === undefined) return;
+  if (!isPlainObject(routing)) throw new Error("config.routing must be an object");
+  const known = (n: unknown): boolean => typeof n === "string" && !!profiles && Object.hasOwn(profiles, n);
+  const ref = (at: string, n: unknown): void => {
+    if (!known(n)) throw new Error(`${at} references unknown profile "${String(n)}"`);
+  };
+  if (routing.default !== undefined) ref("config.routing.default", routing.default);
+  const tables: [string, unknown, readonly string[]][] = [
+    ["byWeight", routing.byWeight, WEIGHTS],
+    ["byDifficulty", routing.byDifficulty, DIFFICULTIES],
+    ["byOperation", routing.byOperation, OPERATIONS],
+  ];
+  for (const [label, table, keys] of tables) {
+    if (table === undefined) continue;
+    if (!isPlainObject(table)) throw new Error(`config.routing.${label} must be an object`);
+    for (const [k, v] of Object.entries(table)) {
+      if (!keys.includes(k)) {
+        throw new Error(`config.routing.${label} has unknown key "${k}" (expected one of: ${keys.join(", ")})`);
+      }
+      if (v !== undefined) ref(`config.routing.${label}.${k}`, v);
+    }
+  }
+  if (routing.fallbacks !== undefined) {
+    if (!isPlainObject(routing.fallbacks)) throw new Error("config.routing.fallbacks must be an object");
+    for (const [name, list] of Object.entries(routing.fallbacks)) {
+      ref(`config.routing.fallbacks key`, name);
+      if (!Array.isArray(list)) throw new Error(`config.routing.fallbacks.${name} must be an array of profile names`);
+      for (const n of list) ref(`config.routing.fallbacks.${name}`, n);
+    }
+    // Cycle detection over the fallback graph
+    const graph = routing.fallbacks as Record<string, string[]>;
+    const state = new Map<string, 1 | 2>();
+    const visit = (n: string, path: string[]): void => {
+      if (state.get(n) === 2) return;
+      if (state.get(n) === 1) {
+        throw new Error(`config.routing.fallbacks contains a cycle: ${[...path, n].join(" -> ")}`);
+      }
+      state.set(n, 1);
+      for (const next of graph[n] ?? []) visit(next, [...path, n]);
+      state.set(n, 2);
+    };
+    for (const n of Object.keys(graph)) visit(n, []);
+  }
+}
+
 /**
  * Validate the config for obvious issues. Throws on error.
  */
@@ -455,6 +627,7 @@ export function validateConfig(config: WomboConfig): void {
   if (config.tdd.enabled && !config.tdd.testCommand) {
     throw new Error("config.tdd.testCommand must be a non-empty string when TDD is enabled");
   }
+  validateAgentRouting(config);
   if (config.postMerge !== undefined) {
     const pm = config.postMerge as Partial<PostMergeConfig>;
     if (pm.prMode !== undefined && !POST_MERGE_PR_MODES.includes(pm.prMode)) {

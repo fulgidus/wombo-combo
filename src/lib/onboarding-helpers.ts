@@ -7,11 +7,9 @@
  *   - runLlmSynthesis()     — LLM-enhanced profile refinement
  */
 
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config";
-import { resolveAgentBin } from "../config";
+import { launchPlanner, canonicalizeOutput } from "./launcher";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
 import {
   normalizeProfile,
@@ -228,10 +226,10 @@ function buildSynthesisPrompt(profile: ProjectProfile): string {
  * Spawn an LLM agent to enhance the raw project profile.
  *
  * Follows the same agent-spawning pattern as genesis-planner.ts:
- *   1. resolveAgentBin(config) to get the binary path.
- *   2. Check existsSync(agentBin), return original profile if not found.
+ *   1. launchPlanner() routes through the "plan" profile and verifies the binary.
+ *   2. Return the original profile if no agent can start.
  *   3. Build a prompt with all raw profile data + codebase_summary.
- *   4. spawn(agentBin, ['run', '--format', 'json', ...]).
+ *   4. The harness adapter builds the command (opencode: run --format json ...).
  *   5. Capture stdout, extract text from JSON events, find YAML.
  *   6. Normalize parsed result with normalizeProfile.
  *   7. Return enhanced profile, falling back to original on error.
@@ -243,37 +241,22 @@ export async function runLlmSynthesis(
   onProgress: (msg: string) => void
 ): Promise<ProjectProfile> {
   try {
-    onProgress("Resolving agent binary...");
-    const agentBin = resolveAgentBin(config);
-
-    if (!existsSync(agentBin)) {
-      onProgress("Agent binary not found — skipping LLM synthesis");
-      return profile;
-    }
-
     onProgress("Building synthesis prompt...");
     const prompt = buildSynthesisPrompt(profile);
 
     onProgress("Launching LLM synthesis agent...");
-    const args = [
-      "run",
-      "--format", "json",
-      "--agent", "genesis-planner-agent",
-      "--title", "woco: onboarding synthesis",
+    const launch = launchPlanner({
+      config,
+      projectRoot,
       prompt,
-    ];
-
-    const child = spawn(agentBin, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-      detached: false,
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        OPENCODE_DIR: projectRoot,
-      },
+      agentName: "genesis-planner-agent",
+      title: "woco: onboarding synthesis",
     });
-
-    child.stdin?.end();
+    if (!launch.ok) {
+      onProgress("Agent binary not found — skipping LLM synthesis");
+      return profile;
+    }
+    const child = launch.result.process;
 
     const chunks: Buffer[] = [];
     let stderrText = "";
@@ -333,7 +316,7 @@ export async function runLlmSynthesis(
     }
 
     onProgress("Parsing LLM synthesis output...");
-    const textContent = extractTextFromJsonEvents(rawOutput);
+    const textContent = extractTextFromJsonEvents(canonicalizeOutput(rawOutput, launch.result.route));
 
     const yamlStr = extractYamlFromFencedBlocks(textContent);
 

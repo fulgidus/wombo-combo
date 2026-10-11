@@ -1,0 +1,33 @@
+id: planner-harness-integration
+title: Route planners and onboarding through harnesses
+description: |
+  Replace the four hand-rolled opencode spawns (quest-planner, errand-planner,
+  genesis-planner, onboarding-helpers runLlmSynthesis) with the shared
+  spawn helper using operation plan, resolve the binary through the route
+  (fallback chain preflight) and run raw output through normalizeOutput
+  before the existing text extraction; the quest planner live token/activity
+  feed uses the route normalizer. Error messages name the profile and bin.
+  Tests exercise a stub harness through the generic adapter.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - launcher-harness-integration
+effort: PT3H
+started_at: 2026-10-11T14:21:54.555Z
+ended_at: 2026-10-11T14:27:56.973Z
+constraints:
+  - default behavior with no profiles must be identical (same argv, same error text for missing binary)
+  - planner timeouts and abort registry unchanged
+forbidden: []
+references:
+  - src/lib/quest-planner.ts
+  - src/lib/errand-planner.ts
+  - src/lib/genesis-planner.ts
+  - src/lib/onboarding-helpers.ts
+  - tests/harness-planners.test.ts
+notes: []
+subtasks: []
+quest: multi-cli-support
+paths: []

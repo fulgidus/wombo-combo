@@ -101,7 +101,10 @@
       "additionalProperties": false,
       "properties": {
         "bin": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Path to agent binary (null = auto-detect)"
         },
@@ -112,8 +115,14 @@
         },
         "configFiles": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": [".opencode/", "opencode.json", "AGENTS.md"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".opencode/",
+            "opencode.json",
+            "AGENTS.md"
+          ],
           "description": "Config files/dirs to copy into worktrees"
         },
         "tmuxPrefix": {
@@ -133,7 +142,10 @@
           "description": "Whether portless is enabled for agent worktrees"
         },
         "bin": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Path to portless binary (null = auto-detect)"
         },
@@ -189,7 +201,10 @@
           "description": "Enable browser testing in the verify pipeline"
         },
         "bin": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Path to browser binary (null = auto-detect)"
         },
@@ -199,7 +214,10 @@
           "description": "Run browser in headless mode"
         },
         "testCommand": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Custom test command for browser tests"
         },
@@ -235,7 +253,11 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["auto", "monitored", "disabled"],
+          "enum": [
+            "auto",
+            "monitored",
+            "disabled"
+          ],
           "default": "auto",
           "description": "Agent registry download mode"
         },
@@ -261,7 +283,10 @@
           "description": "Enable TDD verification in the build pipeline"
         },
         "testCommand": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Test command to run (e.g. 'bun test', 'npm test')"
         },
@@ -284,12 +309,19 @@
       "properties": {
         "prMode": {
           "type": "string",
-          "enum": ["open", "draft", "skip"],
+          "enum": [
+            "open",
+            "draft",
+            "skip"
+          ],
           "default": "skip",
           "description": "open = ready PR, draft = draft PR, skip = no GitHub publication"
         },
         "prBaseBranch": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1,
           "default": null,
           "description": "PR target branch; null = the configured remote's default branch"
@@ -305,6 +337,247 @@
       "type": "boolean",
       "default": false,
       "description": "Developer mode: enables hidden features like fake task seeding (F key) in TUI. Can also be enabled via --dev CLI flag."
+    },
+    "modelRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-task model routing by weight class (light/medium/heavy); null/absent = session model",
+      "properties": {
+        "light": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "medium": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "heavy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "agentProfiles": {
+      "type": "object",
+      "description": "Named agent profiles: harness + binary + model + provider + account env references. Never put secrets here.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "harness"
+        ],
+        "properties": {
+          "harness": {
+            "type": "string",
+            "enum": [
+              "opencode",
+              "claude-code",
+              "codex",
+              "pi",
+              "custom"
+            ],
+            "description": "Which CLI adapter runs this profile"
+          },
+          "bin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Executable path or name; null = harness default"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Model passed to the CLI"
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Provider passed to the CLI (where supported)"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Extra CLI arguments placed before the prompt"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Literal NON-secret environment variables (secret-looking keys/values are rejected)"
+          },
+          "envFrom": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
+            "description": "Child env var -> NAME of a variable in wombo's environment (account/API key routing)"
+          },
+          "account": {
+            "type": "string",
+            "description": "Free-form account label"
+          },
+          "capabilities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Override adapter capability flags"
+          },
+          "command": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "args"
+            ],
+            "description": "Command template for harness custom",
+            "properties": {
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Placeholders: {prompt} {model} {provider} {cwd} {agent} {title}"
+              },
+              "resumeArgs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Resume template; adds {session}"
+              },
+              "output": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "opencode-jsonl"
+                ],
+                "default": "text"
+              },
+              "stdin": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which profile handles which task weight, difficulty or operation, with fallback chains",
+      "properties": {
+        "default": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of a profile defined in agentProfiles"
+        },
+        "byWeight": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "light": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "medium": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "heavy": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            }
+          }
+        },
+        "byDifficulty": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "trivial": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "easy": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "medium": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "hard": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "very_hard": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            }
+          }
+        },
+        "byOperation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "plan": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "conflict": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            },
+            "review": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            }
+          }
+        },
+        "fallbacks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a profile defined in agentProfiles"
+            }
+          },
+          "description": "profile -> ordered fallback profiles tried when it cannot start"
+        }
+      }
     }
   }
 }

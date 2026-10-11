@@ -1,0 +1,36 @@
+id: harness-contract-opencode
+title: Harness adapter contract and opencode adapter
+description: |
+  Create src/lib/harness/ with ids.ts, types.ts, index.ts, opencode.ts and
+  output.ts per the quest knowledge file. First write characterization tests
+  (tests/harness-opencode.test.ts) that pin today's opencode argv for
+  launchHeadless, retryHeadless and launchConflictResolver (including
+  --title shape, --model placement, fake-agent --dir) and the claude
+  detection; then implement the opencode adapter so buildLaunch/buildResume
+  reproduce those argv exactly, with an identity normalizer. Add
+  detectHarnessFromBin and normalizeOutput. Do not change launcher.ts yet.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: 2026-10-11T13:51:01.086Z
+ended_at: 2026-10-11T13:55:17.576Z
+constraints:
+  - opencode argv must be byte-identical to current launcher output
+  - harness/ids.ts must have no imports so config.ts can use it
+  - tests use bun:test and never spawn real agents
+forbidden: []
+references:
+  - src/lib/harness/ids.ts
+  - src/lib/harness/types.ts
+  - src/lib/harness/index.ts
+  - src/lib/harness/opencode.ts
+  - src/lib/harness/output.ts
+  - tests/harness-opencode.test.ts
+notes:
+  - ProcessMonitor keeps consuming the opencode event shape; adapters normalize into it
+subtasks: []
+quest: multi-cli-support
+paths: []
