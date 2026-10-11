@@ -136,6 +136,17 @@ Multi-developer coordination: git-tracked task claims (.wombo-combo/claims/) so 
 | `team.owner` | string \| null | `null` | Claim owner identity; null = git config user.email |
 | `team.claimTtlHours` | number | `24` | Hours until a claim expires and can be taken over |
 
+## `comments`
+
+Task and quest comments (.wombo-combo/comments/): recent comments in agent prompts and optional daemon lifecycle comments
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `comments.enabled` | boolean | `true` | Include recent comments in agent prompts and tell agents how to leave one |
+| `comments.promptMaxItems` | integer | `10` | Maximum number of recent comments per task or quest in the agent prompt Minimum: `1`. |
+| `comments.promptMaxChars` | integer | `4000` | Maximum total characters of comment text in the agent prompt (oldest dropped first) Minimum: `1`. |
+| `comments.autoLifecycle` | boolean | `false` | Daemon posts system comments on task lifecycle events (started, failed, merged, retried) |
+
 ## `modelRouting`
 
 Per-task model routing by weight class (light/medium/heavy); null/absent = session model

@@ -22,6 +22,7 @@
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
 import type { Task } from "../lib/tasks";
+import type { Comment } from "../lib/comments";
 import type { UsageTotals } from "../lib/token-usage";
 import type { SortField } from "../lib/tui-session";
 import type { DaemonAgentState } from "../daemon/protocol";
@@ -105,6 +106,8 @@ export interface TaskBrowserViewProps {
   hasRunningWave?: boolean;
   /** Live agent states from daemon-state.json, keyed by featureId (task id). */
   agentStates?: Map<string, DaemonAgentState>;
+  /** Loads the most recent comments of a task (read-only, synchronous). Omit to hide the section. */
+  loadComments?: (taskId: string) => Comment[];
 
   // Callbacks
   onSelectionChange: (index: number) => void;
@@ -300,14 +303,68 @@ function TaskListItem({
   );
 }
 
+const COMMENT_LIMIT = 5;
+const COMMENT_BODY_LINES = 3;
+
+const ROLE_COLORS: Record<string, string> = {
+  agent: "cyan",
+  human: "green",
+  system: "gray",
+};
+
+/** Truncate a comment body to a few lines, marking the cut with an ellipsis. */
+function truncateBody(body: string, maxLines: number): string {
+  const lines = body.trim().split("\n");
+  if (lines.length <= maxLines) return lines.join("\n");
+  return lines.slice(0, maxLines).join("\n") + " …";
+}
+
+/** Read-only list of the latest comments of a task. Hidden when empty or on error. */
+function TaskComments({
+  taskId,
+  loadComments,
+}: {
+  taskId: string;
+  loadComments?: (taskId: string) => Comment[];
+}): React.ReactElement | null {
+  const t = useI18n();
+  const comments = useMemo(() => {
+    if (!loadComments) return [];
+    try {
+      return loadComments(taskId).slice(-COMMENT_LIMIT);
+    } catch {
+      return [];
+    }
+  }, [taskId, loadComments]);
+  if (comments.length === 0) return null;
+  return (
+    <Box flexDirection="column" marginTop={1}>
+      <Text bold>{t("taskBrowser.comments.title", { count: comments.length })}</Text>
+      {comments.map((c) => (
+        <Box key={c.id} flexDirection="column">
+          <Text>
+            <Text bold>{c.author}</Text>
+            <Text> </Text>
+            <Text color={ROLE_COLORS[c.role] ?? "white"}>[{t(`taskBrowser.comments.role.${c.role}`)}]</Text>
+            <Text dimColor> {c.created_at.slice(0, 16).replace("T", " ")}</Text>
+          </Text>
+          <Text>  {truncateBody(c.body, COMMENT_BODY_LINES)}</Text>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 function TaskDetail({
   node,
   usage,
   agentState,
+  loadComments,
 }: {
   node: TaskNode;
   usage?: UsageTotals;
   agentState?: DaemonAgentState;
+  loadComments?: (taskId: string) => Comment[];
 }): React.ReactElement {
   const t = useI18n();
   const { task, streamId, depth, dependedOnBy, depsReady } = node;
@@ -403,6 +460,9 @@ function TaskDetail({
           ))}
         </>
       )}
+
+      {/* Recent comments */}
+      <TaskComments taskId={task.id} loadComments={loadComments} />
 
       {/* Agent section */}
       {agentState && (
@@ -588,6 +648,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
     questTitle,
     hasRunningWave,
     agentStates,
+    loadComments,
     onSelectionChange,
     onToggle,
     onToggleStream,
@@ -747,6 +808,7 @@ export function TaskBrowserView(props: TaskBrowserViewProps): React.ReactElement
               node={selectedNode}
               usage={selectedTaskUsage}
               agentState={agentStates?.get(selectedNode.task.id)}
+              loadComments={loadComments}
             />
           ) : (
             <Text dimColor>{t("taskBrowser.noTaskSelected")}</Text>

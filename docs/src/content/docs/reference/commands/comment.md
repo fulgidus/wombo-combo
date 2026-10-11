@@ -46,6 +46,7 @@ Modifies project state.
 | `--role` |  | string |  | Author role: agent (default), human, or system |
 | `--author` |  | string |  | Author (default: WOMBO_AUTHOR, git user.email, OS user) |
 | `--reply-to` |  | string |  | Comment ID this comment replies to |
+| `--github-url` |  | string |  | URL of the mirrored GitHub issue comment |
 | `--stdin` |  | boolean | `false` | Read the comment text from stdin |
 
 ### Global flags

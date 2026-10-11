@@ -1,7 +1,7 @@
 /**
  * comment.ts — Comments on tasks and quests.
  *
- *   woco comment add <ref> <text...> [--role agent|human|system] [--author x] [--reply-to id] [--stdin]
+ *   woco comment add <ref> <text...> [--role agent|human|system] [--author x] [--reply-to id] [--github-url url] [--stdin]
  *   woco comment list <ref> [--since ts] [--limit n] [--author x]
  *   woco comment show <comment-id>
  *
@@ -38,6 +38,7 @@ export interface CommentOptions {
   role?: string;
   author?: string;
   replyTo?: string;
+  githubUrl?: string;
   since?: string;
   limit?: string | number;
 }
@@ -103,6 +104,7 @@ export async function cmdCommentAdd(opts: CommentOptions & { stdin?: boolean }):
       author: opts.author || undefined,
       role: role as Comment["role"] | undefined,
       reply_to: opts.replyTo || undefined,
+      github_url: opts.githubUrl || undefined,
     });
   } catch (err) {
     return outputError(fmt, msg("cli.comment.add.failed", { error: err instanceof Error ? err.message : String(err) }));

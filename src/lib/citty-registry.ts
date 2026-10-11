@@ -956,6 +956,7 @@ const ENTRIES: RegistryEntry[] = [
             role: { description: "Author role: agent (default), human, or system" },
             author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
             "reply-to": { description: "Comment ID this comment replies to" },
+            "github-url": { description: "URL of the mirrored GitHub issue comment" },
             stdin: { description: "Read the comment text from stdin", default: false },
           },
         },

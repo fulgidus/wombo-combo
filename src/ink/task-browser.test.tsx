@@ -19,6 +19,7 @@ import React from "react";
 import { renderToString } from "ink";
 import { TaskBrowserView, type TaskBrowserViewProps, type TaskNode } from "./task-browser";
 import type { Task } from "../lib/tasks";
+import type { Comment } from "../lib/comments";
 import type { UsageTotals } from "../lib/token-usage";
 import type { SortField } from "../lib/tui-session";
 
@@ -309,5 +310,94 @@ describe("TaskBrowserView (static rendering)", () => {
     );
     expect(output).toContain("Must use TypeScript");
     expect(output).toContain("No external deps");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Comments section
+// ---------------------------------------------------------------------------
+
+describe("TaskBrowserView (comments)", () => {
+  function mk(i: number, over: Partial<Comment> = {}): Comment {
+    return {
+      id: `c${i}`,
+      ref_kind: "task",
+      ref_id: "test-task",
+      author: `author${i}`,
+      role: "human",
+      created_at: `2026-01-0${i}T10:30:00.000Z`,
+      body: `body number ${i}`,
+      ...over,
+    };
+  }
+
+  test("shows author, role badge, time and body of the latest comments", () => {
+    const output = renderToString(
+      <TaskBrowserView
+        {...defaultProps({
+          loadComments: () => [mk(1), mk(2, { role: "agent" })],
+        })}
+      />,
+    );
+    expect(output).toContain("Comments");
+    expect(output).toContain("author1");
+    expect(output).toContain("[human]");
+    expect(output).toContain("[agent]");
+    expect(output).toContain("2026-01-02");
+    expect(output).toContain("body number 2");
+  });
+
+  test("keeps only the last 5 comments", () => {
+    const all = [1, 2, 3, 4, 5, 6, 7].map((i) => mk(i));
+    const output = renderToString(
+      <TaskBrowserView {...defaultProps({ loadComments: () => all })} />,
+    );
+    expect(output).not.toContain("author2");
+    expect(output).toContain("author3");
+    expect(output).toContain("author7");
+  });
+
+  test("truncates long bodies to a few lines", () => {
+    const body = ["l1", "l2", "l3", "l4-hidden", "l5-hidden"].join("\n");
+    const output = renderToString(
+      <TaskBrowserView {...defaultProps({ loadComments: () => [mk(1, { body })] })} />,
+    );
+    expect(output).toContain("l3");
+    expect(output).not.toContain("l4-hidden");
+  });
+
+  test("hides the section when there are no comments or the loader throws", () => {
+    const none = renderToString(
+      <TaskBrowserView {...defaultProps({ loadComments: () => [] })} />,
+    );
+    expect(none).not.toContain("Comments");
+    const boom = renderToString(
+      <TaskBrowserView
+        {...defaultProps({
+          loadComments: () => {
+            throw new Error("disk");
+          },
+        })}
+      />,
+    );
+    expect(boom).not.toContain("Comments");
+    expect(boom).toContain("Test Task Title");
+  });
+
+  test("loads comments for the selected task only", () => {
+    const seen: string[] = [];
+    renderToString(
+      <TaskBrowserView
+        {...defaultProps({
+          nodes: [makeNode({ task: { id: "a" } }), makeNode({ task: { id: "b" } })],
+          selectedIndex: 1,
+          loadComments: (id) => {
+            seen.push(id);
+            return [];
+          },
+        })}
+      />,
+    );
+    expect(seen).toEqual(["b"]);
   });
 });

@@ -11,11 +11,74 @@
 
 import type { Feature, Subtask } from "./tasks";
 import { formatDuration, parseDurationMinutes } from "./tasks";
-import type { WomboConfig } from "../config";
+import { normalizeCommentsConfig, type WomboConfig } from "../config";
+import type { Comment } from "./comments";
 import { isPortlessAvailable, portlessUrl } from "./portless";
 import type { QuestHitlMode } from "./quest";
 import { compressConstraints, compressSource } from "./prompt-compress";
 import { formatHunksForLLM, type Tier25Result } from "./conflict-hunks";
+
+// ---------------------------------------------------------------------------
+// Comments (optional — recent task/quest comments, oldest first)
+// ---------------------------------------------------------------------------
+
+export interface PromptComments {
+  task: Comment[];
+  quest: Comment[];
+}
+
+/** Keep the newest comments that fit the item and char budgets (oldest first). */
+function capComments(list: Comment[], maxItems: number, charBudget: number): Comment[] {
+  const kept: Comment[] = [];
+  let used = 0;
+  for (const c of list.slice(-maxItems).reverse()) {
+    if (used + c.body.length > charBudget) break;
+    used += c.body.length;
+    kept.unshift(c);
+  }
+  return kept;
+}
+
+function formatCommentList(list: Comment[]): string[] {
+  return list.map((c) => {
+    const body = c.body.trim().replace(/\n/g, "\n  ");
+    return `- **${c.author}** (${c.role}, ${c.created_at}): ${body}`;
+  });
+}
+
+/**
+ * Build the "Comments" section: recent comments on the task and its quest
+ * (newest last) plus how to leave one. Returns null when comments are
+ * disabled or there is nothing to show.
+ */
+export function formatCommentsSection(
+  feature: Feature,
+  config: WomboConfig,
+  comments?: PromptComments | null,
+  questId?: string
+): string | null {
+  const cfg = normalizeCommentsConfig(config.comments);
+  if (!cfg.enabled || !comments) return null;
+  const task = capComments(comments.task, cfg.promptMaxItems, cfg.promptMaxChars);
+  const used = task.reduce((n, c) => n + c.body.length, 0);
+  const quest = capComments(comments.quest, cfg.promptMaxItems, cfg.promptMaxChars - used);
+  if (task.length === 0 && quest.length === 0) return null;
+
+  const out: string[] = [`\n## Comments\n`];
+  if (task.length > 0) {
+    out.push(`Recent comments on this task (newest last):\n`, ...formatCommentList(task), "");
+  }
+  if (quest.length > 0) {
+    out.push(`Recent comments on quest \`${questId ?? "quest"}\` (newest last):\n`, ...formatCommentList(quest), "");
+  }
+  out.push(
+    `To leave a comment for teammates or the next agent (handoffs, blockers, decisions), run:\n`,
+    "```bash",
+    `bun dev comment add ${feature.id} "<text>"`,
+    "```"
+  );
+  return out.join("\n");
+}
 
 // ---------------------------------------------------------------------------
 // Quest Context (optional — passed when launching within a quest)
@@ -118,6 +181,8 @@ export function formatTestBaselineSection(
  * @param projectContext - Optional formatted project profile (see
  *                   loadProjectContext in project-store.ts): vision, tech
  *                   stack, conventions and rules the agent must respect.
+ * @param comments - Optional recent task/quest comments (oldest first); the
+ *                   Comments section is omitted when empty or disabled.
  */
 export function generatePrompt(
   feature: Feature,
@@ -125,7 +190,8 @@ export function generatePrompt(
   config: WomboConfig,
   quest?: QuestPromptContext,
   hitlMode?: QuestHitlMode,
-  projectContext?: string | null
+  projectContext?: string | null,
+  comments?: PromptComments | null
 ): string {
   const sections: string[] = [];
 
@@ -274,6 +340,10 @@ export function generatePrompt(
     );
     sections.push("");
   }
+
+  // Comments — recent task/quest comments and how to add one
+  const commentsSection = formatCommentsSection(feature, config, comments, quest?.questId);
+  if (commentsSection) sections.push(commentsSection);
 
   // Build verification — uses config, no hardcoded Astro command
   sections.push(`\n## Build Verification\n`);

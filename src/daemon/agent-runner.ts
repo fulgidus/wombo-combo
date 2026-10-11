@@ -16,7 +16,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { normalizePostMergeConfig, replayRetentionOptions, type WomboConfig, type MaxEscalationTier } from "../config";
+import { normalizeCommentsConfig, normalizePostMergeConfig, replayRetentionOptions, type WomboConfig, type MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
@@ -75,6 +75,7 @@ import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
 import { ReplayRecorder } from "./replay-recorder";
 import { normalizeHarnessEvent } from "../lib/replay";
+import { addComment, recentComments } from "../lib/comments";
 import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
 import type { UsageRecord } from "../lib/token-collector";
 
@@ -228,6 +229,11 @@ export class AgentRunner {
     // Team mode: claim a task when its agent starts, release when it ends
     state.observeStatus((agent, previous, next) => this.syncClaim(agent.featureId, previous, next));
 
+    // Comments: optional system comments on lifecycle events
+    state.observeStatus((agent, previous, next, detail) =>
+      this.postLifecycleComment(agent.featureId, previous, next, detail ?? agent.error ?? undefined)
+    );
+
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
   }
@@ -256,6 +262,51 @@ export class AgentRunner {
         level: "warn",
         message: `[team] claim sync failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
       });
+    }
+  }
+
+  /**
+   * Post a role=system comment (author "woco") on started, failed, merged and
+   * retried (no-op unless comments.enabled && comments.autoLifecycle).
+   * Comment errors only log a warning.
+   */
+  private postLifecycleComment(featureId: string, previous: string, next: string, detail?: string): void {
+    const cfg = normalizeCommentsConfig(this.config.comments);
+    if (!cfg.enabled || !cfg.autoLifecycle) return;
+    let body: string | null = null;
+    if (next === "installing" && previous !== "installing") body = "Agent started.";
+    else if (next === "merged") body = "Merged into the base branch.";
+    else if (next === "retry") body = `Retrying${detail ? `: ${detail}` : "."}`;
+    else if (next === "failed") {
+      const reason = (detail ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+      body = `Failed${reason ? `: ${reason}` : "."}`;
+    }
+    if (!body) return;
+    try {
+      addComment(this.projectRoot, { kind: "task", id: featureId }, { body, author: "woco", role: "system" });
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[comments] lifecycle comment failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  /** Recent task and quest comments for the agent prompt (empty when disabled). */
+  private loadPromptComments(featureId: string, questId?: string | null) {
+    const cfg = normalizeCommentsConfig(this.config.comments);
+    if (!cfg.enabled) return null;
+    try {
+      return {
+        task: recentComments(this.projectRoot, { kind: "task", id: featureId }, cfg.promptMaxItems),
+        quest: questId ? recentComments(this.projectRoot, { kind: "quest", id: questId }, cfg.promptMaxItems) : [],
+      };
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[comments] could not load comments for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      return null;
     }
   }
 
@@ -606,7 +657,8 @@ export class AgentRunner {
         promptConfig,
         questContext,
         hitlMode as any,
-        loadProjectContext(this.projectRoot)
+        loadProjectContext(this.projectRoot),
+        this.loadPromptComments(featureId, task.quest)
       );
 
       // Capture the immutable analytics baseline after worktree preparation

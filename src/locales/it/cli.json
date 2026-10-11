@@ -1025,5 +1025,6 @@
   "cli.help.comment.list.flag.limit": "Solo gli ultimi N commenti",
   "cli.help.comment.list.flag.author": "Solo i commenti di questo autore",
   "cli.help.comment.show.summary": "Mostra un commento",
-  "cli.help.comment.show.pos.comment-id": "ID del commento"
+  "cli.help.comment.show.pos.comment-id": "ID del commento",
+  "cli.help.comment.add.flag.github-url": "URL del commento GitHub corrispondente"
 }

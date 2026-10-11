@@ -1005,5 +1005,6 @@
   "cli.help.comment.list.flag.limit": "Only the newest N comments",
   "cli.help.comment.list.flag.author": "Only comments by this author",
   "cli.help.comment.show.summary": "Show one comment",
-  "cli.help.comment.show.pos.comment-id": "Comment ID"
+  "cli.help.comment.show.pos.comment-id": "Comment ID",
+  "cli.help.comment.add.flag.github-url": "URL of the mirrored GitHub issue comment"
 }

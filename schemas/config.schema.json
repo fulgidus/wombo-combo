@@ -391,6 +391,35 @@
         }
       }
     },
+    "comments": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Task and quest comments (.wombo-combo/comments/): recent comments in agent prompts and optional daemon lifecycle comments",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include recent comments in agent prompts and tell agents how to leave one"
+        },
+        "promptMaxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Maximum number of recent comments per task or quest in the agent prompt"
+        },
+        "promptMaxChars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4000,
+          "description": "Maximum total characters of comment text in the agent prompt (oldest dropped first)"
+        },
+        "autoLifecycle": {
+          "type": "boolean",
+          "default": false,
+          "description": "Daemon posts system comments on task lifecycle events (started, failed, merged, retried)"
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

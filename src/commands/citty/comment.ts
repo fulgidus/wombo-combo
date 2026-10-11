@@ -42,6 +42,7 @@ const addCommand = defineCommand({
     role: { type: "string", description: "Author role: agent (default), human, or system", required: false },
     author: { type: "string", description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)", required: false },
     "reply-to": { type: "string", description: "Comment ID this comment replies to", required: false },
+    "github-url": { type: "string", description: "URL of the mirrored GitHub issue comment", required: false },
     stdin: { type: "boolean", description: "Read the comment text from stdin", required: false },
     output: outputArg,
   },
@@ -58,6 +59,7 @@ const addCommand = defineCommand({
       role: args.role,
       author: args.author,
       replyTo: args["reply-to"],
+      githubUrl: args["github-url"],
       stdin: args.stdin,
     });
   },

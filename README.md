@@ -271,6 +271,13 @@ Several developers can share one repository: task claims are git-tracked files
 and a merge driver removes the timestamp conflicts. See
 [docs/src/content/docs/guides/team.md](docs/src/content/docs/guides/team.md).
 
+## Comments
+
+Tasks and quests have git-tracked comment threads (`bun dev comment add|list|show`),
+one file per comment under `.wombo-combo/comments/`, shown in the TUI task
+browser and fed to agents. See
+[docs/src/content/docs/guides/comments.md](docs/src/content/docs/guides/comments.md).
+
 ## Launch options
 
 ```sh

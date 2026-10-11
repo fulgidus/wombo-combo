@@ -74,8 +74,20 @@ by the `[task-id]` prefix.
 
 ## Comments
 
-woco tasks have no comment thread. Put discussion on the GitHub issue, and
-durable decisions in the task's `notes` or the quest's `knowledge.md`.
+woco comments are the primary comment surface. "Comment on an issue" means:
+
+```sh
+bun dev comment add <task-id|quest:id> "<text>" [--role agent|human|system] [--reply-to <comment-id>] [--github-url <url>]
+```
+
+Then mirror it as a comment on the GitHub issue (same step) and record the
+url of that GitHub comment with `--github-url` (pass it when adding the woco
+comment, i.e. mirror first when you need the url).
+
+- Handoffs, triage notes and wayfinder answers go through comments.
+- Read the thread with `bun dev comment list <task-id|quest:id>`.
+- Durable decisions still belong in the task's `notes` or the quest's
+  `knowledge.md`.
 
 ## Pull requests as a triage surface
 
@@ -94,6 +106,6 @@ durable decisions in the task's `notes` or the quest's `knowledge.md`.
   `backlog`/`planned` whose dependencies are all `done` and that nobody has
   claimed; first in map order wins.
 - **Claim:** `bun dev tasks set-status <id> in_progress` (and assign the issue).
-- **Resolve:** put the answer in the task's notes and the GitHub issue comment,
+- **Resolve:** put the answer in a woco comment (`bun dev comment add`) and the GitHub issue comment,
   `tasks set-status <id> done`, close the issue, then append a context pointer
   (gist + link) to the map's Decisions-so-far in `knowledge.md`.

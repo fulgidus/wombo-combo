@@ -5,15 +5,15 @@ description: "src/lib/prompt.ts: include the most recent comments (cap by count 
   and decisions. Daemon (agent-runner): post a system comment on key lifecycle events (started, failed with reason,
   merged, retried) when comments.autoLifecycle config is true (default false). Config block 'comments' (enabled default
   true, promptMaxItems 10, promptMaxChars 4000, autoLifecycle false) + schema + docs:gen. Tests."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - comments-store
 effort: PT3H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T22:20:57.342Z
 constraints: []
 forbidden: []
 references: []

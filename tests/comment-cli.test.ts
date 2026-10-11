@@ -58,6 +58,13 @@ describe("woco comment", () => {
     expect(JSON.parse(woco(["comment", "list", "quest:q1", "--limit", "1", "-o", "json"]).out).comments[0].id).toBe(b.id);
   });
 
+  test("--github-url is stored on the comment", () => {
+    const url = "https://github.com/fulgidus/wombo-combo/issues/1#issuecomment-1";
+    const c = JSON.parse(woco(["comment", "add", "t1", "mirrored", "--github-url", url, "-o", "json"]).out).comment;
+    expect(c.github_url).toBe(url);
+    expect(JSON.parse(woco(["comment", "show", c.id, "-o", "json"]).out).github_url).toBe(url);
+  });
+
   test("errors: bad ref, missing ref target, empty text, bad role, bad limit, unknown id", () => {
     expect(woco(["comment", "add", "nope", "x"]).code).toBe(1);
     expect(woco(["comment", "add", "nope", "x"]).err).toContain("not found");

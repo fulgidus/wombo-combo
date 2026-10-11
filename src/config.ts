@@ -122,6 +122,12 @@ export interface WomboConfig {
    * config files keep working; read it through normalizeTeamConfig().
    */
   team?: TeamConfig;
+  /**
+   * Task/quest comments in agent prompts and daemon lifecycle comments.
+   * Optional so older config files keep working; read it through
+   * normalizeCommentsConfig().
+   */
+  comments?: CommentsConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
@@ -199,6 +205,18 @@ export interface TeamConfig {
   owner: string | null;
   /** Hours until a claim expires */
   claimTtlHours: number;
+}
+
+/** Comments on tasks and quests (.wombo-combo/comments/) in agent prompts */
+export interface CommentsConfig {
+  /** Include recent comments in agent prompts and tell agents how to comment */
+  enabled: boolean;
+  /** Maximum number of recent comments per task/quest in the prompt */
+  promptMaxItems: number;
+  /** Maximum total characters of comment text in the prompt */
+  promptMaxChars: number;
+  /** Daemon posts system comments on lifecycle events (started, failed, merged, retried) */
+  autoLifecycle: boolean;
 }
 
 /** Retention of recorded agent session replays (.wombo-combo/replays/) */
@@ -391,6 +409,12 @@ export const DEFAULT_CONFIG: WomboConfig = {
     owner: null,
     claimTtlHours: 24,
   },
+  comments: {
+    enabled: true,
+    promptMaxItems: 10,
+    promptMaxChars: 4000,
+    autoLifecycle: false,
+  },
   devMode: false,
   tui: {
     theme: "default",
@@ -495,6 +519,18 @@ export function normalizeTeamConfig(block?: Partial<TeamConfig> | null): TeamCon
     enabled: src.enabled ?? d.enabled,
     owner: src.owner === undefined ? d.owner : src.owner,
     claimTtlHours: src.claimTtlHours ?? d.claimTtlHours,
+  };
+}
+
+/** Fill in comments defaults for legacy or manually constructed configs. */
+export function normalizeCommentsConfig(block?: Partial<CommentsConfig> | null): CommentsConfig {
+  const d = DEFAULT_CONFIG.comments!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    enabled: src.enabled ?? d.enabled,
+    promptMaxItems: src.promptMaxItems ?? d.promptMaxItems,
+    promptMaxChars: src.promptMaxChars ?? d.promptMaxChars,
+    autoLifecycle: src.autoLifecycle ?? d.autoLifecycle,
   };
 }
 
@@ -731,6 +767,20 @@ export function validateConfig(config: WomboConfig): void {
       (typeof tm.claimTtlHours !== "number" || !Number.isFinite(tm.claimTtlHours) || tm.claimTtlHours <= 0)
     ) {
       throw new Error("config.team.claimTtlHours must be a number > 0");
+    }
+  }
+  if (config.comments !== undefined) {
+    const cm = config.comments as Partial<CommentsConfig>;
+    for (const k of ["enabled", "autoLifecycle"] as const) {
+      if (cm[k] !== undefined && typeof cm[k] !== "boolean") {
+        throw new Error(`config.comments.${k} must be a boolean`);
+      }
+    }
+    for (const k of ["promptMaxItems", "promptMaxChars"] as const) {
+      const v = cm[k];
+      if (v !== undefined && (typeof v !== "number" || !Number.isInteger(v) || v < 1)) {
+        throw new Error(`config.comments.${k} must be an integer >= 1`);
+      }
     }
   }
   if (config.postMerge !== undefined) {
