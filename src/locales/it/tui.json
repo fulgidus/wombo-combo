@@ -720,5 +720,14 @@
   "splash.installingUpdate": "Installazione aggiornamento…",
   "splash.checksFailed": "alcuni controlli falliti — premi un tasto per continuare comunque",
   "splash.pressUpdate": "Premi U per installare l'aggiornamento e continuare  |  un altro tasto per saltare",
-  "splash.pressAnyKey": "Premi un tasto per continuare"
+  "splash.pressAnyKey": "Premi un tasto per continuare",
+  "menu.sessionReplays": "Replay delle sessioni",
+  "screen.replays": "Replay delle sessioni",
+  "replays.title": "Replay delle sessioni",
+  "replays.empty": "Nessuna sessione registrata. I replay compaiono dopo l'esecuzione di un agente.",
+  "replays.runs_one": "{{count}} esecuzione",
+  "replays.runs_other": "{{count}} esecuzioni",
+  "replays.runs_many": "{{count}} esecuzioni",
+  "replays.latest": "ultima {{when}}",
+  "replays.hint": "Su/Giu seleziona | Invio apri | Esc indietro"
 }

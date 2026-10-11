@@ -241,6 +241,31 @@ describe("ReplayStore", () => {
     expect(store.list("feat-a").map((s) => s.execution_id)).toEqual(["feat-a-5"]);
   });
 
+  test("prune enforces a total size cap by removing the oldest first", () => {
+    const store = new ReplayStore(root);
+    for (let i = 1; i <= 4; i++) {
+      store.begin(header({ execution_id: `feat-a-${i}` }));
+      store.append("feat-a", `feat-a-${i}`, { kind: "event", event: { type: "text", text: "x".repeat(1000) } });
+      const f = join(root, ".wombo-combo", "replays", "feat-a", `feat-a-${i}.jsonl`);
+      const when = new Date(2026, 2, i);
+      utimesSync(f, when, when);
+    }
+    const one = statSync(join(root, ".wombo-combo", "replays", "feat-a", "feat-a-4.jsonl")).size;
+    const removed = store.prune({ keepPerFeature: 10, maxTotalBytes: one * 2 + 10 });
+    expect(removed.map((p) => p.split("/").pop()).sort()).toEqual(["feat-a-1.jsonl", "feat-a-2.jsonl"]);
+    expect(store.list("feat-a").map((s) => s.execution_id)).toEqual(["feat-a-3", "feat-a-4"]);
+  });
+
+  test("size cap spans tasks and never removes protected executions", () => {
+    const store = new ReplayStore(root);
+    store.begin(header({ task_id: "feat-a", execution_id: "feat-a-1" }));
+    store.begin(header({ task_id: "feat-b", execution_id: "feat-b-1" }));
+    utimesSync(join(root, ".wombo-combo", "replays", "feat-a", "feat-a-1.jsonl"), new Date(2026, 1, 1), new Date(2026, 1, 1));
+    utimesSync(join(root, ".wombo-combo", "replays", "feat-b", "feat-b-1.jsonl"), new Date(2026, 1, 2), new Date(2026, 1, 2));
+    store.prune({ maxTotalBytes: 1, protect: ["feat-a-1"] });
+    expect(store.list().map((s) => s.execution_id)).toEqual(["feat-a-1"]);
+  });
+
   test("prune never removes an execution it was told to protect", () => {
     const store = new ReplayStore(root);
     for (let i = 1; i <= 3; i++) {

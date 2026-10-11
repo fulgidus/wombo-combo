@@ -24,6 +24,7 @@
  *   settings       → SettingsScreen
  *   onboarding     → OnboardingScreen
  *   dashboard      → DashboardScreen (realtime metrics)
+ *   replays        → ReplayScreen (task picker + replay viewer)
  *
  * Usage (from tui.ts):
  *
@@ -57,6 +58,7 @@ import {
   DashboardStoreContext,
   type DashboardStore,
 } from "./dashboard";
+import { ReplayScreen } from "./replay-screen";
 import { DashboardMetricsProvider } from "./dashboard-provider";
 import type { DaemonClient } from "../daemon/client";
 import type { WomboConfig } from "../config";
@@ -216,6 +218,7 @@ export function TuiApp({
     settings: tFn("screen.settings"),
     onboarding: tFn("screen.setup"),
     dashboard: tFn("screen.dashboard"),
+    replays: tFn("screen.replays"),
   };
   const [currentScreenKey, setCurrentScreenKey] = useState<string>(
     initialScreenProp ?? (skipSplash ? "quest-picker" : "splash")
@@ -262,6 +265,14 @@ export function TuiApp({
     if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
     nav.push("dashboard", { onBack: backFromDashboard });
   }, [backFromDashboard]);
+
+  // Session replays entry from the ESC menu: task picker, then the viewer.
+  const handleOpenReplays = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.currentScreen === "replays" || nav.currentScreen === "splash") return;
+    nav.push("replays", { projectRoot, onBack: () => navRef.current?.pop() });
+  }, [projectRoot]);
 
   // Wrapped callbacks to handle local overrides (e.g. concurrency)
   const wrappedCallbacks = useMemo(() => {
@@ -359,6 +370,7 @@ export function TuiApp({
     settings: SettingsScreen,
     onboarding: OnboardingScreen,
     dashboard: DashboardScreen,
+    replays: ReplayScreen,
   };
 
   const { rows, columns } = useTerminalSize();
@@ -369,7 +381,7 @@ export function TuiApp({
         <I18nContext.Provider value={tFn}>
           <DashboardStoreContext.Provider value={emptyDashStore}>
             <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={daemonClient}>
-              <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+              <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard} onOpenReplays={handleOpenReplays}>
                 <ChromeLayout
                   screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
                   daemonConnected={daemonConnected}

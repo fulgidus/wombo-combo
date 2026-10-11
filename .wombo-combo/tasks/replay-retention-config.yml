@@ -1,14 +1,14 @@
 id: replay-retention-config
 title: Make replay retention (per-task count, max age, size cap) configurable in config.json
 description: ""
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:31:53.901Z
 constraints: []
 forbidden: []
 references: []

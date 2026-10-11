@@ -116,6 +116,16 @@ Changelog generation and GitHub PR publication after successful merges
 | `postMerge.prBaseBranch` | string \| null | `null` | PR target branch; null = the configured remote's default branch |
 | `postMerge.changelog` | boolean | `true` | Append a CHANGELOG.md entry after successful merges (independent of prMode) |
 
+## `replay`
+
+Retention of recorded agent session replays (.wombo-combo/replays/), applied after each execution finishes
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `replay.keepPerTask` | integer | `20` | Executions kept per task (newest first) Minimum: `0`. |
+| `replay.maxAgeDays` | number \| null | `null` | Delete replays older than this many days; null = no age limit |
+| `replay.maxTotalMB` | number \| null | `null` | Total size cap of all replays in MB (oldest removed first); null = no cap |
+
 ## `modelRouting`
 
 Per-task model routing by weight class (light/medium/heavy); null/absent = session model

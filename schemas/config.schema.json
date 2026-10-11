@@ -333,6 +333,37 @@
         }
       }
     },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Retention of recorded agent session replays (.wombo-combo/replays/), applied after each execution finishes",
+      "properties": {
+        "keepPerTask": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20,
+          "description": "Executions kept per task (newest first)"
+        },
+        "maxAgeDays": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": null,
+          "description": "Delete replays older than this many days; null = no age limit"
+        },
+        "maxTotalMB": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": null,
+          "description": "Total size cap of all replays in MB (oldest removed first); null = no cap"
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

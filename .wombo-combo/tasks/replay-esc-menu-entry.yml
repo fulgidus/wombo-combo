@@ -1,14 +1,14 @@
 id: replay-esc-menu-entry
 title: Reach the replay viewer from the ESC menu (needs task picker)
 description: ""
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:31:55.798Z
 constraints: []
 forbidden: []
 references: []

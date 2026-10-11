@@ -112,6 +112,11 @@ export interface WomboConfig {
    * normalizePostMergeConfig().
    */
   postMerge?: PostMergeConfig;
+  /**
+   * Session replay retention. Optional so older config files and manually
+   * constructed configs keep working; read it through normalizeReplayConfig().
+   */
+  replay?: ReplayConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
@@ -179,6 +184,16 @@ export interface PostMergeConfig {
   prBaseBranch: string | null;
   /** Append a CHANGELOG.md entry after successful merges (independent of prMode) */
   changelog: boolean;
+}
+
+/** Retention of recorded agent session replays (.wombo-combo/replays/) */
+export interface ReplayConfig {
+  /** Executions kept per task (0 = keep none once finished) */
+  keepPerTask: number;
+  /** Delete replays older than this many days; null = no age limit */
+  maxAgeDays: number | null;
+  /** Total size cap of all replays in MB (oldest removed first); null = no cap */
+  maxTotalMB: number | null;
 }
 
 /** Configuration for browser-based verification and testing */
@@ -351,6 +366,11 @@ export const DEFAULT_CONFIG: WomboConfig = {
     prBaseBranch: null,
     changelog: true,
   },
+  replay: {
+    keepPerTask: 20,
+    maxAgeDays: null,
+    maxTotalMB: null,
+  },
   devMode: false,
   tui: {
     theme: "default",
@@ -444,6 +464,31 @@ export function normalizePostMergeConfig(
     prMode: src.prMode ?? d.prMode,
     prBaseBranch: base === undefined ? d.prBaseBranch : (base as string | null),
     changelog: src.changelog ?? d.changelog,
+  };
+}
+
+/** Fill in replay retention defaults for legacy or manually constructed configs. */
+export function normalizeReplayConfig(block?: Partial<ReplayConfig> | null): ReplayConfig {
+  const d = DEFAULT_CONFIG.replay!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    keepPerTask: src.keepPerTask ?? d.keepPerTask,
+    maxAgeDays: src.maxAgeDays === undefined ? d.maxAgeDays : src.maxAgeDays,
+    maxTotalMB: src.maxTotalMB === undefined ? d.maxTotalMB : src.maxTotalMB,
+  };
+}
+
+/** Convert replay config into ReplayStore.prune() options. */
+export function replayRetentionOptions(block?: Partial<ReplayConfig> | null): {
+  keepPerFeature: number;
+  maxAgeMs?: number;
+  maxTotalBytes?: number;
+} {
+  const r = normalizeReplayConfig(block);
+  return {
+    keepPerFeature: r.keepPerTask,
+    ...(r.maxAgeDays != null ? { maxAgeMs: r.maxAgeDays * 86_400_000 } : {}),
+    ...(r.maxTotalMB != null ? { maxTotalBytes: r.maxTotalMB * 1024 * 1024 } : {}),
   };
 }
 
@@ -630,6 +675,18 @@ export function validateConfig(config: WomboConfig): void {
     throw new Error("config.tdd.testCommand must be a non-empty string when TDD is enabled");
   }
   validateAgentRouting(config);
+  if (config.replay !== undefined) {
+    const rp = config.replay as Partial<ReplayConfig>;
+    if (rp.keepPerTask !== undefined && (!Number.isInteger(rp.keepPerTask) || rp.keepPerTask < 0)) {
+      throw new Error("config.replay.keepPerTask must be an integer >= 0");
+    }
+    for (const k of ["maxAgeDays", "maxTotalMB"] as const) {
+      const v = rp[k];
+      if (v !== undefined && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v <= 0)) {
+        throw new Error(`config.replay.${k} must be null or a number > 0`);
+      }
+    }
+  }
   if (config.postMerge !== undefined) {
     const pm = config.postMerge as Partial<PostMergeConfig>;
     if (pm.prMode !== undefined && !POST_MERGE_PR_MODES.includes(pm.prMode)) {

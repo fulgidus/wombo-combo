@@ -1,0 +1,27 @@
+id: team-claims
+title: "Task claims: git-tracked ownership with TTL"
+description: "Add src/lib/claims.ts: claim files at .wombo-combo/claims/<task-id>.yml (tracked) with owner (git
+  user.email), host, claimed_at, expires_at (TTL, default 24h, config team.claimTtlHours). API: claimTask, releaseTask,
+  listClaims, isClaimedByOther, expired detection. Daemon scheduler skips tasks claimed by another developer;
+  AgentRunner claims on launch and releases on done/failure. Add config team block (enabled default false, owner
+  override) + schema + docs."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - Pure-file, git-native
+  - no server
+  - Disabled by default so single-developer behaviour is unchanged
+  - English output keys via i18n
+forbidden:
+  - Do not require network access
+references: []
+notes: []
+subtasks: []
+quest: team-collab
+paths: []

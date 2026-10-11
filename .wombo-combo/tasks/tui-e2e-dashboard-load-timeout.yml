@@ -4,14 +4,14 @@ description: During a full local 'bun test' run (all files in one process, heavy
   Dashboard ...' in tests/e2e/tui-smoke.test.ts timed out once; it passes when run as CI runs it (separate step,
   --timeout 60000). Make its waits condition-based with budgets that hold under load, or document/enforce that e2e runs
   separately.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:32:00.193Z
 constraints: []
 forbidden: []
 references:

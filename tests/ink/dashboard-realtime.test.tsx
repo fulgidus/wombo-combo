@@ -489,12 +489,13 @@ for (const shell of ["unified", "monitor"] as const) {
       const app = await mount(shell, { theme: "minimal" });
       await openDashboard(app);
       app.client.emit("evt:state-snapshot", snapshot([agentState("a", "merged", { completedAt: new Date().toISOString() })]));
-      await sleep(250);
-      const dash = lines(app.frame()).slice(1, -2).join("\n"); // exclude chrome bars (they use emoji/icons)
-      expect(dash).toContain("Throughput");
-      expect(dash).not.toMatch(BLOCKS);
-      expect(dash).not.toContain("█");
-      expect(dash).toContain("q-min");
+      await eventually(() => {
+        const dash = lines(app.frame()).slice(1, -2).join("\n"); // exclude chrome bars (they use emoji/icons)
+        expect(dash).toContain("Throughput");
+        expect(dash).not.toMatch(BLOCKS);
+        expect(dash).not.toContain("█");
+        expect(dash).toContain("q-min");
+      });
       app.unmount();
     }, 20_000);
 

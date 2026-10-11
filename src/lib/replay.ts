@@ -16,9 +16,12 @@
  * Readers tolerate a missing `end` (crash/kill), malformed lines (reported as
  * diagnostics) and records of unsupported versions (skipped).
  *
- * Harness independence: only `normalizeOpenCodeEvent` knows the opencode wire
- * format. A future harness adds a sibling normalizer producing ReplayEvent;
- * recorder, store, CLI and viewer only deal with normalized events.
+ * Harness independence: recorder, store, CLI and viewer only deal with
+ * normalized ReplayEvents. Every harness adapter (src/lib/harness) already
+ * emits canonical opencode-shaped events, so each harness maps to a replay
+ * normalizer in REPLAY_NORMALIZERS (a Record keyed by HarnessId: adding a
+ * harness without an entry fails typecheck). A harness whose canonical events
+ * need special handling registers its own function there.
  *
  * Bounds (all limits count characters): long fields are cut with an explicit
  * `…[truncated N chars]` marker and `truncated: true`. Per-file size cap:
@@ -44,6 +47,7 @@ import {
 import { join } from "node:path";
 import { WOMBO_DIR } from "../config";
 import type { OpenCodeEvent } from "./monitor";
+import type { HarnessId } from "./harness/ids";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -178,6 +182,11 @@ export interface PruneOptions {
   keepPerFeature?: number;
   /** Remove replays whose file is older than this (ms). */
   maxAgeMs?: number;
+  /**
+   * Total size cap (bytes) across all replays: after the count and age rules,
+   * the oldest unprotected files are removed until the total fits.
+   */
+  maxTotalBytes?: number;
   now?: number;
   /** Execution ids that must not be removed. */
   protect?: string[];
@@ -261,16 +270,16 @@ export function normalizeOpenCodeEvent(event: OpenCodeEvent): ReplayEvent | null
     case "step_finish": {
       out.type = "step_finish";
       if (part?.reason) out.reason = String(part.reason);
-      if (typeof part?.cost === "number") out.cost = part.cost;
+      if (typeof part?.cost === "number" && Number.isFinite(part.cost)) out.cost = part.cost;
       const t = part?.tokens;
       if (t) {
         out.tokens = {
-          total: t.total ?? 0,
-          input: t.input ?? 0,
-          output: t.output ?? 0,
-          reasoning: t.reasoning ?? 0,
-          cache_read: t.cache?.read ?? 0,
-          cache_write: t.cache?.write ?? 0,
+          total: num(t.total),
+          input: num(t.input),
+          output: num(t.output),
+          reasoning: num(t.reasoning),
+          cache_read: num(t.cache?.read),
+          cache_write: num(t.cache?.write),
         };
       }
       break;
@@ -287,6 +296,32 @@ export function normalizeOpenCodeEvent(event: OpenCodeEvent): ReplayEvent | null
   }
   if (truncated) out.truncated = true;
   return out;
+}
+
+/** Per-harness replay normalizers; all take the canonical event the monitor sees. */
+export const REPLAY_NORMALIZERS: Record<HarnessId, (event: OpenCodeEvent) => ReplayEvent | null> = {
+  opencode: normalizeOpenCodeEvent,
+  "claude-code": normalizeOpenCodeEvent,
+  codex: normalizeOpenCodeEvent,
+  pi: normalizeOpenCodeEvent,
+  custom: normalizeOpenCodeEvent,
+};
+
+/**
+ * Normalize one canonical event for the given harness. Unknown or missing
+ * harness ids fall back to the opencode normalizer. Never throws.
+ */
+export function normalizeHarnessEvent(harness: string | null | undefined, event: OpenCodeEvent): ReplayEvent | null {
+  const fn = (harness && Object.hasOwn(REPLAY_NORMALIZERS, harness) ? REPLAY_NORMALIZERS[harness as HarnessId] : null) ?? normalizeOpenCodeEvent;
+  try {
+    return fn(event);
+  } catch {
+    return null;
+  }
+}
+
+function num(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
 function boundValue(v: unknown, cut: (s: unknown, max: number) => string): unknown {
@@ -453,39 +488,60 @@ export class ReplayStore {
 
   /**
    * Retention: per task keep the newest `keepPerFeature` executions (by file
-   * mtime) and drop files older than `maxAgeMs`. Returns removed paths.
+   * mtime), drop files older than `maxAgeMs`, then drop the oldest files
+   * until the store fits `maxTotalBytes`. Returns removed paths.
    */
   prune(opts: PruneOptions = {}): string[] {
     const keep = opts.keepPerFeature ?? DEFAULT_KEEP_PER_TASK;
     const now = opts.now ?? Date.now();
     const protect = new Set(opts.protect ?? []);
     const removed: string[] = [];
+    const survivors: Array<{ id: string; p: string; mtime: number; size: number }> = [];
+    const drop = (p: string): boolean => {
+      try {
+        rmSync(p, { force: true });
+        this.states.delete(p);
+        removed.push(p);
+        return true;
+      } catch {
+        return false; /* best effort */
+      }
+    };
     for (const task of this.listTasks()) {
       const files = this.executionIds(task)
         .map((id) => {
           const p = this.pathFor(task, id);
           let mtime = 0;
+          let size = 0;
           try {
-            mtime = statSync(p).mtimeMs;
+            const st = statSync(p);
+            mtime = st.mtimeMs;
+            size = st.size;
           } catch {
             /* gone */
           }
-          return { id, p, mtime };
+          return { id, p, mtime, size };
         })
         .sort((a, b) => b.mtime - a.mtime || b.id.localeCompare(a.id));
       files.forEach((f, i) => {
-        if (protect.has(f.id)) return;
-        const tooMany = i >= keep;
-        const tooOld = opts.maxAgeMs !== undefined && now - f.mtime > opts.maxAgeMs;
-        if (!tooMany && !tooOld) return;
-        try {
-          rmSync(f.p, { force: true });
-          this.states.delete(f.p);
-          removed.push(f.p);
-        } catch {
-          /* best effort */
+        if (!protect.has(f.id)) {
+          const tooMany = i >= keep;
+          const tooOld = opts.maxAgeMs !== undefined && now - f.mtime > opts.maxAgeMs;
+          if ((tooMany || tooOld) && drop(f.p)) return;
         }
+        survivors.push(f);
       });
+    }
+    if (opts.maxTotalBytes !== undefined) {
+      let total = survivors.reduce((n, f) => n + f.size, 0);
+      const oldestFirst = [...survivors].sort((a, b) => a.mtime - b.mtime || a.id.localeCompare(b.id));
+      for (const f of oldestFirst) {
+        if (total <= opts.maxTotalBytes) break;
+        if (protect.has(f.id)) continue;
+        if (drop(f.p)) total -= f.size;
+      }
+    }
+    for (const task of this.listTasks()) {
       try {
         rmdirSync(join(this.dir, task)); // only succeeds when empty
       } catch {

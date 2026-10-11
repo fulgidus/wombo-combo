@@ -703,5 +703,13 @@
   "splash.installingUpdate": "Installing update…",
   "splash.checksFailed": "some checks failed — press any key to continue anyway",
   "splash.pressUpdate": "Press U to install update and continue  |  any other key to skip",
-  "splash.pressAnyKey": "Press any key to continue"
+  "splash.pressAnyKey": "Press any key to continue",
+  "menu.sessionReplays": "Session replays",
+  "screen.replays": "Session Replays",
+  "replays.title": "Session replays",
+  "replays.empty": "No recorded sessions yet. Replays appear after an agent runs.",
+  "replays.runs_one": "{{count}} run",
+  "replays.runs_other": "{{count}} runs",
+  "replays.latest": "latest {{when}}",
+  "replays.hint": "Up/Down select | Enter open | Esc back"
 }

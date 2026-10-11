@@ -65,6 +65,7 @@ import { createIsolatedStdout } from "./bun-stdin";
 import { ScreenRouter, useNavigation, type NavigationState } from "./router";
 import { ChromeLayout } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
+import { ReplayScreen } from "./replay-screen";
 import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
 import { ThemeContext, getTheme } from "./theme";
@@ -335,7 +336,13 @@ export function DaemonMonitorShell({
   // Chrome title follows the active screen (monitor/splash keep "Wave Monitor").
   const [screenKey, setScreenKey] = useState<string>(skipSplash ? "monitor" : "splash");
   const chromeTitle =
-    screenKey === "dashboard" ? tFn("screen.dashboard") : screenKey === "settings" ? tFn("screen.settings") : tFn("screen.waveMonitor");
+    screenKey === "dashboard"
+      ? tFn("screen.dashboard")
+      : screenKey === "settings"
+        ? tFn("screen.settings")
+        : screenKey === "replays"
+          ? tFn("screen.replays")
+          : tFn("screen.waveMonitor");
 
   // Dashboard entry from the ESC menu: push once (never stack duplicates; the
   // splash owns a pending replace()) and return with pop().
@@ -345,6 +352,14 @@ export function DaemonMonitorShell({
     if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
     nav.push("dashboard", { onBack: () => navRef.current?.pop() });
   }, []);
+
+  // Session replays entry from the ESC menu (task picker, then the viewer).
+  const handleOpenReplays = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.currentScreen === "replays" || nav.currentScreen === "splash") return;
+    nav.push("replays", { projectRoot, onBack: () => navRef.current?.pop() });
+  }, [projectRoot]);
 
   // Wire up the notify callback
   useEffect(() => {
@@ -411,6 +426,7 @@ export function DaemonMonitorShell({
     monitor: DaemonMonitorScreen,
     settings: SettingsScreen,
     dashboard: DashboardScreen,
+    replays: ReplayScreen,
   };
 
   const initialScreen = skipSplash ? "monitor" : "splash";
@@ -423,7 +439,7 @@ export function DaemonMonitorShell({
       <I18nContext.Provider value={tFn}>
         <DashboardStoreContext.Provider value={dashStore}>
           <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={client}>
-            <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+            <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard} onOpenReplays={handleOpenReplays}>
               <ChromeLayout
                 screenName={chromeTitle}
                 daemonConnected={true}

@@ -16,7 +16,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { normalizePostMergeConfig, type WomboConfig, type MaxEscalationTier } from "../config";
+import { normalizePostMergeConfig, replayRetentionOptions, type WomboConfig, type MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
@@ -74,7 +74,7 @@ import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
 import { ReplayRecorder } from "./replay-recorder";
-import { normalizeOpenCodeEvent } from "../lib/replay";
+import { normalizeHarnessEvent } from "../lib/replay";
 import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
@@ -219,6 +219,7 @@ export class AgentRunner {
     this.replay = new ReplayRecorder({
       projectRoot: this.projectRoot,
       state,
+      retention: replayRetentionOptions(this.config.replay),
       onDiagnostic: (message) =>
         state.emit("evt:log", { level: "warn", message: `[replay] ${message}` }),
     });
@@ -287,7 +288,7 @@ export class AgentRunner {
       onEvent: (featureId, event) => {
         // Harness-specific normalization happens here only; the recorder
         // stores harness-neutral events.
-        const normalized = normalizeOpenCodeEvent(event);
+        const normalized = normalizeHarnessEvent(this.state.getAgent(featureId)?.harness, event);
         if (normalized) this.replay.recordEvent(featureId, normalized);
       },
 

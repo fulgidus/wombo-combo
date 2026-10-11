@@ -246,3 +246,46 @@ describe("EscMenu dashboard entry", () => {
     expect(frames[frames.length - 1]!.startsWith("false")).toBe(true);
   });
 });
+
+describe("EscMenu session replays entry", () => {
+  test("no replays item without onOpenReplays", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const out = renderToString(
+      React.createElement(EscMenu, { open: true, onClose: () => {}, onNavigate: () => {} }),
+    );
+    expect(out).not.toContain("Session replays");
+  });
+
+  test("item shown when onOpenReplays is supplied", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const out = renderToString(
+      React.createElement(EscMenu, { open: true, onClose: () => {}, onNavigate: () => {}, onOpenReplays: () => {} }),
+    );
+    expect(out).toContain("Session replays");
+  });
+
+  test("selecting it closes the menu before opening replays", async () => {
+    const { EscMenu } = await import("../../src/ink/esc-menu");
+    const { stdin, stdout } = makeStreams();
+    const calls: string[] = [];
+    const inst = render(
+      React.createElement(EscMenu, {
+        open: true,
+        onClose: () => calls.push("close"),
+        onNavigate: (a: string) => calls.push(`nav:${a}`),
+        onOpenDashboard: () => calls.push("dashboard"),
+        onOpenReplays: () => calls.push("replays"),
+      }),
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await wait(30);
+    (stdin as any).write("\u001b[B"); // Dashboard
+    await wait(20);
+    (stdin as any).write("\u001b[B"); // Session replays
+    await wait(20);
+    (stdin as any).write("\r");
+    await wait(30);
+    inst.unmount();
+    expect(calls).toEqual(["close", "replays"]);
+  });
+});

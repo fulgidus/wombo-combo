@@ -280,7 +280,8 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       await tui.waitFor("Return to app");
       await tui.waitFor("Quit wombo");
 
-      // Items: Return to app, Dashboard, Settings, Quit wombo.
+      // Items: Return to app, Dashboard, Session replays, Settings, Quit wombo.
+      await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
@@ -297,8 +298,11 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       const tui = start();
       await reachQuestPicker(tui);
 
+      // "Dashboard" already appears in the quest picker's hint line, so wait
+      // for text that only the open menu renders before sending navigation keys.
       await tui.send(KEY_ESC);
-      await tui.waitFor("Dashboard");
+      await tui.waitFor("Return to app");
+      await tui.waitFor("Quit wombo");
       await tui.send(KEY_DOWN); // Return to app -> Dashboard
       await tui.send(KEY_ENTER);
 
@@ -312,9 +316,10 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       expect(tui.exitCode()).toBeNull();
 
       await tui.send("q");
-      expect(await tui.waitForExit()).toBe(0);
+      expect(await tui.waitForExit(20_000)).toBe(0);
     },
-    TEST_TIMEOUT_MS
+    // Under heavy full-suite load every step may use its whole budget.
+    TEST_TIMEOUT_MS * 3
   );
 
   test(

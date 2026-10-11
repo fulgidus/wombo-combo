@@ -22,6 +22,8 @@ import {
   WOMBO_DIR,
   generateDefaultConfig,
   normalizePostMergeConfig,
+  normalizeReplayConfig,
+  replayRetentionOptions,
   resolveAgentBin,
 } from "../src/config";
 import type { WomboConfig } from "../src/config";
@@ -595,5 +597,61 @@ describe("agentProfiles and routing", () => {
     expect(() =>
       validateConfig(withProfiles({ agentProfiles: profiles, routing: { fallbacks: { a: ["b"], b: ["a"] } } }))
     ).toThrow(/cycle: a -> b -> a/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// replay retention
+// ---------------------------------------------------------------------------
+
+describe("replay retention config", () => {
+  function fresh(): WomboConfig {
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as WomboConfig;
+  }
+
+  test("defaults keep 20 per task with no age or size limit", () => {
+    expect(DEFAULT_CONFIG.replay).toEqual({ keepPerTask: 20, maxAgeDays: null, maxTotalMB: null });
+  });
+
+  test("loadConfig deep-merges a partial replay block", () => {
+    writeConfig(tmpDir, { replay: { maxAgeDays: 7 } });
+    expect(loadConfig(tmpDir).replay).toEqual({ keepPerTask: 20, maxAgeDays: 7, maxTotalMB: null });
+  });
+
+  test("normalizeReplayConfig tolerates undefined and partial blocks", () => {
+    expect(normalizeReplayConfig(undefined)).toEqual({ keepPerTask: 20, maxAgeDays: null, maxTotalMB: null });
+    expect(normalizeReplayConfig(null as any).keepPerTask).toBe(20);
+    expect(normalizeReplayConfig({ keepPerTask: 3 })).toEqual({ keepPerTask: 3, maxAgeDays: null, maxTotalMB: null });
+  });
+
+  test("replayRetentionOptions converts days and MB to ms and bytes", () => {
+    expect(replayRetentionOptions({ keepPerTask: 5, maxAgeDays: 2, maxTotalMB: 1.5 })).toEqual({
+      keepPerFeature: 5,
+      maxAgeMs: 2 * 86_400_000,
+      maxTotalBytes: 1.5 * 1024 * 1024,
+    });
+    expect(replayRetentionOptions(undefined)).toEqual({ keepPerFeature: 20 });
+  });
+
+  test("validateConfig accepts valid values", () => {
+    const c = fresh();
+    c.replay = { keepPerTask: 0, maxAgeDays: 30, maxTotalMB: 100 };
+    expect(() => validateConfig(c)).not.toThrow();
+  });
+
+  test("validateConfig rejects bad values", () => {
+    for (const bad of [
+      { keepPerTask: -1 },
+      { keepPerTask: 1.5 },
+      { keepPerTask: "3" },
+      { maxAgeDays: 0 },
+      { maxAgeDays: -2 },
+      { maxTotalMB: 0 },
+      { maxTotalMB: "big" },
+    ]) {
+      const c = fresh();
+      c.replay = { ...c.replay!, ...(bad as any) };
+      expect(() => validateConfig(c)).toThrow("config.replay");
+    }
   });
 });
