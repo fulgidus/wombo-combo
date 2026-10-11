@@ -68,6 +68,7 @@ under `.wombo-combo/` **are tracked in git**:
 - `archive/` — completed/cancelled tasks
 - `quests/`, `quest-archive/` — quest definitions and knowledge files
 - `wishlist.yml` — wishlist items
+- `sync/` — GitHub sync mappings (`sync/github/<task|quest>/<id>.yml`, one file per item)
 - `claims/` — team task claims (`<task-id>.yml`, tracked so teammates see them)
 - `comments/` — task and quest comments (`<task|quest>/<ref-id>/<id>.yml`, one file per comment)
 
@@ -184,6 +185,7 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   config.json             # Project configuration (tracked)
   project.yml             # Project profile: vision, stack, conventions, rules (tracked)
   wishlist.yml            # Wishlist items (tracked)
+  sync/github/            # GitHub Issues sync mappings: <task|quest>/<id>.yml (tracked)
   claims/                 # Team task claims: <task-id>.yml with owner and TTL (tracked)
   comments/               # Task/quest comments: <task|quest>/<ref-id>/<id>.yml, one file per comment (tracked)
   tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)

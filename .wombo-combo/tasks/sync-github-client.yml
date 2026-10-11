@@ -12,14 +12,14 @@ description: "src/lib/sync/github-client.ts: interface GitHubClient {listIssues(
   when creation is forbidden warn once and continue without failing. Tests against a local Bun.serve fake GitHub API
   (put the fake in tests/helpers/fake-github.ts, supporting issues, comments, labels, pagination, 403/429 injection) so
   every later sync task can reuse it."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT3H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T22:42:51.795Z
 constraints:
   - No network in unit tests except the local fake
   - Token never appears in logs, errors or files

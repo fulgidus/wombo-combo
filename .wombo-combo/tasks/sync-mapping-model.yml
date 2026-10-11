@@ -13,14 +13,14 @@ description: "src/lib/sync/mapping.ts + render.ts (pure, no network). Mapping st
   Three-way merge helper mergeFields(base, local, remote) returning merged fields plus conflicts (field changed on both
   sides to different values). Document the policy in code: local wins on conflict, a conflict is reported and never
   silently lost."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT3H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T22:42:52.831Z
 constraints:
   - Pure functions, fully unit tested
   - Mapping files are append/replace per item, never one big file
