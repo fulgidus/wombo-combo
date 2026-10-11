@@ -77,7 +77,7 @@ tech_stack:
     - GitHub Actions (.github/workflows/ci.yml, release.yml) with Dependabot for actions
   notes: The TUI is Ink only; neo-blessed has been removed (the Ink migration quest is archived as completed). Quests keep
     knowledge files under .wombo-combo/quests/. TDD verification uses quest test baselines (src/lib/test-baseline*.ts,
-    docs/tdd-baseline.md). Agent analytics live in src/lib/analytics*.ts (`usage --analytics`). The dashboard is
+    docs/src/content/docs/guides/tdd-baseline.md). Agent analytics live in src/lib/analytics*.ts (`usage --analytics`). The dashboard is
     realtime. Post-merge changelog/PR publication runs from `merge` and is opt-in via config.postMerge. A fake agent
     runner (src/lib/fake-agent-runner.ts) is available.
 conventions:
