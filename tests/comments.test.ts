@@ -168,3 +168,19 @@ describe("getComment", () => {
     expect(getComment(repo, "../../config")).toBeNull();
   });
 });
+
+describe("ordering of comments written in the same millisecond", () => {
+  test("listComments returns insertion order even for a burst of writes", () => {
+    const bodies = Array.from({ length: 60 }, (_, i) => `c${i}`);
+    for (const b of bodies) addComment(repo, T, { body: b, author: "woco", role: "system" });
+    expect(listComments(repo, T).map((c) => c.body)).toEqual(bodies);
+  });
+
+  test("created_at and id strictly increase within a process", () => {
+    const made = Array.from({ length: 30 }, (_, i) => addComment(repo, T, { body: `c${i}`, author: "woco" }));
+    for (let i = 1; i < made.length; i++) {
+      expect(made[i].created_at > made[i - 1].created_at).toBe(true);
+      expect(made[i].id > made[i - 1].id).toBe(true);
+    }
+  });
+});

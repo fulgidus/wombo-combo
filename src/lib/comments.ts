@@ -153,6 +153,19 @@ function readCommentFile(path: string, id: string, kind: "task" | "quest", refId
   }
 }
 
+let lastStampMs = 0;
+
+/**
+ * ISO timestamp that is strictly increasing within this process. Comments are
+ * ordered by timestamp then id, and the id suffix is random, so two comments
+ * written in the same millisecond (a lifecycle burst, a fast script) would
+ * otherwise come back in random order.
+ */
+function nextTimestamp(): string {
+  lastStampMs = Math.max(Date.now(), lastStampMs + 1);
+  return new Date(lastStampMs).toISOString();
+}
+
 /** Add a comment to a task or quest. Throws on a missing ref, empty/oversized body or bad input. */
 export function addComment(projectRoot: string, ref: CommentRef, input: AddCommentInput): Comment {
   const dir = refDir(projectRoot, ref);
@@ -173,7 +186,7 @@ export function addComment(projectRoot: string, ref: CommentRef, input: AddComme
     }
   }
   const author = input.author && input.author.trim() ? input.author.trim() : resolveAuthor(projectRoot);
-  const createdAt = new Date().toISOString();
+  const createdAt = nextTimestamp();
   mkdirSync(dir, { recursive: true });
 
   let id = "";
