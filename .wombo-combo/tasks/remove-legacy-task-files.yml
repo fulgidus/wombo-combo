@@ -1,0 +1,19 @@
+id: remove-legacy-task-files
+title: Remove migrated legacy tasks.yml and archive.yml
+description: .wombo-combo/tasks.yml (4 tasks) and archive.yml (22) are pre-folder-store files; every id already exists
+  in archive/. Delete them and confirm task-store's legacy migration does not re-import or warn (bun dev tasks check,
+  tasks list).
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT15M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

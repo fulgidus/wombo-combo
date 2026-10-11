@@ -1,0 +1,19 @@
+id: untrack-dogfood-runtime-artifacts
+title: Untrack runtime artifacts committed under .wombo-combo
+description: AGENTS.md rule 4 says runtime artifacts are gitignored, but .wombo-combo/history/ (11 wave files),
+  tui-debug.log and config.json.orig are tracked. git rm --cached them, add tui-debug.log and *.orig to .gitignore, and
+  check nothing in src reads them from git.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

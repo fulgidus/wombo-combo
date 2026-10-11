@@ -1,0 +1,20 @@
+id: fix-dogfood-model-routing
+title: Replace fake model names in dogfood modelRouting
+description: The repo's .wombo-combo/config.json has modelRouting light/medium/heavy = fake-light-model /
+  fake-medium-model / fake-heavy-model, test placeholders committed with the model-routing feature (52dc3b4). Real
+  launches on this repo would request nonexistent models. Set real model ids, or remove modelRouting so tasks fall back
+  to the session model. Add a config validation warning for obviously fake/placeholder model names if cheap.
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT20M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

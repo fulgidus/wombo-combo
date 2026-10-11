@@ -1,0 +1,21 @@
+id: refresh-project-profile
+title: Refresh stale project.yml profile
+description: project.yml still lists neo-blessed as the current TUI framework and Ink as a migration target, and
+  objectives reference blessed textarea fixes, although the Ink migration quest is archived as done. Update tech stack,
+  objectives and conventions to the current architecture (Ink TUI, daemon, quests, test baselines, analytics,
+  merge/changelog publication, graphify hook, CI/CD auto-release). This profile feeds agent prompts, so stale content
+  misleads agents.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT45M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
