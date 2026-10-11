@@ -43,6 +43,7 @@ import { mkdirSync, appendFileSync, existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { TokenCollector, type UsageRecord } from "./token-collector";
 import { UsageStore } from "./token-usage";
+import type { Normalizer } from "./harness/types";
 
 // ---------------------------------------------------------------------------
 // Log directory name (configurable would be overkill here)
@@ -359,6 +360,8 @@ interface MonitoredProcess {
   sawFinalStop: boolean;
   /** True when this entry was created by reconnectProcess() (PID-only, no ChildProcess) */
   reconnected: boolean;
+  /** Harness line normalizer; absent = stdout lines are already canonical (opencode) JSON events */
+  normalize?: Normalizer;
 }
 
 /**
@@ -420,7 +423,8 @@ export class ProcessMonitor {
     return this.activityLogs.get(featureId) ?? [];
   }
 
-  addProcess(featureId: string, child: ChildProcess): void {
+  addProcess(featureId: string, child: ChildProcess, opts?: { normalize?: Normalizer }): void {
+    const normalize = opts?.normalize;
     const monitored: MonitoredProcess = {
       featureId,
       process: child,
@@ -432,6 +436,7 @@ export class ProcessMonitor {
       lineBuffer: "",
       sawFinalStop: false,
       reconnected: false,
+      normalize,
     };
 
     this.pushActivity(featureId, "-- agent process started");
@@ -458,35 +463,41 @@ export class ProcessMonitor {
         const trimmed = line.trim();
         if (!trimmed) continue;
         try {
-          const event = JSON.parse(trimmed) as OpenCodeEvent;
-
-          if (!monitored.sessionId && event.sessionID) {
-            monitored.sessionId = event.sessionID;
-            // Cross-process collision check: warn if another agent already
-            // holds this session ID (possible opencode session reuse bug).
-            this._checkSessionIdCollision(featureId, event.sessionID);
-            this.callbacks.onSessionId?.(featureId, event.sessionID);
-            this.pushActivity(featureId, `-- session: ${event.sessionID}`);
+          const events: OpenCodeEvent[] = normalize
+            ? normalize(trimmed)
+            : [JSON.parse(trimmed) as OpenCodeEvent];
+          if (normalize && events.length === 0 && !trimmed.startsWith("{") && trimmed.length < 500) {
+            this.pushActivity(featureId, `[raw] ${trimmed.slice(0, 120)}`);
           }
+          for (const event of events) {
+            if (!monitored.sessionId && event.sessionID) {
+              monitored.sessionId = event.sessionID;
+              // Cross-process collision check: warn if another agent already
+              // holds this session ID (possible opencode session reuse bug).
+              this._checkSessionIdCollision(featureId, event.sessionID);
+              this.callbacks.onSessionId?.(featureId, event.sessionID);
+              this.pushActivity(featureId, `-- session: ${event.sessionID}`);
+            }
 
-          const activity = extractActivity(event);
-          if (activity) {
-            this.callbacks.onActivity?.(featureId, activity);
-          }
+            const activity = extractActivity(event);
+            if (activity) {
+              this.callbacks.onActivity?.(featureId, activity);
+            }
 
-          const logLine = formatEventForLog(event);
-          if (logLine) {
-            this.pushActivity(featureId, logLine);
-          }
+            const logLine = formatEventForLog(event);
+            if (logLine) {
+              this.pushActivity(featureId, logLine);
+            }
 
-          // Extract token usage from step_finish events
-          this.tokenCollector.ingestEvent(featureId, event);
+            // Extract token usage from step_finish events
+            this.tokenCollector.ingestEvent(featureId, event);
 
-          if (
-            event.type === "step_finish" &&
-            event.part?.reason === "stop"
-          ) {
-            monitored.sawFinalStop = true;
+            if (
+              event.type === "step_finish" &&
+              event.part?.reason === "stop"
+            ) {
+              monitored.sawFinalStop = true;
+            }
           }
         } catch {
           if (trimmed.length > 0 && trimmed.length < 500) {
