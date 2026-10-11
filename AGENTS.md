@@ -94,50 +94,106 @@ bug is invisible and will never be fixed.
 ## Project structure
 
 ```
-wombo/
+wombo-combo/
   package.json              # name: wombo-combo, version in sync with git tags
+  schemas/                  # JSON schemas: config, meta, task
+  docs/                     # Project docs (e.g. tdd-baseline.md)
+  scripts/
+    build.ts                # Builds dist/index.js (CLI) and dist/daemon/daemon.js
+    stubs/                  # Build-time stubs (react-devtools-core)
+    graphify-pre-push.py    # prek pre-push hook that refreshes the graphify graph
   src/
-    index.ts                # CLI entry point, arg parsing, command routing
-    config.ts               # WomboConfig type, defaults, loader, validator
-    commands/
-      init.ts               # Interactive guided setup (Prompter class)
-      launch.ts             # Launch a wave of agents
-      resume.ts             # Resume a stopped wave
-      status.ts             # Show wave status
-      verify.ts             # Build verification
-      merge.ts              # Merge verified branches
-      retry.ts              # Retry a failed agent
-      cleanup.ts            # Remove worktrees and sessions
-      tasks/
-        list.ts, add.ts, set-status.ts, check.ts, archive.ts, show.ts
-    lib/
-      tasks.ts              # Task file I/O, types, ensureTasksFile guard
-      state.ts              # Wave state persistence
-      prompt.ts             # Agent prompt generation
-      launcher.ts           # Process spawning
-      monitor.ts            # ProcessMonitor
-      worktree.ts           # Git worktree management
-      merger.ts             # Git merge operations
-      verifier.ts           # Build verification logic
-      ui.ts                 # Console dashboard
-      tui.ts                # neo-blessed TUI
-    templates/
-      tasks.yml             # Template with full schema docs
+    index.ts                # CLI entry point: dev-mode guard, global flags, routes to citty
+    config.ts               # WomboConfig type, defaults, loader and validator (config.json)
+    commands/               # Command implementations (launch, merge, quest, eval, ...)
+      citty/                # citty defineCommand() definitions
+        router.ts           # Maps command names and aliases to citty commands
+      tasks/                # `tasks` subcommands: add, list, show, set-status, check, archive, graph
+    daemon/                 # Background daemon: continuous task pipeline over WebSocket
+      daemon.ts             # Main daemon process and lifecycle
+      agent-runner.ts       # Per-task lifecycle: launch, monitor, verify, merge, retry
+      scheduler.ts          # Continuous DAG scheduler (ready tasks, priority, concurrency)
+      state.ts              # Daemon state, persisted atomically and broadcast to clients
+      protocol.ts           # WebSocket messages: Cmd* (client to daemon), Evt* (daemon to client)
+      launcher.ts           # CLI/TUI side: ensure, start and stop the daemon
+      client.ts             # WebSocket client with reconnect and typed commands
+      analytics-tracker.ts  # Keeps per-execution analytics snapshots in sync with agents
+    ink/                    # React/Ink terminal UI; tests colocated as *.test.tsx
+      run-tui-app.tsx       # Unified TUI root: one persistent component tree per session
+      chrome.tsx            # Persistent top and bottom status bars
+      esc-menu.tsx          # Global ESC overlay menu
+      dashboard.tsx         # Default screen: live status overview
+      onboarding/           # First-run onboarding wizard
+      strings/en.ts         # UI strings (i18n.ts resolves them)
+    lib/                    # Core logic, no UI
+      task-store.ts         # Folder-based task storage (tasks/, archive/) and legacy migration
+      tasks.ts              # Task types, loading, filtering, dependency readiness
+      task-schema.ts        # Task field enums, required fields, validation
+      quest.ts              # Quest types and layered constraint resolution
+      quest-store.ts        # Folder-based quest storage (quests/)
+      quest-planner.ts      # Quest planner agent pipeline
+      prompt.ts             # Agent prompt generation (spec, constraints, file scopes)
+      launcher.ts           # Headless agent process spawning
+      monitor.ts            # Parses agent JSON events; detects completion and failure
+      worktree.ts           # Git worktree and branch lifecycle
+      merger.ts             # Merges task, quest and base branches; handles conflicts
+      verifier.ts           # Build verification in worktrees
+      tdd-verifier.ts       # TDD gate: test run plus new-file test detection
+      test-runner.ts        # Runs the configured test command and parses results
+      test-baseline.ts      # Quest test baselines: storage and regression detection
+      test-baseline-capture.ts  # Captures a baseline from the quest base branch
+      analytics.ts          # Durable per-execution analytics snapshots
+      analytics-git.ts      # Git line-change metrics for an execution
+      analytics-summary.ts  # Filtering and aggregation over analytics snapshots
+      merge-report.ts       # Deterministic Markdown merge reports
+      changelog.ts          # Idempotent CHANGELOG.md entries for merges
+      github-pr.ts          # Creates or updates GitHub PRs through the gh CLI
+      post-merge.ts         # Shared post-merge pipeline (journal, changelog, PR)
+      templates.ts          # Resolves bundled agent templates (src/templates/)
+      schema.ts             # Command and flag registry for `woco describe`
+      eval-score.ts         # Eval-style scoring of completed daemon sessions
+    templates/              # Bundled agent definitions, quest.yml and _meta.yml
+  tests/
+    *.test.ts               # Unit tests (bun test)
+    ink/                    # Ink component tests
+    e2e/                    # CLI and TUI smoke tests
+    helpers/                # Git repo, fake gh and daemon seed fixtures
+  .github/workflows/
+    ci.yml                  # Typecheck, build, unit/component and CLI/TUI e2e tests
+    release.yml             # Publishes when package.json version changes on main
+  graphify-out/             # Knowledge graph (graph.json, GRAPH_REPORT.md)
 ```
 
 ## User-facing file layout
 
-All wombo-combo files live under `.wombo-combo/`:
+All wombo-combo project and runtime files live under `.wombo-combo/`:
 
 ```
 .wombo-combo/
-  config.json     # Project configuration (replaces wombo.json)
-  tasks.yml       # Active tasks (replaces .features.yml)
-  archive.yml     # Completed/cancelled tasks
-  state.json      # Wave state
-  logs/           # Agent log files
-  history/        # Wave history records
+  config.json             # Project configuration (tracked)
+  project.yml             # Project profile: vision, stack, conventions, rules (tracked)
+  wishlist.yml            # Wishlist items (tracked)
+  tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)
+  archive/                # Completed/cancelled tasks: _meta.yml + <task-id>.yml (tracked)
+  quests/                 # Quests: <quest-id>.yml + <quest-id>/knowledge.md (tracked)
+  quest-archive/          # Finished quests: <quest-id>.yml (tracked)
+  state.json              # Wave/pipeline state (gitignored)
+  daemon-state.json       # Daemon state snapshot (gitignored)
+  daemon.pid              # Running daemon PID (gitignored)
+  logs/                   # Agent log files (gitignored)
+  history/                # Run history records (gitignored; a few older records are still tracked)
+  usage.jsonl             # Token usage, one JSON record per line (gitignored)
+  tui-session.json        # TUI view state across sessions (gitignored)
+  baselines/              # Quest test baselines: <quest-id>/tests.json (gitignored)
+  analytics/              # Per-execution analytics snapshots (gitignored)
+  evals/                  # Eval score reports: <wave-id>.json (gitignored)
+  post-merge.json         # Post-merge journal (gitignored)
+  hitl/                   # Human-in-the-loop question/answer files
+  agents-cache/           # Cached agent definitions from the external registry
 ```
+
+Legacy single-file `tasks.yml` and `archive.yml` are migrated into `tasks/` and
+`archive/` automatically and are not used by the current code.
 
 ## Coding conventions
 
@@ -185,13 +241,15 @@ and use `*.test.ts` naming.
 - **YAML null vs empty array:** `yaml` parses `tasks:` (no items) as `null`,
   not `[]`. `loadTasks()` normalizes this: `parsed.tasks ?? parsed.features ?? null`.
 - **`import.meta.dir`:** Gives the directory of the current source file in Bun.
-  Used in `src/lib/tasks.ts` to resolve the template path.
+  Used in `src/lib/tasks.ts` to resolve the bundled `_meta.yml` template, and in
+  `src/lib/templates.ts` and `src/lib/launcher.ts` to locate bundled files.
 
 ## Feature backlog
 
-The active backlog lives in `.wombo-combo/tasks.yml`. Use
-`bun dev tasks list` to see it. The canonical template is at
-`src/templates/tasks.yml`.
+The active backlog lives in the `.wombo-combo/tasks/` folder (one
+`<task-id>.yml` per task, metadata in `_meta.yml`). Use `bun dev tasks list` to
+see it. The task schema is in `schemas/task.schema.json` and
+`src/lib/task-schema.ts`.
 
 ## Making changes
 

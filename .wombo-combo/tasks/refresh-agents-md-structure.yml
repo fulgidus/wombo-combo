@@ -4,14 +4,14 @@ description: AGENTS.md 'Project structure' lists src/lib/tui.ts (neo-blessed) an
   exist, and omits src/daemon/, src/ink/, src/commands/citty/, quest/baseline/analytics/merge modules, scripts/ and
   docs/. The 'User-facing file layout' also still shows tasks.yml/archive.yml instead of the tasks/ and archive/
   folders. Regenerate both sections from the tree.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-11T02:46:39.152Z
+ended_at: 2026-10-11T02:48:33.104Z
 constraints: []
 forbidden: []
 references: []
