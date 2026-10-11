@@ -22,6 +22,7 @@ import {
   type FeaturesFile,
 } from "../../lib/tasks";
 import { output, type OutputFormat } from "../../lib/output";
+import { t } from "../../lib/i18n";
 import { renderGraph } from "../../lib/toon";
 
 // mermaidtui has no type declarations — import the JS module directly
@@ -276,7 +277,7 @@ function printLegend(features: Feature[]): void {
     statuses.add(f.status);
   }
 
-  console.log(`\n${BOLD}Legend:${RESET}`);
+  console.log(`\n${BOLD}${t("cli.tasks.graph.legend")}${RESET}`);
   const legendItems: string[] = [];
   for (const [status, badge] of Object.entries(STATUS_BADGE)) {
     if (statuses.has(status as FeatureStatus)) {
@@ -297,7 +298,7 @@ function printDiagnostics(data: FeaturesFile, includeSubtasks: boolean): void {
   for (const f of data.tasks) {
     for (const dep of f.depends_on) {
       if (!allIds.has(dep)) {
-        issues.push(`${YELLOW}WARNING${RESET}: ${f.id} depends on "${dep}" which does not exist`);
+        issues.push(`${YELLOW}${t("cli.tasks.graph.warning")}${RESET}: ${t("cli.tasks.graph.danglingDep", { id: f.id, dep })}`);
       }
     }
     if (includeSubtasks) {
@@ -308,7 +309,7 @@ function printDiagnostics(data: FeaturesFile, includeSubtasks: boolean): void {
   // Check for circular dependencies (simple DFS)
   const circularPaths = detectCycles(data.tasks, includeSubtasks);
   for (const cycle of circularPaths) {
-    issues.push(`${RED}CYCLE${RESET}: ${cycle.join(" -> ")}`);
+    issues.push(`${RED}${t("cli.tasks.graph.cycle")}${RESET}: ${cycle.join(" -> ")}`);
   }
 
   // Check for blocked features whose blockers are done
@@ -320,14 +321,14 @@ function printDiagnostics(data: FeaturesFile, includeSubtasks: boolean): void {
       });
       if (allDepsDone && f.depends_on.length > 0) {
         issues.push(
-          `${CYAN}INFO${RESET}: ${f.id} is marked "blocked" but all its dependencies are done`
+          `${CYAN}${t("cli.tasks.graph.info")}${RESET}: ${t("cli.tasks.graph.blockedDone", { id: f.id })}`
         );
       }
     }
   }
 
   if (issues.length > 0) {
-    console.log(`\n${BOLD}Diagnostics (${issues.length} issue${issues.length > 1 ? "s" : ""}):${RESET}`);
+    console.log(`\n${BOLD}${t("cli.tasks.graph.diagnostics", { count: issues.length })}${RESET}`);
     for (const issue of issues) {
       console.log(`  ${issue}`);
     }
@@ -343,7 +344,7 @@ function checkSubtaskDeps(
     for (const dep of st.depends_on) {
       if (!allIds.has(dep)) {
         issues.push(
-          `${YELLOW}WARNING${RESET}: subtask ${st.id} depends on "${dep}" which does not exist`
+          `${YELLOW}${t("cli.tasks.graph.warning")}${RESET}: ${t("cli.tasks.graph.danglingSubtaskDep", { id: st.id, dep })}`
         );
       }
     }
@@ -437,7 +438,7 @@ export async function cmdTasksGraph(opts: TasksGraphOptions): Promise<void> {
 
   if (nodeCount === 0 && orphanCount === 0) {
     output(fmt, { graph: null, nodes: 0, edges: 0, message: "No tasks to graph" }, () => {
-      console.log("No tasks to graph.");
+      console.log(t("cli.tasks.graph.empty"));
     }, () => {
       console.log(renderGraph({ mermaid: null, nodes: 0, edges: 0, orphan_count: 0, orphans: [] }));
     });
@@ -480,19 +481,19 @@ export async function cmdTasksGraph(opts: TasksGraphOptions): Promise<void> {
 
   output(fmt, graphData, () => {
     // Default text: render the graph in the terminal
-    console.log(`\n${BOLD}Task Dependency Graph${RESET}`);
+    console.log(`\n${BOLD}${t("cli.tasks.graph.title")}${RESET}`);
 
     if (nodeCount > 0 && source) {
       const rendered = renderMermaidToTui(source, { ascii: !!opts.ascii }) as string;
-      console.log(`${DIM}${nodeCount} nodes, ${edgeCount} edges${RESET}\n`);
+      console.log(`${DIM}${t("cli.tasks.graph.counts", { nodes: nodeCount, edges: edgeCount })}${RESET}\n`);
       console.log(rendered);
     } else {
-      console.log(`${DIM}No dependency relationships found.${RESET}`);
+      console.log(`${DIM}${t("cli.tasks.graph.noRelations")}${RESET}`);
     }
 
     // Print orphan summary
     if (orphans.length > 0) {
-      console.log(`\n${BOLD}Standalone tasks${RESET} ${DIM}(${orphans.length} with no dependencies):${RESET}`);
+      console.log(`\n${BOLD}${t("cli.tasks.graph.standalone")}${RESET} ${DIM}(${t("cli.tasks.graph.standaloneCount", { count: orphans.length })}):${RESET}`);
       for (const o of orphans) {
         const badge = STATUS_BADGE[o.status];
         console.log(`  ${DIM}${badge}${RESET} ${o.id} ${DIM}— ${o.title}${RESET}`);

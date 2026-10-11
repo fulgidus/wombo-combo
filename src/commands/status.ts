@@ -21,6 +21,7 @@ import type { DaemonSnapshotView } from "../lib/ui";
 import { printDashboard } from "../lib/ui";
 import { output, outputMessage, type OutputFormat } from "../lib/output";
 import { renderStatus } from "../lib/toon";
+import { msg } from "../lib/i18n";
 
 export interface StatusOptions {
   projectRoot: string;
@@ -191,7 +192,7 @@ export async function cmdStatus(opts: StatusOptions): Promise<void> {
   const snapshot = await loadSessionSnapshot(opts.projectRoot);
 
   if (!snapshot || snapshot.agents.length === 0) {
-    outputMessage(fmt, "No active daemon session. Use 'woco launch' to start one.", {
+    outputMessage(fmt, msg("cli.status.noSession"), {
       wave_id: null,
       agents: [],
       summary: { total: 0 },

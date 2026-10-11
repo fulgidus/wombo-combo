@@ -28,6 +28,7 @@ import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import type { UsageTotals, GroupableField } from "../lib/token-usage";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Format Helpers (exported for testing)
@@ -65,12 +66,12 @@ const GROUPING_FIELDS: GroupableField[] = [
 ];
 
 /** Human-readable labels for grouping fields */
-const GROUPING_LABELS: Record<GroupableField, string> = {
-  task_id: "Task",
-  quest_id: "Quest",
-  model: "Model",
-  provider: "Provider",
-  harness: "Harness",
+const GROUPING_LABEL_KEYS: Record<GroupableField, string> = {
+  task_id: "usage.group.task",
+  quest_id: "usage.group.quest",
+  model: "usage.group.model",
+  provider: "usage.group.provider",
+  harness: "usage.group.harness",
 };
 
 // ---------------------------------------------------------------------------
@@ -99,17 +100,18 @@ export interface UsageOverlayViewProps {
 // ---------------------------------------------------------------------------
 
 function OverallSummary({ overall }: { overall: UsageTotals }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column">
-      <Text bold color="yellow">Overall Usage:</Text>
+      <Text bold color="yellow">{t("usage.overall")}</Text>
       <Box>
-        <Text>  Input: </Text>
+        <Text>  {t("usage.input")} </Text>
         <Text color="cyan">{formatTokenCount(overall.input_tokens)}</Text>
-        <Text>    Output: </Text>
+        <Text>    {t("usage.output")} </Text>
         <Text color="cyan">{formatTokenCount(overall.output_tokens)}</Text>
         {overall.cache_read > 0 && (
           <>
-            <Text>    Cache: </Text>
+            <Text>    {t("usage.cache")} </Text>
             <Text dimColor>{formatTokenCount(overall.cache_read)}</Text>
           </>
         )}
@@ -117,21 +119,21 @@ function OverallSummary({ overall }: { overall: UsageTotals }): React.ReactEleme
       <Box>
         {overall.reasoning_tokens > 0 && (
           <>
-            <Text>  Reasoning: </Text>
+            <Text>  {t("usage.reasoning")} </Text>
             <Text color="magenta">{formatTokenCount(overall.reasoning_tokens)}</Text>
             <Text>    </Text>
           </>
         )}
         {overall.reasoning_tokens === 0 && <Text>  </Text>}
-        <Text>Total: </Text>
+        <Text>{t("usage.total")} </Text>
         <Text>{formatTokenCount(overall.total_tokens)}</Text>
         {overall.total_cost > 0 && (
           <>
-            <Text>    Cost: </Text>
+            <Text>    {t("usage.cost")} </Text>
             <Text color="yellow">{formatCost(overall.total_cost)}</Text>
           </>
         )}
-        <Text>    Steps: {overall.record_count}</Text>
+        <Text>    {t("usage.steps")} {overall.record_count}</Text>
       </Box>
     </Box>
   );
@@ -144,17 +146,18 @@ function GroupItem({
   item: { key: string; totals: UsageTotals };
   isSelected: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   const maxKeyLen = 24;
   const displayKey =
     item.key.length > maxKeyLen
       ? item.key.slice(0, maxKeyLen - 1) + "…"
       : item.key.padEnd(maxKeyLen);
 
-  const input = `In: ${formatTokenCount(item.totals.input_tokens)}`.padEnd(12);
-  const output = `Out: ${formatTokenCount(item.totals.output_tokens)}`.padEnd(13);
+  const input = `${t("usage.inShort")} ${formatTokenCount(item.totals.input_tokens)}`.padEnd(12);
+  const output = `${t("usage.outShort")} ${formatTokenCount(item.totals.output_tokens)}`.padEnd(13);
   const cost =
     item.totals.total_cost > 0 ? formatCost(item.totals.total_cost) : "";
-  const steps = `${item.totals.record_count}st`;
+  const steps = t("usage.stepsShort", { count: item.totals.record_count });
 
   return (
     <Box>
@@ -192,6 +195,7 @@ export function UsageOverlayView({
   onCycleGrouping,
   onSelectIndex,
 }: UsageOverlayViewProps): React.ReactElement {
+  const t = useI18n();
   useScreenInput((input, key) => {
     if (key.escape || input === "u" || input === "U") {
       onClose();
@@ -219,11 +223,11 @@ export function UsageOverlayView({
   // Next grouping label for footer
   const nextIdx =
     (GROUPING_FIELDS.indexOf(groupField) + 1) % GROUPING_FIELDS.length;
-  const nextLabel = GROUPING_LABELS[GROUPING_FIELDS[nextIdx]];
+  const nextLabel = t(GROUPING_LABEL_KEYS[GROUPING_FIELDS[nextIdx]]);
 
   const titleStr = overall
-    ? `Token Usage  Total: ${formatCost(overall.total_cost)}`
-    : "Token Usage";
+    ? t("usage.titleWithTotal", { cost: formatCost(overall.total_cost) })
+    : t("usage.title");
 
   return (
     <Modal
@@ -232,11 +236,11 @@ export function UsageOverlayView({
       footer={
         <Box>
           <Text dimColor>Tab</Text>
-          <Text> group by {nextLabel}  </Text>
+          <Text> {t("usage.groupBy", { label: nextLabel })}  </Text>
           <Text dimColor>Esc/U</Text>
-          <Text> close  </Text>
-          <Text dimColor>|  Grouped by: </Text>
-          <Text color="yellow">{GROUPING_LABELS[groupField]}</Text>
+          <Text> {t("questionPopup.close")}  </Text>
+          <Text dimColor>|  {t("usage.groupedBy")} </Text>
+          <Text color="yellow">{t(GROUPING_LABEL_KEYS[groupField])}</Text>
         </Box>
       }
     >
@@ -246,10 +250,10 @@ export function UsageOverlayView({
       ) : (
         <Box flexDirection="column">
           <Text dimColor>
-            No token usage data found.
+            {t("usage.noData")}
           </Text>
           <Text dimColor>
-            Usage data is recorded when agents run and produce step_finish events.
+            {t("usage.noDataHint")}
           </Text>
         </Box>
       )}
@@ -259,7 +263,7 @@ export function UsageOverlayView({
         <Box flexDirection="column" marginTop={1}>
           <Box marginBottom={1}>
             <Text bold dimColor>
-              By {GROUPING_LABELS[groupField]}:
+              {t("usage.byGroup", { label: t(GROUPING_LABEL_KEYS[groupField]) })}
             </Text>
           </Box>
           {groups.map((item, i) => (
@@ -274,7 +278,7 @@ export function UsageOverlayView({
 
       {groups.length === 0 && overall && (
         <Box marginTop={1}>
-          <Text dimColor>No usage data to group.</Text>
+          <Text dimColor>{t("usage.noGroups")}</Text>
         </Box>
       )}
     </Modal>

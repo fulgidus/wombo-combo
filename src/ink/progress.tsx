@@ -26,6 +26,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,6 +83,7 @@ export function ProgressView({
   logLines,
   showDismiss = false,
 }: ProgressViewProps): React.ReactElement {
+  const t = useI18n();
   // Determine the icon and status text to display
   let icon: React.ReactElement | null = null;
   let statusText: React.ReactElement | null = null;
@@ -143,7 +145,7 @@ export function ProgressView({
       {/* Footer */}
       {showDismiss && (
         <Box marginTop={1}>
-          <Text dimColor>Press any key to continue...</Text>
+          <Text dimColor>{t("ui.pressAnyKey")}</Text>
         </Box>
       )}
     </Box>

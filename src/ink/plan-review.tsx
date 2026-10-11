@@ -21,6 +21,7 @@ import type {
   ReviewValidationIssue,
 } from "./review-list-types";
 import { ReviewList } from "./review-list";
+import { t as defaultT, getLocaleT, useI18n, type TFunction } from "./i18n";
 import type {
   ProposedTask,
   PlanResult,
@@ -38,41 +39,46 @@ const DIFFICULTIES = ["trivial", "easy", "medium", "hard", "very_hard"];
 // Edit Field Definitions
 // ---------------------------------------------------------------------------
 
-/** Edit fields for plan review (task editing). */
-export const PLAN_EDIT_FIELDS: EditFieldDef[] = [
-  {
-    key: "title",
-    label: "Title",
-    type: "text",
-    hint: "Task title",
-  },
-  {
-    key: "priority",
-    label: "Priority",
-    type: "select",
-    options: PRIORITIES.map((p) => ({ label: p, value: p })),
-    hint: "Select priority level",
-  },
-  {
-    key: "difficulty",
-    label: "Difficulty",
-    type: "select",
-    options: DIFFICULTIES.map((d) => ({ label: d, value: d })),
-    hint: "Select difficulty level",
-  },
-  {
-    key: "depends_on",
-    label: "Dependencies",
-    type: "text",
-    hint: "Comma-separated task IDs",
-  },
-  {
-    key: "description",
-    label: "Description",
-    type: "textarea",
-    hint: "Task description",
-  },
-];
+/** Edit fields for plan review (task editing), labelled for the given locale. */
+export function buildPlanEditFields(t: TFunction = defaultT): EditFieldDef[] {
+  return [
+    {
+      key: "title",
+      label: t("reviewField.title"),
+      type: "text",
+      hint: t("planReview.hint.title"),
+    },
+    {
+      key: "priority",
+      label: t("reviewField.priority"),
+      type: "select",
+      options: PRIORITIES.map((p) => ({ label: p, value: p })),
+      hint: t("reviewField.hint.priority"),
+    },
+    {
+      key: "difficulty",
+      label: t("reviewField.difficulty"),
+      type: "select",
+      options: DIFFICULTIES.map((d) => ({ label: d, value: d })),
+      hint: t("reviewField.hint.difficulty"),
+    },
+    {
+      key: "depends_on",
+      label: t("reviewField.dependencies"),
+      type: "text",
+      hint: t("planReview.hint.dependsOn"),
+    },
+    {
+      key: "description",
+      label: t("reviewField.description"),
+      type: "textarea",
+      hint: t("planReview.hint.description"),
+    },
+  ];
+}
+
+/** English edit fields, kept for backward compatibility (the UI builds them per locale). */
+export const PLAN_EDIT_FIELDS: EditFieldDef[] = buildPlanEditFields(getLocaleT("en"));
 
 // ---------------------------------------------------------------------------
 // Task ↔ ReviewItem mapping
@@ -85,7 +91,7 @@ export const PLAN_EDIT_FIELDS: EditFieldDef[] = [
 const taskStash = new WeakMap<ReviewItem, ProposedTask>();
 
 /** Convert a ProposedTask to a ReviewItem for the shared component. */
-export function taskToReviewItem(task: ProposedTask): ReviewItem {
+export function taskToReviewItem(task: ProposedTask, t: TFunction = defaultT): ReviewItem {
   const item: ReviewItem = {
     id: task.id,
     title: task.title,
@@ -95,34 +101,40 @@ export function taskToReviewItem(task: ProposedTask): ReviewItem {
     accepted: true,
     detailFields: [
       ...(task.effort
-        ? [{ label: "Effort:", value: task.effort }]
+        ? [{ id: "effort", label: t("reviewDetail.effort"), value: task.effort }]
         : []),
     ],
     detailSections: [
       {
-        label: "Description",
+        id: "description",
+        label: t("reviewDetail.description"),
         items: task.description ? [task.description] : [],
       },
       {
-        label: "Constraints",
+        id: "constraints",
+        label: t("reviewDetail.constraints"),
         items: [...task.constraints],
         prefix: "+",
       },
       {
-        label: "Forbidden",
+        id: "forbidden",
+        label: t("reviewDetail.forbidden"),
         items: [...task.forbidden],
         prefix: "-",
       },
       {
-        label: "References",
+        id: "references",
+        label: t("reviewDetail.references"),
         items: [...task.references],
       },
       {
-        label: "Notes",
+        id: "notes",
+        label: t("reviewDetail.notes"),
         items: [...task.notes],
       },
       {
-        label: "Agent",
+        id: "agent",
+        label: t("reviewDetail.agent"),
         items: task.agent ? [task.agent] : [],
       },
     ],
@@ -165,7 +177,8 @@ export function buildPlanConfig(
   questTitle: string,
   planResult: PlanResult,
   onApprove: (tasks: ProposedTask[], knowledge: string | null) => void,
-  onCancel: () => void
+  onCancel: () => void,
+  t: TFunction = defaultT
 ): ReviewListConfig {
   // Map plan validation issues to generic review issues
   const issues: ReviewValidationIssue[] = planResult.issues.map(
@@ -178,18 +191,18 @@ export function buildPlanConfig(
 
   // Build a lookup of original tasks by ID for reverse mapping
   const originalTasks = new Map<string, ProposedTask>();
-  for (const t of planResult.tasks) {
-    originalTasks.set(t.id, t);
+  for (const proposed of planResult.tasks) {
+    originalTasks.set(proposed.id, proposed);
   }
 
   return {
-    title: "Plan Review",
-    subtitle: `quest: ${questId} — ${questTitle}`,
-    itemLabel: "task",
-    itemLabelPlural: "tasks",
-    listLabel: "Proposed Tasks",
+    title: t("planReview.title"),
+    subtitle: t("planReview.subtitle", { id: questId, title: questTitle }),
+    itemLabel: t("planReview.itemLabel"),
+    itemLabelPlural: t("planReview.itemLabelPlural"),
+    listLabel: t("planReview.listLabel"),
     issues,
-    editFields: PLAN_EDIT_FIELDS,
+    editFields: buildPlanEditFields(t),
     knowledge: planResult.knowledge,
 
     getEditFieldValue: (item: ReviewItem, fieldKey: string): string => {
@@ -245,7 +258,7 @@ export function buildPlanConfig(
           if (updatedTask) updatedTask.description = value;
           // Update description section
           updatedItem.detailSections = updatedItem.detailSections.map((s) =>
-            s.label === "Description"
+            s.id === "description"
               ? { ...s, items: value ? [value] : [] }
               : s
           );
@@ -260,14 +273,9 @@ export function buildPlanConfig(
       return updatedItem;
     },
 
-    approveTitle: "Approve Plan",
+    approveTitle: t("planReview.approveTitle"),
     approveBody: (acceptedCount: number) =>
-      `Apply ${acceptedCount} task${acceptedCount !== 1 ? "s" : ""} to quest "${questId}"?\n\n` +
-      "This will:\n" +
-      "  - Create task files in the task store\n" +
-      "  - Associate tasks with the quest\n" +
-      "  - Save any planner knowledge\n\n" +
-      "Tasks will be set to 'pending' status.",
+      `${t("planReview.approveApply", { count: acceptedCount, quest: questId })}\n\n${t("planReview.approveDetails")}`,
 
     onApprove: (items: ReviewItem[]) => {
       const tasks = items.map((item) => {
@@ -310,8 +318,9 @@ export function PlanReviewApp({
   onApprove,
   onCancel,
 }: PlanReviewAppProps): React.ReactElement {
-  const items = planResult.tasks.map(taskToReviewItem);
-  const config = buildPlanConfig(questId, questTitle, planResult, onApprove, onCancel);
+  const t = useI18n();
+  const items = planResult.tasks.map((task) => taskToReviewItem(task, t));
+  const config = buildPlanConfig(questId, questTitle, planResult, onApprove, onCancel, t);
 
   return <ReviewList items={items} config={config} />;
 }

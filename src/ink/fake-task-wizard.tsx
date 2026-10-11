@@ -18,6 +18,7 @@ import { useTextInput } from "./use-text-input";
 import type { Task } from "../lib/tasks";
 import { randomUUID } from "node:crypto";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -33,14 +34,11 @@ export interface FakeTaskConfig {
 
 const WORKFLOWS: WorkflowKind[] = ["flat", "chain", "branching", "diamond", "random"];
 
-const WORKFLOW_LABELS: Record<WorkflowKind, string> = {
-  flat:      "flat       (independent tasks, no deps)",
-  chain:     "chain      (A→B→C→D linear sequence)",
-  branching: "branching  (root fans out to leaves)",
-  diamond:   "diamond    (fork–join: A→B,C→D)",
-  random:    "random DAG (randomly wired dependencies)",
-};
-
+/**
+ * Text written into the generated tasks' descriptions. This is task DATA, not
+ * UI text, so it is intentionally not translated (the wizard's own copy of
+ * these sentences lives in locales as fakeTask.workflow.*).
+ */
 const WORKFLOW_DESCRIPTIONS: Record<WorkflowKind, string> = {
   flat:      "All tasks are independent.",
   chain:     "Each task depends on the previous one.",
@@ -202,6 +200,7 @@ export interface FakeTaskWizardProps {
 }
 
 export function FakeTaskWizard({ onConfirm, onCancel }: FakeTaskWizardProps): React.ReactElement {
+  const t = useI18n();
   const [focused, setFocused] = useState<Field>(0);
   const [count, setCount] = useState(5);
   const [workflowIdx, setWorkflowIdx] = useState(0);
@@ -245,20 +244,20 @@ export function FakeTaskWizard({ onConfirm, onCancel }: FakeTaskWizardProps): Re
   return (
     <Box width={62}>
         <Modal
-          title="⚡ Fake Task Generator"
+          title={`⚡ ${t("fakeTask.title")}`}
           borderColor="yellow"
           footer={
             <Box flexDirection="row" gap={2}>
-              <Text dimColor>Tab</Text><Text> next field</Text>
-              <Text dimColor>  ← →</Text><Text> adjust</Text>
-              <Text dimColor>  Ctrl+S</Text><Text> confirm</Text>
-              <Text dimColor>  ESC</Text><Text> cancel</Text>
+              <Text dimColor>Tab</Text><Text> {t("fakeTask.key.nextField")}</Text>
+              <Text dimColor>  ← →</Text><Text> {t("fakeTask.key.adjust")}</Text>
+              <Text dimColor>  Ctrl+S</Text><Text> {t("fakeTask.key.confirm")}</Text>
+              <Text dimColor>  ESC</Text><Text> {t("fakeTask.key.cancel")}</Text>
             </Box>
           }
         >
           {/* Task count */}
           <Box flexDirection="row" gap={1} marginBottom={1}>
-            <Text color={fieldColor(0)} bold={focused === 0}>Tasks:</Text>
+            <Text color={fieldColor(0)} bold={focused === 0}>{t("fakeTask.field.tasks")}</Text>
             <Text color={focused === 0 ? "yellow" : "gray"}>←</Text>
             <Text bold color={focused === 0 ? "white" : undefined}> {String(count).padStart(2)} </Text>
             <Text color={focused === 0 ? "yellow" : "gray"}>→</Text>
@@ -268,17 +267,17 @@ export function FakeTaskWizard({ onConfirm, onCancel }: FakeTaskWizardProps): Re
           {/* Workflow */}
           <Box flexDirection="column" marginBottom={1}>
             <Box flexDirection="row" gap={1}>
-              <Text color={fieldColor(1)} bold={focused === 1}>Workflow:</Text>
+              <Text color={fieldColor(1)} bold={focused === 1}>{t("fakeTask.field.workflow")}</Text>
               <Text color={focused === 1 ? "yellow" : "gray"}>←</Text>
               <Text bold color={focused === 1 ? "white" : undefined}> {workflow} </Text>
               <Text color={focused === 1 ? "yellow" : "gray"}>→</Text>
             </Box>
-            <Text dimColor>  {WORKFLOW_DESCRIPTIONS[workflow]}</Text>
+            <Text dimColor>  {t(`fakeTask.workflow.${workflow}`)}</Text>
           </Box>
 
           {/* Quest name */}
           <Box flexDirection="column">
-            <Text color={fieldColor(2)} bold={focused === 2}>Quest name:</Text>
+            <Text color={fieldColor(2)} bold={focused === 2}>{t("fakeTask.field.questName")}</Text>
             <Box
               borderStyle="round"
               borderColor={focused === 2 ? "cyan" : "gray"}
@@ -289,7 +288,7 @@ export function FakeTaskWizard({ onConfirm, onCancel }: FakeTaskWizardProps): Re
                 value={questInput.value}
                 onChange={questInput.onChange}
                 onSubmit={handleConfirm}
-                placeholder="(empty → create as errands)"
+                placeholder={t("fakeTask.placeholder.questName")}
                 focus={focused === 2}
               />
             </Box>

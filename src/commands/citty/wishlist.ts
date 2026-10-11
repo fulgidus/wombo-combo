@@ -15,6 +15,7 @@ import { defineCommand } from "citty";
 import { resolve } from "node:path";
 import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
 import { resolveOutputFormat, output, outputError } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 import {
   addItem as addWishlistItem,
   deleteItem as deleteWishlistItem,
@@ -28,10 +29,7 @@ import {
 
 function ensureInitialized(projectRoot: string) {
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-        `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-    );
+    console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
   const config = loadConfig(projectRoot);
@@ -72,7 +70,7 @@ const addCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.text) {
-      outputError(fmt, 'Usage: woco wishlist add "Your idea here" [--tag <tag>]');
+      outputError(fmt, msg("cli.wishlist.add.usage"));
       return;
     }
 
@@ -92,16 +90,16 @@ const addCommand = defineCommand({
         fmt,
         item,
         () => {
-          console.log(`Added wishlist item: ${item.text}`);
-          console.log(`  ID: ${item.id}`);
+          console.log(t("cli.wishlist.add.added", { text: item.text }));
+          console.log(t("cli.wishlist.add.id", { id: item.id }));
           if (item.tags.length > 0) {
-            console.log(`  Tags: ${item.tags.join(", ")}`);
+            console.log(t("cli.wishlist.add.tags", { tags: item.tags.join(", ") }));
           }
         }
       );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      outputError(fmt, `Failed to add wishlist item: ${msg}`);
+      const message = err instanceof Error ? err.message : String(err);
+      outputError(fmt, msg("cli.wishlist.add.failed", { message }));
     }
   },
 });
@@ -134,10 +132,10 @@ const listCommand = defineCommand({
       items,
       () => {
         if (items.length === 0) {
-          console.log("No wishlist items yet. Add one with: woco wishlist add \"Your idea\"");
+          console.log(t("cli.wishlist.list.empty"));
           return;
         }
-        console.log(`Wishlist (${items.length} item${items.length === 1 ? "" : "s"}):\n`);
+        console.log(`${t("cli.wishlist.list.heading", { count: items.length })}\n`);
         for (const item of items) {
           const tagStr = item.tags.length > 0 ? ` [${item.tags.join(", ")}]` : "";
           const date = new Date(item.created_at).toLocaleDateString();
@@ -181,13 +179,13 @@ const moveCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.id || !args.position) {
-      outputError(fmt, "Usage: woco wishlist move <id> <position>");
+      outputError(fmt, msg("cli.wishlist.move.usage"));
       return;
     }
 
     const newPos = parseInt(args.position, 10);
     if (isNaN(newPos) || newPos < 1) {
-      outputError(fmt, "Position must be a positive integer (1-indexed).");
+      outputError(fmt, msg("cli.wishlist.move.badPosition"));
       return;
     }
 
@@ -198,7 +196,7 @@ const moveCommand = defineCommand({
     );
 
     if (!match) {
-      outputError(fmt, `No wishlist item found matching: ${args.id}`);
+      outputError(fmt, msg("cli.wishlist.noMatch", { id: args.id }));
       return;
     }
 
@@ -208,11 +206,11 @@ const moveCommand = defineCommand({
         fmt,
         { moved: true, id: moved.id, text: moved.text, order: moved.order },
         () => {
-          console.log(`Moved "${moved.text}" to position ${moved.order}.`);
+          console.log(t("cli.wishlist.move.moved", { text: moved.text, order: moved.order }));
         }
       );
     } else {
-      outputError(fmt, `Failed to move wishlist item: ${match.id}`);
+      outputError(fmt, msg("cli.wishlist.move.failed", { id: match.id }));
     }
   },
 });
@@ -245,7 +243,7 @@ const deleteCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.id) {
-      outputError(fmt, "Usage: woco wishlist delete <id>");
+      outputError(fmt, msg("cli.wishlist.delete.usage"));
       return;
     }
 
@@ -256,7 +254,7 @@ const deleteCommand = defineCommand({
     );
 
     if (!match) {
-      outputError(fmt, `No wishlist item found matching: ${args.id}`);
+      outputError(fmt, msg("cli.wishlist.noMatch", { id: args.id }));
       return;
     }
 
@@ -266,11 +264,11 @@ const deleteCommand = defineCommand({
         fmt,
         { deleted: true, id: match.id, text: match.text },
         () => {
-          console.log(`Deleted wishlist item: ${match.text}`);
+          console.log(t("cli.wishlist.delete.deleted", { text: match.text }));
         }
       );
     } else {
-      outputError(fmt, `Failed to delete wishlist item: ${match.id}`);
+      outputError(fmt, msg("cli.wishlist.delete.failed", { id: match.id }));
     }
   },
 });

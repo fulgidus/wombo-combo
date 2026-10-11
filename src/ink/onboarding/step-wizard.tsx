@@ -24,6 +24,7 @@ import { TextInput } from "../text-input";
 import { useChromeHideQuitHint } from "../chrome";
 import { INPUT_STEPS, type RawInputs, type InputStep } from "./onboarding-utils";
 import { useScreenInput } from "../esc-menu";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,19 +125,20 @@ function SingleLineInput({
   onBack,
   optional,
 }: SingleLineInputProps): React.ReactElement {
+  const t = useI18n();
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(
     (val: string) => {
       const trimmed = val.trim();
       if (!trimmed && !optional) {
-        setError("This field cannot be empty");
+        setError(t("onboarding.wizard.emptyError"));
         return;
       }
       setError("");
       onSubmit(trimmed);
     },
-    [optional, onSubmit],
+    [optional, onSubmit, t],
   );
 
   useScreenInput((_input, key) => {
@@ -179,19 +181,20 @@ function MultiLineInput({
   onBack,
   optional,
 }: MultiLineInputProps): React.ReactElement {
+  const t = useI18n();
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(
     (val: string) => {
       const trimmed = val.trim();
       if (!trimmed && !optional) {
-        setError("This field cannot be empty");
+        setError(t("onboarding.wizard.emptyError"));
         return;
       }
       setError("");
       onSubmit(trimmed);
     },
-    [optional, onSubmit],
+    [optional, onSubmit, t],
   );
 
   useScreenInput((_input, key) => {
@@ -216,8 +219,8 @@ function MultiLineInput({
       <Box marginTop={1}>
         <Text dimColor>
           {optional
-            ? "Ctrl+S to save and continue | Leave empty to skip"
-            : "Ctrl+S to save and continue"}
+            ? t("onboarding.wizard.saveOptional")
+            : t("onboarding.wizard.save")}
         </Text>
       </Box>
     </Box>
@@ -252,6 +255,7 @@ export function StepWizard({
   initialValues,
   onQuit,
 }: StepWizardProps): React.ReactElement {
+  const t = useI18n();
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<RawInputs>({
     ...DEFAULT_RAW_INPUTS,
@@ -320,7 +324,14 @@ export function StepWizard({
       const currentIdx = data.type === "brownfield" ? 0 : 1;
       return (
         <SelectionList
-          items={step.selectionItems ?? []}
+          items={
+            step.selection
+              ? [
+                  t("onboarding.step.type.brownfield"),
+                  t("onboarding.step.type.greenfield"),
+                ]
+              : []
+          }
           selectedIndex={currentIdx}
           onSelect={handleSelect}
           onBack={goBack}
@@ -357,26 +368,32 @@ export function StepWizard({
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="magenta">
-          Project Onboarding
+          {t("onboarding.wizard.title")}
         </Text>
       </Box>
 
       {/* Step counter and label */}
       <Box marginBottom={1}>
         <Text bold>
-          Step {stepIndex + 1}/{stepCount} — {step.label}
+          {t("onboarding.wizard.stepLine", {
+            current: stepIndex + 1,
+            total: stepCount,
+            label: t(`onboarding.step.${step.field}.label`),
+          })}
         </Text>
       </Box>
 
       {/* Prompt */}
       <Box marginBottom={1}>
-        <Text dimColor>{step.prompt}</Text>
+        <Text dimColor>{t(`onboarding.step.${step.field}.prompt`)}</Text>
       </Box>
 
       {/* Navigation hint */}
       <Box marginBottom={1}>
         <Text dimColor>
-          {isFirstStep ? "Esc to cancel" : "Esc to go back"}
+          {isFirstStep
+            ? t("onboarding.wizard.escCancel")
+            : t("onboarding.wizard.escBack")}
         </Text>
       </Box>
 

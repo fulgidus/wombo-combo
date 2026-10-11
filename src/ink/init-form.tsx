@@ -17,6 +17,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text } from "ink";
 import { useScreenInput } from "./esc-menu";
+import { getLocaleT, useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,13 +46,22 @@ export interface InitFormProps {
 
 export interface FieldDef {
   key: keyof InitFormDefaults;
+  /** English label, kept for backward compatibility; the form renders `labelKey`. */
   label: string;
+  /** Locale key of the label shown in the form. */
+  labelKey: string;
+}
+
+const enT = getLocaleT("en");
+
+function fieldDef(key: keyof InitFormDefaults, labelKey: string): FieldDef {
+  return { key, label: enT(labelKey), labelKey };
 }
 
 export const FIELDS: FieldDef[] = [
-  { key: "baseBranch", label: "Base Branch" },
-  { key: "buildCommand", label: "Build Command" },
-  { key: "installCommand", label: "Install Command" },
+  fieldDef("baseBranch", "init.field.baseBranch"),
+  fieldDef("buildCommand", "init.field.buildCommand"),
+  fieldDef("installCommand", "init.field.installCommand"),
 ];
 
 // ---------------------------------------------------------------------------
@@ -102,6 +112,7 @@ export function InitForm({
   onConfirm,
   onCancel,
 }: InitFormProps): React.ReactElement {
+  const t = useI18n();
   const [values, setValues] = useState<InitFormDefaults>({ ...defaults });
   const [focusedField, setFocusedField] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -197,25 +208,25 @@ export function InitForm({
         <Text bold color="cyan">
           wombo-combo
         </Text>
-        <Text> — Project Setup</Text>
+        <Text> {t("init.setup")}</Text>
       </Box>
 
       {/* Project info (auto-detected, read-only) */}
       <Box marginBottom={1}>
-        <Text dimColor>Project: </Text>
+        <Text dimColor>{t("init.project")}</Text>
         <Text bold>{projectName}</Text>
-        <Text dimColor> (auto-detected)</Text>
+        <Text dimColor>{t("init.autoDetected")}</Text>
       </Box>
 
       {/* Editable fields */}
       <Box flexDirection="column" marginBottom={1}>
         <Box marginBottom={1}>
-          <Text dimColor>─── Settings ───────────────────────────────────</Text>
+          <Text dimColor>{t("init.settings")}</Text>
         </Box>
         {FIELDS.map((field, idx) => (
           <EditableField
             key={field.key}
-            label={field.label}
+            label={t(field.labelKey)}
             value={
               editing && idx === focusedField
                 ? editBuffer
@@ -230,8 +241,8 @@ export function InitForm({
       <Box>
         <Text dimColor>
           {editing
-            ? "Enter to apply • Esc to cancel edit"
-            : "Enter to edit • ↑↓ to navigate • Ctrl+S to confirm • Esc to cancel"}
+            ? t("init.hint.editing")
+            : t("init.hint.browsing")}
         </Text>
       </Box>
     </Box>

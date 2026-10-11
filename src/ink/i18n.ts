@@ -1,51 +1,43 @@
 /**
- * i18n.ts — Minimal i18n skeleton for the Ink TUI.
+ * i18n.ts — i18n facade for the Ink TUI.
  *
- * Provides a typed key-value string lookup with {{var}} interpolation.
- * No external library — just a thin wrapper so we can swap in i18next later.
+ * Thin, backward-compatible layer over the i18next core in src/lib/i18n.ts.
+ * Existing call sites (`t("key")`, `useI18n()`, `getLocaleT()`) keep working;
+ * strings live in src/locales/<lng>/*.json.
  *
  * Usage:
- *   // Globally bound to the active locale (reads tui.locale from config)
  *   import { t } from "./i18n";
- *   t("status.running")           // → "Running"
- *   t("wave.agentCount", { count: 3 }) // → "3 agent(s)"
+ *   t("status.running")                  // -> "Running"
+ *   t("wave.agentCount", { count: 3 })   // -> "3 agents" (plural-aware)
  *
- *   // Custom strings map (useful for tests or alternative locales)
+ *   // Custom strings map (tests, ad-hoc)
  *   const myT = createI18n({ "hello": "Hello, {{name}}!" });
- *   myT("hello", { name: "World" }) // → "Hello, World!"
  *
  *   // React context hook
  *   const t = useI18n();
  */
 
 import { createContext, useContext } from "react";
-import { EN_STRINGS } from "./strings/en";
+import { RESOURCES } from "../locales";
+import { detectLocale, getFixedT, t as coreT, type TFunction as CoreTFunction } from "../lib/i18n";
 
-// Re-export for consumers that want direct access to the strings map.
-export { EN_STRINGS } from "./strings/en";
+/** English strings map (flat keys), kept for direct access and tests. */
+export const EN_STRINGS: Record<string, string> = RESOURCES.en;
 
 // ---------------------------------------------------------------------------
 // Core types
 // ---------------------------------------------------------------------------
 
 export type StringsMap = Record<string, string>;
-export type TFunction = (key: string, vars?: Record<string, string | number>) => string;
-
-// ---------------------------------------------------------------------------
-// Locale registry
-// ---------------------------------------------------------------------------
-
-/** All shipped locale string maps, keyed by locale identifier. */
-const LOCALE_STRINGS: Record<string, StringsMap> = {
-  en: EN_STRINGS,
-};
+export type TFunction = CoreTFunction;
 
 // ---------------------------------------------------------------------------
 // createI18n() — factory for a t() bound to a strings map
 // ---------------------------------------------------------------------------
 
 /**
- * Create a `t()` function bound to the given strings map.
+ * Legacy: create a `t()` bound to an ad-hoc strings map (no plurals).
+ * Shipped locales go through i18next instead — see getLocaleT().
  * Falls back to returning the key itself when no match is found.
  */
 export function createI18n(strings: StringsMap): TFunction {
@@ -61,25 +53,18 @@ export function createI18n(strings: StringsMap): TFunction {
 }
 
 // ---------------------------------------------------------------------------
-// Default t() — bound to English ('en')
+// Default t() — bound to the active locale (see initI18n in src/lib/i18n.ts)
 // ---------------------------------------------------------------------------
 
-/**
- * Default `t()` helper, bound to the English string map.
- *
- * In a full multi-locale setup this would be replaced by a locale-aware
- * instance read from `WomboConfig.tui.locale`. For now 'en' is the only
- * shipped locale, so this is the canonical export.
- */
-export const t: TFunction = createI18n(EN_STRINGS);
+/** Default `t()`: follows the active locale, supports plurals and interpolation. */
+export const t: TFunction = coreT;
 
 /**
- * Get a t() function for the given locale identifier.
- * Falls back to English for unknown locales.
+ * Get a t() fixed to `locale` (config value, "auto" or a locale code).
+ * Unsupported values fall through to env detection, then English.
  */
-export function getLocaleT(locale: string): TFunction {
-  const strings = LOCALE_STRINGS[locale] ?? EN_STRINGS;
-  return createI18n(strings);
+export function getLocaleT(locale?: string): TFunction {
+  return getFixedT(detectLocale({ configLocale: locale }));
 }
 
 // ---------------------------------------------------------------------------

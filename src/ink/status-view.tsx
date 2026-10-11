@@ -7,6 +7,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { useI18n } from "./i18n";
 
 export interface StatusViewProps {
   /** Current status text. */
@@ -23,6 +24,7 @@ export function StatusView({
   status = "idle",
   agentCount = 0,
 }: StatusViewProps): React.ReactElement {
+  const t = useI18n();
   const statusColor =
     status === "idle"
       ? "yellow"
@@ -33,11 +35,11 @@ export function StatusView({
   return (
     <Box flexDirection="column" gap={1}>
       <Box>
-        <Text dimColor>Status: </Text>
+        <Text dimColor>{t("statusView.status")} </Text>
         <Text color={statusColor}>{status}</Text>
       </Box>
       <Box>
-        <Text dimColor>Agents: </Text>
+        <Text dimColor>{t("statusView.agents")} </Text>
         <Text bold>{agentCount}</Text>
       </Box>
     </Box>

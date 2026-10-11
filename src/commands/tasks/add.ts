@@ -21,6 +21,7 @@ import {
   VALID_DIFFICULTIES,
 } from "../../lib/task-schema";
 import { outputError, outputMessage, type OutputFormat } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 import { validateEnum, validateId } from "../../lib/validate";
 import { loadQuest } from "../../lib/quest-store";
 
@@ -59,12 +60,12 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.id) {
-    outputError(fmt, "Usage: woco tasks add <id> --title \"Task Title\"");
+    outputError(fmt, msg("cli.tasks.add.usage"));
     return;
   }
 
   if (!opts.title) {
-    outputError(fmt, "--title is required when adding a task.");
+    outputError(fmt, msg("cli.tasks.add.titleRequired"));
     return;
   }
 
@@ -97,7 +98,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   // Check for duplicate ID
   const existingIds = allFeatureIds(data);
   if (existingIds.includes(opts.id)) {
-    outputError(fmt, `Task ID "${opts.id}" already exists.`);
+    outputError(fmt, msg("cli.tasks.add.duplicate", { id: opts.id }));
     return;
   }
 
@@ -105,7 +106,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   if (opts.dependsOn?.length) {
     for (const dep of opts.dependsOn) {
       if (!existingIds.includes(dep)) {
-        outputError(fmt, `Dependency "${dep}" does not exist in the tasks file.`);
+        outputError(fmt, msg("cli.tasks.add.depMissing", { dep }));
         return;
       }
     }
@@ -113,7 +114,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
 
   // Validate the quest reference
   if (opts.quest && !loadQuest(projectRoot, opts.quest)) {
-    outputError(fmt, `Quest "${opts.quest}" does not exist.`);
+    outputError(fmt, msg("cli.tasks.add.questMissing", { quest: opts.quest }));
     return;
   }
 
@@ -135,7 +136,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
 
   // Dry-run: show what would be added without writing
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would add task: ${opts.id} — ${opts.title}`, {
+    outputMessage(fmt, msg("cli.tasks.add.dryRun", { id: opts.id, title: opts.title }), {
       dry_run: true,
       id: feature.id,
       title: feature.title,
@@ -152,7 +153,7 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   data.tasks.push(feature);
   saveFeatures(projectRoot, config, data);
 
-  outputMessage(fmt, `Added task: ${opts.id} — ${opts.title}`, {
+  outputMessage(fmt, msg("cli.tasks.add.added", { id: opts.id, title: opts.title }), {
     id: feature.id,
     title: feature.title,
     priority: feature.priority,
@@ -163,10 +164,10 @@ export async function cmdTasksAdd(opts: TasksAddOptions): Promise<void> {
   });
 
   if (fmt === "text") {
-    console.log(`  priority: ${feature.priority}, difficulty: ${feature.difficulty}, effort: ${feature.effort}`);
+    console.log(t("cli.tasks.add.summary", { priority: feature.priority, difficulty: feature.difficulty, effort: feature.effort }));
     if (feature.depends_on.length > 0) {
-      console.log(`  depends on: ${feature.depends_on.join(", ")}`);
+      console.log(t("cli.tasks.add.dependsOn", { deps: feature.depends_on.join(", ") }));
     }
-    if (feature.quest) console.log(`  quest: ${feature.quest}`);
+    if (feature.quest) console.log(t("cli.tasks.add.quest", { quest: feature.quest }));
   }
 }

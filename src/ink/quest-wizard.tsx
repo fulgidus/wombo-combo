@@ -34,6 +34,7 @@ import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema";
 import type { Quest } from "../lib/quest";
 import type { Priority, Difficulty } from "../lib/tasks";
 import { useScreenInput } from "./esc-menu";
+import { useI18n, type TFunction } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,33 +92,27 @@ const PRIORITY_COLORS: Record<string, string> = {
   wishlist: "gray",
 };
 
-function buildPriorityItems(): SelectInputItem<Priority>[] {
+function buildPriorityItems(t: TFunction): SelectInputItem<Priority>[] {
   return (VALID_PRIORITIES as readonly Priority[]).map((p) => ({
     label: p,
     value: p,
-    hint: p === "medium" ? "(default)" : undefined,
+    hint: p === "medium" ? t("questWizard.default") : undefined,
   }));
 }
 
-function buildDifficultyItems(): SelectInputItem<Difficulty>[] {
+function buildDifficultyItems(t: TFunction): SelectInputItem<Difficulty>[] {
   return (VALID_DIFFICULTIES as readonly Difficulty[]).map((d) => ({
     label: d,
     value: d,
-    hint: d === "medium" ? "(default)" : undefined,
+    hint: d === "medium" ? t("questWizard.default") : undefined,
   }));
 }
 
-const HITL_DESCRIPTIONS: Record<QuestHitlMode, string> = {
-  yolo: "Full autonomy, no interruptions",
-  cautious: "Agent blocks on uncertainty, user answers in TUI",
-  supervised: "Like cautious, but prompt encourages asking often",
-};
-
-function buildHitlItems(): SelectInputItem<QuestHitlMode>[] {
+function buildHitlItems(t: TFunction): SelectInputItem<QuestHitlMode>[] {
   return (VALID_HITL_MODES as readonly QuestHitlMode[]).map((m) => ({
     label: m,
     value: m,
-    hint: `${m === "yolo" ? "(default) " : ""}— ${HITL_DESCRIPTIONS[m]}`,
+    hint: t(`questWizard.hitl.hint.${m}`),
   }));
 }
 
@@ -145,6 +140,7 @@ export function QuestWizard({
   checkDuplicateId,
   saveQuest: saveQuestFn,
 }: QuestWizardProps): React.ReactElement {
+  const t = useI18n();
   // Wizard state
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<WizardPhase>("editing");
@@ -163,7 +159,7 @@ export function QuestWizard({
   const [createdQuest, setCreatedQuest] = useState<Quest | null>(null);
 
   const currentStep = STEPS[stepIndex];
-  const stepLabel = `Step ${stepIndex + 1}/${STEPS.length}`;
+  const stepNo = { current: stepIndex + 1, total: STEPS.length };
 
   // -----------------------------------------------------------------------
   // Navigation
@@ -214,37 +210,37 @@ export function QuestWizard({
 
       if (currentStep === "id") {
         if (!trimmed) {
-          setError("ID cannot be empty");
+          setError(t("questWizard.error.idEmpty"));
           return;
         }
         if (!KEBAB_CASE_RE.test(trimmed)) {
-          setError("ID must be kebab-case (lowercase letters, numbers, hyphens)");
+          setError(t("questWizard.error.idFormat"));
           return;
         }
         const existing = checkDuplicateId(trimmed);
         if (existing) {
-          setError(`Quest "${trimmed}" already exists (${existing})`);
+          setError(t("questWizard.error.idExists", { id: trimmed, where: existing }));
           return;
         }
         setQuestId(trimmed);
         advanceOrFinish();
       } else if (currentStep === "title") {
         if (!trimmed) {
-          setError("Title cannot be empty");
+          setError(t("questWizard.error.titleEmpty"));
           return;
         }
         setQuestTitle(trimmed);
         advanceOrFinish();
       } else if (currentStep === "goal") {
         if (!trimmed) {
-          setError("Goal cannot be empty");
+          setError(t("questWizard.error.goalEmpty"));
           return;
         }
         setQuestGoal(trimmed);
         advanceOrFinish();
       }
     },
-    [currentStep, checkDuplicateId, advanceOrFinish]
+    [currentStep, checkDuplicateId, advanceOrFinish, t]
   );
 
   // -----------------------------------------------------------------------
@@ -314,28 +310,28 @@ export function QuestWizard({
       <Box flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1} paddingY={1}>
         <Box marginBottom={1}>
           <Text bold color="green">
-            ✔ Quest created!
+            {t("questWizard.created")}
           </Text>
         </Box>
         <Box flexDirection="column">
           <Box>
-            <Text dimColor>ID: </Text>
+            <Text dimColor>{t("questWizard.label.id")}</Text>
             <Text bold>{createdQuest.id}</Text>
             <Text dimColor> — </Text>
             <Text>{createdQuest.title}</Text>
           </Box>
           <Box>
-            <Text dimColor>Priority: </Text>
+            <Text dimColor>{t("questWizard.label.priority")}</Text>
             <Text>{createdQuest.priority}</Text>
-            <Text dimColor>  |  Difficulty: </Text>
+            <Text dimColor>  |  {t("questWizard.label.difficulty")}</Text>
             <Text>{createdQuest.difficulty}</Text>
-            <Text dimColor>  |  HITL: </Text>
+            <Text dimColor>  |  {t("questWizard.label.hitl")}</Text>
             <Text>{createdQuest.hitlMode}</Text>
           </Box>
           <Box>
-            <Text dimColor>Branch: </Text>
+            <Text dimColor>{t("questWizard.label.branch")}</Text>
             <Text>quest/{createdQuest.id}</Text>
-            <Text dimColor>  |  Base: </Text>
+            <Text dimColor>  |  {t("questWizard.label.base")}</Text>
             <Text>{createdQuest.baseBranch}</Text>
           </Box>
         </Box>
@@ -352,14 +348,14 @@ export function QuestWizard({
       <Box flexDirection="column" borderStyle="round" borderColor="red" paddingX={1} paddingY={1}>
         <Box marginBottom={1}>
           <Text bold color="red">
-            ✘ Failed to create quest
+            {t("questWizard.failed")}
           </Text>
         </Box>
         <Box>
           <Text>{creationError}</Text>
         </Box>
         <Box marginTop={1}>
-          <Text dimColor>Press Esc to return</Text>
+          <Text dimColor>{t("questWizard.pressEscReturn")}</Text>
         </Box>
       </Box>
     );
@@ -371,10 +367,10 @@ export function QuestWizard({
 
   // Build status line showing collected values so far
   const statusParts: string[] = [];
-  if (questId && stepIndex > 0) statusParts.push(`ID: ${questId}`);
-  if (questTitle && stepIndex > 1) statusParts.push(`Title: ${questTitle}`);
-  if (stepIndex > 3) statusParts.push(`Priority: ${questPriority}`);
-  if (stepIndex > 4) statusParts.push(`Difficulty: ${questDifficulty}`);
+  if (questId && stepIndex > 0) statusParts.push(t("questWizard.status.id", { value: questId }));
+  if (questTitle && stepIndex > 1) statusParts.push(t("questWizard.status.title", { value: questTitle }));
+  if (stepIndex > 3) statusParts.push(t("questWizard.status.priority", { value: questPriority }));
+  if (stepIndex > 4) statusParts.push(t("questWizard.status.difficulty", { value: questDifficulty }));
   const statusText = statusParts.join(" | ");
 
   // Compute initial index for select inputs based on prefill
@@ -396,7 +392,7 @@ export function QuestWizard({
       {/* Header: New Quest */}
       <Box marginBottom={1}>
         <Text bold color="magenta">
-          New Quest
+          {t("questWizard.title")}
         </Text>
       </Box>
 
@@ -404,41 +400,41 @@ export function QuestWizard({
       <Box flexDirection="column" marginBottom={1}>
         {currentStep === "id" && (
           <>
-            <Text bold>{stepLabel} — Quest ID</Text>
-            <Text dimColor>Kebab-case identifier (e.g. auth-overhaul, search-api)</Text>
-            <Text dimColor>Esc to cancel • Ctrl+S to submit</Text>
+            <Text bold>{t("questWizard.stepTitle.id", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.id")}</Text>
+            <Text dimColor>{t("questWizard.keys.cancelSubmit")}</Text>
           </>
         )}
         {currentStep === "title" && (
           <>
-            <Text bold>{stepLabel} — Title</Text>
-            <Text dimColor>Human-readable name for the quest</Text>
-            <Text dimColor>Esc to go back • Ctrl+S to submit</Text>
+            <Text bold>{t("questWizard.stepTitle.title", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.title")}</Text>
+            <Text dimColor>{t("questWizard.keys.backSubmit")}</Text>
           </>
         )}
         {currentStep === "goal" && (
           <>
-            <Text bold>{stepLabel} — Goal</Text>
-            <Text dimColor>What should this quest achieve?</Text>
-            <Text dimColor>Esc to go back • Ctrl+S to submit</Text>
+            <Text bold>{t("questWizard.stepTitle.goal", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.goal")}</Text>
+            <Text dimColor>{t("questWizard.keys.backSubmit")}</Text>
           </>
         )}
         {currentStep === "priority" && (
           <>
-            <Text bold>{stepLabel} — Priority</Text>
-            <Text dimColor>Select with Enter, Esc to go back</Text>
+            <Text bold>{t("questWizard.stepTitle.priority", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.select")}</Text>
           </>
         )}
         {currentStep === "difficulty" && (
           <>
-            <Text bold>{stepLabel} — Difficulty</Text>
-            <Text dimColor>Select with Enter, Esc to go back</Text>
+            <Text bold>{t("questWizard.stepTitle.difficulty", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.select")}</Text>
           </>
         )}
         {currentStep === "hitl" && (
           <>
-            <Text bold>{stepLabel} — HITL Mode</Text>
-            <Text dimColor>Human-in-the-loop mode for agents. Select with Enter, Esc to go back</Text>
+            <Text bold>{t("questWizard.stepTitle.hitl", stepNo)}</Text>
+            <Text dimColor>{t("questWizard.help.hitl")}</Text>
           </>
         )}
       </Box>
@@ -451,7 +447,7 @@ export function QuestWizard({
               value={questId}
               onChange={setQuestId}
               onSubmit={handleTextSubmit}
-              placeholder="quest-id"
+              placeholder={t("questWizard.placeholder.id")}
               focus={true}
             />
           </Box>
@@ -463,7 +459,7 @@ export function QuestWizard({
               value={questTitle}
               onChange={setQuestTitle}
               onSubmit={handleTextSubmit}
-              placeholder="Quest Title"
+              placeholder={t("questWizard.placeholder.title")}
               focus={true}
             />
           </Box>
@@ -475,7 +471,7 @@ export function QuestWizard({
               value={questGoal}
               onChange={setQuestGoal}
               onSubmit={handleTextSubmit}
-              placeholder="Describe the quest goal..."
+              placeholder={t("questWizard.placeholder.goal")}
               multiline={true}
               focus={true}
             />
@@ -484,7 +480,7 @@ export function QuestWizard({
 
         {currentStep === "priority" && (
           <SelectInput
-            items={buildPriorityItems()}
+            items={buildPriorityItems(t)}
             onSelect={handlePrioritySelect}
             onCancel={goBack}
             initialIndex={priorityInitialIndex}
@@ -494,7 +490,7 @@ export function QuestWizard({
 
         {currentStep === "difficulty" && (
           <SelectInput
-            items={buildDifficultyItems()}
+            items={buildDifficultyItems(t)}
             onSelect={handleDifficultySelect}
             onCancel={goBack}
             initialIndex={difficultyInitialIndex}
@@ -504,7 +500,7 @@ export function QuestWizard({
 
         {currentStep === "hitl" && (
           <SelectInput
-            items={buildHitlItems()}
+            items={buildHitlItems(t)}
             onSelect={handleHitlSelect}
             onCancel={goBack}
             initialIndex={hitlInitialIndex}

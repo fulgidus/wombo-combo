@@ -45,6 +45,7 @@ import {
   type ReviewState,
 } from "./use-review-list";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -73,6 +74,7 @@ function ReviewHeader({
   rejected: number;
   issues: ReviewValidationIssue[];
 }): React.ReactElement {
+  const t = useI18n();
   const errors = issues.filter((i) => i.level === "error");
   const warnings = issues.filter((i) => i.level === "warning");
 
@@ -88,12 +90,12 @@ function ReviewHeader({
         </Text>
         <Text dimColor>  |  </Text>
         <Text color="green">{accepted}</Text>
-        <Text> accepted</Text>
+        <Text> {t("reviewList.accepted")}</Text>
         {rejected > 0 && (
           <>
             <Text>  </Text>
             <Text color="red">{rejected}</Text>
-            <Text> rejected</Text>
+            <Text> {t("reviewList.rejected")}</Text>
           </>
         )}
       </Box>
@@ -130,6 +132,7 @@ function ListItemRow({
   index: number;
   isSelected: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   const num = `${index + 1}.`.padEnd(4);
   const pColor = PRIORITY_COLORS[item.priority] ?? "white";
   const pAbbr = PRIORITY_ABBREV[item.priority] ?? item.priority.slice(0, 4).toUpperCase();
@@ -149,7 +152,7 @@ function ListItemRow({
         <Text>{num} </Text>
         <Text dimColor>{item.id}</Text>
         <Text> </Text>
-        <Text color="red">REJECTED</Text>
+        <Text color="red">{t("reviewList.rejectedBadge")}</Text>
       </Box>
     );
   }
@@ -181,10 +184,12 @@ function DetailPane({
   allItems: ReviewItem[];
   config: ReviewListConfig;
 }): React.ReactElement {
+  const t = useI18n();
+  const lbl = (key: string) => `  ${t(key)}:`.padEnd(14);
   if (!item) {
     return (
       <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1}>
-        <Text dimColor>No {config.itemLabel} selected</Text>
+        <Text dimColor>{t("reviewList.noneSelected", { item: config.itemLabel })}</Text>
       </Box>
     );
   }
@@ -200,23 +205,23 @@ function DetailPane({
 
       {/* Status */}
       <Box>
-        <Text>  Status:     </Text>
+        <Text>{lbl("taskBrowser.detail.status")}</Text>
         {item.accepted ? (
-          <Text color="green">ACCEPTED</Text>
+          <Text color="green">{t("reviewList.acceptedBadge")}</Text>
         ) : (
-          <Text color="red">REJECTED</Text>
+          <Text color="red">{t("reviewList.rejectedBadge")}</Text>
         )}
       </Box>
 
       {/* Priority */}
       <Box>
-        <Text>  Priority:   </Text>
+        <Text>{lbl("taskBrowser.detail.priority")}</Text>
         <Text color={pColor as any}>{item.priority}</Text>
       </Box>
 
       {/* Difficulty */}
       <Box>
-        <Text>  Difficulty: </Text>
+        <Text>{lbl("taskBrowser.detail.difficulty")}</Text>
         <Text color={dColor as any}>{item.difficulty}</Text>
       </Box>
 
@@ -231,7 +236,7 @@ function DetailPane({
       {/* Dependencies */}
       {item.dependsOn.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
-          <Text bold>Depends on:</Text>
+          <Text bold>{t("questPicker.dependsOn")}</Text>
           {item.dependsOn.map((dep) => {
             const depItem = allItems.find((i) => i.id === dep);
             const icon = depItem
@@ -249,7 +254,7 @@ function DetailPane({
                 <Text>  </Text>
                 <Text color={iconColor as any}>{icon}</Text>
                 <Text> {dep}</Text>
-                {!depItem && <Text dimColor> (unknown)</Text>}
+                {!depItem && <Text dimColor> ({t("reviewList.unknown")})</Text>}
               </Box>
             );
           })}
@@ -274,7 +279,7 @@ function DetailPane({
       {/* Validation issues for this item */}
       {config.issues.filter((i) => i.itemId === item.id).length > 0 && (
         <Box flexDirection="column" marginTop={1}>
-          <Text bold>Validation Issues:</Text>
+          <Text bold>{t("reviewList.validationIssues")}:</Text>
           {config.issues
             .filter((i) => i.itemId === item.id)
             .map((issue, i) => (
@@ -302,31 +307,32 @@ function StatusBar({
   accepted: number;
   hasErrors: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" marginTop={0}>
       <Box>
-        <Text bold>Keys: </Text>
+        <Text bold>{t("waveMonitor.keys")} </Text>
         <Text dimColor>Space</Text>
-        <Text> toggle  </Text>
+        <Text> {t("reviewList.key.toggle")}  </Text>
         <Text dimColor>E</Text>
-        <Text> edit  </Text>
+        <Text> {t("taskBrowser.key.edit")}  </Text>
         <Text dimColor>Shift+J/K</Text>
-        <Text> reorder  </Text>
+        <Text> {t("reviewList.key.reorder")}  </Text>
         <Text dimColor>R</Text>
-        <Text> toggle all  </Text>
+        <Text> {t("reviewList.key.toggleAll")}  </Text>
         <Text dimColor>V</Text>
-        <Text> validation  </Text>
+        <Text> {t("reviewList.key.validation")}  </Text>
         <Text dimColor>A</Text>
-        <Text> approve  </Text>
+        <Text> {t("reviewList.key.approve")}  </Text>
         <Text dimColor>Q</Text>
-        <Text> cancel</Text>
+        <Text> {t("reviewList.key.cancel")}</Text>
       </Box>
       <Box>
         <Text dimColor>
-          {accepted} {accepted !== 1 ? config.itemLabelPlural : config.itemLabel} will be created on approval
+          {t("reviewList.willBeCreated", { count: accepted, item: config.itemLabel, items: config.itemLabelPlural })}
         </Text>
         {hasErrors && (
-          <Text color="red"> | Plan has validation errors</Text>
+          <Text color="red"> | {t("reviewList.hasErrors")}</Text>
         )}
       </Box>
     </Box>
@@ -341,6 +347,7 @@ function ValidationPopup({
   issues: ReviewValidationIssue[];
   onClose: () => void;
 }): React.ReactElement {
+  const t = useI18n();
   useScreenInput((input, key) => {
     if (key.escape || key.return || input === "q") {
       onClose();
@@ -353,16 +360,16 @@ function ValidationPopup({
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={errors.length > 0 ? "red" : "yellow"} paddingX={1}>
       <Text bold color={errors.length > 0 ? "red" : "yellow"}>
-        Validation Issues
+        {t("reviewList.validationIssues")}
       </Text>
 
       {issues.length === 0 ? (
-        <Text color="green">No validation issues found. The plan looks good!</Text>
+        <Text color="green">{t("reviewList.noIssues")}</Text>
       ) : (
         <>
           {errors.length > 0 && (
             <Box flexDirection="column" marginTop={1}>
-              <Text bold color="red">Errors ({errors.length}):</Text>
+              <Text bold color="red">{t("reviewList.errors", { count: errors.length })}</Text>
               {errors.map((e, i) => (
                 <Box key={i}>
                   <Text color="red">  ✘ </Text>
@@ -373,7 +380,7 @@ function ValidationPopup({
           )}
           {warnings.length > 0 && (
             <Box flexDirection="column" marginTop={1}>
-              <Text bold color="yellow">Warnings ({warnings.length}):</Text>
+              <Text bold color="yellow">{t("reviewList.warnings", { count: warnings.length })}</Text>
               {warnings.map((w, i) => (
                 <Box key={i}>
                   <Text color="yellow">  ⚠ </Text>
@@ -386,7 +393,7 @@ function ValidationPopup({
       )}
 
       <Box marginTop={1}>
-        <Text dimColor>Press Esc or Enter to close</Text>
+        <Text dimColor>{t("reviewList.pressToClose")}</Text>
       </Box>
     </Box>
   );
@@ -404,6 +411,7 @@ function MessagePopup({
   color: string;
   onClose: () => void;
 }): React.ReactElement {
+  const t = useI18n();
   useScreenInput((input, key) => {
     if (key.escape || key.return || input === "q") {
       onClose();
@@ -417,7 +425,7 @@ function MessagePopup({
         <Text>{message}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>Press Esc or Enter to close</Text>
+        <Text dimColor>{t("reviewList.pressToClose")}</Text>
       </Box>
     </Box>
   );
@@ -435,6 +443,7 @@ function ConfirmPopup({
   onConfirm: () => void;
   onCancel: () => void;
 }): React.ReactElement {
+  const t = useI18n();
   useScreenInput((input, key) => {
     if (input === "y" || input === "Y") {
       onConfirm();
@@ -451,9 +460,9 @@ function ConfirmPopup({
       </Box>
       <Box marginTop={1}>
         <Text color="green" bold>Y</Text>
-        <Text> — Confirm  |  </Text>
+        <Text> — {t("ui.confirm")}  |  </Text>
         <Text color="red" bold>N</Text>
-        <Text> / Esc — Cancel</Text>
+        <Text> / Esc — {t("ui.cancel")}</Text>
       </Box>
     </Box>
   );
@@ -481,6 +490,7 @@ type ModalState =
  * All behavior is driven by the config prop.
  */
 export function ReviewList({ items, config }: ReviewListProps): React.ReactElement {
+  const t = useI18n();
   const [state, setState] = useState<ReviewState>(() =>
     createReviewState(items)
   );
@@ -537,8 +547,8 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         if (accepted.length === 0) {
           setModal({
             type: "message",
-            title: `No ${config.itemLabelPlural} Accepted`,
-            message: `You must accept at least one ${config.itemLabel} before approving the plan.\nUse Space to toggle ${config.itemLabelPlural}, or R to accept all.`,
+            title: t("reviewList.noneAcceptedTitle", { items: config.itemLabelPlural }),
+            message: t("reviewList.noneAcceptedMessage", { item: config.itemLabel, items: config.itemLabelPlural }),
             color: "yellow",
           });
           return;
@@ -550,7 +560,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         for (const item of accepted) {
           for (const dep of item.dependsOn) {
             if (!acceptedIds.has(dep)) {
-              brokenDeps.push(`"${item.id}" depends on rejected ${config.itemLabel} "${dep}"`);
+              brokenDeps.push(t("reviewList.brokenDepLine", { id: item.id, item: config.itemLabel, dep }));
             }
           }
         }
@@ -558,8 +568,8 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         if (brokenDeps.length > 0) {
           setModal({
             type: "message",
-            title: "Broken Dependencies",
-            message: `The following accepted ${config.itemLabelPlural} depend on rejected ${config.itemLabelPlural}:\n\n${brokenDeps.map((b) => `  - ${b}`).join("\n")}\n\nEither accept the dependencies or remove the depends_on references by editing the ${config.itemLabelPlural} (E key).`,
+            title: t("reviewList.brokenDepsTitle"),
+            message: t("reviewList.brokenDepsMessage", { items: config.itemLabelPlural, list: brokenDeps.map((b) => `  - ${b}`).join("\n") }),
             color: "red",
           });
           return;
@@ -657,7 +667,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
     // For now, close immediately if no edit fields defined
     if (config.editFields.length === 0 || !selectedItem) {
       setModal({ type: "none" });
-      return <Text>Loading...</Text>;
+      return <Text>{t("reviewList.loading")}</Text>;
     }
 
     // Import and render the edit modal
@@ -690,7 +700,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         <Box flexDirection="column" borderStyle="single" borderColor="gray" width="50%" paddingX={0}>
           <Text bold dimColor> {config.listLabel}</Text>
           {state.items.length === 0 ? (
-            <Text dimColor> No {config.itemLabelPlural} in plan</Text>
+            <Text dimColor> {t("reviewList.noneInPlan", { items: config.itemLabelPlural })}</Text>
           ) : (
             visibleItems.map((item, i) => (
               <ListItemRow
@@ -739,6 +749,7 @@ function ReviewEditModalInline({
   onDone: (updated: ReviewItem) => void;
   onCancel: () => void;
 }): React.ReactElement {
+  const t = useI18n();
   const [fieldIdx, setFieldIdx] = useState(0);
   const [currentItem, setCurrentItem] = useState<ReviewItem>({ ...item });
   const [inputValue, setInputValue] = useState("");
@@ -833,21 +844,21 @@ function ReviewEditModalInline({
   });
 
   if (!field) {
-    return <Text>Loading...</Text>;
+    return <Text>{t("reviewList.loading")}</Text>;
   }
 
-  const stepLabel = `Field ${fieldIdx + 1}/${config.editFields.length}`;
+  const stepLabel = t("reviewList.fieldStep", { n: fieldIdx + 1, total: config.editFields.length });
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1}>
       <Text bold color="magenta">
-        Edit: {item.id}
+        {t("reviewList.editTitle", { id: item.id })}
       </Text>
 
       <Box marginTop={1} flexDirection="column">
         <Text bold>{stepLabel} — {field.label}</Text>
         {field.hint && <Text dimColor>{field.hint}</Text>}
-        <Text dimColor>Enter to save, Esc to skip</Text>
+        <Text dimColor>{t("reviewList.editHint")}</Text>
       </Box>
 
       <Box marginTop={1} flexDirection="column">

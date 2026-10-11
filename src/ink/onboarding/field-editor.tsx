@@ -20,11 +20,11 @@ import {
   type ProjectProfile,
 } from "../../lib/project-store";
 import {
-  SECTION_NAMES,
   serializeSectionForEdit,
   parseSectionEdit,
 } from "./onboarding-utils";
 import { useScreenInput } from "../esc-menu";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +58,8 @@ export function FieldEditor({
   onSave,
   onDiscard,
 }: FieldEditorProps): React.ReactElement {
-  const sectionName = SECTION_NAMES[section];
+  const t = useI18n();
+  const sectionName = t(`onboarding.section.${section}`);
   const initialText = serializeSectionForEdit(section, profile);
   const [editText, setEditText] = useState(initialText);
   // Text field: q types a letter here, so don't advertise "q quit"
@@ -109,7 +110,7 @@ export function FieldEditor({
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="magenta">
-          Edit Section
+          {t("onboarding.fieldEditor.title")}
         </Text>
         <Text> — </Text>
         <Text bold>{sectionName}</Text>
@@ -117,7 +118,7 @@ export function FieldEditor({
 
       {/* Edit mode indicator */}
       <Box marginBottom={1}>
-        <Text dimColor>Edit mode — modify the content below</Text>
+        <Text dimColor>{t("onboarding.fieldEditor.editMode")}</Text>
       </Box>
 
       {/* Editor area */}
@@ -136,11 +137,11 @@ export function FieldEditor({
         <Text bold color="green">
           Ctrl+S
         </Text>
-        <Text> save  |  </Text>
+        <Text>{` ${t("onboarding.fieldEditor.save")}  |  `}</Text>
         <Text bold color="red">
           Escape
         </Text>
-        <Text> discard</Text>
+        <Text>{` ${t("onboarding.fieldEditor.discard")}`}</Text>
       </Box>
     </Box>
   );

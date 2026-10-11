@@ -17,6 +17,7 @@
 import React, { useState } from "react";
 import { Box, Text } from "ink";
 import { useScreenInput } from "../esc-menu";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +51,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): React.ReactElement {
+  const t = useI18n();
   const [selected, setSelected] = useState<"yes" | "no">("yes");
 
   useScreenInput((input, key) => {
@@ -92,21 +94,21 @@ export function ConfirmDialog({
           color={selected === "yes" ? "green" : undefined}
         >
           {selected === "yes" ? "❯ " : "  "}
-          Yes
+          {t("onboarding.common.yes")}
         </Text>
         <Text
           bold={selected === "no"}
           color={selected === "no" ? "red" : undefined}
         >
           {selected === "no" ? "❯ " : "  "}
-          No
+          {t("onboarding.common.no")}
         </Text>
       </Box>
 
       {/* Navigation hint */}
       <Box marginTop={1}>
         <Text dimColor>
-          Arrow keys: toggle  |  Enter: select  |  Esc: cancel
+          {t("onboarding.confirm.hint")}
         </Text>
       </Box>
     </Box>

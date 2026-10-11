@@ -10,6 +10,7 @@
 import type { SchedulerState, DaemonAgentState } from "../daemon/protocol";
 import type { AgentStatus } from "../daemon/agent-status";
 import { formatDuration, parseDurationMinutes } from "./tasks";
+import { t } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // ANSI Color Helpers
@@ -111,24 +112,24 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
     `${BOLD}wombo-combo${RESET} ${DIM}${scheduler.startedAt ?? "daemon"}${RESET}`
   );
   lines.push(
-    `${DIM}Base: ${scheduler.baseBranch} | Concurrency: ${scheduler.maxConcurrent} | Scheduler: ${scheduler.status}${RESET}`
+    `${DIM}${t("cli.status.dashboard.header", { base: scheduler.baseBranch, concurrency: scheduler.maxConcurrent, scheduler: scheduler.status })}${RESET}`
   );
   if (scheduler.model) {
-    lines.push(`${DIM}Model: ${scheduler.model}${RESET}`);
+    lines.push(`${DIM}${t("cli.status.dashboard.model", { model: scheduler.model })}${RESET}`);
   }
   if (scheduler.questId) {
-    lines.push(`${DIM}Quest: ${scheduler.questId}${RESET}`);
+    lines.push(`${DIM}${t("cli.status.dashboard.quest", { quest: scheduler.questId })}${RESET}`);
   }
   lines.push("");
 
   // Table header
   const header = [
     pad("", 3),
-    pad("Feature", 30),
-    pad("Status", 12),
-    pad("Activity", 30),
-    padLeft("Retries", 8),
-    padLeft("Elapsed", 8),
+    pad(t("cli.status.dashboard.colFeature"), 30),
+    pad(t("cli.status.dashboard.colStatus"), 12),
+    pad(t("cli.status.dashboard.colActivity"), 30),
+    padLeft(t("cli.status.dashboard.colRetries"), 8),
+    padLeft(t("cli.status.dashboard.colElapsed"), 8),
   ].join(" ");
   lines.push(`${BOLD}${header}${RESET}`);
   lines.push("-".repeat(95));
@@ -142,13 +143,13 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
     if ((agent.status === "running" || agent.status === "resolving_conflict") && agent.activity) {
       activityText = agent.activity;
     } else if (agent.status === "installing") {
-      activityText = "setting up worktree...";
+      activityText = t("cli.status.dashboard.settingUp");
     } else if (agent.status === "retry") {
-      activityText = "retrying with errors...";
+      activityText = t("cli.status.dashboard.retrying");
     } else if (agent.status === "failed" && agent.error) {
       activityText = agent.error.split("\n")[0].slice(0, 28);
     } else if (agent.status === "verified") {
-      activityText = "build passed";
+      activityText = t("cli.status.dashboard.buildPassed");
     } else if (agent.status === "merged") {
       activityText = agent.branch;
     } else if (agent.status === "queued" && agent.dependsOn.length > 0) {
@@ -158,9 +159,9 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
         return dep && dep.status !== "verified" && dep.status !== "merged";
       });
       if (unsatisfied.length > 0) {
-        activityText = `waiting: ${unsatisfied.join(", ")}`.slice(0, 28);
+        activityText = t("cli.status.dashboard.waiting", { deps: unsatisfied.join(", ") }).slice(0, 28);
       } else {
-        activityText = "deps ready, queued";
+        activityText = t("cli.status.dashboard.depsReady");
       }
     }
 
@@ -189,23 +190,23 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
 
   const summaryParts: string[] = [];
   if (counts.queued > 0)
-    summaryParts.push(colorize(`${counts.queued} queued`, FG.gray));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryQueued", { count: counts.queued }), FG.gray));
   if (counts.installing > 0)
-    summaryParts.push(colorize(`${counts.installing} installing`, FG.cyan));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryInstalling", { count: counts.installing }), FG.cyan));
   if (counts.running > 0)
-    summaryParts.push(colorize(`${counts.running} running`, FG.blue));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryRunning", { count: counts.running }), FG.blue));
   if (counts.completed > 0)
-    summaryParts.push(colorize(`${counts.completed} completed`, FG.yellow));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryCompleted", { count: counts.completed }), FG.yellow));
   if (counts.verified > 0)
-    summaryParts.push(colorize(`${counts.verified} verified`, FG.green));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryVerified", { count: counts.verified }), FG.green));
   if (counts.failed > 0)
-    summaryParts.push(colorize(`${counts.failed} failed`, FG.red));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryFailed", { count: counts.failed }), FG.red));
   if (counts.merged > 0)
-    summaryParts.push(colorize(`${counts.merged} merged`, FG.magenta));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryMerged", { count: counts.merged }), FG.magenta));
   if (counts.retry > 0)
-    summaryParts.push(colorize(`${counts.retry} retrying`, FG.yellow));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryRetry", { count: counts.retry }), FG.yellow));
   if (counts.resolving_conflict > 0)
-    summaryParts.push(colorize(`${counts.resolving_conflict} resolving`, FG.cyan));
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryResolving", { count: counts.resolving_conflict }), FG.cyan));
 
   lines.push(summaryParts.join(" | "));
   lines.push("");

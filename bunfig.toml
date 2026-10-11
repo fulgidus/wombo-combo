@@ -1,0 +1,3 @@
+[test]
+# Pin the locale so assertions on English text do not depend on the developer's LANG.
+preload = ["./tests/helpers/locale-preload.ts"]

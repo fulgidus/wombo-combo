@@ -124,9 +124,9 @@ describe("WomboConfig tui key", () => {
     expect(DEFAULT_CONFIG.tui.theme).toBe("default");
   });
 
-  test("DEFAULT_CONFIG.tui.locale defaults to 'en'", async () => {
+  test("DEFAULT_CONFIG.tui.locale defaults to 'auto' (env detection, en fallback)", async () => {
     const { DEFAULT_CONFIG } = await import("../../src/config");
-    expect(DEFAULT_CONFIG.tui.locale).toBe("en");
+    expect(DEFAULT_CONFIG.tui.locale).toBe("auto");
   });
 });
 

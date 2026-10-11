@@ -133,6 +133,7 @@ export {
   reviewItemToQuest,
   buildGenesisConfig,
   GENESIS_EDIT_FIELDS,
+  buildGenesisEditFields,
   GenesisReviewApp,
   type GenesisReviewAppProps,
 } from "./genesis-review";
@@ -141,6 +142,7 @@ export {
   reviewItemToTask,
   buildPlanConfig,
   PLAN_EDIT_FIELDS,
+  buildPlanEditFields,
   PlanReviewApp,
   type PlanReviewAppProps,
 } from "./plan-review";
@@ -288,7 +290,7 @@ export {
   type ThemeName,
 } from "./theme";
 
-// i18n skeleton (t() helper, English strings, locale context)
+// i18n facade over i18next (t() helper, locale context)
 export {
   t,
   createI18n,

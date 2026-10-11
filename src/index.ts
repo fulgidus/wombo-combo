@@ -100,6 +100,25 @@ import {
   buildCittyArgs,
 } from "./commands/citty/router";
 import { renderGlobalHelp, renderCommandHelp } from "./lib/schema";
+import { loadConfig } from "./config";
+import { initI18n } from "./lib/i18n";
+
+/**
+ * Resolve the CLI locale once: config `tui.locale` > WOMBO_LOCALE > LC_ALL >
+ * LC_MESSAGES > LANG > en. Config problems must never block the CLI.
+ */
+function initCliLocale(devFlag: boolean): void {
+  let configLocale: string | undefined;
+  let devMode = devFlag;
+  try {
+    const cfg = loadConfig(process.cwd());
+    configLocale = cfg.tui?.locale;
+    devMode = devMode || !!cfg.devMode;
+  } catch {
+    /* fall back to env detection */
+  }
+  initI18n({ configLocale, devMode });
+}
 
 // ---------------------------------------------------------------------------
 // Main
@@ -110,6 +129,7 @@ async function main(): Promise<void> {
 
   const rawArgs = process.argv.slice(2); // skip 'bun' and script path
   const { command, globalFlags, remaining } = resolveGlobalFlagsAndCommand(rawArgs);
+  initCliLocale(!!globalFlags.dev);
 
   // -----------------------------------------------------------------------
   // Per-command help: `woco launch -h`, `woco tasks -h`, etc.

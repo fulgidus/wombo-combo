@@ -24,6 +24,7 @@ import { isSpecializedAgent } from "../lib/agent-registry";
 import type { Task } from "../lib/tasks";
 import type { AgentRegistryMode, WomboConfig } from "../config";
 import { useScreenInput } from "./esc-menu";
+import { t as defaultT, useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,6 +77,7 @@ function PreflightView({
   agents,
   onFinish,
 }: PreflightViewProps): React.ReactElement {
+  const t = useI18n();
   const [rows, setRows] = useState<PreflightRow[]>(initialRows);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mode, setMode] = useState<AgentRegistryMode>(initialMode);
@@ -156,13 +158,13 @@ function PreflightView({
     <Box flexDirection="column" width="100%">
       {/* Header */}
       <Box>
-        <Text bold> LAUNCH PREFLIGHT</Text>
+        <Text bold> {t("preflight.title")}</Text>
         <Text>  </Text>
-        <Text>mode: </Text>
+        <Text>{t("preflight.mode")} </Text>
         <Text bold color={modeColor}>{mode}</Text>
       </Box>
       <Box>
-        <Text dimColor> {taskCount} task(s) ready to launch</Text>
+        <Text dimColor> {t("preflight.tasksReady", { count: taskCount })}</Text>
       </Box>
 
       {/* Separator */}
@@ -177,11 +179,11 @@ function PreflightView({
 
           let agentDisplay: React.ReactElement;
           if (row.rejected) {
-            agentDisplay = <Text color="red">(rejected)</Text>;
+            agentDisplay = <Text color="red">{t("preflight.rejected")}</Text>;
           } else if (row.isSpecialized) {
             agentDisplay = <Text color="cyan">{row.agentName.slice(0, 20)}</Text>;
           } else {
-            agentDisplay = <Text dimColor>generalist</Text>;
+            agentDisplay = <Text dimColor>{t("preflight.generalist")}</Text>;
           }
 
           const statusIcon = row.rejected ? (
@@ -213,22 +215,22 @@ function PreflightView({
       {/* Status bar */}
       <Box>
         <Text color="green">Enter</Text>
-        <Text>: launch  </Text>
+        <Text>: {t("preflight.key.launch")}  </Text>
         <Text color="yellow">Tab</Text>
-        <Text>: cycle mode  </Text>
+        <Text>: {t("preflight.key.cycleMode")}  </Text>
         <Text color="red">Esc</Text>
-        <Text>: cancel</Text>
+        <Text>: {t("preflight.key.cancel")}</Text>
         {mode === "monitored" && (
           <>
             <Text>  </Text>
             <Text color="yellow">x</Text>
-            <Text>: reject agent</Text>
+            <Text>: {t("preflight.key.rejectAgent")}</Text>
           </>
         )}
       </Box>
       <Box>
         <Text dimColor>
-          {" "}Specialized: {specializedCount}  Generalist: {rows.length - specializedCount}  Rejected: {rejectedCount}
+          {" "}{t("preflight.summary", { specialized: specializedCount, generalist: rows.length - specializedCount, rejected: rejectedCount })}
         </Text>
       </Box>
     </Box>
@@ -293,17 +295,17 @@ export async function consolePreflightConfirm(
   const mode = config.agentRegistry.mode;
 
   console.log(`\n${"═".repeat(60)}`);
-  console.log(`  LAUNCH PREFLIGHT`);
+  console.log(`  ${defaultT("preflight.title")}`);
   console.log(`${"═".repeat(60)}`);
-  console.log(`  Registry mode: ${mode}`);
-  console.log(`  Tasks: ${tasks.length}`);
+  console.log(`  ${defaultT("preflight.console.registryMode", { mode })}`);
+  console.log(`  ${defaultT("preflight.console.tasks", { count: tasks.length })}`);
   console.log(`${"─".repeat(60)}`);
 
   for (const task of tasks) {
     const resolution = agents.get(task.id);
     const agentLabel = resolution && isSpecializedAgent(resolution)
-      ? `${resolution.name} (${resolution.fromCache ? "cached" : "fetched"})`
-      : "generalist";
+      ? defaultT(resolution.fromCache ? "preflight.console.cached" : "preflight.console.fetched", { name: resolution.name })
+      : defaultT("preflight.generalist");
     console.log(`  ${task.id.padEnd(30)} → ${agentLabel}`);
   }
 
@@ -311,12 +313,12 @@ export async function consolePreflightConfirm(
 
   // In non-interactive environments (piped stdin), just proceed
   if (!process.stdin.isTTY) {
-    console.log(`  Non-interactive mode — proceeding automatically.\n`);
+    console.log(`  ${defaultT("preflight.console.nonInteractive")}\n`);
     return { proceed: true, agents, mode };
   }
 
   const answer = await new Promise<string>((resolve) => {
-    process.stdout.write("  Proceed? [Y/n] ");
+    process.stdout.write(`  ${defaultT("preflight.console.prompt")}`);
     process.stdin.setEncoding("utf-8");
     process.stdin.resume();
     process.stdin.once("data", (data) => {
@@ -325,9 +327,11 @@ export async function consolePreflightConfirm(
     });
   });
 
-  const proceed = answer === "" || answer === "y" || answer === "yes";
+  // "y"/"yes" always count; the locale may add its own affirmatives
+  const yesAnswers = new Set(["y", "yes", ...defaultT("preflight.console.yesAnswers").split(",").map((a) => a.trim().toLowerCase())]);
+  const proceed = answer === "" || yesAnswers.has(answer);
   if (!proceed) {
-    console.log("  Launch cancelled.\n");
+    console.log(`  ${defaultT("preflight.console.cancelled")}\n`);
   }
 
   return { proceed, agents, mode };

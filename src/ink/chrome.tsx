@@ -20,6 +20,7 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
+import { useI18n, type TFunction } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Live daemon stats — shown in top-right chrome at all times
@@ -115,36 +116,42 @@ export interface ChromeTopBarProps {
   daemonStats?: DaemonStats;
 }
 
-const SCHEDULER_STATUS_UI: Record<SchedulerStatus, { color: string, label: string, labelShort: string }> = {
+const SCHEDULER_STATUS_UI: Record<SchedulerStatus, { color: string, icon: string, labelKey: string, labelShort: string }> = {
   running: {
     color: "green",
-    label: "▶ Running",
+    icon: "▶",
+    labelKey: "chrome.scheduler.running",
     labelShort: "▶",
   },
   idle: {
     color: "gray",
-    label: "💤 Idle",
+    icon: "💤",
+    labelKey: "chrome.scheduler.idle",
     labelShort: "💤",
   },
   paused: {
     color: "yellow",
-    label: "⏸ Paused",
+    icon: "⏸",
+    labelKey: "chrome.scheduler.paused",
     labelShort: "⏸",
 
   },
   draining: {
     color: "yellow",
-    label: "⏳ Draining",
+    icon: "⏳",
+    labelKey: "chrome.scheduler.draining",
     labelShort: "⏳",
   },
   stopping: {
     color: "yellow",
-    label: "⏹ Stopping",
+    icon: "⏹",
+    labelKey: "chrome.scheduler.stopping",
     labelShort: "⏹",
   },
   shutdown: {
     color: "red",
-    label: "💀 Shutdown",
+    icon: "💀",
+    labelKey: "chrome.scheduler.shutdown",
     labelShort: "💀",
   },
 };
@@ -160,8 +167,13 @@ export function ChromeTopBar({
   waveSummary,
   daemonStats,
 }: ChromeTopBarProps): React.ReactElement {
+  const t = useI18n();
   const customTitle = useChromTitle();
   const displayName = customTitle ?? screenName;
+  const schedulerUi = daemonStats ? SCHEDULER_STATUS_UI[daemonStats.schedulerStatus] : undefined;
+  const schedulerLabel = schedulerUi
+    ? `${schedulerUi.icon} ${t(schedulerUi.labelKey)}`
+    : daemonStats?.schedulerStatus;
 
   const statusColor = daemonStats
     ? (SCHEDULER_STATUS_UI[daemonStats.schedulerStatus]?.color ?? "white")
@@ -182,7 +194,7 @@ export function ChromeTopBar({
       {/* Left: app name + screen — never shrinks, so narrow terminals keep
           the breadcrumb intact and the status items truncate instead */}
       <Box flexDirection="row" gap={1} flexShrink={0}>
-        <Text bold>Home</Text>
+        <Text bold>{t("chrome.home")}</Text>
         <Text dimColor>›</Text>
         <Text bold>{displayName}</Text>
       </Box>
@@ -204,14 +216,14 @@ export function ChromeTopBar({
               ⧥ {daemonStats.running}/{daemonStats.maxConcurrent === 0 ? "∞" : daemonStats.maxConcurrent}
             </Text>
             <Text dimColor>│</Text>
-            <Text color={statusColor}>{SCHEDULER_STATUS_UI[daemonStats.schedulerStatus]?.label ?? daemonStats.schedulerStatus}</Text>
+            <Text color={statusColor}>{schedulerLabel}</Text>
             <Text dimColor>│</Text>
           </>
         ) : null}
         {daemonConnected ? (
-          <Text color="greenBright" wrap="truncate">⬤ connected</Text>
+          <Text color="greenBright" wrap="truncate">⬤ {t("chrome.connected")}</Text>
         ) : (
-          <Text color="red" wrap="truncate">⬤ unreachable</Text>
+          <Text color="red" wrap="truncate">⬤ {t("chrome.unreachable")}</Text>
         )}
       </Box>
     </Box>
@@ -223,10 +235,12 @@ export function ChromeTopBar({
 // ---------------------------------------------------------------------------
 
 /** Global keybinds always shown regardless of current screen. */
-const GLOBAL_HINTS: KeybindHint[] = [
-  { key: "ESC", description: "menu" },
-  { key: "q", description: "quit" },
-];
+function globalHints(t: TFunction): KeybindHint[] {
+  return [
+    { key: "ESC", description: t("chrome.hint.menu") },
+    { key: "q", description: t("chrome.hint.quit") },
+  ];
+}
 
 export interface ChromeBottomBarProps {
   /** Screen-specific keybind hints merged with global ones. */
@@ -240,7 +254,9 @@ export interface ChromeBottomBarProps {
 }
 
 /** Extra hint shown when the dashboard entry exists in the ESC menu. */
-const DASHBOARD_HINT: KeybindHint = { key: "Dashboard", description: "in ESC menu" };
+function dashboardHint(t: TFunction): KeybindHint {
+  return { key: t("chrome.hint.dashboardKey"), description: t("chrome.hint.dashboardDesc") };
+}
 
 /**
  * Fixed bottom bar.
@@ -253,12 +269,14 @@ export function ChromeBottomBar({
   hideQuitHint = false,
   dashboardAvailable = false,
 }: ChromeBottomBarProps): React.ReactElement {
-  const globalHints = hideQuitHint
-    ? GLOBAL_HINTS.filter((hint) => hint.key !== "q")
-    : GLOBAL_HINTS;
+  const t = useI18n();
+  const baseHints = globalHints(t);
+  const activeGlobalHints = hideQuitHint
+    ? baseHints.filter((hint) => hint.key !== "q")
+    : baseHints;
   const allHints = [
-    ...globalHints,
-    ...(dashboardAvailable ? [DASHBOARD_HINT] : []),
+    ...activeGlobalHints,
+    ...(dashboardAvailable ? [dashboardHint(t)] : []),
     ...contextHints,
   ];
 

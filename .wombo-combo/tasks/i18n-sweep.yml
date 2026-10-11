@@ -1,0 +1,37 @@
+id: i18n-sweep
+title: Sweep for remaining hard-coded user-facing strings after quest merges
+description: "RUN BY THE ORCHESTRATOR AFTER multi-cli-support, docs-starlight and session-replay are merged. Steps: (1)
+  rg -n 'console\\.(log|error|warn)\\(|outputMessage\\(|outputError\\(|<Text[^>]*>[^<{]*[A-Za-z]{3,}' src --glob
+  '!*.test.*' and list string literals in every file not yet importing t/msg (compare with rg -L 'from \".*i18n\"' );
+  focus on new files: the session-replay Ink replay viewer and the replay CLI command, launcher/harness/config messages
+  from multi-cli-support, and any docs-site generated command reference that embeds CLI text. (2) For each hit, move
+  user-facing text into src/locales/en/{tui,cli}.json (flat keys, plural keys for counts, {{vars}} for values), call
+  t()/msg(), mirror keys in src/locales/it. (3) Do not translate JSON output, prompts for agents, identifiers, paths,
+  flags. (4) bun test must pass including tests/i18n-keys.test.ts and e2e. (5) Merge docs/i18n.md into the
+  docs-starlight content tree if docs/ became a Starlight site, and fix links. Also grep remaining
+  src/commands/{abort,cleanup,completion,eval,genesis,history,init,logs,resume,retry,stats,upgrade,usage}.ts and src/ink
+  non-migrated files."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-docs
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Run only after the other three quests are merged
+  - Add tests for new keys via the key-consistency test
+forbidden:
+  - Do not mark done while hard-coded user-facing strings remain without a tracking task
+references:
+  - src/commands
+  - src/ink
+  - src/locales
+  - tests/i18n-keys.test.ts
+  - docs/i18n.md
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

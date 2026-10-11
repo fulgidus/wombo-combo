@@ -239,8 +239,10 @@ export interface TuiConfig {
    */
   theme: "default" | "high-contrast" | "minimal";
   /**
-   * Locale identifier for i18n string lookup.
-   * Currently only 'en' is shipped; skeleton for future locales.
+   * Locale for CLI and TUI text: a shipped locale code (e.g. 'en', 'it') or
+   * 'auto' (default) to detect from WOMBO_LOCALE / LC_ALL / LC_MESSAGES / LANG,
+   * falling back to 'en'. An explicit value here wins over the environment.
+   * @see src/lib/i18n.ts
    */
   locale: string;
   /**
@@ -352,7 +354,7 @@ export const DEFAULT_CONFIG: WomboConfig = {
   devMode: false,
   tui: {
     theme: "default",
-    locale: "en",
+    locale: "auto",
     checkForUpdates: true,
     autoInstallUpdates: false,
   },

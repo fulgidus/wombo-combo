@@ -1,0 +1,29 @@
+id: i18n-cli-commands
+title: Migrate quest, wishlist, launch and merge CLI output to t()
+description: Move user-facing text of src/commands/quest.ts, launch.ts, merge.ts and the wishlist command path
+  (src/commands/citty/wishlist.ts and its store messages) into src/locales/en/cli.json via t()/msg(). Use plurals for
+  counts (N tasks merged, N quests). JSON output untouched.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-cli-core
+effort: PT3H
+started_at: 2026-10-11T14:19:47.834Z
+ended_at: 2026-10-11T14:32:22.408Z
+constraints:
+  - Do not change English output text
+  - JSON output must not be translated
+forbidden:
+  - Do not translate agent prompts or templates sent to coding agents
+references:
+  - src/commands/quest.ts
+  - src/commands/launch.ts
+  - src/commands/merge.ts
+  - src/commands/citty/wishlist.ts
+  - src/locales/en/cli.json
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

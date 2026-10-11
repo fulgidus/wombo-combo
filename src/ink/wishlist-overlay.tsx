@@ -29,6 +29,7 @@ import type { WishlistItem } from "../lib/wishlist-store";
 import { useWishlistStore } from "./use-wishlist-store";
 import { formatDate, truncateText } from "./wishlist-helpers";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,10 +56,11 @@ function OverlayItemList({
   items: WishlistItem[];
   selectedIndex: number;
 }): React.ReactElement {
+  const t = useI18n();
   if (items.length === 0) {
     return (
       <Box paddingX={1}>
-        <Text dimColor>No wishlist items. Press A to add one.</Text>
+        <Text dimColor>{t("wishlist.overlay.empty")}</Text>
       </Box>
     );
   }
@@ -121,13 +123,14 @@ function OverlayFooter({
 }: {
   addingItem: boolean;
 }): React.ReactElement {
+  const t = useI18n();
   if (addingItem) {
     return (
       <Box paddingX={1}>
         <Text dimColor>Enter</Text>
-        <Text> save  </Text>
+        <Text> {t("wishlist.key.save")}  </Text>
         <Text dimColor>Esc</Text>
-        <Text> cancel</Text>
+        <Text> {t("reviewList.key.cancel")}</Text>
       </Box>
     );
   }
@@ -135,13 +138,13 @@ function OverlayFooter({
   return (
     <Box paddingX={1}>
       <Text dimColor>A</Text>
-      <Text> add  </Text>
+      <Text> {t("wishlist.key.add")}  </Text>
       <Text dimColor>D/X</Text>
-      <Text> delete  </Text>
+      <Text> {t("questPicker.key.delete")}  </Text>
       <Text dimColor>S-{"\u2191"}/{"\u2193"}</Text>
-      <Text> reorder  </Text>
+      <Text> {t("reviewList.key.reorder")}  </Text>
       <Text dimColor>Esc/W</Text>
-      <Text> close</Text>
+      <Text> {t("questionPopup.close")}</Text>
     </Box>
   );
 }
@@ -157,6 +160,7 @@ export function WishlistOverlay({
   projectRoot,
   onClose,
 }: WishlistOverlayProps): React.ReactElement {
+  const t = useI18n();
   const store = useWishlistStore({ projectRoot });
   const [addingItem, setAddingItem] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -246,7 +250,7 @@ export function WishlistOverlay({
   });
 
   const count = store.items.length;
-  const label = `Wishlist (${count} item${count !== 1 ? "s" : ""})`;
+  const label = t("wishlist.overlay.title", { count });
 
   return (
     <Box
