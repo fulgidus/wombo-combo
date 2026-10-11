@@ -3,8 +3,29 @@
 This repo is dogfooded: work is tracked in **woco** itself (`bun dev tasks …`,
 `bun dev quest …`, `bun dev wishlist …`; never the global `woco` binary, see
 AGENTS.md rule 1). Every ticket is **mirrored to GitHub Issues** on
-`fulgidus/wombo-combo` in the same step, so there is always a fallback and
-external readers can see the work.
+`fulgidus/wombo-combo`, so there is always a fallback and external readers can
+see the work.
+
+## The mirror is automated
+
+The lockstep mirror is done by `bun dev sync` (guide:
+`docs/src/content/docs/guides/github-sync.md`):
+
+- `bun dev sync run` pulls GitHub changes, then pushes woco changes (tasks,
+  quests, comments, labels). Idempotent: issues are matched by a hidden
+  `woco:` marker and the mapping files under `.wombo-combo/sync/github/`.
+- **Auto mode** (`sync.github.enabled: true`, `mode: "auto"` in
+  `.wombo-combo/config.json`) pushes each change right after the woco command
+  that made it, and the daemon (or `bun dev sync watch`) runs the cycle
+  periodically. With auto mode on, the manual mirror steps below are done for
+  you; do not repeat them.
+- Auth: `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`. Check drift offline with
+  `bun dev tasks check --mirror`.
+- Conflicts: local woco values win; the GitHub values are kept as a comment on
+  both sides.
+
+Everything below is the **manual fallback**: use it when sync is off, there is
+no token, or GitHub was unreachable and the mirror is pending.
 
 ## Rules
 
@@ -12,7 +33,7 @@ external readers can see the work.
   object, then mirror it. Record each side's id in the other: `github: #N` in
   the task's `notes`, and the woco task or quest id in the issue title
   (`[task-id] Title`).
-- **Cloud sessions have no `gh` CLI.** Use the GitHub MCP tools
+- **Cloud sessions have no `gh` CLI** (and usually no token for `sync`). Use the GitHub MCP tools
   (`mcp__github__issue_write`, `issue_read`, `add_issue_comment`,
   `list_issues`, `sub_issue_write`). Locally, use `gh`. If neither is
   reachable, do the woco side, say the mirror is pending, and finish it the

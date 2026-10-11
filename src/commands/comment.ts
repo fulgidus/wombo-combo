@@ -170,5 +170,6 @@ export function cmdCommentLink(opts: CommentOptions): void {
   } catch (err) {
     return outputError(fmt, msg("cli.comment.link.failed", { error: err instanceof Error ? err.message : String(err) }));
   }
+  maybeSyncItem(opts.projectRoot, { kind: comment.ref_kind, id: comment.ref_id });
   outputMessage(fmt, msg("cli.comment.link.done", { id: comment.id, url: comment.github_url ?? "" }), { comment });
 }

@@ -82,6 +82,8 @@ under `.wombo-combo/` **are tracked in git**:
 - `baselines/`, `analytics/`, `replays/`, `evals/`, `post-merge.json` — quest
   test baselines, agent analytics, recorded agent session replays, eval
   scores, publication journal
+- `sync/pending-notices.json` — conflict notices waiting to be retried on GitHub
+  (the rest of `sync/` is tracked)
 - `hitl/`, `agents-cache/` — human-in-the-loop exchanges, downloaded agent
   definitions
 
@@ -162,6 +164,7 @@ wombo-combo/
       templates.ts          # Resolves bundled agent templates (src/templates/)
       schema.ts             # Command and flag registry for `woco describe`
       eval-score.ts         # Eval-style scoring of completed daemon sessions
+      sync/                 # GitHub Issues sync: client, mapping store, pull, push, cycle, auto-sync hook, mirror check
       harness/              # Agent CLI adapters (opencode, claude-code, codex, pi, custom), routing.ts, spawn.ts; see docs/src/content/docs/guides/harnesses.md
     locales/                # i18n resources: <lng>/{tui,cli}.json, registered in index.ts (guide: docs guides/i18n)
     templates/              # Bundled agent definitions, quest.yml and _meta.yml
@@ -186,6 +189,7 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   project.yml             # Project profile: vision, stack, conventions, rules (tracked)
   wishlist.yml            # Wishlist items (tracked)
   sync/github/            # GitHub Issues sync mappings: <task|quest>/<id>.yml (tracked)
+  sync/pending-notices.json  # Conflict notices to retry on GitHub (gitignored)
   claims/                 # Team task claims: <task-id>.yml with owner and TTL (tracked)
   comments/               # Task/quest comments: <task|quest>/<ref-id>/<id>.yml, one file per comment (tracked)
   tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)

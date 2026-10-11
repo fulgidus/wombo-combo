@@ -1092,5 +1092,11 @@
   "cli.help.sync.run.flag.dry-run": "Mostra cosa cambierebbe senza scrivere nulla",
   "cli.help.sync.watch.summary": "Sincronizza con GitHub a intervalli finché non viene fermato",
   "cli.help.sync.watch.flag.once": "Esegue un solo ciclo ed esce",
-  "cli.help.sync.watch.flag.interval": "Secondi tra i cicli (predefinito: sync.github.intervalSeconds, minimo 15)"
+  "cli.help.sync.watch.flag.interval": "Secondi tra i cicli (predefinito: sync.github.intervalSeconds, minimo 15)",
+  "cli.tasks.check.mirror.unmapped": "[{{ref}}] Non rispecchiato su GitHub (nessuna mappatura)",
+  "cli.tasks.check.mirror.orphan": "[{{ref}}] La mappatura punta alla issue #{{issue}} ma l'elemento non esiste più",
+  "cli.tasks.check.mirror.commentNoId": "[{{ref}}] Il commento {{comment}} non ha un id GitHub",
+  "cli.tasks.check.mirror.hashDiffers": "[{{ref}}] Modificato dall'ultima sincronizzazione con la issue #{{issue}}",
+  "cli.help.tasks.check.flag.mirror": "Segnala anche lo scostamento dal mirror GitHub (offline, avvisi)",
+  "cli.help.tasks.check.flag.strict": "Con --mirror: tratta i rilievi del mirror come errori"
 }

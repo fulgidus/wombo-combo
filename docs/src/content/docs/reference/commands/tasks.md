@@ -237,6 +237,8 @@ Read-only.
 
 | Flag | Alias | Type | Default | Description |
 | --- | --- | --- | --- | --- |
+| `--mirror` |  | boolean |  | Also report GitHub mirror drift (offline, warnings) |
+| `--strict` |  | boolean |  | With --mirror: treat mirror findings as errors |
 | `--output` |  | string | `"text"` | Output format: text (default), json, or toon |
 
 ### Global flags

@@ -278,6 +278,16 @@ one file per comment under `.wombo-combo/comments/`, shown in the TUI task
 browser and fed to agents. See
 [docs/src/content/docs/guides/comments.md](docs/src/content/docs/guides/comments.md).
 
+## GitHub sync
+
+Tasks, quests and comments can be kept in step with GitHub Issues, by hand
+(`bun dev sync run|push|pull|status|labels`) or automatically (`sync.github`
+with `mode: "auto"`: write-through pushes plus a periodic daemon cycle).
+Auth comes from `GITHUB_TOKEN`, `GH_TOKEN` or `gh`; conflicts are resolved
+local-wins without losing the GitHub values. `woco tasks check --mirror`
+reports drift offline. See
+[docs/src/content/docs/guides/github-sync.md](docs/src/content/docs/guides/github-sync.md).
+
 ## Launch options
 
 ```sh

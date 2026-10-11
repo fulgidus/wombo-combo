@@ -445,6 +445,16 @@ const checkCommand = defineCommand({
     description: "Validate tasks file (schema, deps, duplicates, cycles) (also: ch)",
   },
   args: {
+    mirror: {
+      type: "boolean",
+      description: "Also report GitHub mirror drift (offline, warnings)",
+      required: false,
+    },
+    strict: {
+      type: "boolean",
+      description: "With --mirror: treat mirror findings as errors",
+      required: false,
+    },
     output: {
       type: "string",
       alias: "o",
@@ -458,6 +468,8 @@ const checkCommand = defineCommand({
     await cmdTasksCheck({
       projectRoot,
       config,
+      mirror: args.mirror,
+      strict: args.strict,
       outputFmt: resolveOutputFormat(args.output),
     });
   },

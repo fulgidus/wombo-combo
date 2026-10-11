@@ -16,7 +16,17 @@ corresponding label string from this table.
 
 ## Where the role is recorded
 
-- **GitHub:** the label on the issue (create the five labels once if missing).
+- **GitHub:** the label on the issue. The labels are created automatically
+  by `bun dev sync labels` or on the first `sync push`/`sync run`; manual
+  fallback (once, if sync is unavailable):
+
+  ```sh
+  gh label create needs-triage    --color ededed --description "Maintainer needs to evaluate this issue"
+  gh label create needs-info      --color fbca04 --description "Waiting on more information from the reporter"
+  gh label create ready-for-agent --color 0e8a16 --description "Fully specified, ready for an AFK agent"
+  gh label create ready-for-human --color 1d76db --description "Needs human implementation"
+  gh label create wontfix         --color ffffff --description "Will not be worked on"
+  ```
 - **woco:** a `triage: <label>` line in the task's `notes` (tasks have no label
   field). Replace the line when the role changes; do not stack several.
   `wontfix` additionally means `bun dev tasks set-status <id> cancelled`.

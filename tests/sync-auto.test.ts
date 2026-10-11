@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DEFAULT_CONFIG, loadConfig } from "../src/config";
@@ -150,6 +150,32 @@ describe("cycle", () => {
     expect(fake.comments.filter((c) => c.issue === issue.number)).toHaveLength(1);
   });
 
+  test("a conflict notice that failed to post is kept and retried by the next cycle", async () => {
+    await runSyncCycle({ projectRoot: root, client: client() });
+    const issue = fake.issues.find((i) => i.title.startsWith("[t1]"))!;
+    issue.title = "[t1] Remote title";
+    saveTask(mkTask({ title: "Local title" }));
+    fake.inject({ method: "POST", path: /comments$/, status: 500, times: Infinity });
+    const r = await runSyncCycle({ projectRoot: root, client: client() });
+    expect(r.notices.errors).toHaveLength(1);
+    expect(r.notices.posted).toEqual([]);
+    const file = join(root, ".wombo-combo", "sync", "pending-notices.json");
+    expect(existsSync(file)).toBe(true);
+    expect(JSON.parse(readFileSync(file, "utf-8"))).toHaveLength(1);
+    // still failing: kept, not duplicated
+    await runSyncCycle({ projectRoot: root, client: client() });
+    expect(JSON.parse(readFileSync(file, "utf-8"))).toHaveLength(1);
+    expect(JSON.parse(readFileSync(file, "utf-8"))[0].attempts).toBe(2);
+    fake.clearInjections();
+    const retry = await runSyncCycle({ projectRoot: root, client: client() });
+    expect(retry.notices.posted).toHaveLength(1);
+    expect(existsSync(file)).toBe(false);
+    expect(fake.comments.filter((c) => c.issue === issue.number && c.body.includes("woco sync conflict"))).toHaveLength(1);
+    // pull:false cycles retry too
+    const none = await runSyncCycle({ projectRoot: root, client: client(), pull: false });
+    expect(none.notices.posted).toEqual([]);
+  });
+
   test("single flight: a second cycle is refused while one runs", async () => {
     const first = runCycleSingleFlight({ projectRoot: root, client: client() });
     expect(first).not.toBeNull();
@@ -192,11 +218,40 @@ describe("AutoSyncLoop (daemon)", () => {
     return { loop, timers, logs };
   }
 
-  test("does not start unless auto", () => {
+  test("idles (no network) while auto mode is off", async () => {
     writeConfig({ enabled: true, mode: "manual" });
-    const { loop, timers } = mkLoop();
-    expect(loop.start()).toBe(false);
-    expect(timers).toHaveLength(0);
+    const { loop, timers, logs } = mkLoop();
+    expect(loop.start()).toBe(true);
+    expect(timers.map((t) => t.ms)).toEqual([2000]);
+    timers.shift()!.fn();
+    await loop.idle();
+    expect(fake.requests).toHaveLength(0);
+    expect(logs).toEqual([]);
+    expect(timers.map((t) => t.ms)).toEqual([30_000]);
+    loop.stop();
+  });
+
+  test("enabling auto mode after start begins syncing without a restart", async () => {
+    writeConfig({ enabled: false });
+    const { loop, timers, logs } = mkLoop();
+    loop.start();
+    timers.shift()!.fn();
+    await loop.idle();
+    expect(fake.issues).toHaveLength(0);
+    writeConfig({ enabled: true, mode: "auto", intervalSeconds: 30 });
+    timers.shift()!.fn();
+    await loop.idle();
+    expect(fake.issues.filter((i) => i.title.startsWith("[t1]"))).toHaveLength(1);
+    expect(logs.some(([l, m]) => l === "info" && m.includes("auto-sync on"))).toBe(true);
+    expect(timers.map((t) => t.ms)).toEqual([30_000]);
+    // and turning it off again idles
+    writeConfig({ enabled: true, mode: "manual" });
+    const before = fake.requests.length;
+    timers.shift()!.fn();
+    await loop.idle();
+    expect(fake.requests.length).toBe(before);
+    expect(timers.map((t) => t.ms)).toEqual([30_000]);
+    loop.stop();
   });
 
   test("ticks pull+push and reschedules at the interval; stop cancels", async () => {
@@ -350,6 +405,24 @@ describe("CLI", () => {
     expect(fake.issues.some((i) => i.title.startsWith("[t3]"))).toBe(true);
     expect((await woco(["comment", "add", "t3", "a note", "--role", "human"], gh())).code).toBe(0);
     expect(posts(/comments$/)).toBe(1);
+  });
+
+  test("tasks archive and comment link are synced too", async () => {
+    await woco(["sync", "push"], gh());
+    fake.requests.length = 0;
+    expect((await woco(["tasks", "set-status", "t2", "done"], gh())).code).toBe(0);
+    fake.requests.length = 0;
+    const a = await woco(["tasks", "archive", "t2"], gh());
+    expect(a.code).toBe(0);
+    expect(fake.requests.length).toBeGreaterThan(0); // the hook ran a push for the archived item
+    const c = await woco(["comment", "add", "t1", "note", "--role", "human", "--github-url", "https://github.com/acme/widgets/issues/1#issuecomment-1"], gh());
+    expect(c.code).toBe(0);
+    const id = JSON.parse((await woco(["comment", "list", "t1", "-o", "json"], gh())).out).comments?.[0]?.id;
+    expect(id).toBeTruthy();
+    fake.requests.length = 0;
+    const l = await woco(["comment", "link", id, "https://github.com/acme/widgets/issues/1#issuecomment-2"], gh());
+    expect(l.code).toBe(0);
+    expect(fake.requests.length).toBeGreaterThan(0);
   });
 
   test("manual mode never touches GitHub", async () => {

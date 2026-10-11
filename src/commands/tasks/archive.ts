@@ -7,6 +7,7 @@
  *   woco tasks archive --dry-run    # show what would be archived
  */
 
+import { maybeSyncItem } from "../../lib/sync/auto";
 import type { WomboConfig } from "../../config";
 import {
   loadFeatures,
@@ -97,6 +98,7 @@ export async function cmdTasksArchive(opts: TasksArchiveOptions): Promise<void> 
     data.archive.push(...toArchive);
 
     saveFeatures(projectRoot, config, data);
+    for (const f of toArchive) maybeSyncItem(projectRoot, { kind: "task", id: f.id });
 
     outputMessage(fmt, msg("cli.tasks.archive.done", { count: toArchive.length }), {
       count: toArchive.length,

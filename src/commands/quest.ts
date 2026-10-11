@@ -700,6 +700,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
   // Set quest to planning status
   quest.status = "planning";
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   if (fmt === "text") {
     console.log(`\n${BOLD}${t("cli.quest.plan.planning", { title: quest.title })}${RESET}`);
@@ -722,6 +723,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert planning status on failure
     quest.status = "draft";
     saveQuest(projectRoot, quest);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
     outputError(fmt, msg("cli.quest.plan.failed", { reason }));
     return;
   }
@@ -762,6 +764,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert to draft if plan has errors
     quest.status = "draft";
     saveQuest(projectRoot, quest);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
     output(fmt, {
       success: false,
@@ -779,6 +782,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert to previous status
     quest.status = "draft";
     saveQuest(projectRoot, quest);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
     output(fmt, {
       dry_run: true,
@@ -794,6 +798,8 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
 
   // Apply the plan — creates tasks and activates the quest
   const tasks = applyPlanToQuest(result, quest, projectRoot, config);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
+  for (const task of tasks) maybeSyncItem(projectRoot, { kind: "task", id: task.id });
 
   output(fmt, {
     success: true,

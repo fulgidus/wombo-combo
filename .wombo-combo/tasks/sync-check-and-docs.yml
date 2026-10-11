@@ -7,15 +7,15 @@ description: "'woco tasks check --mirror' reports tasks/quests with no mapping, 
   dev sync run' and auto mode; keep the manual fallback) and docs/agents/triage-labels.md (labels are created
   automatically by 'sync labels' or on first push, with the 'gh label create' commands as a manual fallback), README
   section, AGENTS.md layout list (sync/ mapping dir tracked)."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: low
 depends_on:
   - sync-auto-mode
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T23:15:18.737Z
 constraints: []
 forbidden: []
 references: []

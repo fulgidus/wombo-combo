@@ -659,14 +659,15 @@ export class Daemon {
   // -------------------------------------------------------------------------
 
   /** Poll frequency for filesystem-based HITL question detection (ms). */
-  /** Start the periodic GitHub sync cycle when sync.github is enabled with mode auto. Never throws. */
+  /** Start the GitHub sync loop. Always started: it idles while auto mode is off and picks it up when enabled later. Never throws. */
   private startSyncLoop(): void {
     try {
       const loop = new AutoSyncLoop({
         projectRoot: this.projectRoot,
         log: (level, message) => this.log(level, `[sync] ${message}`),
       });
-      if (loop.start()) this.syncLoop = loop;
+      loop.start();
+      this.syncLoop = loop;
     } catch (err: any) {
       this.log("warn", `[sync] could not start GitHub auto-sync: ${err?.message ?? err}`);
     }

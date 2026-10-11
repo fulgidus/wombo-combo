@@ -29,3 +29,5 @@ graphify-out/manifest.json
 .wombo-combo/hitl/
 .wombo-combo/agents-cache/
 .wombo-combo/replays/
+.wombo-combo/sync/pending-notices.json
+.wombo-combo/sync/pending-notices.json.*

@@ -14,6 +14,7 @@
  * (so their issue gets closed); they are never newly created.
  */
 
+import { MAX_NOTICE_ATTEMPTS, readPendingNotices, writePendingNotices, type PendingNotice } from "./pending-notices";
 import { loadConfig } from "../../config";
 import { listComments, setCommentGithubUrl, type Comment } from "../comments";
 import { loadAllArchivedQuests, loadAllQuests } from "../quest-store";
@@ -536,7 +537,14 @@ export async function postRemoteNotices(
   opts: { dryRun?: boolean; projectRoot?: string } = {},
 ): Promise<NoticeReport> {
   const out: NoticeReport = { posted: [], errors: [] };
+  // Notices that failed earlier are retried first (persisted by projectRoot).
+  const persist = !!opts.projectRoot && !opts.dryRun;
+  const queue: PendingNotice[] = persist ? readPendingNotices(opts.projectRoot!) : [];
   for (const n of notices) {
+    if (!queue.some((q) => q.issue === n.issue && q.body === n.body)) queue.push({ ...n, attempts: 0 });
+  }
+  const failed: PendingNotice[] = [];
+  for (const n of queue) {
     try {
       const id = `${NOTICE_ID_PREFIX}${hashFields({ issue: n.issue, body: n.body }).slice(0, 16)}`;
       const body = `${n.body.trim()}\n\n${markerFor("comment", id)}`;
@@ -556,8 +564,10 @@ export async function postRemoteNotices(
       if (opts.projectRoot) linkConflictComment(opts.projectRoot, n, created.html_url);
     } catch (err) {
       out.errors.push({ ref: n.ref, error: errMsg(err) });
+      if (n.attempts + 1 < MAX_NOTICE_ATTEMPTS) failed.push({ ...n, attempts: n.attempts + 1 });
     }
   }
+  if (persist) writePendingNotices(opts.projectRoot!, failed);
   return out;
 }
 

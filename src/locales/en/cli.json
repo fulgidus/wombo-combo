@@ -1072,5 +1072,11 @@
   "cli.help.sync.run.flag.dry-run": "Show what would change without writing anything",
   "cli.help.sync.watch.summary": "Keep syncing with GitHub on an interval until stopped",
   "cli.help.sync.watch.flag.once": "Run a single cycle and exit",
-  "cli.help.sync.watch.flag.interval": "Seconds between cycles (default: sync.github.intervalSeconds, minimum 15)"
+  "cli.help.sync.watch.flag.interval": "Seconds between cycles (default: sync.github.intervalSeconds, minimum 15)",
+  "cli.tasks.check.mirror.unmapped": "[{{ref}}] Not mirrored to GitHub (no mapping)",
+  "cli.tasks.check.mirror.orphan": "[{{ref}}] Mapping points to issue #{{issue}} but the item no longer exists",
+  "cli.tasks.check.mirror.commentNoId": "[{{ref}}] Comment {{comment}} has no GitHub id",
+  "cli.tasks.check.mirror.hashDiffers": "[{{ref}}] Changed since the last sync with issue #{{issue}}",
+  "cli.help.tasks.check.flag.mirror": "Also report GitHub mirror drift (offline, warnings)",
+  "cli.help.tasks.check.flag.strict": "With --mirror: treat mirror findings as errors"
 }

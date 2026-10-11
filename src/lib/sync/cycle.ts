@@ -67,6 +67,9 @@ export function runSyncCycle(opts: CycleOptions): Promise<CycleReport> {
         return { pull, notices, push: emptyPush(dryRun) };
       }
       notices = await postRemoteNotices(opts.client, pull.pendingRemoteNotices, { dryRun, projectRoot: opts.projectRoot });
+    } else if (!dryRun) {
+      // No pull, but notices that failed earlier still get their retry.
+      notices = await postRemoteNotices(opts.client, [], { projectRoot: opts.projectRoot });
     }
     const push = await pushToGitHub({ projectRoot: opts.projectRoot, client: opts.client, dryRun, warn: opts.warn });
     return { pull, notices, push };
