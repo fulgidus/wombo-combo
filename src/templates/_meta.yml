@@ -9,7 +9,8 @@
 #   version    : string — Schema version (currently "1.0").
 #   meta       : object — Metadata about this task store.
 #     created_at  : string — ISO 8601 datetime when the store was created.
-#     updated_at  : string — ISO 8601 datetime, auto-updated on every write.
+#     updated_at  : string — ISO 8601 datetime set at creation; not rewritten on later writes
+#                    (a volatile value would conflict on every branch merge).
 #     project     : string — Project name.
 #     generator   : string — Tool that created this file (always "wombo-combo").
 #     maintainer  : string — Primary maintainer handle or email.
