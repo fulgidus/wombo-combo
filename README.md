@@ -278,6 +278,15 @@ one file per comment under `.wombo-combo/comments/`, shown in the TUI task
 browser and fed to agents. See
 [docs/src/content/docs/guides/comments.md](docs/src/content/docs/guides/comments.md).
 
+## Review gate
+
+An optional reviewer agent (`review.enabled` in config, off by default) checks
+each verified task's diff against `CODING_STANDARDS.md`/`AGENTS.md` and the task
+spec before merge. Findings become task comments; blocking findings send the
+implementing agent back for up to `review.maxRounds` rounds. The reviewer is
+routed through the harness operation `review`. See
+[docs/src/content/docs/guides/review-gate.md](docs/src/content/docs/guides/review-gate.md).
+
 ## GitHub sync
 
 Tasks, quests and comments can be kept in step with GitHub Issues, by hand
