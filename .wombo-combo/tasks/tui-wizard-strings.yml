@@ -26,7 +26,7 @@ description: |
   3. Keep English text identical so existing assertions still pass; update a test only
      when a key was intentionally renamed in the same commit.
   4. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -34,7 +34,7 @@ depends_on:
   - i18n-core-engine
 effort: PT1H30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:36.754Z
 constraints:
   - Use useI18n() in components; avoid module-scope t() calls in owned files
   - English output must remain identical
@@ -61,3 +61,4 @@ notes:
   - Agent-generated text (genesis plans, quest goals) is data, not UI, and is never passed through t()
 subtasks: []
 quest: i18n-full
+paths: []

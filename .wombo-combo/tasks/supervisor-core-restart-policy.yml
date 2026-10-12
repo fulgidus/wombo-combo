@@ -27,7 +27,7 @@ description: |
   restarts, crash restarts up to maxRestarts then gives up, maxRestarts 0
   gives up immediately, rehydration from an initial count, shutdown hook runs
   once and is idempotent, shutdown error is contained.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: high

@@ -33,7 +33,7 @@ description: >
   event types, and add a test.
 
   Extend tests/daemon-protocol.test.ts with round-trip and backward-compat cases.
-status: in_progress
+status: planned
 completion: 0
 difficulty: easy
 priority: low

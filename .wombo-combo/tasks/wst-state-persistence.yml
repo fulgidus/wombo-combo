@@ -23,7 +23,7 @@ description: |
      save()/load(), loading an old file without the field, atomic write leaves
      no .tmp file, protocol test addition in tests/daemon-protocol.test.ts only
      if it has an exhaustive event list.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: high

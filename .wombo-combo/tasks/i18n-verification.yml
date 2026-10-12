@@ -22,7 +22,7 @@ description: |
      literal key is unresolved, fix the locale file in this task (add the missing key
      with the English text found at the call site) and note it in the commit body.
   4. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: easy
 priority: medium
@@ -38,7 +38,7 @@ depends_on:
   - cli-meta-strings
 effort: PT45M
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:29.773Z
 constraints:
   - Test must be deterministic and read files via Bun.file or node:fs
   - Plural keys (_one/_other) are counted as one logical key
@@ -59,3 +59,4 @@ notes:
     config-and-locale-docs, so raise a wishlist item instead of editing it
 subtasks: []
 quest: i18n-full
+paths: []

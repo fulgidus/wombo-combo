@@ -33,7 +33,7 @@ description: |
   Tests describe CURRENT behaviour; if you find behaviour that looks like a
   bug, encode it as-is and add a comment plus a tracking task via
   `bun dev tasks add` (do not silently work around it).
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: high

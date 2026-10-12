@@ -22,7 +22,7 @@ description: |
   Work:
   1. Keep English identical for every key.
   2. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -30,7 +30,7 @@ depends_on:
   - i18n-core-engine
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:31.857Z
 constraints:
   - Translate only text-mode human output
   - JSON and TOON output must be byte-identical
@@ -56,3 +56,4 @@ notes:
   - Replay content is recorded agent output and is never translated
 subtasks: []
 quest: i18n-full
+paths: []

@@ -32,7 +32,7 @@ description: |
   5. Add tests for the locale cycle order and that settings labels change when the
      provided t changes.
   6. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -40,7 +40,7 @@ depends_on:
   - i18n-core-engine
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:36.057Z
 constraints:
   - Use useI18n() inside components; do not call t() at module scope in owned files
   - English output must remain identical to current strings
@@ -71,3 +71,4 @@ notes:
   - Dashboard metric labels contain units such as 'completions/min'; keep them as separate interpolated keys
 subtasks: []
 quest: i18n-full
+paths: []

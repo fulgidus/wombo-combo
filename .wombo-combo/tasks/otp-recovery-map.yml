@@ -19,7 +19,7 @@ description: |
   replacing primitive (restart type, restart strategy, intensity/period, shutdown, link/monitor,
   or "stays as-is, not a supervision concern") and any behaviour gap. Use a table plus short notes.
   Use wombo vocabulary: task, quest, wave, agent, harness.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: medium

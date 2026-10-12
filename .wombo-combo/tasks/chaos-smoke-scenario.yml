@@ -22,7 +22,7 @@ description: |
       configuration (single healthy task + one flaky) and assert exit 0 and a JSON
       report with zero leaks. It must be deterministic and finish well within the
       30s default test timeout.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: low

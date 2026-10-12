@@ -26,7 +26,7 @@ description: |
   1. Keep English identical for every key.
   2. Verify `bun dev completion bash` output is unchanged byte-for-byte.
   3. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -34,7 +34,7 @@ depends_on:
   - i18n-core-engine
 effort: PT1H30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:31.171Z
 constraints:
   - Shell completion scripts and describe output stay byte-identical
   - Translate only text-mode human output
@@ -58,3 +58,4 @@ notes:
   - Upgrade messages mention version numbers; keep them as interpolated values
 subtasks: []
 quest: i18n-full
+paths: []

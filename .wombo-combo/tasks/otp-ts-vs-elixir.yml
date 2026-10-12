@@ -15,7 +15,7 @@ description: |
   in-process supervision cannot (real isolation, preemptive scheduling, hot code reload) versus
   what wombo actually needs (agents are external CLI processes already isolated by the OS).
   Finish with a recommendation section and the reasons it could be wrong.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: medium

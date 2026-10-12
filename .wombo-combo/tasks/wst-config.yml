@@ -30,7 +30,7 @@ description: |
   style. Add tests/config-supervision.test.ts: defaults resolve to
   today's behaviour, invalid values throw, a config without the block
   validates unchanged.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: high

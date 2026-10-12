@@ -27,7 +27,7 @@ description: |
   5. Add the new guide to the docs sidebar if the sidebar is explicitly listed in
      docs/astro.config.mjs (check first).
   6. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: easy
 priority: low
@@ -35,7 +35,7 @@ depends_on:
   - i18n-core-engine
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:30.472Z
 constraints:
   - Locale default becomes 'auto'; 'en' remains valid
   - Guide must document the non-translatable surfaces explicitly
@@ -58,3 +58,4 @@ notes:
   - docs/src/content/i18n/en.json is unrelated to this quest; do not touch it
 subtasks: []
 quest: i18n-full
+paths: []

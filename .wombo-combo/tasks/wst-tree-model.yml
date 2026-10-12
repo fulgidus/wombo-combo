@@ -47,7 +47,7 @@ description: |
   each of the three escalation outcomes, canStart gating, snapshot ->
   restore round trip, and that every transition emits exactly one event.
   Keep the file under ~500 lines (split into supervision-tree-types.ts if needed).
-status: in_progress
+status: planned
 completion: 0
 difficulty: hard
 priority: high

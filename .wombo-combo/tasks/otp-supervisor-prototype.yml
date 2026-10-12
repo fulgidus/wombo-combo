@@ -15,7 +15,7 @@ description: |
   child_restarted, intensity_exceeded, escalated) through an onEvent callback.
   Keep it under about 250 lines. Add spikes/otp-supervision/README.md stating it is a throwaway,
   how to run the demo and tests, and that it is not wired into the daemon.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: medium

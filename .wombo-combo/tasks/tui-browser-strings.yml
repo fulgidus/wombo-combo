@@ -22,7 +22,7 @@ description: |
      accept a t function parameter (default to the global t for backward compatibility)
      so they can be tested with a custom map.
   4. Keep English output identical. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -30,7 +30,7 @@ depends_on:
   - i18n-core-engine
 effort: PT1H30M
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:33.974Z
 constraints:
   - Use useI18n() in components; helpers take an optional t parameter
   - English output must remain identical
@@ -55,3 +55,4 @@ notes:
   - Existing *.test.ts files for helpers may assert literal labels; keep values identical
 subtasks: []
 quest: i18n-full
+paths: []

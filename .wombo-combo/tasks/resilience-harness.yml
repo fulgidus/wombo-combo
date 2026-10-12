@@ -35,7 +35,7 @@ description: |
       through the production recovery path.
   Add tests/resilience/harness-smoke.test.ts: a healthy one-task scenario completes, the
   recorder sees child_started then a normal child_exited, and no leaks remain.
-status: in_progress
+status: planned
 completion: 0
 difficulty: hard
 priority: high

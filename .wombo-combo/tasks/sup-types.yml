@@ -32,7 +32,7 @@ description: >
   Keep it types plus trivial helpers only. No tests required beyond typecheck, but add tests/supervision-types.test.ts
   with a tiny test for systemClock (now() increments, setTimeout fires and clearTimeout cancels) and the
   crash/NORMAL/SHUTDOWN helpers.
-status: in_progress
+status: planned
 completion: 0
 difficulty: easy
 priority: medium

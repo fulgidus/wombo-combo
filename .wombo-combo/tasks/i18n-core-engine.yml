@@ -51,14 +51,14 @@ description: |
      (use injected env object, not process.env mutation), unsupported locale falling
      back to en, fallbackNS lookup across namespaces, and no HTML escaping.
   7. Typecheck, build, run `bun test`, then `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: hard
 priority: high
 depends_on: []
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:29.079Z
 constraints:
   - Keep English output byte-identical for every existing key so no existing test assertion changes
   - Engine module src/lib/i18n.ts must not import React or Ink
@@ -87,3 +87,4 @@ notes:
   - i18next v23+ plural suffixes for en are _one and _other
 subtasks: []
 quest: i18n-full
+paths: []

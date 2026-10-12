@@ -23,7 +23,7 @@ description: |
   2. Confirm JSON output with `bun dev launch --dry-run --all-ready --output json` still
      matches the pre-change output.
   3. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: medium
 priority: medium
@@ -31,7 +31,7 @@ depends_on:
   - i18n-core-engine
 effort: PT2H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:33.274Z
 constraints:
   - Translate only text-mode human output
   - JSON and TOON output must be byte-identical
@@ -58,3 +58,4 @@ notes:
   - Use the dry-run flag in tests to avoid side effects
 subtasks: []
 quest: i18n-full
+paths: []

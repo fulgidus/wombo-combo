@@ -14,7 +14,7 @@ description: |
      button label with t() keys in tui-onboarding.json, accessed via useI18n().
   2. Preserve the step ordering and the English text exactly.
   3. Typecheck, build, bun test, `graphify update .`.
-status: backlog
+status: cancelled
 completion: 0
 difficulty: easy
 priority: medium
@@ -22,7 +22,7 @@ depends_on:
   - i18n-core-engine
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T18:58:34.664Z
 constraints:
   - Use useI18n() in components; no module-scope t() calls
   - English output must remain identical
@@ -41,3 +41,4 @@ notes:
     with no config
 subtasks: []
 quest: i18n-full
+paths: []

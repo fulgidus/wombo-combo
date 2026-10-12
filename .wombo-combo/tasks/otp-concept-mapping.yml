@@ -20,7 +20,7 @@ description: |
   event loop in the daemon cannot be contained; merges and conflict resolution share git state and
   must stay serialized. Include a proposed TypeScript shape (types only, as a fenced code block)
   for ChildSpec and Supervisor.
-status: in_progress
+status: planned
 completion: 0
 difficulty: medium
 priority: medium
