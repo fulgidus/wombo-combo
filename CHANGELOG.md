@@ -17,3 +17,9 @@
 <!-- wombo-combo:operation:main-24a6836-254a090 -->
 
 - **merge-stale-root-checkout**: After merging, bring the project root checkout of the base branch up to date
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-review-gate-3a739ee-1014f3e -->
+
+- **review-core**: Review library: prompt, findings parser, decision, config
