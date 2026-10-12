@@ -107,3 +107,9 @@
 <!-- wombo-combo:operation:quest-woco-retro-d88b277-a5f0e62 -->
 
 - **retro-docs**: Retro guide
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-6da27fb-0be8a94 -->
+
+- **bug-flaky-monitor-dashboard-test**: Flaky: monitor-router dashboard test times out under load
