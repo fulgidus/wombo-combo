@@ -4,7 +4,7 @@ goal: Close the dead end where sync pull creates needs-triage tasks and nothing 
   machine (roles from docs/agents/triage-labels.md and the vendored triage skill under .claude/skills/triage), a woco
   triage command to list, inspect, transition and brief tasks, and make sync pull and push keep triage state consistent
   with GitHub labels.
-status: active
+status: completed
 priority: high
 difficulty: medium
 depends_on: []
@@ -16,7 +16,7 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-10-12T02:03:27.163Z
-updated_at: 2026-10-12T02:04:05.185Z
+updated_at: 2026-10-12T04:24:08.243Z
 started_at: 2026-10-12T02:04:05.185Z
-ended_at: null
+ended_at: 2026-10-12T04:24:08.243Z
 notes: []
