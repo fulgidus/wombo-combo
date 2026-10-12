@@ -161,3 +161,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-ed87253-bca741a -->
 
 - **sup-types**: Supervision Core Types and Clock
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-49eb266-0a0cd78 -->
+
+- **sup-events**: Typed Supervisor Event Emitter
