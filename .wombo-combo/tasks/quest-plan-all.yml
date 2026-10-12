@@ -1,0 +1,28 @@
+id: quest-plan-all
+title: "plan-all: plan every unplanned quest en masse from the main screen"
+description: "Add a plan-all action: from the quest picker (main screen) a lowercase key (suggest 'P' is forbidden, use
+  'a') plans every quest that has zero tasks (active+archived) and a plannable status, and a matching CLI 'woco quest
+  plan-all' with --dry-run, --concurrency N and --model. Each quest runs through the existing runQuestPlanner via
+  launchPlanner so routing/profile selection and the shared planner telemetry (model, tokens, provider cost) apply. Show
+  one aggregate progress view: per-quest row with the shared Spinner, status, tokens and provider cost, plus a running
+  total; plans are proposed, not auto-applied: collect results and open the existing plan review (ReviewList) one quest
+  at a time, or offer 'approve all valid plans'. Respect concurrency (default 2) and let Esc abort all in-flight
+  planners (abortQuestPlanner). Skip quests already planned and report them. Tests: planner selection (which quests
+  qualify), concurrency limit, abort, and a dry-run. Follow lowercase-key and arrow conventions (right confirms, left
+  cancels), fit the terminal height, reuse existing components, no new price table."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Reuse runQuestPlanner, launchPlanner and createPlannerTelemetry
+  - do not duplicate planner code
+  - Cost comes from provider-reported data only
+forbidden: []
+references: []
+notes: []
+subtasks: []
