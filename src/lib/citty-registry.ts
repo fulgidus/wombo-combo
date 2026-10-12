@@ -46,6 +46,7 @@ import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
 import { teamCommand } from "../commands/citty/team";
 import { triageCommand } from "../commands/citty/triage";
+import { retroCommand } from "../commands/citty/retro";
 import { commentCommand } from "../commands/citty/comment";
 import { syncCommand } from "../commands/citty/sync";
 
@@ -1004,6 +1005,22 @@ const ENTRIES: RegistryEntry[] = [
         },
       },
     ],
+  // --- retro --------------------------------------------------------------
+  {
+    cittyCmd: retroCommand,
+    meta: {
+      summary: "Suggest environment improvements from replays, analytics, evals and comments",
+      aliases: [],
+      mutating: false,
+      supportsDryRun: false,
+      completionSummary: "Retro suggestions from failure signals",
+      description:
+        "Collects failure signals from agent replays, analytics snapshots, eval reports and comments for a task, " +
+        "a quest or a time window, groups them into retro categories (navigation, automated checks, coding " +
+        "standards, steering files, tool economy, information access) and prints suggested changes ordered by " +
+        "severity. With --save the report is written to .wombo-combo/retros/<YYYY-MM-DD>-<scope>.md (git-tracked). " +
+        "Offline and read-only apart from --save.",
+    },
   },
 
   // --- comment ------------------------------------------------------------

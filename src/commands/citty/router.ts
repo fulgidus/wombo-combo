@@ -39,6 +39,7 @@ import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
 import { teamCommand } from "./team";
 import { triageCommand } from "./triage";
+import { retroCommand } from "./retro";
 import { commentCommand } from "./comment";
 import { syncCommand } from "./sync";
 
@@ -111,6 +112,8 @@ const CITTY_COMMANDS = new Set([
     "team",
     // --- Triage
     "triage",
+    // --- Retro suggestions from failure signals ---
+    "retro",
     // --- Comments on tasks and quests ---
     "comment",
     // --- GitHub issue sync ---
@@ -352,6 +355,8 @@ export async function runCittyCommand(
 
         case "triage":
             await runCommand(triageCommand, { rawArgs: injectDefaultSubcommand("triage", rawArgs) });
+        case "retro":
+            await runCommand(retroCommand, { rawArgs });
             break;
 
         case "comment":

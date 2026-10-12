@@ -92,3 +92,18 @@
 <!-- wombo-combo:operation:quest-review-gate-f6efac0-5d6ba2a -->
 
 - **review-docs**: Review gate guide
+<!-- wombo-combo:operation:quest-woco-retro-3a739ee-b82ced6 -->
+
+- **retro-collect**: Retro signal collectors
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-woco-retro-e6d0cc1-c42ca20 -->
+
+- **retro-cli**: woco retro command
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-woco-retro-d88b277-a5f0e62 -->
+
+- **retro-docs**: Retro guide

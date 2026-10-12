@@ -292,6 +292,12 @@ spec before merge. Findings become task comments; blocking findings send the
 implementing agent back for up to `review.maxRounds` rounds. The reviewer is
 routed through the harness operation `review`. See
 [docs/src/content/docs/guides/review-gate.md](docs/src/content/docs/guides/review-gate.md).
+## Retro
+
+`bun dev retro` collects failure signals from replays, analytics, evals and
+comments and suggests environment improvements by severity (`--task`,
+`--quest`, `--since 7d`, `--save` to `.wombo-combo/retros/`). See
+[docs/src/content/docs/guides/retro.md](docs/src/content/docs/guides/retro.md).
 
 ## GitHub sync
 

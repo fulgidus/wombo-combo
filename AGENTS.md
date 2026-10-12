@@ -71,6 +71,7 @@ under `.wombo-combo/` **are tracked in git**:
 - `sync/` — GitHub sync mappings (`sync/github/<task|quest>/<id>.yml`, one file per item)
 - `claims/` — team task claims (`<task-id>.yml`, tracked so teammates see them)
 - `comments/` — task and quest comments (`<task|quest>/<ref-id>/<id>.yml`, one file per comment)
+- `retros/` — saved `woco retro --save` reports (`<YYYY-MM-DD>-<scope>.md`)
 
 **Runtime artifacts are gitignored** (ephemeral, regenerated each run):
 
@@ -222,6 +223,7 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   sync/attribution-breaker.json  # Attribution circuit-breaker state (gitignored)
   claims/                 # Team task claims: <task-id>.yml with owner and TTL (tracked)
   comments/               # Task/quest comments: <task|quest>/<ref-id>/<id>.yml, one file per comment (tracked)
+  retros/                 # Saved retro reports: <YYYY-MM-DD>-<scope>.md (tracked)
   tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)
   archive/                # Completed/cancelled tasks: _meta.yml + <task-id>.yml (tracked)
   quests/                 # Quests: <quest-id>.yml + <quest-id>/knowledge.md (tracked)
