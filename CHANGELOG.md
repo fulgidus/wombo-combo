@@ -197,3 +197,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-77be4a1-1fd74c1 -->
 
 - **sup-supervisor**: Supervisor Class and Snapshot
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-11119f8-9b31007 -->
+
+- **sup-index-docs**: Barrel Export, Docs and Build Check
