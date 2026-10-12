@@ -143,3 +143,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-a1dc706-2551a0c -->
 
 - **otp-prototype-demo**: Prototype Demo And Tests
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-d6c9e20-38699a4 -->
+
+- **otp-adr-decision**: Write ADR With Go/No-Go
