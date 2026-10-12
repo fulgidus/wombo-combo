@@ -7,14 +7,14 @@ description: |
   taken from the ADR, the go / no-go outcome in one sentence, a link to the ADR file on GitHub
   (docs/adr/0001-otp-supervision.md), and a "Status: design spike, no behaviour change yet" note.
   The guides sidebar autogenerates, so no config edit is needed.
-status: planned
+status: in_progress
 completion: 0
 difficulty: trivial
 priority: low
 depends_on:
   - otp-adr-decision
 effort: PT20M
-started_at: null
+started_at: 2026-10-12T20:07:20.857Z
 ended_at: null
 constraints:
   - Match the frontmatter and tone of existing guides

@@ -19,14 +19,14 @@ description: |
   replacing primitive (restart type, restart strategy, intensity/period, shutdown, link/monitor,
   or "stays as-is, not a supervision concern") and any behaviour gap. Use a table plus short notes.
   Use wombo vocabulary: task, quest, wave, agent, harness.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:12:10.761Z
-ended_at: null
+started_at: 2026-10-12T19:44:39.885Z
+ended_at: 2026-10-12T19:48:56.917Z
 constraints:
   - Cite real function names and line-level locations that exist today; verify each by reading the code
   - "Docs only: change no files outside docs/adr/0001-otp-supervision/"

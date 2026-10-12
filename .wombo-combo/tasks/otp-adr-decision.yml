@@ -20,8 +20,8 @@ description: |
     on a "go" decision.
   - Flag any contradiction with existing docs; there are no earlier ADRs.
   Keep wombo vocabulary (wave, quest, agent, task, harness).
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
@@ -30,8 +30,8 @@ depends_on:
   - otp-ts-vs-elixir
   - otp-prototype-demo
 effort: PT1H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T20:04:01.742Z
+ended_at: 2026-10-12T20:07:24.555Z
 constraints:
   - Must contain an explicit go / no-go and a scoped follow-up list
   - "Must reference closed PR #3"

@@ -14,15 +14,15 @@ description: |
   Tests (bun test, deterministic clock) assert each of these four scenarios plus shutdown order and
   shutdown timeout. Run with `bun spikes/otp-supervision/demo.ts` and add the command to the README.
   Report the output of one demo run in the README under "Observed behaviour".
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - otp-supervisor-prototype
 effort: PT1H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T19:48:14.936Z
+ended_at: 2026-10-12T20:04:05.329Z
 constraints:
   - Tests must pass under `bun test`
   - Must not change daemon behaviour; spikes only

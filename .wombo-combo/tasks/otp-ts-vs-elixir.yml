@@ -15,14 +15,14 @@ description: |
   in-process supervision cannot (real isolation, preemptive scheduling, hot code reload) versus
   what wombo actually needs (agents are external CLI processes already isolated by the OS).
   Finish with a recommendation section and the reasons it could be wrong.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:12:10.943Z
-ended_at: null
+started_at: 2026-10-12T19:45:45.532Z
+ended_at: 2026-10-12T19:49:36.057Z
 constraints:
   - "Reference closed PR #3 by number"
   - Cover cost, risk, the CLI/TUI WebSocket boundary and a clear recommendation

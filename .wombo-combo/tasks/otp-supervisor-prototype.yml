@@ -15,14 +15,14 @@ description: |
   child_restarted, intensity_exceeded, escalated) through an onEvent callback.
   Keep it under about 250 lines. Add spikes/otp-supervision/README.md stating it is a throwaway,
   how to run the demo and tests, and that it is not wired into the daemon.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:12:10.858Z
-ended_at: null
+started_at: 2026-10-12T19:44:40.074Z
+ended_at: 2026-10-12T19:48:18.724Z
 constraints:
   - Everything lives under spikes/otp-supervision/
   - No new dependencies; Bun and TypeScript only
