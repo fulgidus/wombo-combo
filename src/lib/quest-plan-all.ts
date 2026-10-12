@@ -16,6 +16,7 @@ import {
   abortQuestPlanner,
   PLANNER_ABORTED,
   type PlanResult,
+  type PendingPlan,
 } from "./quest-planner";
 import type { PlannerTelemetrySnapshot } from "./planner-telemetry";
 
@@ -85,6 +86,8 @@ export type PlanAllRunner = (
     model?: string;
     onProgress: (message: string) => void;
     onTelemetry: (snapshot: PlannerTelemetrySnapshot) => void;
+    /** Plans from batch quests this one depends on (or that finished earlier) */
+    pendingPlans?: PendingPlan[];
   },
 ) => Promise<PlanResult>;
 
@@ -139,9 +142,30 @@ export function runPlanAll(opts: PlanAllOptions): PlanAllRun {
     activity: "",
   }));
   let aborted = false;
-  let next = 0;
 
   const emit = () => opts.onUpdate?.(rows.map((r) => ({ ...r })));
+
+  const batchIds = new Set(rows.map((r) => r.quest.id));
+  const rowById = new Map(rows.map((r) => [r.quest.id, r]));
+  const settled = (r: PlanAllRow) => r.state !== "queued" && r.state !== "running";
+  /** In-batch prerequisites of a row (propaedeutic order: they are planned first) */
+  const batchPrereqs = (r: PlanAllRow) =>
+    (r.quest.depends_on ?? []).filter((d) => batchIds.has(d) && d !== r.quest.id);
+  let waiters: (() => void)[] = [];
+  const notify = () => {
+    const ws = waiters;
+    waiters = [];
+    for (const w of ws) w();
+  };
+  /** Proposed plans of every finished batch quest, so later planners avoid collisions */
+  const pendingPlans = (): PendingPlan[] =>
+    rows
+      .filter((r) => r.state === "done" && r.result && r.result.tasks.length > 0)
+      .map((r) => ({
+        questId: r.quest.id,
+        title: r.quest.title,
+        tasks: r.result!.tasks.map((t) => ({ id: t.id, title: t.title, references: t.references })),
+      }));
 
   const runOne = async (row: PlanAllRow): Promise<void> => {
     row.state = "running";
@@ -149,6 +173,7 @@ export function runPlanAll(opts: PlanAllOptions): PlanAllRun {
     try {
       const result = await runner(row.quest, {
         model: opts.model,
+        pendingPlans: pendingPlans(),
         onProgress: (message) => {
           row.activity = message;
           emit();
@@ -174,11 +199,30 @@ export function runPlanAll(opts: PlanAllOptions): PlanAllRun {
       row.error = err instanceof Error ? err.message : String(err);
     }
     emit();
+    notify();
+  };
+
+  /**
+   * Next queued row whose in-batch prerequisites are all settled. When none is
+   * ready but something is still running, wait; if nothing runs (a dependency
+   * cycle), fall back to the first queued row so the batch always finishes.
+   */
+  const pickNext = (): PlanAllRow | null => {
+    const queued = rows.filter((r) => r.state === "queued");
+    if (queued.length === 0) return null;
+    const ready = queued.find((r) => batchPrereqs(r).every((d) => settled(rowById.get(d)!)));
+    if (ready) return ready;
+    return rows.some((r) => r.state === "running") ? null : queued[0]!;
   };
 
   const worker = async (): Promise<void> => {
-    while (!aborted && next < rows.length) {
-      await runOne(rows[next++]!);
+    while (!aborted && rows.some((r) => r.state === "queued")) {
+      const row = pickNext();
+      if (!row) {
+        await new Promise<void>((resolve) => waiters.push(resolve));
+        continue;
+      }
+      await runOne(row);
     }
   };
 
@@ -198,6 +242,7 @@ export function runPlanAll(opts: PlanAllOptions): PlanAllRun {
         else if (r.state === "queued") r.state = "aborted";
       }
       emit();
+      notify();
     },
     rows: () => rows.map((r) => ({ ...r })),
     totals: () => sumTotals(rows),

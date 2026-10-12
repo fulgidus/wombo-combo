@@ -92,11 +92,21 @@ tasks:
       - "<Implementation hint or context>"
     agent: "<optional: agent definition name if not generalist>"
 
+prerequisite_quests:
+  - <optional: id of another in-flight quest that must finish BEFORE this one>
+
 knowledge: |
   <Optional: architectural decisions, API contracts, shared type definitions,
   or other context that should be shared across all task agents. This will be
   written to the quest's knowledge.md file.>
 ```
+
+## Prerequisite Quests
+
+The prompt may list other quests in flight. If this quest would touch the same
+files, redo the same work, or needs another quest's output first, do NOT plan
+around it: name that quest under `prerequisite_quests` and plan only the work
+that remains. Leave the list empty when there is no real dependency.
 
 ## Quality Checklist
 

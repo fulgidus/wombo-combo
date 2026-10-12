@@ -214,6 +214,7 @@
   "cli.quest.plan.produced_one": "Il pianificatore ha prodotto {{count}} task",
   "cli.quest.plan.produced_other": "Il pianificatore ha prodotto {{count}} task",
   "cli.quest.plan.produced_many": "Il pianificatore ha prodotto {{count}} task",
+  "cli.quest.plan.prerequisites": "Prerequisiti:",
   "cli.quest.plan.validationIssues": "Problemi di validazione:",
   "cli.quest.plan.levelError": "ERRORE",
   "cli.quest.plan.levelWarn": "AVVISO",

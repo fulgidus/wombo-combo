@@ -20,8 +20,14 @@ import type { Quest } from "./quest";
 import { getQuestTaskIds } from "./quest";
 import type { Task, Priority, Difficulty } from "./tasks";
 import { createBlankTask, saveTaskToStore } from "./tasks";
-import { loadTasksFromStore } from "./task-store";
-import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store";
+import { loadTasksFromStore, loadArchiveFromStore } from "./task-store";
+import { loadQuestKnowledge, saveQuest, saveQuestKnowledge, loadAllQuests } from "./quest-store";
+import {
+  analyzePrerequisites,
+  describeFindings,
+  formatPrerequisiteSection,
+  validateProposedPrerequisites,
+} from "./quest-prerequisites";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
 import {
   createPlannerTelemetry,
@@ -53,6 +59,8 @@ export interface ProposedTask {
 export interface PlannerOutput {
   tasks: ProposedTask[];
   knowledge?: string;
+  /** Other quests the planner says must run before this one */
+  prerequisite_quests?: string[];
 }
 
 /** Validation issue found in the proposed plan. */
@@ -60,6 +68,13 @@ export interface PlanValidationIssue {
   level: "error" | "warning";
   taskId?: string;
   message: string;
+}
+
+/** A plan proposed earlier in the same batch (plan-all) but not applied yet. */
+export interface PendingPlan {
+  questId: string;
+  title: string;
+  tasks: { id: string; title: string; references: string[] }[];
 }
 
 /** Result of running the quest planner. */
@@ -70,6 +85,10 @@ export interface PlanResult {
   issues: PlanValidationIssue[];
   rawOutput: string;
   error?: string;
+  /** Pre-flight warnings about unsatisfied or proposed prerequisite quests */
+  prerequisiteWarnings?: string[];
+  /** Accepted planner-proposed prerequisite quest IDs (merged on apply) */
+  prerequisiteQuests?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +102,8 @@ export interface PlanResult {
 export async function generatePlannerPrompt(
   quest: Quest,
   projectRoot: string,
-  config: WomboConfig
+  config: WomboConfig,
+  extra?: { pendingPlans?: PendingPlan[] }
 ): Promise<string> {
   const sections: string[] = [];
 
@@ -167,6 +187,35 @@ export async function generatePlannerPrompt(
     );
     for (const tid of existingTaskIds) {
       sections.push(`- \`${tid}\``);
+    }
+  }
+
+  // Prerequisite quests + other in-flight work (collision / rewrite awareness)
+  const prereqSection = formatPrerequisiteSection(
+    analyzePrerequisites(
+      quest,
+      loadAllQuests(projectRoot),
+      [
+        ...loadTasksFromStore(projectRoot, config).tasks,
+        ...loadArchiveFromStore(projectRoot, config).tasks,
+      ],
+    ),
+  );
+  if (prereqSection) sections.push(prereqSection);
+
+  // Plans from the same plan-all batch that are proposed but not applied yet
+  if (extra?.pendingPlans?.length) {
+    sections.push("\n## Plans Proposed Earlier In This Batch (not applied yet)\n");
+    sections.push(
+      "These quests were planned just before this one. Their tasks will exist when this quest " +
+        "runs. Do not duplicate or rewrite them.\n",
+    );
+    for (const p of extra.pendingPlans) {
+      sections.push(`- \`${p.questId}\`: ${p.title}`);
+      for (const t of p.tasks.slice(0, 15)) {
+        const refs = t.references.length ? ` — ${t.references.join(", ")}` : "";
+        sections.push(`  - task \`${t.id}\`: ${t.title}${refs}`);
+      }
     }
   }
 
@@ -342,7 +391,10 @@ export function parsePlanYaml(yaml: string): PlannerOutput {
     ? (parsed as any).knowledge
     : null;
 
-  return { tasks, knowledge };
+  const rawPrereqs = (parsed as any).prerequisite_quests;
+  const prerequisite_quests = Array.isArray(rawPrereqs) ? rawPrereqs.map(String) : [];
+
+  return { tasks, knowledge, prerequisite_quests };
 }
 
 // ---------------------------------------------------------------------------
@@ -608,13 +660,26 @@ export async function runQuestPlanner(
     onProgress?: (message: string) => void;
     /** Structured telemetry (model, tokens, provider cost) for aggregate views */
     onTelemetry?: (snapshot: PlannerTelemetrySnapshot) => void;
+    /** Plans already proposed in the same plan-all batch */
+    pendingPlans?: PendingPlan[];
   }
 ): Promise<PlanResult> {
   const onProgress = opts?.onProgress ?? (() => {});
 
+  // Pre-flight: is something else supposed to run (or be planned) before this quest?
+  const allQuests = loadAllQuests(projectRoot);
+  const allTasks = [
+    ...loadTasksFromStore(projectRoot, config).tasks,
+    ...loadArchiveFromStore(projectRoot, config).tasks,
+  ];
+  const prerequisiteWarnings = describeFindings(analyzePrerequisites(quest, allQuests, allTasks).findings);
+  for (const w of prerequisiteWarnings) onProgress(`Warning: ${w}`);
+
   // Generate the prompt
   onProgress("Generating planner prompt...");
-  const prompt = await generatePlannerPrompt(quest, projectRoot, config);
+  const prompt = await generatePlannerPrompt(quest, projectRoot, config, {
+    pendingPlans: opts?.pendingPlans,
+  });
 
   // Launch the planner agent
   onProgress("Launching quest planner agent...");
@@ -802,10 +867,24 @@ export async function runQuestPlanner(
   const issues = validatePlan(plan);
   const hasErrors = issues.some((i) => i.level === "error");
 
+  const { accepted, rejected } = validateProposedPrerequisites(
+    quest,
+    plan.prerequisite_quests ?? [],
+    allQuests,
+  );
+  for (const id of accepted) {
+    prerequisiteWarnings.push(`Planner says quest "${id}" should run before "${quest.id}" — added as a prerequisite on apply`);
+  }
+  for (const r of rejected) {
+    issues.push({ level: "warning", message: `Ignored proposed prerequisite quest "${r.id}": ${r.reason}` });
+  }
+
   return {
     success: !hasErrors,
     tasks: plan.tasks,
     knowledge: plan.knowledge ?? null,
+    prerequisiteWarnings,
+    prerequisiteQuests: accepted,
     issues,
     rawOutput: textContent,
     error: hasErrors ? "Plan has validation errors — review and fix before approving." : undefined,
@@ -875,6 +954,11 @@ export function applyPlanToQuest(
     // Save each task to the task store
     saveTaskToStore(projectRoot, config, task);
     tasks.push(task);
+  }
+
+  // Planner-proposed prerequisite quests become hard dependencies
+  for (const id of plan.prerequisiteQuests ?? []) {
+    if (!quest.depends_on.includes(id)) quest.depends_on.push(id);
   }
 
   // Update quest

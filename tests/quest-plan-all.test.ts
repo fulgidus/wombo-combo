@@ -173,3 +173,36 @@ describe("splitValidPlans", () => {
     expect(invalid.map((r) => r.quest.id)).toEqual(["b", "c", "d"]);
   });
 });
+
+describe("runPlanAll prerequisite ordering", () => {
+  test("plans in-batch prerequisites first and hands their plans to dependents", async () => {
+    const base = quest("base");
+    const dependent = quest("dependent");
+    dependent.depends_on = ["base"];
+    const order: string[] = [];
+    const seen: Record<string, string[]> = {};
+    const runner: PlanAllRunner = async (q, o) => {
+      order.push(`start:${q.id}`);
+      seen[q.id] = (o.pendingPlans ?? []).map((p) => p.questId);
+      await new Promise((r) => setTimeout(r, q.id === "base" ? 20 : 0));
+      order.push(`end:${q.id}`);
+      return okPlan();
+    };
+    // dependent listed first and concurrency 2: it must still wait for base
+    const run = runPlanAll({ quests: [dependent, base], concurrency: 2, runner });
+    await run.done;
+    expect(order).toEqual(["start:base", "end:base", "start:dependent", "end:dependent"]);
+    expect(seen.dependent).toEqual(["base"]);
+    expect(seen.base).toEqual([]);
+  });
+
+  test("a dependency cycle still finishes", async () => {
+    const a = quest("a");
+    const b = quest("b");
+    a.depends_on = ["b"];
+    b.depends_on = ["a"];
+    const run = runPlanAll({ quests: [a, b], concurrency: 2, runner: async () => okPlan() });
+    const rows = await run.done;
+    expect(rows.map((r) => r.state)).toEqual(["done", "done"]);
+  });
+});

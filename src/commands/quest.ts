@@ -747,6 +747,11 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
   if (fmt === "text") {
     console.log(`\n  ${BOLD}${t("cli.quest.plan.produced", { count: result.tasks.length })}${RESET}`);
 
+    if ((result.prerequisiteWarnings ?? []).length > 0) {
+      console.log(`\n  ${BOLD}${t("cli.quest.plan.prerequisites")}${RESET}`);
+      for (const w of result.prerequisiteWarnings!) console.log(`    ${YELLOW}${w}${RESET}`);
+    }
+
     if (result.issues.length > 0) {
       console.log(`\n  ${BOLD}${t("cli.quest.plan.validationIssues")}${RESET}`);
       for (const issue of result.issues) {
@@ -894,6 +899,9 @@ async function questPlanAll(opts: QuestCommandOptions): Promise<void> {
     for (const task of created) maybeSyncItem(projectRoot, { kind: "task", id: task.id });
     planned.push({ quest_id: quest.id, tasks_created: created.length });
   }
+  const prerequisiteWarnings = rows.flatMap((r) =>
+    (r.result?.prerequisiteWarnings ?? []).map((message) => ({ quest_id: r.quest.id, message })),
+  );
   const failed = invalid.map((r) => ({
     quest_id: r.quest.id,
     error: r.state === "aborted" ? "aborted" : (r.error ?? r.result?.error ?? "plan has errors"),
@@ -904,12 +912,14 @@ async function questPlanAll(opts: QuestCommandOptions): Promise<void> {
     planned,
     failed,
     skipped: skippedOut,
+    prerequisite_warnings: prerequisiteWarnings,
     tokens_in: totals.tokensIn,
     tokens_out: totals.tokensOut,
     cost_usd: totals.cost,
   }, () => {
     for (const p of planned) console.log(`  ${GREEN}✔${RESET} ${p.quest_id} — ${t("cli.quest.planAll.created", { count: p.tasks_created })}`);
     for (const f of failed) console.log(`  ${RED}✘${RESET} ${f.quest_id} — ${f.error}`);
+    for (const w of prerequisiteWarnings) console.log(`  ${YELLOW}!${RESET} ${w.quest_id}: ${w.message}`);
     const cost = totals.cost === null ? "" : ` · $${totals.cost.toFixed(4)}`;
     console.log(`\n${DIM}${t("cli.quest.planAll.total", { tokensIn: totals.tokensIn, tokensOut: totals.tokensOut })}${cost}${RESET}\n`);
   });
