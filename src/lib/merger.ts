@@ -132,6 +132,46 @@ function parseUntrackedFiles(errorOutput: string): string[] {
   return files;
 }
 
+/**
+ * Snapshot the project root's checkout state before a merge moves `branch`.
+ * Returns the commit the root's index/working tree currently match, or null
+ * when the root does not have `branch` checked out.
+ */
+async function rootCheckoutTip(projectRoot: string, branch: string): Promise<string | null> {
+  const head = await runSafe("git symbolic-ref --short -q HEAD", projectRoot);
+  if (!head.ok || head.output !== branch) return null;
+  const tip = await runSafe("git rev-parse HEAD", projectRoot);
+  return tip.ok ? tip.output : null;
+}
+
+/**
+ * Merges happen in a temporary worktree, so when `branch` is also checked out
+ * in the project root its ref moves but the root's index and working tree stay
+ * at the old commit (and would show the merge reversed). Bring them forward
+ * with a two-way `git read-tree -m -u`, which keeps local uncommitted changes
+ * and refuses (leaving everything untouched) on conflicts.
+ *
+ * Returns true when the root was updated or needed no update.
+ */
+export async function refreshRootCheckout(
+  projectRoot: string,
+  branch: string,
+  oldTip: string | null,
+  newTip: string
+): Promise<boolean> {
+  if (!oldTip || oldTip === newTip) return true;
+  const result = await runSafe(`git read-tree -m -u ${oldTip} ${newTip}`, projectRoot);
+  if (result.ok) return true;
+  console.warn(
+    `[merger] Could not update the checkout of ${branch} in ${projectRoot} ` +
+      `(local changes conflict with the merge); it was left untouched and will look out of date.\n` +
+      `  Run from the project root once your changes are committed or stashed:\n` +
+      `    git read-tree -m -u ${oldTip} ${newTip}\n` +
+      `  ${result.output.slice(0, 200)}`
+  );
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Merge Operations
 // ---------------------------------------------------------------------------
@@ -151,6 +191,7 @@ export async function mergeBranch(
   // project root, which hijacked the user's working branch — especially
   // painful when merging into quest branches.
   const tmpDir = path.resolve(projectRoot, '..', '.wombo-tmp', `${path.basename(projectRoot)}-merge-${Date.now()}`);
+  const rootOldTip = await rootCheckoutTip(projectRoot, baseBranch);
 
   // Create a worktree checked out on the base branch.
   // --force is required because baseBranch (e.g. "main") is typically already
@@ -226,6 +267,7 @@ export async function mergeBranch(
     }
 
     const commitHash = await run("git rev-parse HEAD", tmpDir);
+    await refreshRootCheckout(projectRoot, baseBranch, rootOldTip, commitHash);
 
     return {
       success: true,
@@ -393,6 +435,7 @@ export async function syncQuestBranch(
   // Need to merge. Use a temporary worktree for the quest branch.
   // --force: the quest branch may already be checked out in another worktree.
   const tmpDir = path.resolve(projectRoot, '..', '.wombo-tmp', `${path.basename(projectRoot)}-quest-sync-${Date.now()}`);
+  const rootOldTip = await rootCheckoutTip(projectRoot, questBranch);
   const addResult = await runSafe(
     `git worktree add --force "${tmpDir}" "${questBranch}"`,
     projectRoot
@@ -409,6 +452,8 @@ export async function syncQuestBranch(
     );
 
     if (mergeResult.ok) {
+      const newTip = await runSafe("git rev-parse HEAD", tmpDir);
+      if (newTip.ok) await refreshRootCheckout(projectRoot, questBranch, rootOldTip, newTip.output);
       return { synced: true, conflicting: false };
     }
 
