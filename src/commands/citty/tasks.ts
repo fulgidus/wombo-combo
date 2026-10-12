@@ -78,7 +78,7 @@ const listCommand = defineCommand({
     },
     ready: {
       type: "boolean",
-      description: "Show only ready tasks (backlog + deps met)",
+      description: "Show only ready tasks (planned + deps met; what launch --all-ready starts)",
       required: false,
     },
     includeArchive: {

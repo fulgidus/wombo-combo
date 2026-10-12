@@ -798,7 +798,7 @@
   "cli.help.tasks.list.flag.status": "Filter by status",
   "cli.help.tasks.list.flag.priority": "Filter by priority",
   "cli.help.tasks.list.flag.difficulty": "Filter by difficulty",
-  "cli.help.tasks.list.flag.ready": "Show only ready tasks (backlog + deps met)",
+  "cli.help.tasks.list.flag.ready": "Show only ready tasks (planned + deps met; what launch --all-ready starts)",
   "cli.help.tasks.list.flag.include-archive": "Include archived tasks",
   "cli.help.tasks.list.flag.fields": "Comma-separated list of fields to include in output",
   "cli.help.tasks.add.summary": "Add a new task",
