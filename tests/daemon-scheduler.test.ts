@@ -1395,6 +1395,84 @@ describe("File-scope steering", () => {
   });
 });
 
+describe("Scheduler wake on dependency satisfied", () => {
+  function writeTask(dir: string, id: string, dependsOn: string[], status = "planned"): void {
+    const tasksDir = join(dir, ".wombo-combo", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    const deps = dependsOn.length
+      ? `depends_on:\n${dependsOn.map((d) => `  - "${d}"`).join("\n")}`
+      : "depends_on: []";
+    writeFileSync(
+      join(tasksDir, `${id}.yml`),
+      [
+        `id: "${id}"`, `title: "${id}"`, `description: ""`, `status: "${status}"`,
+        `completion: 0`, `difficulty: "medium"`, `priority: "medium"`, deps,
+        `effort: "PT1H"`, `constraints: []`, `forbidden: []`, `references: []`,
+        `notes: []`, `subtasks: []`, "",
+      ].join("\n")
+    );
+  }
+
+  function setup(taskIds: string[]) {
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+    const { calls, runner } = makeMockRunner();
+    const scheduler = new Scheduler(
+      {
+        projectRoot: tempDir,
+        config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }),
+        taskIds,
+        tickIntervalMs: 60000,
+      },
+      { state, runner: runner as never }
+    );
+    return { state, calls, scheduler };
+  }
+
+  const submitted = (calls: Array<{ method: string; args: any[] }>) =>
+    calls.filter((c) => c.method === "submitTask").map((c) => c.args[0].id);
+
+  test("re-evaluates after going idle when a dependency becomes verified in daemon state", () => {
+    writeTask(tempDir, "dep-a", []);
+    writeTask(tempDir, "child-b", ["dep-a"]);
+    const { state, calls, scheduler } = setup(["child-b"]);
+    scheduler.start();
+
+    // child-b is blocked on dep-a (not in scope) → nothing to do, scheduler idles
+    expect(submitted(calls)).toEqual([]);
+    expect(state.getSchedulerStatus()).toBe("idle");
+
+    // dep-a is verified in daemon state only (disk still says planned)
+    state.addAgent(makeAgent("dep-a", { status: "running" }));
+    state.updateAgentStatus("dep-a", "verified");
+
+    expect(submitted(calls)).toEqual(["child-b"]);
+    expect(state.getSchedulerStatus()).toBe("running");
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("does not wake a scheduler the user stopped", () => {
+    writeTask(tempDir, "dep-a", []);
+    writeTask(tempDir, "child-b", ["dep-a"]);
+    const { state, calls, scheduler } = setup(["child-b"]);
+    scheduler.start();
+    scheduler.stop();
+    scheduler.nudge();
+    state.setSchedulerStatus("idle", "All agents finished");
+
+    state.addAgent(makeAgent("dep-a", { status: "running" }));
+    state.updateAgentStatus("dep-a", "verified");
+
+    expect(submitted(calls)).toEqual([]);
+    expect(state.getSchedulerStatus()).toBe("idle");
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+});
+
 describe("Scheduler team claims", () => {
   test("skips tasks claimed by another developer only when team.enabled", async () => {
     const dir = makeTempDir();

@@ -68,6 +68,10 @@ export class Scheduler {
   private config: SchedulerConfig;
   private deps: SchedulerDeps;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
+  /** Unsubscribe handle for the agent-status listener (set while started). */
+  private unsubscribeStatus: (() => void) | null = null;
+  /** True when the last idle transition was "nothing left to do" (not a user stop). */
+  private idledByCompletion = false;
   private depGraph: DepGraph | null = null;
   private schedulePlan: SchedulePlan | null = null;
 
@@ -148,6 +152,19 @@ export class Scheduler {
 
     state.setBaseBranch(this.config.config.baseBranch);
     state.setSchedulerStatus("running", "Scheduler started");
+    this.idledByCompletion = false;
+
+    // Wake on agent outcomes: a dep reaching verified/merged (or an agent
+    // failing) can unblock work even though nothing changed on disk.
+    if (!this.unsubscribeStatus) {
+      this.unsubscribeStatus = state.subscribe((eventType, payload) => {
+        if (eventType !== "evt:agent-status-change") return;
+        const { newStatus } = payload as { newStatus: string };
+        if (newStatus === "verified" || newStatus === "merged" || newStatus === "failed") {
+          this.wakeOnAgentOutcome();
+        }
+      });
+    }
 
     // Build initial dependency graph
     this.rebuildDepGraph();
@@ -186,8 +203,24 @@ export class Scheduler {
     }
   }
 
+  /**
+   * Re-evaluate candidates after an agent reached verified/merged/failed.
+   * Re-arms the tick loop if the scheduler idled because it ran out of work;
+   * a user-initiated stop/kill is left alone.
+   */
+  private wakeOnAgentOutcome(): void {
+    const status = this.deps.state.getSchedulerStatus();
+    if (status === "running") {
+      if (this.tickTimer === null) this.start();
+      else this.tick();
+    } else if (status === "idle" && this.idledByCompletion) {
+      this.start();
+    }
+  }
+
   /** Stop gracefully: finish running agents, no new picks, then idle. */
   stop(): void {
+    this.idledByCompletion = false;
     this.deps.state.setSchedulerStatus("stopping", "User stopping");
     // The tick loop will detect "stopping" and transition to "idle" when all agents finish
   }
@@ -201,6 +234,10 @@ export class Scheduler {
 
   /** Shutdown the scheduler entirely (stops the tick loop). */
   shutdown(): void {
+    if (this.unsubscribeStatus) {
+      this.unsubscribeStatus();
+      this.unsubscribeStatus = null;
+    }
     if (this.tickTimer) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
@@ -296,6 +333,7 @@ export class Scheduler {
       readyQueued.length === 0
     ) {
       state.setSchedulerStatus("idle", "All tasks processed");
+      this.idledByCompletion = true;
       // Stop the tick timer while idle — it will be restarted by start() when
       // new work arrives (e.g. via the tasks-directory watcher).
       if (this.tickTimer) {
