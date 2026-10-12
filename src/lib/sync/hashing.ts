@@ -27,8 +27,13 @@ export interface RemoteTaskView {
   hash: string;
 }
 
-export function remoteTaskView(remote: RemoteIssue, localTriage: string | null, id?: string): RemoteTaskView {
-  const parsed = parseIssueToTask(remote, { triageLabels: triageLabelsFor(localTriage) });
+export function remoteTaskView(
+  remote: RemoteIssue,
+  localTriage: string | null,
+  id?: string,
+  localCategory: string | null = null,
+): RemoteTaskView {
+  const parsed = parseIssueToTask(remote, { triageLabels: triageLabelsFor(localTriage), localTriage, localCategory });
   if (id) parsed.id = id;
   const view = taskSyncable(parsedToTask(parsed));
   return { parsed, view, hash: hashFields(view) };
@@ -49,6 +54,6 @@ export function remoteQuestView(remote: RemoteIssue): SyncableQuest {
 }
 
 /** Hash of the syncable fields of a remote issue (same shape as the local hash). */
-export function remoteSyncHash(kind: "task" | "quest", remote: RemoteIssue, localTriage: string | null): string {
-  return kind === "task" ? remoteTaskView(remote, localTriage).hash : hashFields(remoteQuestView(remote));
+export function remoteSyncHash(kind: "task" | "quest", remote: RemoteIssue, localTriage: string | null, localCategory: string | null = null): string {
+  return kind === "task" ? remoteTaskView(remote, localTriage, undefined, localCategory).hash : hashFields(remoteQuestView(remote));
 }

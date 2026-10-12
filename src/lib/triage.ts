@@ -100,6 +100,8 @@ export interface TransitionOptions {
   reopen?: boolean;
   /** Maintainer override: skip the transition table (never the validity checks) */
   force?: boolean;
+  /** Do not schedule an auto-sync push (the caller is the sync itself) */
+  skipSync?: boolean;
 }
 
 export interface TransitionResult {
@@ -161,7 +163,7 @@ export function transition(
     author: opts.author,
     role: "system",
   });
-  maybeSyncItem(projectRoot, { kind: "task", id: taskId });
+  if (!opts.skipSync) maybeSyncItem(projectRoot, { kind: "task", id: taskId });
   return { id: taskId, from, to, category: category ?? null, comment };
 }
 
