@@ -823,7 +823,7 @@
   "cli.help.tasks.list.flag.status": "Filtra per stato",
   "cli.help.tasks.list.flag.priority": "Filtra per priorità",
   "cli.help.tasks.list.flag.difficulty": "Filtra per difficoltà",
-  "cli.help.tasks.list.flag.ready": "Mostra solo i task pronti (backlog + dipendenze soddisfatte)",
+  "cli.help.tasks.list.flag.ready": "Mostra solo i task pronti (planned + dipendenze soddisfatte; quelli che launch --all-ready avvia)",
   "cli.help.tasks.list.flag.include-archive": "Include i task archiviati",
   "cli.help.tasks.list.flag.fields": "Elenco di campi da includere nell'output, separati da virgole",
   "cli.help.tasks.add.summary": "Aggiunge un nuovo task",

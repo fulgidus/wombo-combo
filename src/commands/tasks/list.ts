@@ -5,7 +5,7 @@
  *   woco tasks list                     # list all tasks
  *   woco tasks list --status backlog    # filter by status
  *   woco tasks list --priority high     # filter by priority
- *   woco tasks list --ready             # show only ready tasks
+ *   woco tasks list --ready             # show only ready tasks (planned + deps met)
  *   woco tasks list --archive           # include archived tasks
  */
 

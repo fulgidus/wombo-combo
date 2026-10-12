@@ -3,7 +3,7 @@
  *
  * Replaces the wave-based batch model with a continuous pipeline.
  * The scheduler:
- * 1. Watches for ready tasks (backlog + deps met + not skipped)
+ * 1. Watches for ready tasks (planned + deps met + not skipped)
  * 2. Respects pinning (pinned tasks jump to front of queue)
  * 3. Picks highest-priority ready tasks up to max concurrency
  * 4. Delegates to AgentRunner for lifecycle management
