@@ -161,3 +161,9 @@
 <!-- wombo-combo:operation:main-1226b4d-631e379 -->
 
 - **fake-agent-fault-script**: Scriptable Fault Directives for Fake Agent
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-68c0aa9-ec380ca -->
+
+- **quest-plan-all**: plan-all: plan every unplanned quest en masse from the main screen
