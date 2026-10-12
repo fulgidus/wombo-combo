@@ -74,11 +74,11 @@ function SelectionList({
       setCursor((prev) => Math.min(items.length - 1, prev + 1));
       return;
     }
-    if (key.return || input === " ") {
+    if (key.return || input === " " || key.rightArrow) {
       onSelect(cursor);
       return;
     }
-    if (key.escape) {
+    if (key.escape || key.leftArrow) {
       onBack();
       return;
     }

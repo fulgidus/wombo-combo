@@ -525,7 +525,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     }
 
     // Select
-    if (key.return) {
+    if (key.return || key.rightArrow) {
       if (selectedIndex === 0) {
         onSelect(null);    // All Tasks
       } else if (selectedIndex === 1) {

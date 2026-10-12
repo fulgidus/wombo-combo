@@ -103,13 +103,13 @@ function PreflightView({
 
   useScreenInput((input, key) => {
     // Escape / Ctrl-C — cancel
-    if (key.escape || (input === "c" && key.ctrl)) {
+    if (key.escape || key.leftArrow || (input === "c" && key.ctrl)) {
       finish(false);
       return;
     }
 
     // Enter — launch
-    if (key.return) {
+    if (key.return || key.rightArrow) {
       finish(true);
       return;
     }
