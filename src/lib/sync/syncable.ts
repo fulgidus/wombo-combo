@@ -23,6 +23,8 @@ export interface SyncableTask extends Record<string, unknown> {
   references: string[];
   quest: string | null;
   triage: string | null;
+  /** Only present when the task has a valid category, so uncategorised hashes are unchanged */
+  category?: string;
 }
 
 export interface SyncableQuest extends Record<string, unknown> {
@@ -103,9 +105,43 @@ export function applyTriageRole(notes: readonly string[] | undefined | null, rol
   return r ? [...rest, `triage: ${r}`] : rest;
 }
 
+/** Category labels (bug | enhancement) that sync as plain GitHub labels. */
+export const TRIAGE_CATEGORY_LABELS = ["bug", "enhancement"] as const;
+
+const CATEGORY_RE = /^\s*category:\s*(\S.*?)\s*$/i;
+
+/** Every `triage: <label>` value in notes, in order (more than one means a conflict). */
+export function parseAllTriageRoles(notes: readonly string[] | undefined | null): string[] {
+  return (notes ?? []).flatMap((n) => {
+    const m = TRIAGE_RE.exec(n);
+    return m ? [m[1]!] : [];
+  });
+}
+
+/** Every `category: <label>` value in notes, in order. */
+export function parseAllTriageCategories(notes: readonly string[] | undefined | null): string[] {
+  return (notes ?? []).flatMap((n) => {
+    const m = CATEGORY_RE.exec(n);
+    return m ? [m[1]!] : [];
+  });
+}
+
+/** The label from the first `category: <label>` line in task notes, or null. */
+export function parseTriageCategory(notes: readonly string[] | undefined | null): string | null {
+  return parseAllTriageCategories(notes)[0] ?? null;
+}
+
+/** New notes with every `category:` line removed and, if set, one appended. Input is not mutated. */
+export function applyTriageCategory(notes: readonly string[] | undefined | null, category: string | null): string[] {
+  const rest = (notes ?? []).filter((n) => !CATEGORY_RE.test(n));
+  const c = category?.trim();
+  return c ? [...rest, `category: ${c}`] : rest;
+}
+
 // -- syncable views ---------------------------------------------------------
 
 export function taskSyncable(task: Task): SyncableTask {
+  const category = parseTriageCategory(task.notes);
   return {
     title: cleanText(task.title).replace(/\s*\n\s*/g, " "),
     description: cleanText(task.description),
@@ -121,6 +157,7 @@ export function taskSyncable(task: Task): SyncableTask {
     references: cleanList(task.references),
     quest: task.quest?.trim() || null,
     triage: parseTriageRole(task.notes),
+    ...(category && (TRIAGE_CATEGORY_LABELS as readonly string[]).includes(category) ? { category } : {}),
   };
 }
 

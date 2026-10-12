@@ -1,0 +1,16 @@
+id: bug-init-form-ctrl-s-flaky
+title: Flaky InitForm Ctrl+S edit-buffer test under load
+description: ""
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

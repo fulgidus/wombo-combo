@@ -32,3 +32,12 @@ corresponding label string from this table.
   `wontfix` additionally means `bun dev tasks set-status <id> cancelled`.
 - A role change is applied to both sides in the same step (see
   `issue-tracker.md`).
+
+## Moving items
+
+Use `bun dev triage set <task> <state> [--category bug|enhancement]` to change
+a role; do not edit the `triage:` note line by hand. It validates the
+transition, sets `wontfix` status, leaves a system comment and pushes to
+GitHub when auto-sync is on. `bun dev triage list|show|brief` cover the queue,
+inspection and agent briefs. See
+`docs/src/content/docs/guides/triage.md`.

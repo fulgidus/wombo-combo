@@ -59,7 +59,7 @@ import {
   renderQuestIssue,
   renderTaskIssue,
 } from "./render";
-import { isFinishedQuest, isFinishedTask, parseTriageRole } from "./syncable";
+import { isFinishedQuest, isFinishedTask, parseTriageCategory, parseTriageRole, TRIAGE_CATEGORY_LABELS } from "./syncable";
 import type { IssueDraft, IssueStateReason, RemoteIssue } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -155,6 +155,7 @@ interface LocalItem {
   draft: IssueDraft;
   hash: string;
   triage: string | null;
+  category: string | null;
   archived: boolean;
   /** Task done/cancelled, or quest completed/abandoned */
   finished: boolean;
@@ -203,13 +204,14 @@ function collectLocal(projectRoot: string): Collected {
     draft: renderTaskIssue(t),
     hash: hashTask(t),
     triage: parseTriageRole(t.notes),
+    category: parseTriageCategory(t.notes),
     quest: t.quest?.trim() || undefined,
   });
   for (const q of loadAllQuests(projectRoot)) {
-    add("quest", q.id, false, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
+    add("quest", q.id, false, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null, category: null }));
   }
   for (const q of loadAllArchivedQuests(projectRoot)) {
-    add("quest", q.id, true, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null }));
+    add("quest", q.id, true, () => ({ finished: isFinishedQuest(q), draft: renderQuestIssue(q), hash: hashQuest(q), triage: null, category: null }));
   }
   for (const t of data.tasks) add("task", t.id, false, taskItem(t));
   for (const t of data.archive ?? []) add("task", t.id, true, taskItem(t));
@@ -224,7 +226,7 @@ function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-const TRIAGE_CATALOG: readonly string[] = TRIAGE_LABELS;
+const TRIAGE_CATALOG: readonly string[] = [...TRIAGE_LABELS, ...TRIAGE_CATEGORY_LABELS];
 const MANAGED_PREFIXES = ["priority:", "difficulty:", "quest:"];
 
 export function toRemoteIssue(i: GitHubIssue): RemoteIssue {
@@ -242,8 +244,8 @@ export function toRemoteIssue(i: GitHubIssue): RemoteIssue {
 }
 
 /** Hash of the syncable fields of a remote issue; shared with pull (see hashing.ts). */
-export function remoteHash(kind: SyncKind, remote: RemoteIssue, localTriage: string | null): string {
-  return remoteSyncHash(kind, remote, localTriage);
+export function remoteHash(kind: SyncKind, remote: RemoteIssue, localTriage: string | null, localCategory: string | null = null): string {
+  return remoteSyncHash(kind, remote, localTriage, localCategory);
 }
 
 function isManagedLabel(name: string, draftLabels: readonly string[]): boolean {
@@ -557,7 +559,7 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
       issue_url: issue.html_url,
       remote_updated_at: issue.updated_at,
       local_hash: item.hash,
-      remote_hash: remoteHash(item.kind, toRemoteIssue(issue), item.triage),
+      remote_hash: remoteHash(item.kind, toRemoteIssue(issue), item.triage, item.category),
       last_synced_at: new Date().toISOString(),
       comments: { ...(existing?.comments ?? {}), ...comments },
     };
@@ -763,7 +765,7 @@ export async function syncStatus(opts: { projectRoot: string; client: GitHubClie
       if (!issue) state = "remote-missing";
       else {
         const localChanged = mapping.local_hash !== item.hash;
-        const remoteChanged = remoteHash(item.kind, toRemoteIssue(issue), item.triage) !== mapping.remote_hash;
+        const remoteChanged = remoteHash(item.kind, toRemoteIssue(issue), item.triage, item.category) !== mapping.remote_hash;
         state = localChanged && remoteChanged ? "conflict" : localChanged ? "local-changed" : remoteChanged ? "remote-changed" : "in-sync";
       }
     } else {

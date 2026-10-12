@@ -27,6 +27,7 @@ import type { Difficulty, Priority, Task, TaskStatus } from "../tasks";
 import { stripAiAttribution } from "../attribution";
 import { SAFE_ID_RE, findMarker, markerFor, stripMarker } from "./mapping";
 import {
+  applyTriageCategory,
   applyTriageRole,
   cleanList,
   cleanText,
@@ -37,7 +38,9 @@ import {
   questSyncable,
   statusToIssueState,
   taskSyncable,
+  TRIAGE_CATEGORY_LABELS,
 } from "./syncable";
+import { parseTriageCategory } from "./syncable";
 import type { IssueDraft, RemoteComment, RemoteIssue } from "./types";
 
 export {
@@ -143,6 +146,8 @@ export function renderTaskIssue(task: Task): IssueDraft {
   if (task.quest?.trim()) labels.push(`quest:${task.quest.trim()}`);
   const triage = parseTriageRole(task.notes);
   if (triage) labels.push(triage);
+  const category = parseTriageCategory(task.notes);
+  if (category && (TRIAGE_CATEGORY_LABELS as readonly string[]).includes(category)) labels.push(category);
   return {
     title: titleWithId(task.id, task.title),
     body: buildBody(
@@ -175,6 +180,8 @@ export interface ParsedTask {
   quest?: string;
   /** Triage label, only detected when it is in ParseOptions.triageLabels */
   triage: string | null;
+  /** bug | enhancement label, if any */
+  category: string | null;
   /** True when the id came from a woco marker in the body */
   fromMarker: boolean;
 }
@@ -185,11 +192,24 @@ export interface ParseOptions {
    * triage role is a plain label; without this list none is detected.
    */
   triageLabels?: readonly string[];
+  /**
+   * The local state and category. When an issue carries several state (or
+   * category) labels, the one that differs from the local value wins: it is
+   * the label a maintainer just added.
+   */
+  localTriage?: string | null;
+  localCategory?: string | null;
 }
 
 function pickTriage(labels: readonly string[], opts?: ParseOptions): string | null {
   const known = opts?.triageLabels ?? [];
-  return labels.find((l) => known.includes(l)) ?? null;
+  const found = labels.filter((l) => known.includes(l));
+  return found.find((l) => l !== opts?.localTriage) ?? found[0] ?? null;
+}
+
+function pickCategory(labels: readonly string[], opts?: ParseOptions): string | null {
+  const found = labels.filter((l) => (TRIAGE_CATEGORY_LABELS as readonly string[]).includes(l));
+  return found.find((l) => l !== opts?.localCategory) ?? found[0] ?? null;
 }
 
 /** Issue -> task fields (reverse of renderTaskIssue). Lossy for fine-grained statuses (see issueStateToStatus). */
@@ -211,6 +231,7 @@ export function parseIssueToTask(issue: RemoteIssue, opts?: ParseOptions): Parse
     forbidden: sections["Forbidden"] ?? [],
     references: sections["References"] ?? [],
     triage: pickTriage(issue.labels, opts),
+    category: pickCategory(issue.labels, opts),
     fromMarker: markerId !== null,
   };
   if (quest && SAFE_ID_RE.test(quest)) parsed.quest = quest;
@@ -234,7 +255,7 @@ export function parsedToTask(p: ParsedTask): Task {
     constraints: [...p.constraints],
     forbidden: [...p.forbidden],
     references: [...p.references],
-    notes: applyTriageRole([], p.triage),
+    notes: applyTriageCategory(applyTriageRole([], p.triage), p.category),
     subtasks: [],
     ...(p.quest ? { quest: p.quest } : {}),
   };

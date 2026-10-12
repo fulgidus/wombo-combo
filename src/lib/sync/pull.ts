@@ -16,6 +16,10 @@
  *    a notice for GitHub is returned in `pendingRemoteNotices` for the push
  *    side to post. The remote hash is acknowledged but the local hash is not,
  *    so the next push still sends the local values.
+ *  - Triage: a changed state or category label (bug | enhancement) is applied
+ *    through the triage core (triage.transition), never by editing notes. If the
+ *    core rejects it (e.g. no category known) the local value is kept and a
+ *    conflict on `triage` is reported. A new issue starts as needs-triage.
  *  - Quest spec issues: comments only.
  *  - Deleted/transferred issues (404) are skipped; mappings are kept and no
  *    woco data is ever deleted. Rate limits stop the pull with a partial
@@ -29,6 +33,8 @@ import { loadQuest, loadArchivedQuest } from "../quest-store";
 import { deleteTaskFile, getArchiveDir } from "../task-store";
 import {
   loadArchive,
+  findFeatureById,
+  loadFeatures,
   loadTasks,
   saveTaskToArchive,
   saveTaskToStore,
@@ -55,7 +61,8 @@ import {
   type MappingEntry,
 } from "./mapping";
 import { applyTriageRole, parseIssueToTask, parsedToTask, parseRemoteComment, taskSyncable } from "./render";
-import { parseTriageRole } from "./syncable";
+import { parseTriageCategory, parseTriageRole } from "./syncable";
+import { TriageError, transition, type TriageCategory, type TriageState } from "../triage";
 import { SPEC_LABEL } from "./render";
 import type { RemoteComment, RemoteIssue } from "./types";
 
@@ -251,8 +258,8 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
   }
 
   // -- existing task -----------------------------------------------------------
-  const remoteTaskView = (issue: RemoteIssue, taskId: string, localTriage: string | null) =>
-    remoteViewOf(issue, localTriage, taskId);
+  const remoteTaskView = (issue: RemoteIssue, taskId: string, localTriage: string | null, localCategory: string | null) =>
+    remoteViewOf(issue, localTriage, taskId, localCategory);
 
   const knownDeps = (self: string, deps: string[]) => deps.filter((d) => d !== self && usedIds.has(d));
 
@@ -263,7 +270,7 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
       return null;
     }
     const lt = entryLocal.task;
-    const { parsed, view: remoteView, hash: remoteHash } = remoteTaskView(issue, id, parseTriageRole(lt.notes));
+    const { parsed, view: remoteView, hash: remoteHash } = remoteTaskView(issue, id, parseTriageRole(lt.notes), parseTriageCategory(lt.notes));
     const localView = taskSyncable(lt);
     const localHash = hashTask(lt);
     const stamp = now().toISOString();
@@ -278,6 +285,34 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
       ...over,
     });
 
+    // Both sides changed (or never synced), or the remote value cannot be applied: local wins, nothing is lost.
+    function conflict(fields: string[], why?: string, localUnchanged = false): MappingEntry {
+      report.conflicts.push({ ref: id, fields });
+      const fieldList = fields.join(", ");
+      const remoteValues = fields
+        .map((f) => `- ${f}: ${JSON.stringify((remoteView as Record<string, unknown>)[f])}`)
+        .join("\n");
+      const note = why ? ` (${why})` : "";
+      if (!dryRun) {
+        try {
+          addComment(projectRoot, { kind: "task", id }, {
+            author: WOCO_AUTHOR,
+            role: "system",
+            body: `${conflictCommentPrefix(issue.number)}(${fieldList})${note}. The local values were kept. The GitHub values were:\n${remoteValues}`,
+          });
+        } catch (err) {
+          report.errors.push({ ref: id, error: `conflict comment: ${(err as Error).message}` });
+        }
+      }
+      report.pendingRemoteNotices.push({
+        issue: issue.number,
+        ref: id,
+        body: `woco sync conflict (${fieldList})${note}: ${why ? "the GitHub value could not be applied" : "both sides changed since the last sync"}. The woco values win and will be pushed; the GitHub values seen were:\n${remoteValues}`,
+      });
+      // Acknowledge the remote change but keep the old local hash so push still sends local.
+      return base({ local_hash: localUnchanged || !mapping ? "" : mapping.local_hash });
+    }
+
     const localChanged = mapping ? localHash !== mapping.local_hash : true;
     const remoteChanged = mapping ? remoteHash !== mapping.remote_hash : true;
     if (!remoteChanged) {
@@ -287,32 +322,7 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
     const diff = mergeFields(null, localView, remoteView).conflicts.map((c) => c.field);
     if (diff.length === 0) return base({});
 
-    if (localChanged) {
-      // Both sides changed (or never synced): local wins, nothing is lost.
-      report.conflicts.push({ ref: id, fields: diff });
-      const fieldList = diff.join(", ");
-      const remoteValues = diff
-        .map((f) => `- ${f}: ${JSON.stringify((remoteView as Record<string, unknown>)[f])}`)
-        .join("\n");
-      if (!dryRun) {
-        try {
-          addComment(projectRoot, { kind: "task", id }, {
-            author: WOCO_AUTHOR,
-            role: "system",
-            body: `${conflictCommentPrefix(issue.number)}(${fieldList}). The local values were kept. The GitHub values were:\n${remoteValues}`,
-          });
-        } catch (err) {
-          report.errors.push({ ref: id, error: `conflict comment: ${(err as Error).message}` });
-        }
-      }
-      report.pendingRemoteNotices.push({
-        issue: issue.number,
-        ref: id,
-        body: `woco sync conflict (${fieldList}): both sides changed since the last sync. The woco values win and will be pushed; the GitHub values seen were:\n${remoteValues}`,
-      });
-      // Acknowledge the remote change but keep the old local hash so push still sends local.
-      return base({ local_hash: mapping ? mapping.local_hash : "" });
-    }
+    if (localChanged) return conflict(diff);
 
     // Only remote changed: apply.
     const next: Task = { ...lt };
@@ -340,10 +350,16 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
         changed.push("quest");
       }
     }
-    if (remoteView.triage !== localView.triage) {
-      next.notes = applyTriageRole(lt.notes, remoteView.triage);
-      changed.push("triage");
-    }
+    // Triage is applied below through the triage core, never by editing notes.
+    const wantState = remoteView.triage;
+    const wantCategory = remoteView.category ?? null;
+    const haveState = localView.triage;
+    const haveCategory = localView.category ?? null;
+    const stateChange = wantState !== null && wantState !== haveState;
+    const categoryChange = wantCategory !== null && wantCategory !== haveCategory;
+    // A label removed on GitHub is no instruction (the core cannot unset): local keeps it and push restores the label.
+    const reassert = (wantState === null && haveState !== null) || (wantCategory === null && haveCategory !== null);
+    if (stateChange || categoryChange) changed.push("triage");
     if (remoteView.state !== localView.state) {
       const from = lt.status;
       let to: TaskStatus = from;
@@ -370,7 +386,29 @@ async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
       saveTask(next, entryLocal.archived);
       if (!dryRun) local.set(id, { task: next, archived: entryLocal.archived && (next.status === "done" || next.status === "cancelled") });
     }
-    return base({ local_hash: hashTask(next) });
+    let hashBase = hashTask(next);
+    if ((stateChange || categoryChange) && !dryRun) {
+      const to = (stateChange ? wantState : haveState ?? DEFAULT_TRIAGE) as TriageState;
+      try {
+        transition(projectRoot, id, to, {
+          category: categoryChange ? (wantCategory as TriageCategory) : undefined,
+          force: true, // GitHub labels can be changed in any order: the remote is authoritative
+          skipSync: true, // pull never schedules a push
+          author: WOCO_AUTHOR,
+          comment: `Changed on GitHub (#${issue.number}).`,
+        });
+        const fresh = findFeatureById(loadFeatures(projectRoot, config), id);
+        if (fresh) {
+          local.set(id, { task: fresh, archived: entryLocal.archived && (fresh.status === "done" || fresh.status === "cancelled") });
+          // wontfix cancels the task: leave the local hash behind so push closes the issue
+          if (fresh.status === next.status) hashBase = hashTask(fresh);
+        }
+      } catch (err) {
+        if (!(err instanceof TriageError)) throw err;
+        return conflict(["triage"], err.message, true);
+      }
+    }
+    return base({ local_hash: reassert ? "" : hashBase });
   }
 
   // -- new task ----------------------------------------------------------------

@@ -278,6 +278,13 @@ one file per comment under `.wombo-combo/comments/`, shown in the TUI task
 browser and fed to agents. See
 [docs/src/content/docs/guides/comments.md](docs/src/content/docs/guides/comments.md).
 
+## Triage
+
+`bun dev triage list|show|set|brief` moves tasks through `needs-triage`,
+`needs-info`, `ready-for-agent`, `ready-for-human` and `wontfix`, kept in step
+with GitHub labels by sync. See
+[docs/src/content/docs/guides/triage.md](docs/src/content/docs/guides/triage.md).
+
 ## GitHub sync
 
 Tasks, quests and comments can be kept in step with GitHub Issues, by hand
