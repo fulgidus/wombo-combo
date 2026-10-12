@@ -179,3 +179,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-1588977-a0b4639 -->
 
 - **sup-fake-clock**: Deterministic Fake Clock Test Helper
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-69b6d9f-25bbf43 -->
+
+- **sup-shutdown**: Ordered Timeout-Bounded Shutdown
