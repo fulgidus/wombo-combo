@@ -49,6 +49,7 @@ import { runProgressInk, runConfirmInk, type ProgressController } from "../ink/r
 import { TuiApp, type TuiAppCallbacks } from "../ink/run-tui-app";
 import { getStableStdin } from "../ink/bun-stdin";
 import { t } from "../lib/i18n";
+import { handlePlanAllFlow } from "./tui-plan-all";
 
 import { enterAltScreen, exitAltScreen, installAltScreenGuard, clearScreen } from "../ink/alt-screen";
 // Daemon types only — actual modules are loaded via dynamic import() to
@@ -192,6 +193,10 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     const callbacks: TuiAppCallbacks = {
       onPlan: (questId: string) =>
         runMainTreeSuspended(() => handlePlanFlow(projectRoot, config, opts, questId)),
+      onPlanAll: () =>
+        runMainTreeSuspended(() =>
+          handlePlanAllFlow(projectRoot, config, { model: opts.model }),
+        ),
       onGenesis: (vision: string) =>
         runMainTreeSuspended(async () => {
           // If vision is empty, prompt for it

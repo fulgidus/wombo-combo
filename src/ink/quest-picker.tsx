@@ -91,6 +91,8 @@ export interface QuestPickerViewProps {
   onToggleActive?: () => void;
   /** Called when 'p' is pressed (plan quest). */
   onPlan?: () => void;
+  /** Called when 'l' is pressed (plan every unplanned quest). */
+  onPlanAll?: () => void;
   /** Called when 'g' is pressed (genesis). */
   onGenesis?: () => void;
   /** Called when 'e' is pressed (errand). */
@@ -436,6 +438,9 @@ function StatusBar({
         <Text dimColor>P</Text>
         <Text> {t("questPicker.key.plan")}</Text>
         <Text>  </Text>
+        <Text dimColor>L</Text>
+        <Text> {t("questPicker.key.planAll")}</Text>
+        <Text>  </Text>
         <Text dimColor>G</Text>
         <Text> {t("questPicker.key.genesis")}</Text>
         <Text>  </Text>
@@ -491,6 +496,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     onCreate,
     onToggleActive,
     onPlan,
+    onPlanAll,
     onGenesis,
     onErrand,
     onWishlist,
@@ -541,6 +547,7 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     if (input === "c") { onCreate?.(); return; }
     if (input === "a") { onToggleActive?.(); return; }
     if (input === "p") { onPlan?.(); return; }
+    if (input === "l") { onPlanAll?.(); return; }
     if (input === "g") { onGenesis?.(); return; }
     if (input === "e") { onErrand?.(); return; }
     if (input === "w") { onWishlist?.(); return; }

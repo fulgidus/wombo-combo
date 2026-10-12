@@ -87,6 +87,8 @@ import { OnboardingScreen } from "./onboarding/run-onboarding";
  */
 export interface TuiAppCallbacks {
   onPlan?: (questId: string) => Promise<void>;
+  /** Plan every unplanned quest in one batch, then review the proposals. */
+  onPlanAll?: () => Promise<void>;
   onGenesis?: (vision: string) => Promise<void>;
   onErrand?: (spec: ErrandSpec) => Promise<void>;
   onWishlist?: () => Promise<void>;

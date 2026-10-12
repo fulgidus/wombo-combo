@@ -36,6 +36,7 @@ import type { TuiAppCallbacks } from "./run-tui-app";
 export type QuestPickerAction =
   | { type: "select"; questId: string | null }
   | { type: "plan"; questId: string }
+  | { type: "plan-all" }
   | { type: "genesis"; vision: string }
   | { type: "errand"; spec: ErrandSpec }
   | { type: "wishlist" }
@@ -127,6 +128,10 @@ function QuestPickerApp({
     const summary = quests[selectedIndex - 2];
     onAction({ type: "plan", questId: summary.quest.id });
   }, [selectedIndex, quests, onAction]);
+
+  const handlePlanAll = useCallback(() => {
+    onAction({ type: "plan-all" });
+  }, [onAction]);
 
   const handleGenesis = useCallback(() => {
     // Signal "genesis"; the parent (tui.ts) handles
@@ -258,6 +263,7 @@ function QuestPickerApp({
         onCreate={handleCreate}
         onToggleActive={handleToggleActive}
         onPlan={handlePlan}
+        onPlanAll={handlePlanAll}
         onGenesis={handleGenesis}
         onErrand={handleErrand}
         onWishlist={handleWishlist}
@@ -355,6 +361,16 @@ export function QuestPickerScreen({
               callbacks: callbacks as unknown,
             } as Record<string, unknown>);
           }
+          break;
+        case "plan-all":
+          callbacks?.onPlanAll?.().then(() => {
+            nav.replace("quest-picker", {
+              projectRoot,
+              config: config as unknown,
+              onExit,
+              callbacks: callbacks as unknown,
+            } as Record<string, unknown>);
+          });
           break;
         case "genesis":
           if (callbacks?.onGenesis) {

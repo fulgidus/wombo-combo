@@ -12,9 +12,10 @@
  *   - Token usage display
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, mock } from "bun:test";
+import { PassThrough } from "node:stream";
 import React from "react";
-import { renderToString } from "ink";
+import { render, renderToString } from "ink";
 import { QuestPickerView, summarizeQuest, type QuestPickerViewProps } from "./quest-picker";
 import type { Quest } from "../lib/quest";
 import type { UsageTotals } from "../lib/token-usage";
@@ -265,5 +266,63 @@ describe("summarizeQuest", () => {
     expect(summary.totalTasks).toBe(2);
     expect(summary.doneTasks).toBe(1);
     expect(summary.completionPct).toBe(50);
+  });
+});
+
+describe("QuestPickerView plan-all key", () => {
+  function streams() {
+    const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
+    (stdout as any).columns = 100;
+    (stdout as any).rows = 30;
+    const stdin = new PassThrough() as unknown as NodeJS.ReadStream;
+    (stdin as any).isTTY = true;
+    (stdin as any).setRawMode = () => stdin;
+    (stdin as any).ref = () => stdin;
+    (stdin as any).unref = () => stdin;
+    return { stdin, stdout };
+  }
+
+  test("status bar advertises the plan-all key", () => {
+    const out = renderToString(
+      <QuestPickerView
+        quests={[]}
+        totalTaskCount={0}
+        selectedIndex={0}
+        onSelect={() => {}}
+        onQuit={() => {}}
+        onSelectionChange={() => {}}
+        onPlanAll={() => {}}
+      />,
+      { columns: 120 },
+    );
+    expect(out).toContain("plan all");
+  });
+
+  test("pressing l calls onPlanAll; a still toggles activation", async () => {
+    const { stdin, stdout } = streams();
+    const onPlanAll = mock(() => {});
+    const onToggleActive = mock(() => {});
+    const instance = render(
+      <QuestPickerView
+        quests={[]}
+        totalTaskCount={0}
+        selectedIndex={0}
+        onSelect={() => {}}
+        onQuit={() => {}}
+        onSelectionChange={() => {}}
+        onPlanAll={onPlanAll}
+        onToggleActive={onToggleActive}
+      />,
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    (stdin as any as PassThrough).write("l");
+    await new Promise((r) => setTimeout(r, 50));
+    (stdin as any as PassThrough).write("a");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onPlanAll).toHaveBeenCalledTimes(1);
+    expect(onToggleActive).toHaveBeenCalledTimes(1);
+    instance.unmount();
+    await instance.waitUntilExit();
   });
 });
