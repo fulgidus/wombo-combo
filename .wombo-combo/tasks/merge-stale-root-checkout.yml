@@ -9,14 +9,14 @@ description: "Found by dogfooding: src/lib/merger.ts merges in a temporary workt
   conflicts); on failure leave it untouched and print a clear warning with the exact command to run. Add tests with real
   git repos (tests/helpers/git-repo.ts): clean root is updated, root with unrelated local changes keeps them, root with
   conflicting local changes is left alone with a warning."
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT2H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T02:37:41.752Z
+ended_at: 2026-10-12T02:44:33.218Z
 constraints:
   - Never discard local uncommitted changes
   - No AI attribution anywhere (AGENTS.md rule 6)
