@@ -178,8 +178,8 @@ const RESET_IDX = FIELDS.length - 1;
 /**
  * Full settings TUI screen.
  *
- * Navigation: arrow keys to move cursor, Enter to edit / cycle value,
- * Escape or "b" to go back.
+ * Navigation: up/down move the cursor, left/right (or Enter) change the value,
+ * Escape goes back.
  */
 export function SettingsScreen({
   config: initialConfig,
@@ -207,8 +207,38 @@ export function SettingsScreen({
     [onSave, projectRoot]
   );
 
+  /** Step the value of a field: dir=+1 next option, dir=-1 previous (booleans just toggle). */
+  const stepField = useCallback(
+    (field: FieldDef, dir: 1 | -1) => {
+      let patched: SettingsScreenConfig | undefined;
+      if (field.id === "theme") {
+        const idx = THEME_OPTIONS.indexOf((cfg.tui?.theme ?? "default") as ThemeName);
+        const next = THEME_OPTIONS[(idx + dir + THEME_OPTIONS.length) % THEME_OPTIONS.length];
+        patched = { ...cfg, tui: { ...cfg.tui, theme: next } };
+      } else if (field.id === "locale") {
+        const idx = LOCALE_OPTIONS.indexOf(cfg.tui?.locale ?? "auto");
+        const next = LOCALE_OPTIONS[(idx + dir + LOCALE_OPTIONS.length) % LOCALE_OPTIONS.length];
+        patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
+      } else if (field.id === "checkForUpdates") {
+        patched = { ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } };
+      } else if (field.id === "autoInstallUpdates") {
+        patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
+      } else if (field.id === "devMode") {
+        patched = { ...cfg, devMode: !cfg.devMode };
+      }
+      if (patched) {
+        setCfg(patched);
+        persist(patched);
+      }
+    },
+    [cfg, persist]
+  );
+
   const handleInput = useCallback(
-    (_input: string, key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean }) => {
+    (
+      _input: string,
+      key: { upArrow: boolean; downArrow: boolean; leftArrow: boolean; rightArrow: boolean; return: boolean; escape: boolean }
+    ) => {
       if (key.upArrow) {
         setCursor((c) => Math.max(0, c - 1));
         return;
@@ -221,53 +251,27 @@ export function SettingsScreen({
         onBack();
         return;
       }
+      const field = FIELDS[cursor];
+      if (key.leftArrow) {
+        stepField(field, -1);
+        return;
+      }
+      if (key.rightArrow) {
+        stepField(field, 1);
+        return;
+      }
       if (key.return) {
-        const field = FIELDS[cursor];
         if (field.id === "reset") {
+          // Destructive: Enter only, never an arrow key.
           const reset: SettingsScreenConfig = {};
           setCfg(reset);
           persist(reset);
           return;
         }
-        if (field.id === "theme") {
-          const current = cfg.tui?.theme ?? "default";
-          const idx = THEME_OPTIONS.indexOf(current as ThemeName);
-          const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length];
-          const patched = { ...cfg, tui: { ...cfg.tui, theme: next } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "locale") {
-          const current = cfg.tui?.locale ?? "auto";
-          const idx = LOCALE_OPTIONS.indexOf(current);
-          const next = LOCALE_OPTIONS[(idx + 1) % LOCALE_OPTIONS.length];
-          const patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "checkForUpdates") {
-          const patched = { ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "autoInstallUpdates") {
-          const patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "devMode") {
-          const patched = { ...cfg, devMode: !cfg.devMode };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
+        stepField(field, 1);
       }
     },
-    [cursor, cfg, persist, onBack]
+    [cursor, stepField, persist, onBack]
   );
 
   useScreenInput(handleInput);
