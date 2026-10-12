@@ -533,7 +533,7 @@ describe("agentProfiles and routing", () => {
 
   test("rejects unknown harness", () => {
     expect(() =>
-      validateConfig(withProfiles({ agentProfiles: { a: { harness: "gemini" } } } as any))
+      validateConfig(withProfiles({ agentProfiles: { a: { harness: "nonexistent" } } } as any))
     ).toThrow(/agentProfiles\.a\.harness/);
   });
 

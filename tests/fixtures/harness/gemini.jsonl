@@ -1,0 +1,13 @@
+{"type":"init","session_id":"gm-sess-1","model":"gemini-2.5-pro"}
+{"type":"message","role":"user","content":"do it"}
+{"type":"message","role":"assistant","content":"Looking at ","delta":true}
+{"type":"message","role":"assistant","content":"the repo.","delta":true}
+{"type":"tool_use","tool_name":"run_shell_command","tool_id":"t1","parameters":{"command":"ls"}}
+{"type":"tool_result","tool_id":"t1","status":"success","output":"a.ts"}
+{"type":"tool_use","tool_name":"run_shell_command","tool_id":"t2","parameters":{"command":"false"}}
+{"type":"tool_result","tool_id":"t2","status":"error","output":"exit 1"}
+{"type":"tool_use","tool_name":"write_file","tool_id":"t3","parameters":{"file_path":"src/a.ts"}}
+{"type":"tool_result","tool_id":"t3","status":"success","output":"ok"}
+{"type":"error","severity":"warning","message":"deprecated flag"}
+{"type":"message","role":"assistant","content":"Done.","delta":true}
+{"type":"result","status":"success","stats":{"input_tokens":120,"output_tokens":40,"cached":10}}

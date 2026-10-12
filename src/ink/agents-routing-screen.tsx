@@ -17,7 +17,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Text } from "ink";
 import type { AgentProfile, WomboConfig } from "../config";
-import { HARNESS_IDS, type HarnessId } from "../lib/harness";
+import { HARNESS_IDS, getHarness, type HarnessId } from "../lib/harness";
+import { listHarnessModels, type HarnessModel, type ModelCatalog } from "../lib/harness/models";
 import {
   deleteProfile,
   draftFromConfig,
@@ -49,6 +50,27 @@ export interface AgentsRoutingScreenProps {
   height?: number;
   /** PATH probe override (tests) */
   binExists?: (bin: string) => boolean;
+  /** Model listing override (tests); defaults to asking the harness */
+  listModels?: (harness: HarnessId, bin: string) => Promise<ModelCatalog>;
+}
+
+/** Max model suggestions shown under the model field */
+const SUGGESTION_ROWS = 6;
+
+/** The value a catalog entry takes in the profile for a given harness. */
+export function modelFields(harness: HarnessId, m: HarnessModel): { model: string; provider: string } {
+  const { providerFlag } = getHarness(harness).capabilities;
+  if (providerFlag) return { model: m.model, provider: m.provider ?? "" };
+  // No provider flag (opencode): the provider is part of the model id.
+  return { model: m.provider ? `${m.provider}/${m.model}` : m.model, provider: "" };
+}
+
+/** Catalog entries matching what has been typed into the model field. */
+export function matchModels(harness: HarnessId, models: HarnessModel[], typed: string): HarnessModel[] {
+  const q = typed.trim().toLowerCase();
+  if (!q) return models;
+  return models.filter((m) => modelFields(harness, m).model.toLowerCase().includes(q) ||
+    (m.provider ?? "").toLowerCase().includes(q));
 }
 
 type View = "profiles" | "routing" | "harnesses";
@@ -87,8 +109,13 @@ function startEdit(name: string | null, profile?: AgentProfile): EditState {
   };
 }
 
-const editFields = (e: EditState): EditField[] =>
-  e.isNew ? ["name", "harness", "bin", "model", "provider"] : ["harness", "bin", "model", "provider"];
+/** Provider is only editable for harnesses that take a provider flag. */
+const editFields = (e: EditState): EditField[] => {
+  const tail: EditField[] = getHarness(e.harness).capabilities.providerFlag
+    ? ["harness", "bin", "model", "provider"]
+    : ["harness", "bin", "model"];
+  return e.isNew ? ["name", ...tail] : tail;
+};
 
 /** First visible index so the cursor stays inside a window of `size` rows. */
 export function windowStart(cursor: number, total: number, size: number): number {
@@ -109,6 +136,7 @@ export function AgentsRoutingScreen({
   onSaved,
   height,
   binExists,
+  listModels = listHarnessModels,
 }: AgentsRoutingScreenProps): React.ReactElement {
   const t = useI18n();
   const { rows: termRows } = useTerminalSize();
@@ -124,12 +152,30 @@ export function AgentsRoutingScreen({
   const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
   const [discardArmed, setDiscardArmed] = useState(false);
   const [probed, setProbed] = useState(false);
+  const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
+  const [suggestion, setSuggestion] = useState(-1);
 
   // PATH probing runs after the first paint so the screen opens immediately.
   useEffect(() => {
     const id = setTimeout(() => setProbed(true), 0);
     return () => clearTimeout(id);
   }, []);
+
+  // Ask the harness being edited which models it can run.
+  const editHarness = edit?.harness;
+  const editBin = edit?.bin;
+  useEffect(() => {
+    if (!editHarness) return;
+    let live = true;
+    setCatalog(null);
+    setSuggestion(-1);
+    void listModels(editHarness, editBin || getHarness(editHarness).defaultBin).then((c) => {
+      if (live) setCatalog(c);
+    });
+    return () => {
+      live = false;
+    };
+  }, [editHarness, editBin, listModels]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   const names = Object.keys(draft.profiles);
@@ -218,7 +264,15 @@ export function AgentsRoutingScreen({
       if (key.upArrow) return setEdit({ ...edit, field: Math.max(0, edit.field - 1) });
       if (key.downArrow) return setEdit({ ...edit, field: Math.min(fields.length - 1, edit.field + 1) });
       if (field === "harness" && (key.leftArrow || key.rightArrow)) {
-        return setEdit({ ...edit, harness: cycleOption(HARNESS_PICKER, edit.harness, key.rightArrow ? 1 : -1) });
+        // Model and provider belong to the old harness; start clean.
+        return setEdit({ ...edit, harness: cycleOption(HARNESS_PICKER, edit.harness, key.rightArrow ? 1 : -1), model: "", provider: "" });
+      }
+      if (field === "model" && key.tab && catalog) {
+        const matches = matchModels(edit.harness, catalog.models, edit.model).slice(0, SUGGESTION_ROWS);
+        if (matches.length === 0) return;
+        const next = (suggestion + (key.shift ? -1 : 1) + matches.length) % matches.length;
+        setSuggestion(next);
+        return setEdit({ ...edit, ...modelFields(edit.harness, matches[next]!) });
       }
       return; // text fields are handled by their TextInput
     }
@@ -310,6 +364,27 @@ export function AgentsRoutingScreen({
     );
   };
 
+  const renderSuggestions = (e: EditState): React.ReactElement | null => {
+    if (!catalog) return <Text dimColor>  {t("agents.models.loading")}</Text>;
+    if (catalog.models.length === 0) {
+      return <Text dimColor>  {catalog.error ? t("agents.models.failed", { error: catalog.error }) : t("agents.models.none")}</Text>;
+    }
+    const all = matchModels(e.harness, catalog.models, e.model);
+    const shown = all.slice(0, SUGGESTION_ROWS);
+    const source = catalog.source === "harness" ? t("agents.models.fromHarness") : t("agents.models.builtin");
+    return (
+      <Box flexDirection="column" paddingLeft={2}>
+        <Text dimColor>{t("agents.models.header", { source, count: all.length })}</Text>
+        {shown.map((m, i) => (
+          <Text key={`${m.provider}/${m.model}`} color={i === suggestion ? "cyan" : undefined} dimColor={i !== suggestion}>
+            {i === suggestion ? ">" : " "} {m.provider ? `${m.provider}/` : ""}{m.model}
+          </Text>
+        ))}
+        {all.length > shown.length ? <Text dimColor>  …</Text> : null}
+      </Box>
+    );
+  };
+
   const renderEdit = (e: EditState): React.ReactElement => {
     const fields = editFields(e);
     const setText = (field: "name" | "bin" | "model" | "provider") => (v: string) => setEdit({ ...e, [field]: v });
@@ -318,18 +393,28 @@ export function AgentsRoutingScreen({
         {fields.map((f, i) => {
           const selected = i === e.field;
           return (
-            <Box key={f} gap={1}>
-              <Text color={selected ? "cyan" : undefined}>{selected ? ">" : " "}</Text>
-              <Box minWidth={12}>
-                <Text color={selected ? "cyan" : undefined} bold={selected}>
-                  {t(`agents.field.${f}`)}
-                </Text>
+            <Box key={f} flexDirection="column">
+              <Box gap={1}>
+                <Text color={selected ? "cyan" : undefined}>{selected ? ">" : " "}</Text>
+                <Box minWidth={12}>
+                  <Text color={selected ? "cyan" : undefined} bold={selected}>
+                    {t(`agents.field.${f}`)}
+                  </Text>
+                </Box>
+                {f === "harness" ? (
+                  <Text>{e.harness}</Text>
+                ) : (
+                  <TextInput
+                    value={e[f]}
+                    onChange={(v) => {
+                      if (f === "model") setSuggestion(-1);
+                      setText(f)(v);
+                    }}
+                    focus={selected}
+                  />
+                )}
               </Box>
-              {f === "harness" ? (
-                <Text>{e.harness}</Text>
-              ) : (
-                <TextInput value={e[f]} onChange={setText(f)} focus={selected} />
-              )}
+              {f === "model" && selected ? renderSuggestions(e) : null}
             </Box>
           );
         })}

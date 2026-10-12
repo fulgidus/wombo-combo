@@ -19,6 +19,7 @@ Without any of this configured, wombo behaves exactly as before: it runs
 | `opencode`    | `opencode run --format json`          | Verified end to end (reference)     |
 | `claude-code` | `claude -p --output-format stream-json --verbose` | Fixture-verified only   |
 | `codex`       | `codex exec --json`                   | Fixture-verified only               |
+| `gemini`      | `gemini --output-format stream-json`  | Fixture-verified only               |
 | `pi`          | `pi -p --mode json`                   | Fixture-verified only               |
 | `custom`      | any command you describe              | Unit and acceptance tested with stubs |
 
@@ -81,7 +82,7 @@ In `.wombo-combo/config.json`:
 
 | Field          | Meaning |
 | -------------- | ------- |
-| `harness`      | `opencode`, `claude-code`, `codex`, `pi` or `custom` (required) |
+| `harness`      | `opencode`, `claude-code`, `codex`, `gemini`, `pi` or `custom` (required) |
 | `bin`          | Executable; default is the harness default (opencode: `agent.bin` / `OPENCODE_BIN` resolution). Required for `custom` |
 | `model`        | Passed to the CLI. Wins over `modelRouting` and the session model |
 | `provider`     | Passed where the CLI has such a setting (codex, pi) |

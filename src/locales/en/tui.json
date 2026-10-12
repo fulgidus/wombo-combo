@@ -760,6 +760,12 @@
   "agents.legacyProfile": "default (legacy: agent.bin / modelRouting)",
   "agents.legacyNote": "implicit, always available",
   "agents.unset": "(unset, legacy route)",
+  "agents.models.loading": "asking the harness for models…",
+  "agents.models.none": "no model list for this harness — type a model",
+  "agents.models.failed": "could not list models ({{error}}) — type a model",
+  "agents.models.fromHarness": "from the harness",
+  "agents.models.builtin": "vendor models",
+  "agents.models.header": "{{source}} · {{count}} match(es) · tab picks",
   "agents.field.name": "Name",
   "agents.field.harness": "Harness",
   "agents.field.bin": "Binary",
@@ -787,5 +793,5 @@
   "agents.hint.profiles": "↑↓ select  ←→ harness  enter edit  n new  d delete  tab view  s save  esc back",
   "agents.hint.routing": "↑↓ select  ←→ change profile  tab view  s save  esc back",
   "agents.hint.harnesses": "↑↓ scroll  tab view  esc back",
-  "agents.hint.edit": "↑↓ field  ←→ harness  type to edit  enter ok  esc cancel"
+  "agents.hint.edit": "↑↓ field  ←→ harness  type to edit  tab pick model  enter ok  esc cancel"
 }

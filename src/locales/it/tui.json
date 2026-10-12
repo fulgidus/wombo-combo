@@ -784,6 +784,12 @@
   "agents.legacyProfile": "default (legacy: agent.bin / modelRouting)",
   "agents.legacyNote": "implicito, sempre disponibile",
   "agents.unset": "(non impostato, percorso legacy)",
+  "agents.models.loading": "richiesta dei modelli all'harness…",
+  "agents.models.none": "nessun elenco modelli per questo harness — scrivi un modello",
+  "agents.models.failed": "impossibile elencare i modelli ({{error}}) — scrivi un modello",
+  "agents.models.fromHarness": "dall'harness",
+  "agents.models.builtin": "modelli del fornitore",
+  "agents.models.header": "{{source}} · {{count}} risultati · tab sceglie",
   "agents.field.name": "Nome",
   "agents.field.harness": "Harness",
   "agents.field.bin": "Binario",
@@ -811,5 +817,5 @@
   "agents.hint.profiles": "↑↓ scegli  ←→ harness  invio modifica  n nuovo  d elimina  tab vista  s salva  esc indietro",
   "agents.hint.routing": "↑↓ scegli  ←→ cambia profilo  tab vista  s salva  esc indietro",
   "agents.hint.harnesses": "↑↓ scorri  tab vista  esc indietro",
-  "agents.hint.edit": "↑↓ campo  ←→ harness  scrivi per modificare  invio ok  esc annulla"
+  "agents.hint.edit": "↑↓ campo  ←→ harness  scrivi per modificare  tab sceglie modello  invio ok  esc annulla"
 }

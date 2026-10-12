@@ -4,7 +4,7 @@
  */
 
 /** Supported agent CLI harnesses. */
-export const HARNESS_IDS = ["opencode", "claude-code", "codex", "pi", "custom"] as const;
+export const HARNESS_IDS = ["opencode", "claude-code", "codex", "gemini", "pi", "custom"] as const;
 
 export type HarnessId = (typeof HARNESS_IDS)[number];
 

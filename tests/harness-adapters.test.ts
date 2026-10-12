@@ -197,3 +197,33 @@ describe("custom adapter", () => {
     expect(j('{"type":"step_finish","part":{"reason":"stop"}}')).toHaveLength(1);
   });
 });
+
+describe("gemini adapter", () => {
+  const h = getHarness("gemini");
+
+  test("command: stream-json yolo with model, prompt positional", () => {
+    const cmd = h.buildLaunch({ ...base, model: "gemini-2.5-pro" });
+    expect(cmd.args).toEqual(["--output-format", "stream-json", "--yolo", "-m", "gemini-2.5-pro"]);
+    expect(cmd.promptVia).toBe("arg");
+  });
+
+  test("normalizes the recorded stream", () => {
+    const events = run("gemini", "gemini.jsonl");
+    expect(events[0]).toMatchObject({ type: "step_start", sessionID: "gm-sess-1" });
+    const tools = events.filter((e) => e.type === "tool_use");
+    expect(tools.map((t) => [t.part!.tool, t.part!.state!.status])).toEqual([
+      ["bash", "completed"], ["bash", "error"], ["write", "completed"],
+    ]);
+    expect(tools[2].part!.state!.input!.file_path).toBe("src/a.ts");
+    expect(events.filter((e) => e.type === "text").map((e) => e.part!.text)).toEqual(["Looking at the repo.", "Done."]);
+    expect(events.some((e) => e.type === "error")).toBe(false);
+    expect(events.at(-1)!.part!.tokens).toMatchObject({ input: 120, output: 40, cache: { read: 10, write: 0 } });
+    expect(parseEvents(normalizeOutput(fixture("gemini.jsonl"), h)).completed).toBe(true);
+  });
+
+  test("failed run yields errors and no completion", () => {
+    const events = run("gemini", "gemini-failed.jsonl");
+    expect(events.filter((e) => e.type === "error")).toHaveLength(2);
+    expect(events.some((e) => e.type === "step_finish")).toBe(false);
+  });
+});

@@ -547,6 +547,7 @@
               "opencode",
               "claude-code",
               "codex",
+              "gemini",
               "pi",
               "custom"
             ],
