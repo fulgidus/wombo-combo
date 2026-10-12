@@ -5,14 +5,14 @@ description: "Found by dogfooding: 'woco tasks list --quest <id>' silently ignor
   src/lib/citty-registry.ts with a help string and its cli.help.* keys in en and it, identical key sets), include it in
   json output filtering, regenerate docs (bun run docs:gen), add tests. An unknown quest id prints a clear error and
   exits 1."
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on: []
 effort: PT30M
 started_at: 2026-10-12T02:05:44.137Z
-ended_at: null
+ended_at: 2026-10-12T04:43:37.913Z
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)
 forbidden: []
