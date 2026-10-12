@@ -47,3 +47,9 @@
 <!-- wombo-combo:operation:main-4410da4-85879c4 -->
 
 - **sync-attribution-circuit-breaker**: Sync circuit breaker when host re-adds attribution
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-f3160b8-31124c5 -->
+
+- **meta-updated-at-merge-conflicts**: Every merge conflicts on updated\_at in tasks/archive \_meta.yml
