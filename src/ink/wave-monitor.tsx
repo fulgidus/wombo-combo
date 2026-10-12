@@ -497,13 +497,13 @@ function StatusBar({
         <Text dimColor>Enter</Text>
         <Text> {enterHint}</Text>
         <Text>  </Text>
-        <Text dimColor>R</Text>
+        <Text dimColor>r</Text>
         <Text> {t("waveMonitor.retry")}</Text>
         <Text>  </Text>
-        <Text dimColor>B</Text>
+        <Text dimColor>b</Text>
         <Text> {t("waveMonitor.buildLog")}</Text>
         <Text>  </Text>
-        <Text dimColor>P</Text>
+        <Text dimColor>p</Text>
         <Text> {autoScroll ? (
           <Text color="green">{t("waveMonitor.autoScroll")}</Text>
         ) : (
@@ -514,7 +514,7 @@ function StatusBar({
             <Text>  </Text>
             <Text bold color="yellow">? {t("waveMonitor.pending", { count: pendingQuestionCount })}</Text>
             <Text>  </Text>
-            <Text dimColor>H</Text>
+            <Text dimColor>h</Text>
             <Text> {t("waveMonitor.answer")}</Text>
           </>
         )}
@@ -526,7 +526,7 @@ function StatusBar({
           </>
         ) : (
           <>
-            <Text dimColor>Q</Text>
+            <Text dimColor>q</Text>
             <Text> {t("waveMonitor.quit")}</Text>
           </>
         )}

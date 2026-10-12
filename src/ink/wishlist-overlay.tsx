@@ -137,7 +137,7 @@ function OverlayFooter({
 
   return (
     <Box paddingX={1}>
-      <Text dimColor>A</Text>
+      <Text dimColor>a</Text>
       <Text> {t("wishlist.key.add")}  </Text>
       <Text dimColor>D/X</Text>
       <Text> {t("questPicker.key.delete")}  </Text>

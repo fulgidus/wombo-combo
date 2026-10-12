@@ -246,19 +246,19 @@ function StatusBar({
     <Box flexDirection="column" marginTop={0}>
       <Box>
         <Text bold>{t("waveMonitor.keys")} </Text>
-        <Text dimColor>E</Text>
+        <Text dimColor>e</Text>
         <Text> {t("taskBrowser.key.errand")}  </Text>
-        <Text dimColor>P</Text>
+        <Text dimColor>p</Text>
         <Text> {t("wishlist.picker.keyQuest")}  </Text>
-        <Text dimColor>G</Text>
+        <Text dimColor>g</Text>
         <Text> {t("questPicker.key.genesis")}  </Text>
-        <Text dimColor>D</Text>
+        <Text dimColor>d</Text>
         <Text> {t("questPicker.key.delete")}  </Text>
         <Text dimColor>S-{"\u2191"}/{"\u2193"}</Text>
         <Text> {t("reviewList.key.reorder")}  </Text>
         <Text dimColor>Esc</Text>
         <Text> {t("taskBrowser.key.back")}  </Text>
-        <Text dimColor>Q</Text>
+        <Text dimColor>q</Text>
         <Text> {t("waveMonitor.quit")}</Text>
       </Box>
       <Box>

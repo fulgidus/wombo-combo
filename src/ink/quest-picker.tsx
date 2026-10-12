@@ -91,8 +91,6 @@ export interface QuestPickerViewProps {
   onToggleActive?: () => void;
   /** Called when 'p' is pressed (plan quest). */
   onPlan?: () => void;
-  /** Called when 'l' is pressed (plan every unplanned quest). */
-  onPlanAll?: () => void;
   /** Called when 'g' is pressed (genesis). */
   onGenesis?: () => void;
   /** Called when 'e' is pressed (errand). */
@@ -429,41 +427,38 @@ function StatusBar({
         <Text dimColor>Enter</Text>
         <Text> {t("questPicker.key.select")}</Text>
         <Text>  </Text>
-        <Text dimColor>C</Text>
+        <Text dimColor>c</Text>
         <Text> {t("questPicker.key.create")}</Text>
         <Text>  </Text>
-        <Text dimColor>E</Text>
+        <Text dimColor>e</Text>
         <Text> {t("taskBrowser.key.errand")}</Text>
         <Text>  </Text>
-        <Text dimColor>P</Text>
+        <Text dimColor>p</Text>
         <Text> {t("questPicker.key.plan")}</Text>
         <Text>  </Text>
-        <Text dimColor>L</Text>
-        <Text> {t("questPicker.key.planAll")}</Text>
-        <Text>  </Text>
-        <Text dimColor>G</Text>
+        <Text dimColor>g</Text>
         <Text> {t("questPicker.key.genesis")}</Text>
         <Text>  </Text>
-        <Text dimColor>A</Text>
+        <Text dimColor>a</Text>
         <Text> {t("questPicker.key.activatePause")}</Text>
         <Text>  </Text>
-        <Text dimColor>D</Text>
+        <Text dimColor>d</Text>
         <Text> {t("questPicker.key.delete")}</Text>
         <Text>  </Text>
-        <Text dimColor>W</Text>
+        <Text dimColor>w</Text>
         <Text> {t("taskBrowser.key.wishlist")}</Text>
         <Text>  </Text>
-        <Text dimColor>O</Text>
+        <Text dimColor>o</Text>
         <Text> {t("questPicker.key.onboarding")}</Text>
         {devMode && (
           <>
             <Text>  </Text>
-            <Text dimColor>F</Text>
+            <Text dimColor>f</Text>
             <Text> {t("questPicker.key.seedFake")}</Text>
           </>
         )}
         <Text>  </Text>
-        <Text dimColor>Q</Text>
+        <Text dimColor>q</Text>
         <Text> {t("waveMonitor.quit")}</Text>
       </Box>
     </Box>
@@ -496,7 +491,6 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     onCreate,
     onToggleActive,
     onPlan,
-    onPlanAll,
     onGenesis,
     onErrand,
     onWishlist,
@@ -547,7 +541,6 @@ export function QuestPickerView(props: QuestPickerViewProps): React.ReactElement
     if (input === "c") { onCreate?.(); return; }
     if (input === "a") { onToggleActive?.(); return; }
     if (input === "p") { onPlan?.(); return; }
-    if (input === "l") { onPlanAll?.(); return; }
     if (input === "g") { onGenesis?.(); return; }
     if (input === "e") { onErrand?.(); return; }
     if (input === "w") { onWishlist?.(); return; }

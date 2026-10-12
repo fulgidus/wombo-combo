@@ -578,17 +578,17 @@ function StatusBar({
         <Text dimColor>t</Text>
         <Text> {t("waveMonitor.retry")}</Text>
         <Text>  </Text>
-        <Text dimColor>U</Text>
+        <Text dimColor>u</Text>
         <Text> {t("taskBrowser.key.usage")}</Text>
         <Text>  </Text>
         {hasReplay && (
           <>
-            <Text dimColor>P</Text>
+            <Text dimColor>p</Text>
             <Text> replay</Text>
             <Text>  </Text>
           </>
         )}
-        <Text dimColor>O</Text>
+        <Text dimColor>o</Text>
         <Text> {t("taskBrowser.key.sort")}</Text>
 
         {hasRunningWave && (
@@ -606,7 +606,7 @@ function StatusBar({
           </>
         )}
         <Text>  </Text>
-        <Text dimColor>Q</Text>
+        <Text dimColor>q</Text>
         <Text> {t("waveMonitor.quit")}</Text>
       </Box>
       <Box>
