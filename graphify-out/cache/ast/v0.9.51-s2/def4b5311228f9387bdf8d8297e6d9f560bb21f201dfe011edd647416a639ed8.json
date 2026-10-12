@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_docs_src_content_docs_404_md", "label": "404.md", "file_type": "document", "node_kind": "page", "source_file": "docs/src/content/docs/404.md", "source_location": "L1", "frontmatter": {"title": "Page not found", "template": "splash", "editUrl": "false"}}], "edges": [], "input_tokens": 0, "output_tokens": 0}

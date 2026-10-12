@@ -53,6 +53,15 @@ import { output, outputError, outputMessage } from "../lib/output";
 import { msg, t } from "../lib/i18n";
 import { validateEnum } from "../lib/validate";
 import { maybeSyncItem } from "../lib/sync/auto";
+import {
+  selectPlannableQuests,
+  runPlanAll,
+  splitValidPlans,
+  sumTotals,
+  DEFAULT_PLAN_ALL_CONCURRENCY,
+  type PlanAllRunner,
+} from "../lib/quest-plan-all";
+import { loadArchiveFromStore } from "../lib/task-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +83,12 @@ export interface QuestCommandOptions {
   force?: boolean;
   outputFmt?: OutputFormat;
   fields?: string[];
+  /** Model override for planner agents (plan, plan-all) */
+  model?: string;
+  /** Max parallel planners for plan-all */
+  concurrency?: number;
+  /** Test seam: replaces runQuestPlanner in plan-all */
+  planAllRunner?: PlanAllRunner;
 }
 
 // ---------------------------------------------------------------------------
@@ -711,7 +726,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
   let result: PlanResult;
   try {
     result = await runQuestPlanner(quest, projectRoot, config, {
-      model: opts.dryRun ? undefined : undefined, // model passed via config or CLI
+      model: opts.model,
       onProgress: (msg) => {
         if (fmt === "text") {
           console.log(`  ${DIM}${msg}${RESET}`);
@@ -815,6 +830,88 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
       console.log(t("cli.quest.plan.savedKnowledge", { count: result.knowledge.length }));
     }
     console.log(`\n${t("cli.quest.plan.useLaunch", { command: `${BOLD}woco launch --quest ${quest.id}${RESET}` })}\n`);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Subcommand: plan-all
+// ---------------------------------------------------------------------------
+
+async function questPlanAll(opts: QuestCommandOptions): Promise<void> {
+  const { projectRoot, config } = opts;
+  const fmt = opts.outputFmt ?? "text";
+  const concurrency = opts.concurrency ?? DEFAULT_PLAN_ALL_CONCURRENCY;
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    outputError(fmt, msg("cli.quest.planAll.badConcurrency"));
+    return;
+  }
+
+  const { plannable, skipped } = selectPlannableQuests(
+    loadAllQuests(projectRoot),
+    loadTasksFromStore(projectRoot, config).tasks,
+    loadArchiveFromStore(projectRoot, config).tasks,
+  );
+  const skippedOut = skipped.map((s) => ({ quest_id: s.quest.id, reason: s.reason }));
+
+  if (opts.dryRun || plannable.length === 0) {
+    output(fmt, {
+      dry_run: Boolean(opts.dryRun),
+      would_plan: plannable.map((q) => q.id),
+      skipped: skippedOut,
+    }, () => {
+      console.log(`\n${BOLD}${t("cli.quest.planAll.header", { count: plannable.length })}${RESET}`);
+      for (const q of plannable) console.log(`  ${CYAN}${q.id}${RESET} ${DIM}${q.title}${RESET}`);
+      for (const s of skipped) {
+        console.log(`  ${DIM}${t("cli.quest.planAll.skipped", { id: s.quest.id, reason: t(`cli.quest.planAll.reason.${s.reason}`) })}${RESET}`);
+      }
+      if (opts.dryRun) console.log(`\n  ${GREEN}[dry-run]${RESET} ${t("cli.quest.planAll.dryRunOk")}\n`);
+    });
+    return;
+  }
+
+  if (fmt === "text") {
+    console.log(`\n${BOLD}${t("cli.quest.planAll.header", { count: plannable.length })}${RESET}`);
+  }
+  const run = runPlanAll({
+    quests: plannable,
+    concurrency,
+    model: opts.model,
+    projectRoot,
+    config,
+    runner: opts.planAllRunner,
+  });
+  const onSigint = () => run.abort();
+  process.once("SIGINT", onSigint);
+  const rows = await run.done;
+  process.removeListener("SIGINT", onSigint);
+
+  const { valid, invalid } = splitValidPlans(rows);
+  const planned: { quest_id: string; tasks_created: number }[] = [];
+  for (const row of valid) {
+    const quest = loadQuest(projectRoot, row.quest.id) ?? row.quest;
+    const created = applyPlanToQuest(row.result!, quest, projectRoot, config);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
+    for (const task of created) maybeSyncItem(projectRoot, { kind: "task", id: task.id });
+    planned.push({ quest_id: quest.id, tasks_created: created.length });
+  }
+  const failed = invalid.map((r) => ({
+    quest_id: r.quest.id,
+    error: r.state === "aborted" ? "aborted" : (r.error ?? r.result?.error ?? "plan has errors"),
+  }));
+  const totals = sumTotals(rows);
+
+  output(fmt, {
+    planned,
+    failed,
+    skipped: skippedOut,
+    tokens_in: totals.tokensIn,
+    tokens_out: totals.tokensOut,
+    cost_usd: totals.cost,
+  }, () => {
+    for (const p of planned) console.log(`  ${GREEN}✔${RESET} ${p.quest_id} — ${t("cli.quest.planAll.created", { count: p.tasks_created })}`);
+    for (const f of failed) console.log(`  ${RED}✘${RESET} ${f.quest_id} — ${f.error}`);
+    const cost = totals.cost === null ? "" : ` · $${totals.cost.toFixed(4)}`;
+    console.log(`\n${DIM}${t("cli.quest.planAll.total", { tokensIn: totals.tokensIn, tokensOut: totals.tokensOut })}${cost}${RESET}\n`);
   });
 }
 
@@ -956,6 +1053,9 @@ export async function handleQuestSubcommand(opts: QuestCommandOptions): Promise<
     case "plan":
       await questPlan(opts);
       break;
+    case "plan-all":
+      await questPlanAll(opts);
+      break;
     case "archive":
       await questArchive(opts);
       break;
@@ -991,6 +1091,7 @@ Quest Subcommands:                (alias)
   quest list                      (ls)    List all quests (--status to filter)
   quest show <id>                 (sh)    Show full quest details
   quest plan <id>                 (pl)    Run planner agent to decompose quest into tasks
+  quest plan-all                  (pla)   Plan every unplanned quest (--dry-run, --concurrency N)
   quest activate <id>             (a)     Activate a quest (creates branch, sets status to active)
   quest pause <id>                (p)     Pause an active quest
   quest complete <id>             (co)    Complete quest (merges branch into base, --force to skip merge)

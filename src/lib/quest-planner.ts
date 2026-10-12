@@ -23,7 +23,11 @@ import { createBlankTask, saveTaskToStore } from "./tasks";
 import { loadTasksFromStore } from "./task-store";
 import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
-import { createPlannerTelemetry, formatPlannerTelemetry } from "./planner-telemetry";
+import {
+  createPlannerTelemetry,
+  formatPlannerTelemetry,
+  type PlannerTelemetrySnapshot,
+} from "./planner-telemetry";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -602,6 +606,8 @@ export async function runQuestPlanner(
     model?: string;
     /** Callback for progress updates */
     onProgress?: (message: string) => void;
+    /** Structured telemetry (model, tokens, provider cost) for aggregate views */
+    onTelemetry?: (snapshot: PlannerTelemetrySnapshot) => void;
   }
 ): Promise<PlanResult> {
   const onProgress = opts?.onProgress ?? (() => {});
@@ -653,6 +659,7 @@ export async function runQuestPlanner(
     model: launch.result.route.model,
     normalize: launch.result.normalize,
     onUpdate: (snap) => {
+      opts?.onTelemetry?.(snap);
       const text = formatPlannerTelemetry(snap);
       if (text) onProgress(text);
     },

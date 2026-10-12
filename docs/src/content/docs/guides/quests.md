@@ -36,6 +36,25 @@ kebab-case ids, valid priorities and difficulties, no dependency cycles and no
 unknown dependencies.. Put decisions and file
 ownership in `knowledge.md` so planner and implementer agents see them.
 
+### Planning every unplanned quest
+
+`woco quest plan-all` plans every quest that has no tasks (active or archived)
+and is not completed or abandoned. Quests that already have tasks are skipped
+and reported. Each quest runs through the normal quest planner, so planner
+routing, model, tokens and provider-reported cost apply.
+
+```sh
+woco quest plan-all --dry-run        # list what would be planned
+woco quest plan-all --concurrency 3  # default is 2
+woco quest plan-all --model <model>
+```
+
+On the CLI valid plans are applied as they finish. In the TUI press `l` on the
+quest picker: one progress screen shows each quest with tokens and cost plus a
+running total, and `Esc` aborts every planner. When they finish, `→` reviews
+the proposals one quest at a time, `a` approves every valid plan at once, and
+`←` leaves without applying anything.
+
 For a whole project, `woco genesis` decomposes a project vision into quests.
 
 ## Branches
