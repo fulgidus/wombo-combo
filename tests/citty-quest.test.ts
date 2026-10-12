@@ -36,7 +36,7 @@ describe("citty quest command", () => {
     expect(meta.description!.length).toBeGreaterThan(0);
   });
 
-  test("questCommand has all 9 subcommands defined (plus aliases)", async () => {
+  test("questCommand has all 10 subcommands defined (plus aliases)", async () => {
     const { questCommand } = await import("../src/commands/citty/quest");
     const subCommands = await resolveValue(questCommand.subCommands!);
     const subCommandNames = Object.keys(subCommands);
@@ -50,7 +50,7 @@ describe("citty quest command", () => {
     expect(subCommandNames).toContain("abandon");
     expect(subCommandNames).toContain("archive");
     // Also has aliases: c, ls, sh, pl, a, p, co, ab, ar
-    expect(subCommandNames.length).toBe(18);
+    expect(subCommandNames.length).toBe(20);
   });
 
   test("questCommand has no run handler (default subcommand injected by router)", async () => {
