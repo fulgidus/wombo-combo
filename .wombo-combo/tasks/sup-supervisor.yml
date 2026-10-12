@@ -36,8 +36,8 @@ description: >
 
   If the file nears 500 lines, split helpers (child bookkeeping/snapshot building) into
   src/lib/supervision/child-state.ts.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: very_hard
 priority: medium
 depends_on:
@@ -48,8 +48,8 @@ depends_on:
   - sup-strategies
   - sup-shutdown
 effort: PT2H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T23:16:07.660Z
+ended_at: 2026-10-12T23:23:46.325Z
 constraints:
   - All time through the injected Clock; randomness through injected random
   - Child modelled as abortable handle with an exit promise carrying normal | shutdown | crash(error) (ExitReason)

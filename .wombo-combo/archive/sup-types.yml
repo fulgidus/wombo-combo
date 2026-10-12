@@ -32,14 +32,14 @@ description: >
   Keep it types plus trivial helpers only. No tests required beyond typecheck, but add tests/supervision-types.test.ts
   with a tiny test for systemClock (now() increments, setTimeout fires and clearTimeout cancels) and the
   crash/NORMAL/SHUTDOWN helpers.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on: []
 effort: PT30M
-started_at: 2026-10-12T16:10:03.191Z
-ended_at: null
+started_at: 2026-10-12T22:46:49.975Z
+ended_at: 2026-10-12T22:49:39.064Z
 constraints:
   - Pure TypeScript, ESM, extensionless relative imports
   - No imports from outside src/lib/supervision/

@@ -11,15 +11,15 @@ description: >
     - pendingTimers(): number of active timers; nextDueAt(): number | undefined.
     - async flush(): awaits a few microtask turns (e.g. loop of `await Promise.resolve()` 10 times) so promise chains settle; and async advanceAsync(ms) which advances in steps, flushing microtasks after each fired timer, so promise-based code between timers runs deterministically.
   Add tests/fake-clock.test.ts covering ordering, cancel, nested scheduling, advanceAsync with a promise continuation.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
   - sup-types
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T22:49:34.575Z
+ended_at: 2026-10-12T22:58:14.167Z
 constraints:
   - No real timers in FakeClock
   - Tests go in tests/*.test.ts, helper in tests/helpers/

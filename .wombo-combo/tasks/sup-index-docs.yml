@@ -17,15 +17,15 @@ description: >
 
   Run `bun run typecheck`, `bun run build` and `bun test tests/supervision*.test.ts tests/supervisor*.test.ts
   tests/fake-clock.test.ts` and fix barrel/type problems you introduced. Then run `graphify update .` (project rule).
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on:
   - sup-supervisor
 effort: PT45M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T23:23:42.642Z
+ended_at: 2026-10-12T23:27:03.433Z
 constraints:
   - Barrel must not import from outside src/lib/supervision
   - bun run typecheck and bun run build must pass

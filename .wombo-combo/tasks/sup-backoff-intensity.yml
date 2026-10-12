@@ -15,16 +15,16 @@ description: >
 
   Tests in tests/supervision-backoff.test.ts and tests/supervision-intensity.test.ts using FakeClock from
   tests/helpers/fake-clock (created by a parallel-dependent task; it is a dependency so it exists when you run).
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - sup-types
   - sup-fake-clock
 effort: PT45M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T22:58:09.355Z
+ended_at: 2026-10-12T23:16:11.321Z
 constraints:
   - Pure functions/classes, all time via the injected Clock
   - Random injected, never call Math.random inside tests

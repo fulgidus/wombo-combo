@@ -12,16 +12,16 @@ description: >
   timeout, hung child hits timeout via clock.advanceAsync, ordering of stops is strictly sequential (second child's
   abort is not called until the first has exited), timer cleared (pendingTimers() === 0 after), abort throwing,
   already-exited handle.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - sup-types
   - sup-fake-clock
 effort: PT45M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T22:58:09.582Z
+ended_at: 2026-10-12T23:01:27.594Z
 constraints:
   - All timing through the injected Clock
   - Never reject; always resolve with a result

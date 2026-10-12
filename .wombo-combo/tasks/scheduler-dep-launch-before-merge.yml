@@ -1,0 +1,23 @@
+id: scheduler-dep-launch-before-merge
+title: Scheduler launches dependents on verified, before the dependency is merged into the quest branch
+description: |
+  DEP_SATISFIED_STATUSES in src/daemon/state.ts includes "verified", so a dependent can start before its
+  dependency is merged into the quest branch. Seen 2026-10-13: sup-backoff-intensity and sup-shutdown launched at
+  00:58:10, three seconds before sup-fake-clock merged (00:58:13), so their worktrees forked from a base without
+  tests/helpers/fake-clock.ts and the agents wrote inline clocks as a workaround. Fix: non-chain dependents wait for
+  "merged" (or the worktree is rebased onto the base after the dependency merges); keep "verified" only for chain
+  successors that intentionally branch from their predecessor. Add a scheduler test covering a dependent whose
+  dependency is verified but not merged.
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

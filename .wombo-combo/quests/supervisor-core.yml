@@ -17,7 +17,7 @@ goal: |
   nothing about agents or git.
   Acceptance: all strategies and the intensity escalation have tests, and
   typecheck and build pass.
-status: paused
+status: active
 priority: medium
 difficulty: hard
 depends_on:
@@ -37,7 +37,7 @@ constraints:
     - Do not change existing daemon behaviour in this quest
   override: {}
 created_at: 2026-10-12T08:40:26.208Z
-updated_at: 2026-10-12T16:10:44.190Z
+updated_at: 2026-10-12T22:42:19.642Z
 started_at: 2026-10-12T15:56:34.409Z
 ended_at: null
 notes:

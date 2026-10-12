@@ -8,15 +8,15 @@ description: >
     - export type SupervisorEmitter = TypedEmitter<SupervisorEvents> (SupervisorEvents from ./types).
   Add tests/supervision-events.test.ts: subscribe/unsubscribe, once, throwing listener isolation, removal during emit,
   payload typing (use satisfies / type assertions compiled by typecheck).
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: medium
 depends_on:
   - sup-types
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T22:49:34.411Z
+ended_at: 2026-10-12T22:55:46.909Z
 constraints:
   - Pure TypeScript, no node:events
   - Typed so that emit('child_started', wrongPayload) fails typecheck
