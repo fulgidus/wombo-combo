@@ -149,3 +149,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-d6c9e20-38699a4 -->
 
 - **otp-adr-decision**: Write ADR With Go/No-Go
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-4462437-e5d458a -->
+
+- **otp-supervision-guide-stub**: Add Supervision Guide Stub
