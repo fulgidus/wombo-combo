@@ -23,3 +23,9 @@
 <!-- wombo-combo:operation:main-3a739ee-1520018 -->
 
 - **sync-cross-process-lock**: Sync: cross-process lock and duplicate-issue guard
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-95ea75d-08e6c9b -->
+
+- **resume-stuck-completed-agents**: Resume must re-run verification for agents left in 'completed' by a daemon stop
