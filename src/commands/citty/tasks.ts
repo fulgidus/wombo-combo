@@ -76,6 +76,11 @@ const listCommand = defineCommand({
       description: "Filter by difficulty (trivial|easy|medium|hard|very_hard)",
       required: false,
     },
+    quest: {
+      type: "string",
+      description: "Filter by quest ID",
+      required: false,
+    },
     ready: {
       type: "boolean",
       description: "Show only ready tasks (backlog + deps met)",
@@ -107,6 +112,7 @@ const listCommand = defineCommand({
       status: args.status as FeatureStatus | undefined,
       priority: args.priority as Priority | undefined,
       difficulty: args.difficulty as Difficulty | undefined,
+      quest: args.quest,
       ready: args.ready,
       includeArchive: args.includeArchive,
       outputFmt: resolveOutputFormat(args.output),

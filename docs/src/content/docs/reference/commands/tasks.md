@@ -41,6 +41,7 @@ Read-only.
 | `--status` |  | string |  | Filter by status. Values: `backlog`, `planned`, `in_progress`, `blocked`, `in_review`, `done`, `cancelled`. |
 | `--priority` |  | string |  | Filter by priority. Values: `critical`, `high`, `medium`, `low`, `wishlist`. |
 | `--difficulty` |  | string |  | Filter by difficulty. Values: `trivial`, `easy`, `medium`, `hard`, `very_hard`. |
+| `--quest` |  | string |  | Filter by quest ID |
 | `--ready` |  | boolean | `false` | Show only ready tasks (backlog + deps met) |
 | `--include-archive` |  | boolean | `false` | Include archived tasks |
 | `--fields` |  | string |  | Comma-separated list of fields to include in output |
