@@ -141,7 +141,10 @@ function loadMeta(dir: string, sink?: SchemaIssue[]): TasksMeta {
 
 function saveMeta(dir: string, meta: TasksMeta): void {
   ensureDir(dir);
-  meta.meta.updated_at = new Date().toISOString();
+  // updated_at is deliberately NOT bumped here: a volatile timestamp in a
+  // tracked file makes every pair of branches conflict on it. The field is
+  // kept (schema-required) but frozen at its initial value.
+  meta.meta.updated_at ||= meta.meta.created_at;
   const yaml = stringifyYaml(meta, YAML_OPTS);
   const metaPath = join(dir, META_FILE);
   atomicWrite(metaPath, yaml);
