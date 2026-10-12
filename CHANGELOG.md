@@ -155,3 +155,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-4462437-e5d458a -->
 
 - **otp-supervision-guide-stub**: Add Supervision Guide Stub
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-ed87253-bca741a -->
+
+- **sup-types**: Supervision Core Types and Clock
