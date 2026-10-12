@@ -30,6 +30,7 @@ import React, {
   createContext,
   useContext,
   useState,
+  useRef,
   useCallback,
   useEffect,
   type ReactNode,
@@ -213,7 +214,15 @@ export function EscMenu({
   onOpenDashboard,
   onOpenReplays,
 }: EscMenuProps): React.ReactElement | null {
-  const [cursor, setCursor] = useState(0);
+  const [cursor, setCursorState] = useState(0);
+  // Mirror of `cursor` readable synchronously: the useInput handler is only
+  // re-bound after a passive effect, so a fast Enter right after a rendered
+  // arrow move could otherwise activate the previous item.
+  const cursorRef = useRef(0);
+  const setCursor = (update: (c: number) => number): void => {
+    cursorRef.current = update(cursorRef.current);
+    setCursorState(cursorRef.current);
+  };
   const items = MENU_ITEMS.filter(
     (item) =>
       (item.action !== "dashboard" || onOpenDashboard) &&
@@ -251,7 +260,7 @@ export function EscMenu({
       } else if (key.downArrow) {
         setCursor((c) => Math.min(items.length - 1, c + 1));
       } else if (key.return) {
-        const item = items[Math.min(cursor, items.length - 1)];
+        const item = items[Math.min(cursorRef.current, items.length - 1)];
         if (item) activate(item.action);
       } else if (key.escape) {
         onClose();

@@ -429,8 +429,7 @@ describe("DaemonMonitorShell dashboard", () => {
     expect(app.frame()).toContain("Home › Dashboard");
     expect(app.frame()).toContain("Throughput");
     app.key("b");
-    await sleep(80);
-    expect(app.frame()).toContain("Home › Wave Monitor");
+    await waitFor(() => app.frame().includes("Home › Wave Monitor"), "monitor screen after b");
     expect(app.quits).toHaveLength(0);
     app.unmount();
   });
@@ -442,8 +441,7 @@ describe("DaemonMonitorShell dashboard", () => {
     await openDashboardFromMenu(app);
     expect(app.frame()).toContain("Home › Dashboard");
     app.key("b");
-    await sleep(80);
-    expect(app.frame()).toContain("Home › Wave Monitor"); // a single pop was enough
+    await waitFor(() => app.frame().includes("Home › Wave Monitor"), "monitor screen after b"); // a single pop was enough
     app.unmount();
   });
 
