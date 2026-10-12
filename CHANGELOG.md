@@ -35,3 +35,9 @@
 <!-- wombo-combo:operation:main-8047a5a-b0b0966 -->
 
 - **sync-footer-scrub-reread**: Sync: remove host-added footers found on re-read, not only in the create response
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-ca02fe2-c543c6a -->
+
+- **test-runner-failcount-mismatch**: Baseline comparison fails: listed failures do not match reported fail count
