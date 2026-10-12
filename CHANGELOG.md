@@ -113,3 +113,9 @@
 <!-- wombo-combo:operation:main-6da27fb-0be8a94 -->
 
 - **bug-flaky-monitor-dashboard-test**: Flaky: monitor-router dashboard test times out under load
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-14de615-4d34bda -->
+
+- **merge-stale-root-changelog**: Root checkout lags the post-merge changelog commit
