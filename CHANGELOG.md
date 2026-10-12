@@ -149,3 +149,9 @@
 <!-- wombo-combo:operation:main-98063c7-3c970e4 -->
 
 - **tui-agents-routing-editor**: TUI screen to manage agent profiles, routing and harnesses
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-db04e66-8e066a9 -->
+
+- **resilience-leak-check**: Leak Detection Test Helper
