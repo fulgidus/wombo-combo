@@ -80,6 +80,15 @@ function renderLive(element: React.ReactElement) {
 /** Small helper to wait for React re-renders after input. */
 const tick = (ms = 50) => new Promise((r) => setTimeout(r, ms));
 
+/** Write a key and wait until the UI has re-rendered (output grew), so a slow machine cannot drop keystrokes. */
+async function press(stdin: PassThrough, getOutput: () => string, key: string, timeoutMs = 2000) {
+  const before = getOutput().length;
+  stdin.write(key);
+  const deadline = Date.now() + timeoutMs;
+  while (getOutput().length === before && Date.now() < deadline) await tick(10);
+  await tick(10);
+}
+
 describe("InitForm", () => {
   test("renders project name in header", () => {
     const output = renderToString(<InitForm {...defaultProps()} />);
@@ -478,24 +487,21 @@ describe("InitForm editing", () => {
 
   test("Ctrl+S while editing merges edit buffer before confirming", async () => {
     const onConfirm = mock(() => {});
-    const { stdin, cleanup } = renderLive(
+    const { stdin, getOutput, cleanup } = renderLive(
       <InitForm {...defaultProps({ onConfirm })} />,
     );
     await tick();
 
     // Enter edit mode on baseBranch
-    stdin.write("\r");
-    await tick();
+    await press(stdin, getOutput, "\r");
 
     // Clear the value ("main" = 4 chars)
     for (let i = 0; i < 4; i++) {
-      stdin.write("\x7f");
-      await tick();
+      await press(stdin, getOutput, "\x7f");
     }
 
     // Type new value
-    stdin.write("develop");
-    await tick();
+    await press(stdin, getOutput, "develop");
 
     // Ctrl+S while still in edit mode — should merge edit buffer
     stdin.write("\x13");
