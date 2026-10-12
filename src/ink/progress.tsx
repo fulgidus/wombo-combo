@@ -26,6 +26,7 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { Spinner } from "./spinner";
 import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
@@ -60,8 +61,6 @@ export interface ProgressViewProps {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const SPIN_CHARS = ["⠂", "⠆", "⠇", "⠃", "⠉", "⠌", "⠎", "⠋"];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -105,8 +104,7 @@ export function ProgressView({
         break;
     }
   } else if (spinning) {
-    const ch = SPIN_CHARS[spinFrame % SPIN_CHARS.length];
-    icon = <Text color="magenta">{ch}</Text>;
+    icon = <Spinner frame={spinFrame} color="magenta" />;
     statusText = status ? <Text color="cyan">{status}</Text> : null;
   }
 

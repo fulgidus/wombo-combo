@@ -1,0 +1,18 @@
+id: tui-lowercase-keys
+title: TUI actions must not require Shift or uppercase keys
+description: Remove uppercase-only triggers (review-list J/K, task-browser X, replay-viewer G/N) and verify approve
+  works on plain a. User reports needing Shift+A to approve in planner review.
+status: backlog
+completion: 0
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

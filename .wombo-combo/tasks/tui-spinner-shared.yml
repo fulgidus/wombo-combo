@@ -1,0 +1,19 @@
+id: tui-spinner-shared
+title: Single shared Spinner component with theme frames
+description: ProgressView SPIN_CHARS in src/ink/progress.tsx is a jumbled braille set so spinners do not rotate. Three
+  duplicate spinner impls (progress.tsx, splash-screen.tsx, onboarding/progress-view.tsx) plus unused
+  theme.spinnerFrames. Replace with one <Spinner> using theme frames.
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T08:50:18.217Z
+ended_at: 2026-10-12T08:51:19.747Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

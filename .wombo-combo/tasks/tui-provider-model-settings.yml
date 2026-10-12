@@ -1,0 +1,18 @@
+id: tui-provider-model-settings
+title: Expose provider and model settings in the TUI
+description: agentProfiles, routing and modelRouting exist in config.ts but the settings screen only has theme, locale,
+  updates, devMode, reset.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

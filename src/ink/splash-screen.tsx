@@ -20,6 +20,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Box, Text } from "ink";
+import { Spinner } from "./spinner";
 import { useTerminalSize } from "./use-terminal-size";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -146,12 +147,6 @@ function getLogoCharColor(
   const hex = (v: number) => blended(v).toString(16).padStart(2, "0");
   return `#${hex(fr)}${hex(fg)}${hex(fb)}`;
 }
-
-// ---------------------------------------------------------------------------
-// Spinner
-// ---------------------------------------------------------------------------
-
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 // ---------------------------------------------------------------------------
 // Preflight check types
@@ -516,14 +511,13 @@ export function SplashScreen({
   }
 
   function renderCheck(check: PreflightCheck, i: number): React.ReactElement {
-    const spinnerFrame = tick % SPINNER_FRAMES.length;
-    const icon = check.status === "running" ? SPINNER_FRAMES[spinnerFrame] : statusIcon(check.status);
-    const color = check.status === "running" ? "cyan" : statusColor(check.status);
+    const running = check.status === "running";
+    const color = running ? "cyan" : statusColor(check.status);
     const timing = check.durationMs !== undefined ? ` ${check.durationMs}ms` : "";
 
     return (
       <Box key={i} flexDirection="row" gap={1}>
-        <Text color={color}>{icon}</Text>
+        {running ? <Spinner frame={tick} color={color} /> : <Text color={color}>{statusIcon(check.status)}</Text>}
         <Text color={check.status === "pending" ? "gray" : undefined}>{CHECK_LABEL_KEYS[check.id] ? t(CHECK_LABEL_KEYS[check.id]) : check.label}</Text>
         {check.status !== "pending" && (
           <Text dimColor>{check.detail}{timing}</Text>
