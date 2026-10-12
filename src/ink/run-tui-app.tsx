@@ -207,6 +207,9 @@ export function TuiApp({
   const [settingsConfig, setSettingsConfig] = useState<SettingsScreenConfig>({
     tui: config.tui,
     devMode: (config as any).devMode ?? false,
+    agentProfiles: config.agentProfiles,
+    routing: config.routing,
+    modelRouting: config.modelRouting,
   });
 
   // Track current screen for chrome title

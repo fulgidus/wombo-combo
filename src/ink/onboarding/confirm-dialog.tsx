@@ -42,8 +42,8 @@ export interface ConfirmDialogProps {
  * ConfirmDialog — a simple yes/no prompt component.
  *
  * Renders a title, message, and two highlighted options. The user
- * toggles between Yes and No using arrow keys and confirms with Enter.
- * Esc cancels (equivalent to selecting No).
+ * confirms with → (or Enter on Yes) and cancels with ← or Esc. ↑/↓ move the
+ * highlight, Enter activates it.
  */
 export function ConfirmDialog({
   title,
@@ -55,6 +55,7 @@ export function ConfirmDialog({
   const [selected, setSelected] = useState<"yes" | "no">("yes");
 
   useScreenInput((input, key) => {
+    // Right arrow confirms, left arrow cancels; up/down move the highlight.
     if (key.rightArrow) {
       onConfirm();
       return;

@@ -119,3 +119,21 @@
 <!-- wombo-combo:operation:main-14de615-4d34bda -->
 
 - **merge-stale-root-changelog**: Root checkout lags the post-merge changelog commit
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-371d771-61b3894 -->
+
+- **tui-settings-horizontal-arrows**: Settings: left/right arrows change values
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-f7b09f0-39bed0d -->
+
+- **tui-provider-model-settings**: Expose provider and model settings in the TUI
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-a6cfa66-c91b903 -->
+
+- **tui-planner-telemetry**: Planner progress shows model, tokens and provider cost

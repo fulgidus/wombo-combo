@@ -28,7 +28,7 @@ export interface ConfirmDialogProps {
   title: string;
   /** The confirmation message/question. */
   message: string;
-  /** Called with true (Y) or false (N/Escape). */
+  /** Called with true (y/→) or false (N/Escape). */
   onConfirm: (confirmed: boolean) => void;
 }
 
@@ -55,11 +55,11 @@ export function ConfirmDialog({
       borderColor="yellow"
       footer={
         <Box>
-          <Text color="green" bold>Y</Text>
+          <Text color="green" bold>y →</Text>
           <Text dimColor> {t("ui.yes")}    </Text>
-          <Text color="red" bold>N</Text>
+          <Text color="red" bold>n ←</Text>
           <Text dimColor> {t("ui.no")}    </Text>
-          <Text dimColor>Esc</Text>
+          <Text dimColor>esc</Text>
           <Text dimColor> {t("ui.cancel")}</Text>
         </Box>
       }
