@@ -128,7 +128,7 @@ The profile for an operation is chosen in this order:
 
 Operations: `plan` (quest, errand, genesis planners and onboarding synthesis),
 `code` (task agents and their retries), `conflict` (merge conflict resolvers),
-`review` (reserved).
+`review` (the [review gate](../review-gate/) reviewer).
 
 The model is `profile.model`, else `modelRouting[weight]`, else the session
 `--model`.
