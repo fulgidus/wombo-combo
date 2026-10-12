@@ -137,3 +137,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-463ef83-574c5e9 -->
 
 - **otp-ts-vs-elixir**: Compare TypeScript Versus Elixir
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-a1dc706-2551a0c -->
+
+- **otp-prototype-demo**: Prototype Demo And Tests
