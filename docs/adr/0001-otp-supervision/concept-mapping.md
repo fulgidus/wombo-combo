@@ -48,7 +48,7 @@ Proposed tree:
 ```
 Daemon (root supervisor, strategy one_for_one)
  |- Scheduler policy            (start policy: what to start, how many at once)
- |- merge queue                 (serialized worker, temporary-free: permanent)
+ |- merge queue                 (serialized worker, permanent)
  |   '- conflict resolver       (serialized with merges, same queue)
  |- quest group  (one_for_all)  one per active quest with a baseline / base branch
  |   |- chain group (rest_for_one)   tasks linked by depends_on sharing a worktree
