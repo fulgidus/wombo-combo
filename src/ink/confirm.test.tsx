@@ -147,4 +147,21 @@ describe("ConfirmDialog (interactions)", () => {
     instance.unmount();
     await instance.waitUntilExit();
   });
+
+  test("right arrow confirms and left arrow cancels", async () => {
+    for (const [seq, expected] of [["\x1b[C", true], ["\x1b[D", false]] as const) {
+      const { stdin, stdout } = createTestStreams();
+      const onConfirm = mock(() => {});
+      const instance = render(
+        <ConfirmDialog title="Test" message="Proceed?" onConfirm={onConfirm} />,
+        { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false }
+      );
+      await new Promise((r) => setTimeout(r, 50));
+      (stdin as any as PassThrough).write(seq);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(onConfirm).toHaveBeenCalledWith(expected);
+      instance.unmount();
+      await instance.waitUntilExit();
+    }
+  });
 });

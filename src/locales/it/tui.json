@@ -84,7 +84,7 @@
   "dashboard.etaUnestimated_many": "{{count}} senza stima",
   "onboarding.common.yes": "Sì",
   "onboarding.common.no": "No",
-  "onboarding.confirm.hint": "Frecce: cambia  |  Enter: seleziona  |  Esc: annulla",
+  "onboarding.confirm.hint": "→ conferma  |  ← annulla  |  ↑↓ evidenzia  |  Enter: seleziona",
   "onboarding.section.identity": "Identità",
   "onboarding.section.vision": "Visione",
   "onboarding.section.objectives": "Obiettivi",

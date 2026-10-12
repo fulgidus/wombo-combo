@@ -445,9 +445,9 @@ function ConfirmPopup({
 }): React.ReactElement {
   const t = useI18n();
   useScreenInput((input, key) => {
-    if (input === "y" || input === "Y") {
+    if (input === "y" || input === "Y" || key.rightArrow) {
       onConfirm();
-    } else if (input === "n" || input === "N" || key.escape) {
+    } else if (input === "n" || input === "N" || key.escape || key.leftArrow) {
       onCancel();
     }
   });
@@ -459,10 +459,10 @@ function ConfirmPopup({
         <Text>{message}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text color="green" bold>Y</Text>
+        <Text color="green" bold>y →</Text>
         <Text> — {t("ui.confirm")}  |  </Text>
-        <Text color="red" bold>N</Text>
-        <Text> / Esc — {t("ui.cancel")}</Text>
+        <Text color="red" bold>n ←</Text>
+        <Text> / esc — {t("ui.cancel")}</Text>
       </Box>
     </Box>
   );

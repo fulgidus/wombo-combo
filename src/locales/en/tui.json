@@ -81,7 +81,7 @@
   "dashboard.etaUnestimated_other": "{{count}} without estimate",
   "onboarding.common.yes": "Yes",
   "onboarding.common.no": "No",
-  "onboarding.confirm.hint": "Arrow keys: toggle  |  Enter: select  |  Esc: cancel",
+  "onboarding.confirm.hint": "→ confirm  |  ← cancel  |  ↑↓ highlight  |  Enter: select",
   "onboarding.section.identity": "Identity",
   "onboarding.section.vision": "Vision",
   "onboarding.section.objectives": "Objectives",
