@@ -278,6 +278,13 @@ one file per comment under `.wombo-combo/comments/`, shown in the TUI task
 browser and fed to agents. See
 [docs/src/content/docs/guides/comments.md](docs/src/content/docs/guides/comments.md).
 
+## Retro
+
+`bun dev retro` collects failure signals from replays, analytics, evals and
+comments and suggests environment improvements by severity (`--task`,
+`--quest`, `--since 7d`, `--save` to `.wombo-combo/retros/`). See
+[docs/src/content/docs/guides/retro.md](docs/src/content/docs/guides/retro.md).
+
 ## GitHub sync
 
 Tasks, quests and comments can be kept in step with GitHub Issues, by hand
