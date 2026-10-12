@@ -38,7 +38,7 @@ Measured at this commit (`wc -l`):
 
 | Area | Files | Lines |
 |------|-------|-------|
-| `src/daemon/` total | 13 | 7172 (incl. `fake-agent-runner.ts` separately: 238 in `src/lib/`) |
+| `src/daemon/` total | 13 | 6934 |
 | `agent-runner.ts` | 1 | 2378 |
 | `daemon.ts` | 1 | 949 |
 | `state.ts` | 1 | 733 |
@@ -48,7 +48,7 @@ Measured at this commit (`wc -l`):
 | Daemon-focused tests (`tests/daemon-*.test.ts`) | 9 | 5930 |
 | All of `src/` | 229 `.ts`/`.tsx` | about 95.5k |
 
-Port surface under PR #3's own module map: about 7.2k lines of daemon code
+Port surface under PR #3's own module map: about 6.9k lines of daemon code
 plus 6.1k lines of `src/lib` it depends on, so roughly 13k lines of TS to
 re-express, plus about 5.9k lines of daemon tests that encode behaviour
 (retry tiers, review stage, TDD baseline, quest scoping) which would have to
@@ -110,7 +110,7 @@ stable and what a BEAM daemon would reimplement.
   (currently 1). `daemon.ts` rejects a handshake whose version differs, so
   any non-additive change locks out older clients. Quest knowledge already
   requires additive-only changes.
-- The `Cmd*` / `Evt*` types: 29 interfaces, including `EvtStateSnapshot`,
+- The `Cmd*` / `Evt*` types, including `EvtStateSnapshot`,
   `EvtAgentStatusChange`, `EvtError`. The TUI renders from these.
 - `launcher.ts` conventions: `daemon.pid`, port-based health check, and a
   detached spawn of `bun run <daemon entry>`. A BEAM daemon needs a
@@ -141,7 +141,7 @@ rule.
 |--------------|--------------|---------------------------|---------------------|
 | Isolation | Per-process heaps; a crash cannot corrupt another process | None for memory; isolation is per async task and per child process; an exception is containable, a hung sync call or OOM is not | Mostly no: agents are external CLI processes (claude, codex, opencode, ...), already isolated by the OS. What can fail in-process is the runner's own bookkeeping |
 | Scheduling | Preemptive, per-process reductions | Cooperative event loop; one long synchronous section stalls every agent's monitoring and the WebSocket | Partly: work is mostly I/O waiting on children and git. The risk is sync git/fs calls, which can be moved to async |
-| Supervision | Built in: restart strategies, intensity, `link`/`monitor` | Must be built (the spike prototype does this in a few hundred lines) | Yes: this is the actual gap, since recovery is spread over ad hoc counters |
+| Supervision | Built in: restart strategies, intensity, `link`/`monitor` | Must be built (the spike prototype under `spikes/otp-supervision/` explores this) | Yes: this is the actual gap, since recovery is spread over ad hoc counters |
 | Hot code reload | Yes | No | No: the daemon is short-lived per project, restarted on upgrade; running agents are separate processes and survive a daemon restart through reconciliation |
 | Failure signals | Exit reasons delivered to linked processes | Promise rejections and child exit codes, which `monitor.ts` already parses | Equivalent for this workload |
 
