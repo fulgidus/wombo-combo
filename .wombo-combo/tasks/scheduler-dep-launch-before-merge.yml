@@ -8,16 +8,17 @@ description: |
   "merged" (or the worktree is rebased onto the base after the dependency merges); keep "verified" only for chain
   successors that intentionally branch from their predecessor. Add a scheduler test covering a dependent whose
   dependency is verified but not merged.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-12T23:46:57.639Z
 constraints: []
 forbidden: []
 references: []
 notes: []
 subtasks: []
+paths: []
