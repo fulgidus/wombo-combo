@@ -392,6 +392,11 @@ const completeCommand = defineCommand({
       description: "Skip merge, just mark as complete",
       required: false,
     },
+    dryRun: {
+      type: "boolean",
+      description: "Show what would be completed without changing anything",
+      required: false,
+    },
     output: {
       type: "string",
       alias: "o",
@@ -408,6 +413,7 @@ const completeCommand = defineCommand({
       subcommand: "complete",
       questId: args.questId,
       force: args.force,
+      dryRun: args.dryRun,
       outputFmt: resolveOutputFormat(args.output),
     });
   },
