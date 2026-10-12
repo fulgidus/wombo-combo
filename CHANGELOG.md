@@ -131,3 +131,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-0d1e9fa-cf54de7 -->
 
 - **otp-recovery-map**: Map Current Ad Hoc Recovery
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-463ef83-574c5e9 -->
+
+- **otp-ts-vs-elixir**: Compare TypeScript Versus Elixir
