@@ -167,3 +167,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-49eb266-0a0cd78 -->
 
 - **sup-events**: Typed Supervisor Event Emitter
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-a4f4600-7d64903 -->
+
+- **sup-strategies**: Restart Strategy and Policy Functions
