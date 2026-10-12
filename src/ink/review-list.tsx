@@ -20,7 +20,7 @@
  * genesis review (quests) and plan review (tasks).
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Box, Text } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import type {
@@ -445,9 +445,9 @@ function ConfirmPopup({
 }): React.ReactElement {
   const t = useI18n();
   useScreenInput((input, key) => {
-    if (input === "y" || input === "Y") {
+    if (input === "y" || input === "Y" || key.rightArrow) {
       onConfirm();
-    } else if (input === "n" || input === "N" || key.escape) {
+    } else if (input === "n" || input === "N" || key.escape || key.leftArrow) {
       onCancel();
     }
   });
@@ -459,10 +459,10 @@ function ConfirmPopup({
         <Text>{message}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text color="green" bold>Y</Text>
+        <Text color="green" bold>y →</Text>
         <Text> — {t("ui.confirm")}  |  </Text>
-        <Text color="red" bold>N</Text>
-        <Text> / Esc — {t("ui.cancel")}</Text>
+        <Text color="red" bold>n ←</Text>
+        <Text> / esc — {t("ui.cancel")}</Text>
       </Box>
     </Box>
   );
@@ -503,7 +503,14 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
   // Scroll window: cap the list to the terminal height so long plans
   // scroll instead of growing the box past the screen
   const { rows } = useTerminalSize();
-  const listHeight = Math.max(4, rows - 12);
+  // Chrome around the body: header (2) + status bar (2-3) + root margin (1),
+  // plus the list pane's border and label (3).
+  const bodyHeight = Math.max(6, rows - 6);
+  const listHeight = Math.max(3, bodyHeight - 3);
+
+  // Detail pane scroll offset (PgUp/PgDn); resets when the selection changes.
+  const [detailScroll, setDetailScroll] = useState(0);
+  useEffect(() => setDetailScroll(0), [state.selectedIndex]);
   const winStart = Math.max(
     0,
     Math.min(
@@ -610,6 +617,16 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         return;
       }
 
+      // PgUp / PgDn — scroll the detail pane
+      if (key.pageDown) {
+        setDetailScroll((n) => n + Math.max(1, bodyHeight - 2));
+        return;
+      }
+      if (key.pageUp) {
+        setDetailScroll((n) => Math.max(0, n - Math.max(1, bodyHeight - 2)));
+        return;
+      }
+
       // Arrow keys for navigation
       if (key.upArrow) {
         setState((s) => selectItem(s, s.selectedIndex - 1));
@@ -621,7 +638,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         return;
       }
     },
-    [modal, state, config]
+    [modal, state, config, bodyHeight]
   );
 
   useScreenInput(handleInput, { isActive: modal.type === "none" });
@@ -685,7 +702,7 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
   }
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
+    <Box flexDirection="column" height={rows - 1}>
       {/* Header */}
       <ReviewHeader
         config={config}
@@ -694,10 +711,11 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         issues={config.issues}
       />
 
-      {/* Main content: list + detail */}
-      <Box>
+      {/* Main content: list + detail. Clipped to the space left by header and
+          status bar so a tall detail pane never pushes the status bar off screen. */}
+      <Box flexGrow={1} flexShrink={1} height={bodyHeight} overflow="hidden">
         {/* Left pane: item list */}
-        <Box flexDirection="column" borderStyle="single" borderColor="gray" width="50%" paddingX={0}>
+        <Box flexDirection="column" borderStyle="single" borderColor="gray" width="50%" paddingX={0} overflow="hidden">
           <Text bold dimColor> {config.listLabel}</Text>
           {state.items.length === 0 ? (
             <Text dimColor> {t("reviewList.noneInPlan", { items: config.itemLabelPlural })}</Text>
@@ -714,12 +732,14 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         </Box>
 
         {/* Right pane: detail */}
-        <Box width="50%">
-          <DetailPane
-            item={selectedItem}
-            allItems={state.items}
-            config={config}
-          />
+        <Box width="50%" flexDirection="column" overflow="hidden">
+          <Box flexDirection="column" flexShrink={0} marginTop={-detailScroll} width="100%">
+            <DetailPane
+              item={selectedItem}
+              allItems={state.items}
+              config={config}
+            />
+          </Box>
         </Box>
       </Box>
 

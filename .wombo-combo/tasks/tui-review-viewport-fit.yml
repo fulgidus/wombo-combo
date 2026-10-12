@@ -2,14 +2,14 @@ id: tui-review-viewport-fit
 title: Planner approval screen must fit terminal height
 description: ReviewList caps only the list (rows-12). Detail pane and modals still overflow short terminals. Size whole
   layout to viewport.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T08:53:16.445Z
+ended_at: 2026-10-12T08:55:19.565Z
 constraints: []
 forbidden: []
 references: []

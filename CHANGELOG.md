@@ -119,3 +119,9 @@
 <!-- wombo-combo:operation:main-14de615-4d34bda -->
 
 - **merge-stale-root-changelog**: Root checkout lags the post-merge changelog commit
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-371d771-61b3894 -->
+
+- **tui-settings-horizontal-arrows**: Settings: left/right arrows change values
