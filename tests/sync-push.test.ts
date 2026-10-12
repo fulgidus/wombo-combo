@@ -294,3 +294,35 @@ describe("finished work (includeFinished)", () => {
     expect(st2.items.filter((i) => i.state === "new").map((i) => i.ref).sort()).toEqual(["quest:q-done", "quest:q1", "t-done", "t1"]);
   });
 });
+
+describe("pushToGitHub concurrency", () => {
+  test("two concurrent pushes end with one issue per task", async () => {
+    const [a, b] = await Promise.all([
+      pushToGitHub({ projectRoot: root, client: client() }),
+      pushToGitHub({ projectRoot: root, client: client() }),
+    ]);
+    expect(a.errors).toEqual([]);
+    expect(b.errors).toEqual([]);
+    expect(fake.issues).toHaveLength(2);
+  });
+
+  test("duplicate guard keeps the lowest issue and closes the other as duplicate", async () => {
+    const real = client();
+    const racing = {
+      ...real,
+      createIssue: async (input: Parameters<typeof real.createIssue>[0]) => {
+        // another client wins the race just before our create lands
+        fake.seedIssue({ title: input.title, body: input.body });
+        return real.createIssue(input);
+      },
+    } as typeof real;
+    const report = await pushToGitHub({ projectRoot: root, client: racing, only: { kind: "task", id: "t1" } });
+    expect(report.errors).toEqual([]);
+    const open = fake.issues.filter((i) => i.state === "open");
+    expect(open).toHaveLength(1);
+    const closed = fake.issues.find((i) => i.state === "closed")!;
+    expect(closed.state_reason).toBe("duplicate");
+    expect(closed.number).toBeGreaterThan(open[0]!.number);
+    expect(readMapping(root, "task", "t1")!.issue_number).toBe(open[0]!.number);
+  });
+});

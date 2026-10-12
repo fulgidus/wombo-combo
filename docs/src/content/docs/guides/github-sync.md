@@ -174,15 +174,22 @@ and items that changed since the last sync.
 - **Unexpected state**: `sync status`, then `tasks check --mirror`. A mapping
   file can be deleted safely; the next push re-finds the issue by its marker.
 
+## Concurrency
+
+Every sync cycle and every item push or pull takes an advisory lock file,
+`.wombo-combo/sync/.lock` (gitignored), created atomically with the owner's
+pid, host and timestamp. A lock is stale after 2 minutes, or when its pid is
+dead on the same host, and is then taken over. A process waits a few seconds
+for a busy lock, then continues with a warning: a sync problem never blocks a
+woco command. As a second layer, after creating an issue the push lists the
+issues carrying the same woco marker; if there is more than one it keeps the
+lowest number, adopts it in the mapping and closes the others with the
+`duplicate` reason.
+
 ## Known limits
 
 - Auto mode hooks the CLI commands. Changes made by the daemon or agents are
   picked up by the periodic cycle, not instantly.
-- **CLI and daemon race**: a CLI command and the daemon cycle in different
-  processes are not serialised with each other (only inside one process). If
-  both push a brand-new item in the same instant, the marker lookup before
-  creation makes a duplicate issue very unlikely but not impossible; if it
-  happens, close the extra issue and run `sync run`.
 - A task description that contains a line equal to one of the section
   headings used in the issue body (for example `## Constraints`) is read back
   as that section.

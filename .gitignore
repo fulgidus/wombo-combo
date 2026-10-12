@@ -30,4 +30,5 @@ graphify-out/manifest.json
 .wombo-combo/agents-cache/
 .wombo-combo/replays/
 .wombo-combo/sync/pending-notices.json
+.wombo-combo/sync/.lock
 .wombo-combo/sync/pending-notices.json.*
