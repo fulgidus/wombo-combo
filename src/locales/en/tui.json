@@ -453,7 +453,7 @@
   "settings.sectionGeneral": "General",
   "settings.hintCycle": "Enter to cycle",
   "settings.hintToggle": "Enter to toggle",
-  "settings.footer": "↑↓ navigate  Enter edit/cycle  ESC back",
+  "settings.footer": "↑↓ navigate  ←→/Enter change  ESC back",
   "dashboard.pressEsc": "Press ESC to open the menu.",
   "dashboard.footerHints": "ESC menu  q quit",
   "screen.loading": "Loading",

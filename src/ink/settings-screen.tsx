@@ -178,7 +178,8 @@ const RESET_IDX = FIELDS.length - 1;
 /**
  * Full settings TUI screen.
  *
- * Navigation: arrow keys to move cursor, Enter to edit / cycle value,
+ * Navigation: up/down arrows move the cursor, Enter or left/right arrows
+ * change the value (left = previous, right = next),
  * Escape or "b" to go back.
  */
 export function SettingsScreen({
@@ -207,8 +208,55 @@ export function SettingsScreen({
     [onSave, projectRoot]
   );
 
+  /** Apply a new config, update local state and persist it. */
+  const apply = useCallback(
+    (patched: SettingsScreenConfig) => {
+      setCfg(patched);
+      persist(patched);
+    },
+    [persist]
+  );
+
+  /**
+   * Change the selected field's value. `dir` is +1 (next / toggle) or -1
+   * (previous / toggle). The reset row is never triggered by direction keys.
+   */
+  const change = useCallback(
+    (dir: 1 | -1, allowReset: boolean) => {
+      const field = FIELDS[cursor];
+      const step = <T,>(options: T[], current: T): T => {
+        const idx = options.indexOf(current);
+        return options[(idx + dir + options.length) % options.length];
+      };
+      switch (field.id) {
+        case "reset":
+          if (allowReset) apply({});
+          return;
+        case "theme":
+          apply({ ...cfg, tui: { ...cfg.tui, theme: step<string>(THEME_OPTIONS, cfg.tui?.theme ?? "default") } });
+          return;
+        case "locale":
+          apply({ ...cfg, tui: { ...cfg.tui, locale: step(LOCALE_OPTIONS, cfg.tui?.locale ?? "auto") } });
+          return;
+        case "checkForUpdates":
+          apply({ ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } });
+          return;
+        case "autoInstallUpdates":
+          apply({ ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } });
+          return;
+        case "devMode":
+          apply({ ...cfg, devMode: !cfg.devMode });
+          return;
+      }
+    },
+    [cursor, cfg, apply]
+  );
+
   const handleInput = useCallback(
-    (_input: string, key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean }) => {
+    (
+      _input: string,
+      key: { upArrow: boolean; downArrow: boolean; leftArrow: boolean; rightArrow: boolean; return: boolean; escape: boolean }
+    ) => {
       if (key.upArrow) {
         setCursor((c) => Math.max(0, c - 1));
         return;
@@ -221,53 +269,17 @@ export function SettingsScreen({
         onBack();
         return;
       }
-      if (key.return) {
-        const field = FIELDS[cursor];
-        if (field.id === "reset") {
-          const reset: SettingsScreenConfig = {};
-          setCfg(reset);
-          persist(reset);
-          return;
-        }
-        if (field.id === "theme") {
-          const current = cfg.tui?.theme ?? "default";
-          const idx = THEME_OPTIONS.indexOf(current as ThemeName);
-          const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length];
-          const patched = { ...cfg, tui: { ...cfg.tui, theme: next } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "locale") {
-          const current = cfg.tui?.locale ?? "auto";
-          const idx = LOCALE_OPTIONS.indexOf(current);
-          const next = LOCALE_OPTIONS[(idx + 1) % LOCALE_OPTIONS.length];
-          const patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "checkForUpdates") {
-          const patched = { ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "autoInstallUpdates") {
-          const patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
-        if (field.id === "devMode") {
-          const patched = { ...cfg, devMode: !cfg.devMode };
-          setCfg(patched);
-          persist(patched);
-          return;
-        }
+      if (key.leftArrow) {
+        change(-1, false);
+        return;
       }
+      if (key.rightArrow) {
+        change(1, false);
+        return;
+      }
+      if (key.return) change(1, true);
     },
-    [cursor, cfg, persist, onBack]
+    [change, onBack]
   );
 
   useScreenInput(handleInput);

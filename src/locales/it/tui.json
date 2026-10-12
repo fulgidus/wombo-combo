@@ -462,7 +462,7 @@
   "settings.sectionGeneral": "Generale",
   "settings.hintCycle": "Enter per cambiare",
   "settings.hintToggle": "Enter per attivare/disattivare",
-  "settings.footer": "↑↓ naviga  Enter modifica/cambia  ESC indietro",
+  "settings.footer": "↑↓ naviga  ←→/Enter cambia  ESC indietro",
   "dashboard.pressEsc": "Premi ESC per aprire il menu.",
   "dashboard.footerHints": "ESC menu  q esci",
   "screen.loading": "Caricamento",
