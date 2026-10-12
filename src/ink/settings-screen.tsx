@@ -41,6 +41,30 @@ export interface SettingsScreenConfig {
     autoInstallUpdates?: boolean;
   };
   devMode?: boolean;
+  /** Named agent profiles (read-only here; edit them in config.json) */
+  agentProfiles?: Record<string, { harness: string; model?: string | null; provider?: string | null }>;
+  /** Which profile handles work by default */
+  routing?: { default?: string };
+  /** Per-task-weight model (null = session model) */
+  modelRouting?: { light?: string | null; medium?: string | null; heavy?: string | null };
+}
+
+/** Next option after `current`, wrapping; an unknown current value yields the first option. */
+export function cycleOption<T>(options: readonly T[], current: T, dir: 1 | -1 = 1): T {
+  const idx = options.indexOf(current);
+  if (idx < 0) return options[0];
+  return options[(idx + dir + options.length) % options.length];
+}
+
+/** Models selectable for modelRouting: session default (null), models used by profiles, and the current value. */
+export function modelOptions(cfg: SettingsScreenConfig, current: string | null | undefined): (string | null)[] {
+  const options: (string | null)[] = [null];
+  const add = (m: string | null | undefined) => {
+    if (m && !options.includes(m)) options.push(m);
+  };
+  for (const p of Object.values(cfg.agentProfiles ?? {})) add(p.model);
+  add(current);
+  return options;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +152,24 @@ export interface SettingsScreenProps {
   projectRoot?: string;
 }
 
-type FieldId = "theme" | "locale" | "checkForUpdates" | "autoInstallUpdates" | "devMode" | "reset";
+type ModelWeight = "light" | "medium" | "heavy";
+type FieldId =
+  | "theme"
+  | "locale"
+  | "checkForUpdates"
+  | "autoInstallUpdates"
+  | "devMode"
+  | "routingDefault"
+  | "modelLight"
+  | "modelMedium"
+  | "modelHeavy"
+  | "reset";
+
+const MODEL_FIELD_WEIGHT: Partial<Record<FieldId, ModelWeight>> = {
+  modelLight: "light",
+  modelMedium: "medium",
+  modelHeavy: "heavy",
+};
 
 interface FieldDef {
   id: FieldId;
@@ -164,6 +205,16 @@ const FIELDS: FieldDef[] = [
     getValue: (cfg, t) => (cfg.devMode ? t("settings.on") : t("settings.off")),
   },
   {
+    id: "routingDefault",
+    labelKey: "settings.routingDefault",
+    getValue: (cfg, t) => cfg.routing?.default ?? t("settings.none"),
+  },
+  ...(["light", "medium", "heavy"] as const).map((w): FieldDef => ({
+    id: `model${w[0].toUpperCase()}${w.slice(1)}` as FieldId,
+    labelKey: `settings.model.${w}`,
+    getValue: (cfg, t) => cfg.modelRouting?.[w] ?? t("settings.sessionModel"),
+  })),
+  {
     id: "reset",
     labelKey: "settings.reset",
     getValue: () => "",
@@ -173,6 +224,7 @@ const FIELDS: FieldDef[] = [
 // Indices for the render sections
 const APPEARANCE_FIELD_IDS: FieldId[] = ["theme", "locale"];
 const GENERAL_FIELD_IDS: FieldId[] = ["checkForUpdates", "autoInstallUpdates", "devMode"];
+const PROVIDER_FIELD_IDS: FieldId[] = ["routingDefault", "modelLight", "modelMedium", "modelHeavy"];
 const RESET_IDX = FIELDS.length - 1;
 
 /**
@@ -225,6 +277,16 @@ export function SettingsScreen({
         patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
       } else if (field.id === "devMode") {
         patched = { ...cfg, devMode: !cfg.devMode };
+      } else if (field.id === "routingDefault") {
+        const names = Object.keys(cfg.agentProfiles ?? {});
+        if (names.length === 0) return;
+        const next = cycleOption(names, cfg.routing?.default ?? "", dir);
+        patched = { ...cfg, routing: { ...cfg.routing, default: next } };
+      } else if (MODEL_FIELD_WEIGHT[field.id]) {
+        const weight = MODEL_FIELD_WEIGHT[field.id]!;
+        const current = cfg.modelRouting?.[weight] ?? null;
+        const next = cycleOption(modelOptions(cfg, current), current, dir);
+        patched = { ...cfg, modelRouting: { ...cfg.modelRouting, [weight]: next } };
       }
       if (patched) {
         setCfg(patched);
@@ -317,6 +379,30 @@ export function SettingsScreen({
               selected={cursor === idx}
               onEdit={() => {}}
               hint={t("settings.hintToggle")}
+            />
+          );
+        })}
+      </SettingsSection>
+
+      {/* Providers & models section */}
+      <SettingsSection title={t("settings.sectionProviders")}>
+        {Object.entries(cfg.agentProfiles ?? {}).map(([name, p]) => (
+          <Box key={name} marginLeft={3}>
+            <Text dimColor>
+              {name}: {[p.harness, p.provider, p.model].filter(Boolean).join(" / ")}
+            </Text>
+          </Box>
+        ))}
+        {FIELDS.filter((f) => PROVIDER_FIELD_IDS.includes(f.id)).map((field) => {
+          const idx = FIELDS.findIndex((x) => x.id === field.id);
+          return (
+            <SettingsField
+              key={field.id}
+              label={t(field.labelKey)}
+              value={field.getValue(cfg, t)}
+              selected={cursor === idx}
+              onEdit={() => {}}
+              hint={t("settings.hintCycle")}
             />
           );
         })}
