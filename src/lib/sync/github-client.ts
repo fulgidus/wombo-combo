@@ -74,7 +74,7 @@ export interface UpdateIssueInput {
   title?: string;
   body?: string;
   state?: "open" | "closed";
-  state_reason?: "completed" | "not_planned" | "reopened" | null;
+  state_reason?: "completed" | "not_planned" | "reopened" | "duplicate" | null;
   labels?: string[];
   assignees?: string[];
 }

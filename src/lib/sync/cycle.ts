@@ -12,6 +12,7 @@
  */
 
 import { SYNC_MIN_INTERVAL_SECONDS } from "../../config";
+import { withSyncLock } from "./lock";
 import { pullFromGitHub, type PullReport } from "./pull";
 import {
   postRemoteNotices,
@@ -57,7 +58,9 @@ export function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
 
 /** Pull (optional), post notices, push. Serialised with every other sync operation. Throws on transport failures. */
 export function runSyncCycle(opts: CycleOptions): Promise<CycleReport> {
-  return runExclusive(async () => {
+  const locked = <T>(fn: () => Promise<T>) =>
+    opts.dryRun === true ? fn() : withSyncLock(opts.projectRoot, fn, { warn: opts.warn });
+  return runExclusive(() => locked(async () => {
     const dryRun = opts.dryRun === true;
     let pull: PullReport | null = null;
     let notices: NoticeReport = { posted: [], errors: [] };
@@ -73,7 +76,7 @@ export function runSyncCycle(opts: CycleOptions): Promise<CycleReport> {
     }
     const push = await pushToGitHub({ projectRoot: opts.projectRoot, client: opts.client, dryRun, warn: opts.warn });
     return { pull, notices, push };
-  });
+  }));
 }
 
 let cycleInFlight: Promise<CycleReport> | null = null;

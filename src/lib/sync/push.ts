@@ -29,6 +29,7 @@ import {
   type GitHubIssue,
   type LabelSpec,
 } from "./github-client";
+import { withSyncLock } from "./lock";
 import { TRIAGE_LABELS, remoteSyncHash } from "./hashing";
 import { conflictCommentPrefix } from "./pull";
 import {
@@ -304,7 +305,13 @@ function wantedLabels(items: LocalItem[]): LabelSpec[] {
 // Push
 // ---------------------------------------------------------------------------
 
-export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
+/** Push under the cross-process sync lock (dry runs only read, so they skip it). */
+export function pushToGitHub(opts: PushOptions): Promise<PushReport> {
+  if (opts.dryRun === true) return pushUnlocked(opts);
+  return withSyncLock(opts.projectRoot, () => pushUnlocked(opts), { warn: opts.warn });
+}
+
+async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
   const { projectRoot, client } = opts;
   const dryRun = opts.dryRun === true;
   const report: PushReport = {
@@ -416,14 +423,53 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
             state_reason: item.draft.stateReason as "completed" | "not_planned" | null,
           });
         }
-        issueNumber = created.number;
-        issueUrl = created.html_url;
-        entry = saveEntry(item, final, {});
-        report.created.push({ ...base, issue: created.number, url: created.html_url });
+        const winner = await resolveDuplicates(item, created);
+        if (winner.number !== created.number) {
+          // Another client created the same item first: adopt its issue
+          existedRemotely = true;
+          issueNumber = winner.number;
+          issueUrl = winner.html_url;
+          const updated = await updateExisting(item, winner.number, toRemoteIssue(winner));
+          if (updated) entry = updated;
+          report.unchanged.push({ ...base, issue: winner.number, url: winner.html_url });
+        } else {
+          issueNumber = created.number;
+          issueUrl = created.html_url;
+          entry = saveEntry(item, final, {});
+          report.created.push({ ...base, issue: created.number, url: created.html_url });
+        }
       }
     }
 
     await mirrorComments(item, issueNumber, issueUrl, entry, existedRemotely);
+  }
+
+  /**
+   * Duplicate guard: after creating, list every issue carrying the item's
+   * marker; keep the lowest number, close the others as duplicates.
+   * Failures only warn: the next sync cycle re-checks nothing, but the
+   * mapping always points at an existing issue.
+   */
+  async function resolveDuplicates(item: LocalItem, created: GitHubIssue): Promise<GitHubIssue> {
+    try {
+      const all = await client.listIssues({ state: "all" });
+      const same = all
+        .filter((i) => {
+          const m = findMarker(i.body ?? "");
+          return m !== null && m.kind === item.kind && m.id === item.id;
+        })
+        .sort((a, b) => a.number - b.number);
+      if (same.length < 2) return created;
+      const keep = same[0]!;
+      for (const dup of same.slice(1)) {
+        if (dup.state === "closed") continue;
+        await client.updateIssue(dup.number, { state: "closed", state_reason: "duplicate" });
+      }
+      return keep;
+    } catch (err) {
+      opts.warn?.(`duplicate check failed for ${item.ref}: ${errMsg(err)}`);
+      return created;
+    }
   }
 
   /** PATCH an existing issue to match the draft and persist the mapping. */
