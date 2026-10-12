@@ -131,3 +131,41 @@ describe("SettingsField", () => {
     expect(selected).not.toBe(notSelected);
   });
 });
+
+describe("provider and model settings", () => {
+  const config = {
+    agentProfiles: {
+      fast: { harness: "claude-code", model: "haiku", provider: "anthropic" },
+      deep: { harness: "codex", model: "gpt-x" },
+    },
+    routing: { default: "fast" },
+    modelRouting: { light: "haiku", medium: null, heavy: null },
+  } as const;
+
+  test("renders profiles, default routing profile and model routing", async () => {
+    const { SettingsScreen } = await import("../../src/ink/settings-screen");
+    const output = renderToString(
+      React.createElement(SettingsScreen, { config: config as any, onSave: () => {}, onBack: () => {} })
+    );
+    expect(output).toContain("Providers & models");
+    expect(output).toContain("deep");
+    expect(output).toContain("claude-code");
+    expect(output).toContain("gpt-x");
+    expect(output).toContain("Default profile");
+    expect(output).toContain("Light model");
+    expect(output).toContain("haiku");
+  });
+
+  test("cycleOption wraps and starts at the first option for unknown values", async () => {
+    const { cycleOption } = await import("../../src/ink/settings-screen");
+    expect(cycleOption(["a", "b"], "a")).toBe("b");
+    expect(cycleOption(["a", "b"], "b")).toBe("a");
+    expect(cycleOption(["a", "b"], "zzz")).toBe("a");
+    expect(cycleOption([null, "m"], null)).toBe("m");
+  });
+
+  test("modelOptions lists null, profile models and the current value", async () => {
+    const { modelOptions } = await import("../../src/ink/settings-screen");
+    expect(modelOptions(config as any, "custom-model")).toEqual([null, "haiku", "gpt-x", "custom-model"]);
+  });
+});
