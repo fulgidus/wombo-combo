@@ -85,5 +85,16 @@
       "enabled": true,
       "mode": "manual"
     }
+  },
+  "tui": {
+    "theme": "default",
+    "locale": "auto",
+    "checkForUpdates": true,
+    "autoInstallUpdates": false
+  },
+  "modelRouting": {
+    "light": null,
+    "medium": null,
+    "heavy": null
   }
 }
