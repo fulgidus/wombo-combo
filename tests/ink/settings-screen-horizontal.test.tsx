@@ -7,7 +7,7 @@ import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render } from "ink";
 import { PassThrough } from "node:stream";
-import { waitFor } from "../helpers/wait-for";
+import { waitFor, eventually } from "../helpers/wait-for";
 import { SettingsScreen, type SettingsScreenConfig } from "../../src/ink/settings-screen";
 
 const RIGHT = "\x1b[C";
@@ -72,5 +72,36 @@ describe("SettingsScreen horizontal arrows", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(s.saves.length).toBe(0);
     s.unmount();
+  });
+});
+
+describe("SettingsScreen agents & routing entry", () => {
+  test("Enter on the Agents & routing row opens the screen", async () => {
+    let opened = 0;
+    const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
+    (stdout as any).columns = 120;
+    (stdout as any).rows = 50;
+    const stdin = new PassThrough() as unknown as NodeJS.ReadStream;
+    (stdin as any).isTTY = true;
+    (stdin as any).setRawMode = () => stdin;
+    (stdin as any).ref = () => stdin;
+    (stdin as any).unref = () => stdin;
+    const inst = render(
+      React.createElement(SettingsScreen, {
+        config: {},
+        onSave: () => {},
+        onBack: () => {},
+        onOpenAgents: () => opened++,
+      }),
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+    );
+    const w = (s: string) => (stdin as unknown as { write: (s: string) => void }).write(s);
+    for (let i = 0; i < 5; i++) {
+      w(DOWN);
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    w("\r");
+    await eventually(() => expect(opened).toBe(1));
+    inst.unmount();
   });
 });

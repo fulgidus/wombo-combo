@@ -50,6 +50,8 @@ import { ChromeLayout, type DaemonStats } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
 import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
+import { AgentsRoutingScreen } from "./agents-routing-screen";
+import type { Draft } from "../lib/agents-routing";
 import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
 import { initI18n } from "../lib/i18n";
@@ -219,6 +221,7 @@ export function TuiApp({
     "task-browser": tFn("screen.taskBrowser"),
     "daemon-monitor": tFn("screen.daemonMonitor"),
     settings: tFn("screen.settings"),
+    "agents-routing": tFn("screen.agentsRouting"),
     onboarding: tFn("screen.setup"),
     dashboard: tFn("screen.dashboard"),
     replays: tFn("screen.replays"),
@@ -241,12 +244,20 @@ export function TuiApp({
           projectRoot,
           onSave: (patched: SettingsScreenConfig) => setSettingsConfig(patched),
           onBack: () => navRef.current?.pop(),
+          onOpenAgents: () =>
+            navRef.current?.push("agents-routing", {
+              config: { ...config, ...settingsConfig } as unknown,
+              projectRoot,
+              onSaved: (d: Draft) =>
+                setSettingsConfig((c) => ({ ...c, agentProfiles: d.profiles, routing: d.routing })),
+              onBack: () => navRef.current?.pop(),
+            } as Record<string, unknown>),
         } as Record<string, unknown>);
       } else if (action === "quit") {
         onExit();
       }
     },
-    [settingsConfig, projectRoot, onExit]
+    [settingsConfig, projectRoot, onExit, config]
   );
 
   // Initial quest-picker props (declared early: dashboard "back" may need them)
@@ -371,6 +382,7 @@ export function TuiApp({
     "task-browser": TaskBrowserScreen,
     "daemon-monitor": DaemonMonitorScreen,
     settings: SettingsScreen,
+    "agents-routing": AgentsRoutingScreen,
     onboarding: OnboardingScreen,
     dashboard: DashboardScreen,
     replays: ReplayScreen,
