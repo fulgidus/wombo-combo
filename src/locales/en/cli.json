@@ -543,6 +543,7 @@
   "cli.usage.reasoning": "Reasoning:",
   "cli.usage.totalTokens": "Total tokens:",
   "cli.usage.totalCost": "Total cost:",
+  "cli.usage.costNote": "Cost is the USD figure the provider reports. For Claude Code that is the API list price; a Pro or Max subscription is not billed per token.",
   "cli.usage.stepsRecorded": "Steps recorded:",
   "cli.usage.noData": "No usage data found.",
   "cli.usage.noDataHint": "Usage data is recorded when agents run via 'woco launch'.",

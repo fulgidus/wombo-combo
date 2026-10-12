@@ -149,6 +149,7 @@ function renderTotalUsage(totals: UsageTotals): void {
   console.log(`  ${lbl(t("cli.usage.reasoning"), 18)}${FG.yellow}${formatNumber(totals.reasoning_tokens)}${RESET}`);
   console.log(`  ${BOLD}${lbl(t("cli.usage.totalTokens"), 18)}${formatNumber(totals.total_tokens)}${RESET}`);
   console.log(`  ${lbl(t("cli.usage.totalCost"), 18)}${formatCost(totals.total_cost)}`);
+  if (totals.total_cost > 0) console.log(`  ${DIM}${t("cli.usage.costNote")}${RESET}`);
   console.log(`  ${lbl(t("cli.usage.stepsRecorded"), 18)}${totals.record_count}`);
   console.log("");
 }

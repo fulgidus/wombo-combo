@@ -58,6 +58,29 @@ export function appendUsageRecord(
 // ---------------------------------------------------------------------------
 
 /**
+ * Fill numeric fields that older or partial writers left out. A missing
+ * `total_tokens` would otherwise turn every aggregate into NaN.
+ */
+export function normalizeUsageRecord(r: UsageRecord): UsageRecord {
+  const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const input = num(r.input_tokens);
+  const output = num(r.output_tokens);
+  const reasoning = num(r.reasoning_tokens);
+  return {
+    ...r,
+    input_tokens: input,
+    output_tokens: output,
+    cache_read: num(r.cache_read),
+    cache_write: num(r.cache_write),
+    reasoning_tokens: reasoning,
+    total_tokens: typeof r.total_tokens === "number" && Number.isFinite(r.total_tokens)
+      ? r.total_tokens
+      : input + output + reasoning,
+    cost: num(r.cost),
+  };
+}
+
+/**
  * Load all UsageRecords from the usage.jsonl file.
  *
  * Skips malformed lines silently (defensive against partial writes or
@@ -82,7 +105,7 @@ export function loadUsageRecords(projectRoot: string): UsageRecord[] {
       const record = JSON.parse(trimmed) as UsageRecord;
       // Basic validation: must have task_id and timestamp
       if (record.task_id && record.timestamp) {
-        records.push(record);
+        records.push(normalizeUsageRecord(record));
       }
     } catch {
       // Skip malformed lines

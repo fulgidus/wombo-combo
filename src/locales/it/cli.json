@@ -565,6 +565,7 @@
   "cli.usage.reasoning": "Ragionamento:",
   "cli.usage.totalTokens": "Token totali:",
   "cli.usage.totalCost": "Costo totale:",
+  "cli.usage.costNote": "Il costo e la cifra in USD riportata dal provider. Per Claude Code e il prezzo di listino API; un abbonamento Pro o Max non e fatturato a token.",
   "cli.usage.stepsRecorded": "Passi registrati:",
   "cli.usage.noData": "Nessun dato di utilizzo trovato.",
   "cli.usage.noDataHint": "I dati di utilizzo vengono registrati quando gli agenti girano tramite 'woco launch'.",

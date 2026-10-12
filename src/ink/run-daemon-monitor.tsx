@@ -978,11 +978,13 @@ export class InkDaemonTUI {
     this.unsubscribers.push(
       this.client.on("evt:token-usage", (payload) => {
         const evt = payload as EvtTokenUsage;
+        // The daemon sends running totals per agent, so replace; adding would
+        // double-count every update.
         const existing = this.store.tokenUsage.get(evt.featureId);
         this.store.tokenUsage.set(evt.featureId, {
-          inputTokens: (existing?.inputTokens ?? 0) + evt.inputTokens,
-          outputTokens: (existing?.outputTokens ?? 0) + evt.outputTokens,
-          totalCost: (existing?.totalCost ?? 0) + (evt.cost ?? 0),
+          inputTokens: evt.inputTokens ?? existing?.inputTokens ?? 0,
+          outputTokens: evt.outputTokens ?? existing?.outputTokens ?? 0,
+          totalCost: evt.cost ?? existing?.totalCost ?? 0,
         });
         this.notify();
       })

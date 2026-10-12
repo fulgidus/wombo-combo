@@ -235,7 +235,7 @@ export function parseUsageFromEvent(
     cache_read: cache.read,
     cache_write: cache.write,
     reasoning_tokens: tokens.reasoning ?? 0,
-    total_tokens: tokens.total,
+    total_tokens: tokens.total ?? (tokens.input ?? 0) + (tokens.output ?? 0) + (tokens.reasoning ?? 0),
     cost: event.part?.cost ?? 0,
     is_final_step: event.part?.reason === "stop",
     timestamp: new Date(event.timestamp ?? Date.now()).toISOString(),
