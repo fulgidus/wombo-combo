@@ -110,7 +110,10 @@ const ACTIVE_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "verified",
 ]);
 
-// Dep-satisfied statuses — downstream agents can proceed
+// Dep-satisfied statuses — downstream agents can proceed. "verified" only
+// counts for a chain successor sharing the dependency's worktree (see
+// isDepSatisfied); everyone else forks from the base branch and must wait
+// until the dependency is merged into it.
 const DEP_SATISFIED_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "verified",
   "merged",
@@ -556,12 +559,25 @@ export class DaemonState {
 
     for (const depId of agent.dependsOn) {
       const depAgent = this.agents.get(depId);
-      if (depAgent && !DEP_SATISFIED_STATUSES.has(depAgent.status)) {
+      if (depAgent && !this.isDepSatisfied(agent, depAgent)) {
         return false;
       }
       // If dep agent doesn't exist in tracking, assume it was already completed externally
     }
     return true;
+  }
+
+  /**
+   * A verified dependency is only usable before its merge when the dependent
+   * is its chain successor: it reuses the dependency's worktree, which carries
+   * the work, and the dependency defers its merge to the chain terminal. Any
+   * other dependent forks from the base branch, so it must wait for "merged"
+   * or it starts without the dependency's code.
+   */
+  private isDepSatisfied(agent: InternalAgentState, dep: InternalAgentState): boolean {
+    if (!DEP_SATISFIED_STATUSES.has(dep.status)) return false;
+    if (dep.status === "merged") return true;
+    return !!dep.hasChainSuccessor && agent.worktree === dep.worktree;
   }
 
   /** Get all transitive downstream agents for a given feature ID. */
