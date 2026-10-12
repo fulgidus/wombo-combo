@@ -147,6 +147,17 @@ Task and quest comments (.wombo-combo/comments/): recent comments in agent promp
 | `comments.promptMaxChars` | integer | `4000` | Maximum total characters of comment text in the agent prompt (oldest dropped first) Minimum: `1`. |
 | `comments.autoLifecycle` | boolean | `false` | Daemon posts system comments on task lifecycle events (started, failed, merged, retried) |
 
+## `review`
+
+Review gate: an optional reviewer agent checks the task diff (Standards and Spec) between verification and merge
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `review.enabled` | boolean | `false` | Run the review stage before merge |
+| `review.blockOn` | string | `"blocking"` | Lowest finding severity that sends the implementing agent back (major also blocks on blocking) Values: `blocking`, `major`. |
+| `review.maxRounds` | integer | `2` | Maximum review rounds per task Minimum: `1`. |
+| `review.maxDiffChars` | integer | `60000` | Maximum diff characters shown to the reviewer; a larger diff is cut with a truncation marker Minimum: `1`. |
+
 ## `sync`
 
 Integrations that sync woco data with external services
