@@ -30,6 +30,7 @@ import type { SchedulerConfig, SchedulerDeps } from "../src/daemon/scheduler";
 import type { WomboConfig } from "../src/config";
 import { AgentRunner } from "../src/daemon/agent-runner";
 import { worktreePath } from "../src/lib/worktree";
+import { FAKE_AGENT_SENTINEL } from "../src/lib/launcher";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -923,6 +924,37 @@ describe("AgentRunner.reconcileOrphanedTasks()", () => {
     expect(tasks.find((t) => t.id === "done-task")!.status).toBe("done");
     expect(tasks.find((t) => t.id === "cancelled-task")!.status).toBe("cancelled");
 
+    state.destroy();
+  });
+});
+
+describe("AgentRunner.reconcileVerifiedAgents() — stuck completed agents", () => {
+  test("re-runs verification for agents restored as completed", async () => {
+    const config = makeConfig({ tasksDir: "tasks", archiveDir: "archive" });
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("stuck-1", { agentName: FAKE_AGENT_SENTINEL }));
+    state.updateAgentStatus("stuck-1", "completed");
+
+    const logs: string[] = [];
+    state.subscribe((type: string, payload: any) => {
+      if (type === "evt:log") logs.push(payload?.message ?? "");
+    });
+
+    const runner = new AgentRunner({ projectRoot: tempDir, config }, state);
+    runner.reconcileVerifiedAgents();
+
+    for (let i = 0; i < 100; i++) {
+      const s = state.getAgent("stuck-1")!.status;
+      if (s === "merged" || s === "failed") break;
+      await sleep(50);
+    }
+
+    const status = state.getAgent("stuck-1")!.status;
+    expect(["merged", "failed"]).toContain(status);
+    expect(state.getAgent("stuck-1")!.verification).toBeTruthy();
+    expect(logs.some((m) => m.includes("Reconciling completed agent stuck-1"))).toBe(true);
+
+    runner.destroy();
     state.destroy();
   });
 });
