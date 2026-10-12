@@ -17,3 +17,9 @@
 <!-- wombo-combo:operation:main-24a6836-254a090 -->
 
 - **merge-stale-root-checkout**: After merging, bring the project root checkout of the base branch up to date
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-woco-retro-3a739ee-b82ced6 -->
+
+- **retro-collect**: Retro signal collectors
