@@ -167,3 +167,9 @@
 <!-- wombo-combo:operation:main-68c0aa9-ec380ca -->
 
 - **quest-plan-all**: plan-all: plan every unplanned quest en masse from the main screen
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-f631890-9c0e5e7 -->
+
+- **merge-stale-root-changelog**: Root checkout lags the post-merge changelog commit
