@@ -93,7 +93,7 @@ describe("AGENT_STATUS_COLORS", () => {
   test("has entries for all agent statuses", () => {
     const statuses = [
       "queued", "installing", "running", "completed",
-      "verified", "failed", "merged", "retry", "resolving_conflict",
+      "verified", "failed", "merged", "retry", "resolving_conflict", "in_review",
     ];
     for (const s of statuses) {
       expect(AGENT_STATUS_COLORS[s as keyof typeof AGENT_STATUS_COLORS]).toBeDefined();
@@ -109,7 +109,7 @@ describe("AGENT_STATUS_ICONS", () => {
   test("has entries for all agent statuses", () => {
     const statuses = [
       "queued", "installing", "running", "completed",
-      "verified", "failed", "merged", "retry", "resolving_conflict",
+      "verified", "failed", "merged", "retry", "resolving_conflict", "in_review",
     ];
     for (const s of statuses) {
       expect(AGENT_STATUS_ICONS[s as keyof typeof AGENT_STATUS_ICONS]).toBeDefined();

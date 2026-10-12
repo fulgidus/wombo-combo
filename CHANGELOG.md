@@ -77,3 +77,18 @@
 <!-- wombo-combo:operation:quest-woco-triage-a65dfb4-46ac346 -->
 
 - **triage-docs**: Triage guide and docs
+<!-- wombo-combo:operation:quest-review-gate-3a739ee-1014f3e -->
+
+- **review-core**: Review library: prompt, findings parser, decision, config
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-review-gate-27bf8e1-28b0dff -->
+
+- **review-pipeline**: Wire the review stage into the daemon before merge
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-review-gate-f6efac0-5d6ba2a -->
+
+- **review-docs**: Review gate guide

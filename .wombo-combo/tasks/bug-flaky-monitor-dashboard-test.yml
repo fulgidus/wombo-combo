@@ -1,0 +1,16 @@
+id: bug-flaky-monitor-dashboard-test
+title: "Flaky: monitor-router dashboard test times out under load"
+description: "tests/ink/monitor-router.test.tsx \"ESC menu → Dashboard opens the realtime dashboard\" intermittently fails with \"timed out waiting for dashboard screen\" (20s wait) when the suite runs under load or alongside another bun test run. Passes in isolation. Likely a lost keypress or race in selectFromEscMenu."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

@@ -284,6 +284,14 @@ browser and fed to agents. See
 `needs-info`, `ready-for-agent`, `ready-for-human` and `wontfix`, kept in step
 with GitHub labels by sync. See
 [docs/src/content/docs/guides/triage.md](docs/src/content/docs/guides/triage.md).
+## Review gate
+
+An optional reviewer agent (`review.enabled` in config, off by default) checks
+each verified task's diff against `CODING_STANDARDS.md`/`AGENTS.md` and the task
+spec before merge. Findings become task comments; blocking findings send the
+implementing agent back for up to `review.maxRounds` rounds. The reviewer is
+routed through the harness operation `review`. See
+[docs/src/content/docs/guides/review-gate.md](docs/src/content/docs/guides/review-gate.md).
 
 ## GitHub sync
 

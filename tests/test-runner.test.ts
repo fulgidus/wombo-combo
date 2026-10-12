@@ -98,6 +98,29 @@ describe("parseTestCounts — Bun format", () => {
 // parseTestCounts — Jest format
 // ---------------------------------------------------------------------------
 
+describe("parseTestCounts — stray output from tests", () => {
+  test("prefers Bun's own summary lines over nested report text printed by tests", () => {
+    const out = [
+      "tests/a.test.ts:",
+      "    Results: 10 passed, 0 failed, 0 skipped (10 total)",
+      "(fail) boom [1.00ms]",
+      "",
+      " 5 pass",
+      " 1 fail",
+      "Ran 6 tests across 1 file. [10.00ms]",
+    ].join("\n");
+    const r = parseTestCounts(out, "");
+    expect(r.passed).toBe(5);
+    expect(r.failed).toBe(1);
+  });
+
+  test("uses the last summary when the output contains several", () => {
+    const r = parseTestCounts(" 3 pass\n 0 fail\n\nsomething\n 7 pass\n 2 fail\n", "");
+    expect(r.passed).toBe(7);
+    expect(r.failed).toBe(2);
+  });
+});
+
 describe("parseTestCounts — Jest format", () => {
   test("parses Tests: X passed, Y total format", () => {
     const result = parseTestCounts("Tests:  5 passed, 5 total", "");

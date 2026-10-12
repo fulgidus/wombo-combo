@@ -23,6 +23,7 @@ import {
   generateDefaultConfig,
   normalizePostMergeConfig,
   normalizeReplayConfig,
+  normalizeReviewConfig,
   normalizeSyncGithubConfig,
   isSyncAuto,
   replayRetentionOptions,
@@ -709,5 +710,53 @@ describe("sync.github config", () => {
     expect(bad({ repo: 5 })).toThrow("config.sync.github.repo");
     expect(bad({ repo: "" })).toThrow("config.sync.github.repo");
     expect(bad({ repo: "a/b", intervalSeconds: 15 })).not.toThrow();
+  });
+});
+
+describe("review config", () => {
+  const base = () => ({ ...DEFAULT_CONFIG }) as WomboConfig;
+
+  test("defaults: disabled, blockOn blocking, 2 rounds, 60000 chars", () => {
+    expect(DEFAULT_CONFIG.review).toEqual({ enabled: false, blockOn: "blocking", maxRounds: 2, maxDiffChars: 60000 });
+    expect(normalizeReviewConfig(undefined)).toEqual(DEFAULT_CONFIG.review!);
+    expect(normalizeReviewConfig(null)).toEqual(DEFAULT_CONFIG.review!);
+  });
+
+  test("normalize keeps valid values and falls back on junk", () => {
+    expect(normalizeReviewConfig({ enabled: true, blockOn: "major", maxRounds: 4, maxDiffChars: 100 })).toEqual({
+      enabled: true, blockOn: "major", maxRounds: 4, maxDiffChars: 100,
+    });
+    const junk = normalizeReviewConfig({ blockOn: "nit" as any, maxRounds: 99, maxDiffChars: -1 });
+    expect(junk.blockOn).toBe("blocking");
+    expect(junk.maxRounds).toBe(5);
+    expect(junk.maxDiffChars).toBe(60000);
+    expect(normalizeReviewConfig({ maxRounds: 0 }).maxRounds).toBe(1);
+  });
+
+  test("loadConfig deep-merges a partial review block", () => {
+    const dir = mkdtempSync(join(tmpdir(), "review-cfg-"));
+    try {
+      mkdirSync(join(dir, WOMBO_DIR), { recursive: true });
+      writeFileSync(join(dir, CONFIG_FILE), JSON.stringify({ review: { enabled: true } }));
+      expect(loadConfig(dir).review).toEqual({ enabled: true, blockOn: "blocking", maxRounds: 2, maxDiffChars: 60000 });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("validate rejects bad values", () => {
+    const bad = (review: unknown) => {
+      const c = base();
+      (c as any).review = review;
+      return () => validateConfig(c);
+    };
+    expect(bad(5)).toThrow("config.review");
+    expect(bad({ enabled: "yes" })).toThrow("config.review.enabled");
+    expect(bad({ blockOn: "nit" })).toThrow("config.review.blockOn");
+    expect(bad({ maxRounds: 0 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxRounds: 6 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxRounds: 1.5 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxDiffChars: 0 })).toThrow("config.review.maxDiffChars");
+    expect(bad({ enabled: true, blockOn: "major", maxRounds: 5, maxDiffChars: 1 })).not.toThrow();
   });
 });

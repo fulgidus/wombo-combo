@@ -46,6 +46,7 @@ function agentStatusColor(status: AgentStatus): string {
     case "failed": return "red";
     case "resolving_conflict": return "magenta";
     case "retry": return "yellow";
+    case "in_review": return "cyan";
     default: return "gray";
   }
 }
@@ -257,6 +258,7 @@ function TaskListItem({
       case "completed": sAbbr = "VERIF"; break;
       case "resolving_conflict": sAbbr = "MERGE"; break;
       case "retry": sAbbr = "RETRY"; break;
+      case "in_review": sAbbr = "REVIEW"; break;
       case "verified": sAbbr = "VERIF"; break;
       case "merged": sAbbr = "DONE"; break;
       case "failed": sAbbr = "FAIL"; break;

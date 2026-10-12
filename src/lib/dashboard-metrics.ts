@@ -188,6 +188,7 @@ export function categorize(status: AgentStatus): StatusCategory {
     case "installing":
     case "running":
     case "resolving_conflict":
+    case "in_review":
       return "running";
     case "completed":
     case "verified":

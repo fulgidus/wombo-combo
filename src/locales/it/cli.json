@@ -317,6 +317,7 @@
   "cli.status.dashboard.summaryMerged": "{{count}} uniti",
   "cli.status.dashboard.summaryRetry": "{{count}} in nuovo tentativo",
   "cli.status.dashboard.summaryResolving": "{{count}} in risoluzione",
+  "cli.status.dashboard.summaryInReview": "{{count}} in revisione",
   "cli.launch.dryRunRoute": "  {{id}}: weight={{weight}} {{route}}",
   "cli.launch.routeError": "ERROR {{error}}",
   "cli.abort.notFound": "Agente non trovato per la feature: {{id}}. Usa 'woco status' per vedere gli agenti attivi.",
