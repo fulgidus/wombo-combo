@@ -49,6 +49,7 @@ export const claudeCodeHarness: HarnessAdapter = {
     providerFlag: false,
     jsonStream: true,
     usage: true,
+    cost: true,
   },
   buildLaunch: (req) => build(req, false),
   buildResume: (req) => build(req, true),

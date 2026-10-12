@@ -30,6 +30,8 @@ export interface HarnessCapabilities {
   jsonStream: boolean;
   /** stream carries token usage */
   usage: boolean;
+  /** stream carries a provider-reported cost (never estimated from a price table) */
+  cost: boolean;
 }
 
 /** Template for the `custom` harness (see harness/custom.ts). */

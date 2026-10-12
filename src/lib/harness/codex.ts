@@ -43,6 +43,7 @@ export const codexHarness: HarnessAdapter = {
     providerFlag: true,
     jsonStream: true,
     usage: true,
+    cost: false,
   },
   buildLaunch: (req) => build(req, false),
   buildResume: (req) => build(req, true),
