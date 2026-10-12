@@ -143,3 +143,9 @@
 <!-- wombo-combo:operation:main-1caae38-b83b527 -->
 
 - **tui-arrow-confirm-cancel**: Global convention: right arrow confirms, left arrow cancels
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-98063c7-3c970e4 -->
+
+- **tui-agents-routing-editor**: TUI screen to manage agent profiles, routing and harnesses
