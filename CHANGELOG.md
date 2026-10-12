@@ -185,3 +185,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-69b6d9f-25bbf43 -->
 
 - **sup-shutdown**: Ordered Timeout-Bounded Shutdown
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-1d6a862-bedc6ee -->
+
+- **sup-backoff-intensity**: Backoff and Restart Intensity Tracker
