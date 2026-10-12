@@ -19,6 +19,16 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  faultAt,
+  faultStateDir,
+  fileAttemptStore,
+  parseFaultDirectives,
+  recordAttempt,
+  wantsStageMarkers,
+  type FaultSpec,
+  type FaultStage,
+} from "./fake-agent-faults";
 
 // ---------------------------------------------------------------------------
 // Parse argv (mirrors opencode's CLI interface)
@@ -125,6 +135,42 @@ function emitStepFinish(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Fault checkpoints (see fake-agent-faults.ts)
+// ---------------------------------------------------------------------------
+
+/** Block until a signal ends the process: a loopback listener keeps the loop alive, no timers. */
+function blockForever(): Promise<never> {
+  Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  return new Promise<never>(() => {});
+}
+
+function installSlowShutdown(specs: FaultSpec[]): void {
+  for (const s of specs) {
+    if (s.kind !== "slow-shutdown") continue;
+    process.on("SIGTERM", () => {
+      emitText("[fake-agent] sigterm-received");
+      if (s.ignoreSigterm) return;
+      setTimeout(() => process.exit(143), s.ignoreSigtermMs ?? 0);
+    });
+  }
+}
+
+function makeCheckpoint(prompt: string, specs: FaultSpec[], attempt: number) {
+  const markers = wantsStageMarkers(prompt, specs);
+  return async (stage: FaultStage): Promise<void> => {
+    if (markers) emitText(`[fake-agent] stage:${stage}`);
+    const fault = faultAt(stage, specs, attempt);
+    if (!fault) return;
+    if (fault.action === "hang") return blockForever();
+    if (fault.signal) {
+      process.kill(process.pid, fault.signal);
+      await blockForever();
+    }
+    process.exit(fault.exitCode);
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -133,8 +179,17 @@ async function main(): Promise<void> {
   const sleepMs = extractSleepMs(args.prompt);
   const taskId = args.title.replace(/^woco:\s*/, "").trim() || "unknown";
 
+  const specs = parseFaultDirectives(args.prompt);
+  const attempt = specs.some((s) => s.kind === "flaky")
+    ? recordAttempt(fileAttemptStore(faultStateDir(args.dir), taskId))
+    : 0;
+  installSlowShutdown(specs);
+  const checkpoint = makeCheckpoint(args.prompt, specs, attempt);
+
+  await checkpoint("start");
   emitStepStart();
   emitText(`[fake-agent] Task: ${taskId} | sleep: ${sleepMs}ms | dir: ${args.dir}`);
+  await checkpoint("after-text");
 
   // Simulate work
   await Bun.sleep(sleepMs);
@@ -158,6 +213,8 @@ async function main(): Promise<void> {
     ].join("\n")
   );
 
+  await checkpoint("before-commit");
+
   // Git add + commit in the worktree
   try {
     execSync("git add -A", { cwd: args.dir, stdio: "pipe" });
@@ -170,6 +227,9 @@ async function main(): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     process.stderr.write(`[fake-agent] git commit warning: ${msg}\n`);
   }
+
+  await checkpoint("after-commit");
+  await checkpoint("before-finish");
 
   emitStepFinish();
   process.exit(0);
