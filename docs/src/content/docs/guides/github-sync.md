@@ -189,3 +189,12 @@ and items that changed since the last sync.
 - Wishlist items are not synced. Archived tasks and quests are only pushed when
   they already have an issue (it gets closed); they are never newly created.
 - Comments are mirrored once; later edits to a comment are not propagated.
+
+## No AI attribution
+
+Nothing woco sends to GitHub or stores from it may credit an AI tool (project
+rule 6). woco removes attribution footers from the text it sends, from issue
+and comment text it pulls, and from new comments. Some hosts append a footer
+to text created through their API; after every create, woco checks the
+returned text and edits it clean again, so the footer does not stay on
+GitHub or reach the repository.

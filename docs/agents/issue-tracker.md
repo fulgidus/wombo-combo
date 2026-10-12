@@ -43,6 +43,9 @@ no token, or GitHub was unreachable and the mirror is pending.
   next time GitHub is reachable.
 - **If woco is unavailable**, GitHub is authoritative until the two are
   reconciled; then bring woco back in line.
+- **No AI attribution** on issues, comments or anything else (AGENTS.md rule 6,
+  `docs/agents/no-ai-attribution.md`). woco strips it from text it sends and
+  receives, and edits it clean if a host adds it after a create.
 - Never silently diverge: if the two sides disagree, say so and fix one.
 - Bugs found mid-task are tracked the same way (AGENTS.md rule 5).
 

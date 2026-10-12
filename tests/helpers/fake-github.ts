@@ -59,6 +59,8 @@ export interface FakeGitHubOptions {
   repo?: string;
   /** When set, requests with any other bearer token get 401 */
   token?: string;
+  /** Text a (misbehaving) host appends to the body of every issue/comment created via POST, e.g. an attribution footer */
+  appendOnCreate?: string;
 }
 
 export interface FakeGitHub {
@@ -193,7 +195,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
         if (!body?.title) return json({ message: "Validation Failed" }, 422);
         const issue = mkIssue({
           title: body.title,
-          body: body.body ?? null,
+          body: body.body == null ? (opts.appendOnCreate ?? null) : body.body + (opts.appendOnCreate ?? ""),
           labels: resolveLabels(body.labels),
           assignees: (body.assignees ?? []).map((login: string) => ({ login })),
         });
@@ -234,7 +236,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
           const c: FakeComment = {
             id,
             issue: num,
-            body: body.body,
+            body: body.body + (opts.appendOnCreate ?? ""),
             html_url: `https://github.example/${owner}/${repo}/issues/${num}#issuecomment-${id}`,
             created_at: ts,
             updated_at: ts,

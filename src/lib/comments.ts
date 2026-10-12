@@ -9,6 +9,7 @@
  * Comments of archived or deleted refs are kept. No network access.
  */
 
+import { stripAiAttribution } from "./attribution";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -169,7 +170,8 @@ function nextTimestamp(): string {
 /** Add a comment to a task or quest. Throws on a missing ref, empty/oversized body or bad input. */
 export function addComment(projectRoot: string, ref: CommentRef, input: AddCommentInput): Comment {
   const dir = refDir(projectRoot, ref);
-  const body = input.body;
+  // AI attribution never enters the repo (AGENTS.md rule 6): strip it before anything else.
+  const body = typeof input.body === "string" ? stripAiAttribution(input.body) : input.body;
   if (typeof body !== "string" || body.trim() === "") throw new Error("comment body is empty");
   if (body.length > MAX_COMMENT_CHARS) {
     throw new Error(`comment body too long: ${body.length} > ${MAX_COMMENT_CHARS} characters`);

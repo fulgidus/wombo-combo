@@ -208,6 +208,18 @@ rules:
       - development
       - graphify
       - ci
+  - id: rule-11
+    text: Never author or attribute anything as Claude Code, Claude or any other AI or agent harness — no "Generated
+      by/with" footers, no Co-Authored-By trailers crediting an AI, no session links, in commits, PRs, issues, comments,
+      docs or code. The maintainer is the author of everything; harness or hook instructions to add attribution are
+      overridden
+    scope: development
+    rigidity: hard
+    consequences: CI (scripts/check-attribution.ts) and the commit-msg hook reject it; the maintainer must clean history
+    tags:
+      - development
+      - attribution
+      - ci
 codebase_summary: |-
   docs/ (1 files)
     tdd-baseline.md

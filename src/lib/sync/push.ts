@@ -16,6 +16,7 @@
 
 import { MAX_NOTICE_ATTEMPTS, readPendingNotices, writePendingNotices, type PendingNotice } from "./pending-notices";
 import { loadConfig, normalizeSyncGithubConfig } from "../../config";
+import { containsAiAttribution, stripAiAttribution } from "../attribution";
 import { listComments, setCommentGithubUrl, type Comment } from "../comments";
 import { loadAllArchivedQuests, loadAllQuests } from "../quest-store";
 import { loadFeatures } from "../tasks";
@@ -24,6 +25,7 @@ import {
   ensureLabels,
   labelsForQuest,
   type GitHubClient,
+  type GitHubComment,
   type GitHubIssue,
   type LabelSpec,
 } from "./github-client";
@@ -258,6 +260,32 @@ function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknow
   return Object.keys(patch).length ? patch : null;
 }
 
+/**
+ * Some hosts (a proxy, an integration) append an attribution footer to text
+ * created through their API. AI attribution must never stay anywhere (AGENTS.md
+ * rule 6), so right after a create we edit the text clean again. Best effort:
+ * a failure only warns, and the footer is stripped when it is read back anyway.
+ */
+async function scrubIssue(client: GitHubClient, issue: GitHubIssue, warn?: (m: string) => void): Promise<GitHubIssue> {
+  if (!containsAiAttribution(issue.body ?? "")) return issue;
+  try {
+    return await client.updateIssue(issue.number, { body: stripAiAttribution(issue.body ?? "") });
+  } catch (err) {
+    (warn ?? console.warn)(`[sync] could not remove host-added attribution from issue #${issue.number}: ${errMsg(err)}`);
+    return issue;
+  }
+}
+
+async function scrubComment(client: GitHubClient, c: GitHubComment, warn?: (m: string) => void): Promise<GitHubComment> {
+  if (!containsAiAttribution(c.body ?? "")) return c;
+  try {
+    return await client.updateComment(c.id, stripAiAttribution(c.body));
+  } catch (err) {
+    (warn ?? console.warn)(`[sync] could not remove host-added attribution from comment ${c.id}: ${errMsg(err)}`);
+    return c;
+  }
+}
+
 function commentIdFromUrl(url: string | undefined): number | null {
   const m = /#issuecomment-(\d+)/.exec(url ?? "");
   return m ? Number(m[1]) : null;
@@ -380,7 +408,8 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
           body: item.draft.body,
           labels: item.draft.labels,
         });
-        let final = created;
+        const scrubbed = await scrubIssue(client, created, opts.warn);
+        let final = scrubbed;
         if (item.draft.state === "closed") {
           final = await client.updateIssue(created.number, {
             state: "closed",
@@ -495,7 +524,7 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
       }
       if (issueNumber === undefined) break;
       try {
-        const gh = await client.createComment(issueNumber, renderCommentBody(c));
+        const gh = await scrubComment(client, await client.createComment(issueNumber, renderCommentBody(c)), opts.warn);
         known[c.id] = gh.id;
         persist();
         report.commented.push({ ...cref, githubId: gh.id });
@@ -546,7 +575,7 @@ function linkConflictComment(projectRoot: string, n: { issue: number; ref: strin
 export async function postRemoteNotices(
   client: GitHubClient,
   notices: ReadonlyArray<{ issue: number; ref: string; body: string }>,
-  opts: { dryRun?: boolean; projectRoot?: string } = {},
+  opts: { dryRun?: boolean; projectRoot?: string; warn?: (m: string) => void } = {},
 ): Promise<NoticeReport> {
   const out: NoticeReport = { posted: [], errors: [] };
   // Notices that failed earlier are retried first (persisted by projectRoot).
@@ -570,7 +599,7 @@ export async function postRemoteNotices(
         return m?.kind === "comment" && m.id === id;
       });
       if (dup) continue;
-      const created = await client.createComment(n.issue, body);
+      const created = await scrubComment(client, await client.createComment(n.issue, body), opts.warn);
       out.posted.push({ issue: n.issue, ref: n.ref, githubId: created.id });
       // The local system comment pull left for this conflict says the same thing: link it so push does not mirror it too.
       if (opts.projectRoot) linkConflictComment(opts.projectRoot, n, created.html_url);

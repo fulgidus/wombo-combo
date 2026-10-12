@@ -24,6 +24,7 @@
 import type { Comment, CommentRole } from "../comments";
 import type { Quest, QuestStatus } from "../quest";
 import type { Difficulty, Priority, Task, TaskStatus } from "../tasks";
+import { stripAiAttribution } from "../attribution";
 import { SAFE_ID_RE, findMarker, markerFor, stripMarker } from "./mapping";
 import {
   applyTriageRole,
@@ -67,7 +68,7 @@ function buildBody(
   marker: string,
 ): string {
   const parts: string[] = [];
-  const t = cleanText(text);
+  const t = cleanText(stripAiAttribution(text ?? ""));
   if (t) parts.push(t);
   for (const [name, items] of sections) {
     const list = cleanList(items);
@@ -78,7 +79,7 @@ function buildBody(
 }
 
 function parseBody(body: string): { text: string; sections: Record<string, string[]> } {
-  const lines = stripMarker(body ?? "").replace(/\r\n/g, "\n").split("\n");
+  const lines = stripMarker(stripAiAttribution(body ?? "")).replace(/\r\n/g, "\n").split("\n");
   const textLines: string[] = [];
   const sections: Record<string, string[]> = {};
   let current: string | null = null;
@@ -308,7 +309,7 @@ const ATTRIBUTION_RE = /^_\*\*(.*)\*\* \((agent|human|system)\) · woco comment 
 /** Attribution line + body + marker. */
 export function renderCommentBody(c: Pick<Comment, "id" | "author" | "role" | "body">): string {
   const author = c.author.replace(/\s*\n\s*/g, " ").trim() || "unknown";
-  return [`_**${author}** (${c.role}) · woco comment \`${c.id}\`_`, c.body.trim(), markerFor("comment", c.id)].join("\n\n");
+  return [`_**${author}** (${c.role}) · woco comment \`${c.id}\`_`, stripAiAttribution(c.body).trim(), markerFor("comment", c.id)].join("\n\n");
 }
 
 export interface ParsedCommentBody {
@@ -320,7 +321,8 @@ export interface ParsedCommentBody {
 }
 
 /** Reverse of renderCommentBody. Foreign comments yield id/author/role null and the body as-is. */
-export function parseCommentBody(text: string): ParsedCommentBody {
+export function parseCommentBody(raw: string): ParsedCommentBody {
+  const text = stripAiAttribution(raw ?? "");
   const marker = findMarker(text);
   const id = marker?.kind === "comment" ? marker.id : null;
   let rest = stripMarker(text ?? "").replace(/\r\n/g, "\n");
