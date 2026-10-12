@@ -1058,6 +1058,8 @@
   "cli.sync.status.state.conflict": "modificato su entrambi i lati",
   "cli.sync.status.state.remote-missing": "issue mancante su GitHub",
   "cli.sync.status.remoteOnly": "Issue presenti solo su GitHub: {{count}}",
+  "cli.sync.status.attributionBreaker": "ATTENZIONE: l'ultimo push si è fermato perché l'host ha aggiunto un'attribuzione AI a una scrittura pulita ({{ref}}, {{time}}). Esegui la sync da una macchina il cui percorso di rete non aggiunge footer; l'avviso sparisce dopo un push pulito.",
+  "cli.sync.attributionBreaker": "Sync interrotta: GitHub ha aggiunto un'attribuzione AI a una scrittura pulita ({{ref}}). Nessuna altra scrittura eseguita. Esegui la sync da una macchina il cui percorso di rete non aggiunge footer.",
   "cli.sync.status.labelsMissing": "Etichette mancanti ({{count}}): {{labels}}",
   "cli.sync.labels.summary": "Etichette: {{created}} create, {{existing}} esistenti, {{skipped}} saltate.",
   "cli.sync.labels.summaryDry": "Simulazione. Etichette: {{created}} da creare, {{existing}} esistenti.",

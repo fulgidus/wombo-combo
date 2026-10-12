@@ -39,14 +39,18 @@ Run the scan yourself: `bun scripts/check-attribution.ts` (files),
 ## Limits
 
 Some hosts append their own footer to text posted through their API (for
-example a GitHub proxy or integration), sometimes only when the item is read
-back and not in the create response. woco cannot stop text added after it
-sends a request, so `woco sync push` re-reads every issue and comment it
-creates and edits them clean, and on every push it also checks the raw remote
-text of each mapped issue and mirrored comment and edits any that carry a
-footer (a clean item costs zero writes). Text woco reads back is stripped too,
-so footers never reach the repo. If one still appears on GitHub (for example
-after a failed edit), run `woco sync push` again.
+example a GitHub proxy or integration). woco strips such footers from
+everything it reads back, so they never reach the repo. On GitHub itself it
+cannot win against the host: after each create or update, `woco sync push`
+re-reads the item, and if attribution is present although the sent text was
+clean, a circuit breaker stops all further writes in that run (no retry, no
+edit loop), records the state in the gitignored
+`.wombo-combo/sync/attribution-breaker.json`, makes `woco sync status` warn,
+and exits non-zero. Sync must therefore run from a machine whose network path
+does not append footers. Remove any footer already on GitHub by hand; the
+warning clears after the next clean push. Older footers on mapped issues and
+mirrored comments are edited clean by the next push (a clean item costs zero
+writes).
 
 The files that document or test this rule are allowlisted in the scanner:
 `AGENTS.md`, this file, `src/lib/attribution.ts`, `scripts/check-attribution.ts`

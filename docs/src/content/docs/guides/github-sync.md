@@ -202,8 +202,15 @@ lowest number, adopts it in the mapping and closes the others with the
 Nothing woco sends to GitHub or stores from it may credit an AI tool (project
 rule 6). woco removes attribution footers from the text it sends, from issue
 and comment text it pulls, and from new comments. Some hosts append a footer
-to text created through their API, sometimes only visible when the item is
-read back. After every create, woco re-reads the issue or comment and edits it
-clean again. Every push also checks the raw text of mapped issues and
-mirrored comments and edits any that carry a footer, so `woco sync push`
-cleans existing ones; a clean item costs no write.
+to text written through their API (a proxy or integration on the network
+path). After every create or update, push re-reads the item from GitHub; if
+the stored text carries attribution although the text sent was clean, a
+circuit breaker trips: push stops all further writes in that run, does not
+retry or edit the text again, records the state, and exits non-zero.
+`woco sync status` then prints a warning until a later push writes cleanly.
+
+Run sync from a machine whose network path does not append footers. Remove
+the footer already on GitHub by hand.
+
+Every push also checks the raw text of mapped issues and mirrored comments
+and edits older footers clean; a clean item costs no write.

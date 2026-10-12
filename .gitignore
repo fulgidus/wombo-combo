@@ -32,3 +32,5 @@ graphify-out/manifest.json
 .wombo-combo/sync/pending-notices.json
 .wombo-combo/sync/.lock
 .wombo-combo/sync/pending-notices.json.*
+.wombo-combo/sync/attribution-breaker.json
+.wombo-combo/sync/attribution-breaker.json.*

@@ -1037,6 +1037,8 @@
   "cli.sync.status.state.conflict": "changed on both sides",
   "cli.sync.status.state.remote-missing": "issue missing on GitHub",
   "cli.sync.status.remoteOnly": "Issues only on GitHub: {{count}}",
+  "cli.sync.status.attributionBreaker": "WARNING: the last push stopped because the host appended AI attribution to a clean write ({{ref}}, {{time}}). Run sync from a machine whose network path does not append footers; the warning clears after a clean push.",
+  "cli.sync.attributionBreaker": "Sync stopped: GitHub appended AI attribution to a clean write ({{ref}}). No further writes were made. Run sync from a machine whose network path does not append footers.",
   "cli.sync.status.labelsMissing": "Missing labels ({{count}}): {{labels}}",
   "cli.sync.labels.summary": "Labels: {{created}} created, {{existing}} existing, {{skipped}} skipped.",
   "cli.sync.labels.summaryDry": "Dry run. Labels: {{created}} would be created, {{existing}} existing.",

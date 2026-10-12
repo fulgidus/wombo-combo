@@ -61,6 +61,8 @@ export interface FakeGitHubOptions {
   token?: string;
   /** Text a (misbehaving) host appends to the body of every issue/comment created via POST, e.g. an attribution footer */
   appendOnCreate?: string;
+  /** Like appendOnCreate, but also appended to any body set via PATCH (issues and comments) */
+  appendOnWrite?: string;
   /**
    * Text a host appends to issues/comments created via POST, visible only when they are read back
    * (GET/list), never in the POST response. Editing the body through PATCH removes it.
@@ -84,6 +86,8 @@ export interface FakeGitHub {
   seedComment(issue: number, body: string, p?: Partial<FakeComment>): FakeComment;
   /** Set the fake clock (ISO string) used for created_at/updated_at; auto-advances 1s per write */
   setClock(iso: string): void;
+  /** Change the text appended to every body written via POST/PATCH from now on ("" = behave) */
+  setAppendOnWrite(text: string): void;
   count(method: string, pathPattern: RegExp | string): number;
   stop(): void;
 }
@@ -208,7 +212,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
         if (!body?.title) return json({ message: "Validation Failed" }, 422);
         const issue = mkIssue({
           title: body.title,
-          body: body.body == null ? (opts.appendOnCreate ?? null) : body.body + (opts.appendOnCreate ?? ""),
+          body: body.body == null ? (opts.appendOnCreate ?? opts.appendOnWrite ?? null) : body.body + (opts.appendOnCreate ?? opts.appendOnWrite ?? ""),
           labels: resolveLabels(body.labels),
           assignees: (body.assignees ?? []).map((login: string) => ({ login })),
         });
@@ -223,7 +227,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
         if (req.method === "PATCH") {
           if (body.title !== undefined) issue.title = body.title;
           if (body.body !== undefined) {
-            issue.body = body.body;
+            issue.body = body.body + (opts.appendOnWrite ?? "");
             decoratedIssues.delete(issue.number);
           }
           if (body.labels !== undefined) issue.labels = resolveLabels(body.labels);
@@ -253,7 +257,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
           const c: FakeComment = {
             id,
             issue: num,
-            body: body.body + (opts.appendOnCreate ?? ""),
+            body: body.body + (opts.appendOnCreate ?? opts.appendOnWrite ?? ""),
             html_url: `https://github.example/${owner}/${repo}/issues/${num}#issuecomment-${id}`,
             created_at: ts,
             updated_at: ts,
@@ -268,7 +272,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
       if (m_(new RegExp(`^${base}/issues/comments/(\\d+)$`)) && req.method === "PATCH") {
         const c = state.comments.find((x) => x.id === Number(m![1]));
         if (!c) return json({ message: "Not Found" }, 404);
-        c.body = body.body;
+        c.body = body.body + (opts.appendOnWrite ?? "");
         decoratedComments.delete(c.id);
         c.updated_at = tick();
         const { issue: _i, ...rest } = c;
@@ -323,6 +327,9 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
       };
       state.comments.push(c);
       return c;
+    },
+    setAppendOnWrite(text) {
+      opts.appendOnWrite = text;
     },
     setClock(iso) {
       clock = Date.parse(iso);

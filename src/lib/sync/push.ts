@@ -29,6 +29,13 @@ import {
   type GitHubIssue,
   type LabelSpec,
 } from "./github-client";
+import {
+  AttributionTripped,
+  clearAttributionTrip,
+  readAttributionTrip,
+  writeAttributionTrip,
+  type AttributionTrip,
+} from "./attribution-breaker";
 import { withSyncLock } from "./lock";
 import { TRIAGE_LABELS, remoteSyncHash } from "./hashing";
 import { conflictCommentPrefix } from "./pull";
@@ -95,6 +102,8 @@ export interface PushReport {
   /** Labels created (or, on a dry run, that would be created) */
   labelsCreated: string[];
   errors: PushError[];
+  /** Set when the circuit breaker tripped: the host appended attribution to a clean write and push stopped writing */
+  attributionBreaker?: AttributionTrip;
 }
 
 export interface PushOptions {
@@ -131,6 +140,8 @@ export interface SyncStatusReport {
   remoteOnly: Array<{ issue: number; title: string; url: string }>;
   /** Catalog / quest labels not yet on GitHub */
   labelsMissing: string[];
+  /** Present while the last push stopped because the host appends AI attribution to writes */
+  attributionBreaker?: AttributionTrip;
 }
 
 // ---------------------------------------------------------------------------
@@ -262,22 +273,16 @@ function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknow
 }
 
 /**
- * Some hosts (a proxy, an integration) append an attribution footer to text
- * created through their API, sometimes only visible when the item is read back
- * (not in the create response). AI attribution must never stay anywhere
- * (AGENTS.md rule 6), so right after a create we re-read the issue and edit it
- * clean again. Best effort: a failure only warns, and the next push retries
- * (it checks the raw remote body of every mapped issue).
+ * Circuit breaker: some hosts (a proxy, an integration) append an attribution
+ * footer to text written through their API. AI attribution must never stay
+ * anywhere (AGENTS.md rule 6), but editing it away only invites the host to
+ * append it again, so after a write we re-read the stored text and, when it
+ * carries attribution although what we sent was clean, throw so push stops
+ * all further writes. Never retries or loop-edits.
  */
-async function scrubIssue(client: GitHubClient, issue: GitHubIssue, warn?: (m: string) => void): Promise<GitHubIssue> {
-  try {
-    const current = await client.getIssue(issue.number);
-    if (!containsAiAttribution(current.body ?? "")) return current;
-    return await client.updateIssue(issue.number, { body: stripAiAttribution(current.body ?? "") });
-  } catch (err) {
-    (warn ?? console.warn)(`[sync] could not remove host-added attribution from issue #${issue.number}: ${errMsg(err)}`);
-    return issue;
-  }
+function assertNoHostAttribution(sent: string, stored: string | null | undefined, trip: Omit<AttributionTrip, "trippedAt">): void {
+  if (containsAiAttribution(sent) || !containsAiAttribution(stored ?? "")) return;
+  throw new AttributionTripped({ trippedAt: new Date().toISOString(), ...trip });
 }
 
 /** Edit a comment clean when its raw text carries attribution; a no-op (zero writes) otherwise. */
@@ -304,6 +309,15 @@ async function scrubCreatedComment(
   } catch (err) {
     (warn ?? console.warn)(`[sync] could not re-read comment ${created.id}: ${errMsg(err)}`);
     return scrubComment(client, created, warn);
+  }
+}
+
+/** Re-read a freshly created comment: the create response may lack the host's footer. Falls back to the response. */
+async function rereadCommentOf(client: GitHubClient, issue: number, created: GitHubComment): Promise<GitHubComment> {
+  try {
+    return (await client.listComments(issue)).find((c) => c.id === created.id) ?? created;
+  } catch {
+    return created;
   }
 }
 
@@ -394,7 +408,16 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
       await pushItem(item);
     } catch (err) {
       report.errors.push({ ref: item.ref, error: errMsg(err) });
+      if (err instanceof AttributionTripped) {
+        report.attributionBreaker = err.trip;
+        writeAttributionTrip(projectRoot, err.trip);
+        break;
+      }
     }
+  }
+  if (!dryRun && !report.attributionBreaker && readAttributionTrip(projectRoot) && (report.created.length + report.updated.length + report.commented.length > 0)) {
+    // A write went through clean since the trip: the host no longer alters text
+    clearAttributionTrip(projectRoot);
   }
   return report;
 
@@ -450,8 +473,8 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
           body: item.draft.body,
           labels: item.draft.labels,
         });
-        const scrubbed = await scrubIssue(client, created, opts.warn);
-        let final = scrubbed;
+        await verifyIssueWrite(item, created.number, item.draft.body);
+        let final = created;
         if (item.draft.state === "closed") {
           final = await client.updateIssue(created.number, {
             state: "closed",
@@ -507,13 +530,22 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
     }
   }
 
+  /** Re-read the issue from GitHub and trip the breaker when the host added attribution to a clean body. */
+  async function verifyIssueWrite(item: LocalItem, number: number, sentBody: string): Promise<void> {
+    const stored = await client.getIssue(number);
+    assertNoHostAttribution(sentBody, stored.body, { ref: item.ref, issue: number });
+  }
+
   /** PATCH an existing issue to match the draft and persist the mapping. */
   async function updateExisting(item: LocalItem, number: number, known: RemoteIssue | null): Promise<MappingEntry | null> {
     if (dryRun) return null;
     const remote = known ?? toRemoteIssue(await client.getIssue(number));
     const patch = patchFor(item.draft, remote);
     let issue: GitHubIssue | null = null;
-    if (patch) issue = await client.updateIssue(number, patch);
+    if (patch) {
+      issue = await client.updateIssue(number, patch);
+      await verifyIssueWrite(item, number, typeof patch.body === "string" ? patch.body : item.draft.body);
+    }
     const prev = readMapping(projectRoot, item.kind, item.id);
     return saveEntry(item, issue ?? (await client.getIssue(number)), prev?.comments ?? {});
   }
@@ -616,12 +648,16 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
       }
       if (issueNumber === undefined) break;
       try {
-        const gh = await scrubCreatedComment(client, issueNumber, await client.createComment(issueNumber, renderCommentBody(c)), opts.warn);
+        const sent = renderCommentBody(c);
+        const created = await client.createComment(issueNumber, sent);
+        const gh = await rereadCommentOf(client, issueNumber, created);
+        assertNoHostAttribution(sent, gh.body, { ref: item.ref, issue: issueNumber, comment: gh.id });
         known[c.id] = gh.id;
         persist();
         report.commented.push({ ...cref, githubId: gh.id });
         if (!c.github_url) setCommentGithubUrl(projectRoot, c.id, gh.html_url);
       } catch (err) {
+        if (err instanceof AttributionTripped) throw err;
         // Stop here to keep GitHub chronological; later comments retry next run
         report.errors.push({ ref: `${item.ref}#${c.id}`, error: errMsg(err) });
         break;
@@ -766,8 +802,10 @@ export async function syncStatus(opts: { projectRoot: string; client: GitHubClie
     })
     .map((i) => ({ issue: i.number, title: i.title, url: i.html_url }));
 
+  const attributionBreaker = readAttributionTrip(projectRoot);
   return {
     items: out,
+    ...(attributionBreaker ? { attributionBreaker } : {}),
     remoteOnly,
     labelsMissing: wantedLabels(items)
       .map((s) => s.name)
