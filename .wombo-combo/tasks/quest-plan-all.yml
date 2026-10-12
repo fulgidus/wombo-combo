@@ -10,7 +10,7 @@ description: "Add a plan-all action: from the quest picker (main screen) a lower
   planners (abortQuestPlanner). Skip quests already planned and report them. Tests: planner selection (which quests
   qualify), concurrency limit, abort, and a dry-run. Follow lowercase-key and arrow conventions (right confirms, left
   cancels), fit the terminal height, reuse existing components, no new price table."
-status: backlog
+status: planned
 completion: 0
 difficulty: medium
 priority: high
@@ -26,3 +26,4 @@ forbidden: []
 references: []
 notes: []
 subtasks: []
+paths: []
