@@ -13,7 +13,7 @@
  * collapse the detail pane to a single summary line.
  *
  * Keys: Left/Right/h/l or Up/Down/j/k step (Up/Down scroll the diff while it
- * is shown), PgUp/PgDn jump 10, g/G first/last, n/N next/previous tool call
+ * is shown), PgUp/PgDn jump 10, g/e first/last, n/p next/previous tool call
  * or error, Space play/pause, +/- speed (0.5x-8x), d diff pane, [ ] previous/
  * next execution, Esc/q close.
  */
@@ -287,19 +287,19 @@ export function ReplayViewer({
       if (key.pageDown) return setDiffScroll((s) => Math.min(s + diffView, maxDiffScroll));
       if (key.pageUp) return setDiffScroll((s) => Math.max(s - diffView, 0));
       if (input === "g") return setDiffScroll(0);
-      if (input === "G") return setDiffScroll(maxDiffScroll);
+      if (input === "G" || input === "e") return setDiffScroll(maxDiffScroll);
     } else {
       if (key.downArrow || input === "j") return apply({ type: "step", delta: 1 });
       if (key.upArrow || input === "k") return apply({ type: "step", delta: -1 });
       if (key.pageDown) return apply({ type: "step", delta: PAGE });
       if (key.pageUp) return apply({ type: "step", delta: -PAGE });
       if (input === "g") return apply({ type: "first" });
-      if (input === "G") return apply({ type: "last" });
+      if (input === "G" || input === "e") return apply({ type: "last" });
     }
     if (key.rightArrow || input === "l") return apply({ type: "step", delta: 1 });
     if (key.leftArrow || input === "h") return apply({ type: "step", delta: -1 });
     if (input === "n") return apply({ type: "nextMarker" });
-    if (input === "N") return apply({ type: "prevMarker" });
+    if (input === "N" || input === "p") return apply({ type: "prevMarker" });
   });
 
   return (

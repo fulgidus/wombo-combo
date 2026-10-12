@@ -536,46 +536,46 @@ function StatusBar({
         <Text dimColor>Space</Text>
         <Text> {t("taskBrowser.key.plan")}</Text>
         <Text>  </Text>
-        <Text dimColor>S</Text>
+        <Text dimColor>s</Text>
         <Text> {t("taskBrowser.key.stream")}</Text>
         <Text>  </Text>
-        <Text dimColor>A</Text>
+        <Text dimColor>a</Text>
         <Text> {t("taskBrowser.key.all")}</Text>
         <Text>  </Text>
         <Text dimColor>+/-</Text>
         <Text> {t("taskBrowser.key.priority")}</Text>
         <Text>  </Text>
-        <Text dimColor>D</Text>
+        <Text dimColor>d</Text>
         <Text> {hideDone ? t("taskBrowser.key.showDone") : t("taskBrowser.key.hideDone")}</Text>
         <Text>  </Text>
-        <Text dimColor>X</Text>
+        <Text dimColor>x</Text>
         <Text> {t("taskBrowser.key.archiveDone")}</Text>
         <Text>  </Text>
-        <Text dimColor>Shift+X</Text>
+        <Text dimColor>Del</Text>
         <Text> {t("taskBrowser.key.removeTask")}</Text>
         <Text>  </Text>
-        <Text dimColor>C</Text>
+        <Text dimColor>c</Text>
         <Text> {t("taskBrowser.key.concurrency")}</Text>
         {hasErrand && (
           <>
             <Text>  </Text>
-            <Text dimColor>E</Text>
+            <Text dimColor>e</Text>
             <Text> {t("taskBrowser.key.errand")}</Text>
           </>
         )}
         <Text>  </Text>
-        <Text dimColor>W</Text>
+        <Text dimColor>w</Text>
         <Text> {t("taskBrowser.key.wishlist")}</Text>
         <Text>  </Text>
         {hasEdit && (
           <>
             <Text>  </Text>
-            <Text dimColor>R</Text>
+            <Text dimColor>r</Text>
             <Text> {t("taskBrowser.key.edit")}</Text>
           </>
         )}
         <Text>  </Text>
-        <Text dimColor>T</Text>
+        <Text dimColor>t</Text>
         <Text> {t("waveMonitor.retry")}</Text>
         <Text>  </Text>
         <Text dimColor>U</Text>

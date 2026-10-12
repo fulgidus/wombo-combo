@@ -314,17 +314,17 @@ function StatusBar({
         <Text bold>{t("waveMonitor.keys")} </Text>
         <Text dimColor>Space</Text>
         <Text> {t("reviewList.key.toggle")}  </Text>
-        <Text dimColor>E</Text>
+        <Text dimColor>e</Text>
         <Text> {t("taskBrowser.key.edit")}  </Text>
-        <Text dimColor>Shift+J/K</Text>
+        <Text dimColor>u/d</Text>
         <Text> {t("reviewList.key.reorder")}  </Text>
-        <Text dimColor>R</Text>
+        <Text dimColor>r</Text>
         <Text> {t("reviewList.key.toggleAll")}  </Text>
-        <Text dimColor>V</Text>
+        <Text dimColor>v</Text>
         <Text> {t("reviewList.key.validation")}  </Text>
-        <Text dimColor>A</Text>
+        <Text dimColor>a</Text>
         <Text> {t("reviewList.key.approve")}  </Text>
-        <Text dimColor>Q</Text>
+        <Text dimColor>q</Text>
         <Text> {t("reviewList.key.cancel")}</Text>
       </Box>
       <Box>
@@ -598,14 +598,14 @@ export function ReviewList({ items, config }: ReviewListProps): React.ReactEleme
         return;
       }
 
-      // Shift+K — move up
-      if (input === "K") {
+      // U — move item up
+      if (input === "u") {
         setState((s) => moveItem(s, -1));
         return;
       }
 
-      // Shift+J — move down
-      if (input === "J") {
+      // D — move item down
+      if (input === "d") {
         setState((s) => moveItem(s, 1));
         return;
       }
