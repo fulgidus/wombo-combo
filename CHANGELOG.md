@@ -155,3 +155,57 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-4462437-e5d458a -->
 
 - **otp-supervision-guide-stub**: Add Supervision Guide Stub
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-ed87253-bca741a -->
+
+- **sup-types**: Supervision Core Types and Clock
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-49eb266-0a0cd78 -->
+
+- **sup-events**: Typed Supervisor Event Emitter
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-a4f4600-7d64903 -->
+
+- **sup-strategies**: Restart Strategy and Policy Functions
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-1588977-a0b4639 -->
+
+- **sup-fake-clock**: Deterministic Fake Clock Test Helper
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-69b6d9f-25bbf43 -->
+
+- **sup-shutdown**: Ordered Timeout-Bounded Shutdown
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-1d6a862-bedc6ee -->
+
+- **sup-backoff-intensity**: Backoff and Restart Intensity Tracker
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-77be4a1-1fd74c1 -->
+
+- **sup-supervisor**: Supervisor Class and Snapshot
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-11119f8-9b31007 -->
+
+- **sup-index-docs**: Barrel Export, Docs and Build Check
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-7f1d31b-50d33e8 -->
+
+- **sup-strategy-tests**: Strategy, Escalation and Nesting Tests
