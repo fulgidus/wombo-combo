@@ -19,7 +19,7 @@ goal: |
   Acceptance: the ADR has a clear go / no-go and a scoped follow-up list.
   The other supervision quests are only started if the ADR recommends the
   in-TS approach.
-status: active
+status: completed
 priority: medium
 difficulty: medium
 depends_on: []
@@ -37,9 +37,9 @@ constraints:
     - Do not introduce Elixir or other runtimes into the repo build
   override: {}
 created_at: 2026-10-12T08:40:26.204Z
-updated_at: 2026-10-12T19:36:35.364Z
+updated_at: 2026-10-12T22:16:23.119Z
 started_at: 2026-10-12T15:43:18.823Z
-ended_at: null
+ended_at: 2026-10-12T22:16:23.119Z
 notes:
   - Read src/daemon/agent-runner.ts, scheduler.ts, state.ts and daemon.ts first; recovery logic is spread across them
   - The daemon is single-threaded JS, so 'processes' are supervised async tasks plus child processes, not isolated
