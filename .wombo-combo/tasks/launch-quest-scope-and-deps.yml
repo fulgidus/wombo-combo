@@ -1,0 +1,16 @@
+id: launch-quest-scope-and-deps
+title: launch --quest ignores quest scope and quest depends_on
+description: ""
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

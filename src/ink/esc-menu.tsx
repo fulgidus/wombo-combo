@@ -247,7 +247,7 @@ export function EscMenu({
 
   useEffect(() => {
     if (!open) return;
-    const id = setInterval(() => setTick(t => t + 1), 60);
+    const id = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(id);
   }, [open]);
 
