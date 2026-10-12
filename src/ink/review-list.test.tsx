@@ -65,6 +65,16 @@ function renderLive(element: React.ReactElement) {
   };
 }
 
+/** Set process.stdout.rows for one test and return a function that restores the exact original property. */
+function setStdoutRows(rows: number): () => void {
+  const original = Object.getOwnPropertyDescriptor(process.stdout, "rows");
+  Object.defineProperty(process.stdout, "rows", { value: rows, configurable: true, writable: true });
+  return () => {
+    if (original) Object.defineProperty(process.stdout, "rows", original);
+    else delete (process.stdout as any).rows;
+  };
+}
+
 function makeItem(id: string, overrides?: Partial<ReviewItem>): ReviewItem {
   return {
     id,
@@ -346,8 +356,7 @@ describe("ReviewList (interactions)", () => {
   });
 
   test("layout fits the terminal height when the detail pane is tall", () => {
-    const rowsBefore = process.stdout.rows;
-    Object.defineProperty(process.stdout, "rows", { value: 20, configurable: true });
+    const restoreRows = setStdoutRows(20);
     try {
       const tall = makeItem("a", {
         detailSections: [
@@ -362,13 +371,12 @@ describe("ReviewList (interactions)", () => {
       expect(output.split("\n").length).toBeLessThanOrEqual(20);
       expect(output).toContain("approve");
     } finally {
-      Object.defineProperty(process.stdout, "rows", { value: rowsBefore, configurable: true });
+      restoreRows();
     }
   });
 
   test("PgDn scrolls a clipped detail pane", async () => {
-    const rowsBefore = process.stdout.rows;
-    Object.defineProperty(process.stdout, "rows", { value: 20, configurable: true });
+    const restoreRows = setStdoutRows(20);
     try {
       const tall = makeItem("a", {
         detailSections: [
@@ -389,7 +397,7 @@ describe("ReviewList (interactions)", () => {
       expect(getOutput().slice(mark)).toMatch(/step-(4\d|5\d)-end/);
       await cleanup();
     } finally {
-      Object.defineProperty(process.stdout, "rows", { value: rowsBefore, configurable: true });
+      restoreRows();
     }
   });
 });
