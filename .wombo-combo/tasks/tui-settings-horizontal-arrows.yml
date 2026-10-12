@@ -1,0 +1,17 @@
+id: tui-settings-horizontal-arrows
+title: "Settings: left/right arrows change values"
+description: src/ink/settings-screen.tsx only handles return/escape.
+status: done
+completion: 100
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T08:54:40.137Z
+ended_at: 2026-10-12T08:56:25.401Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

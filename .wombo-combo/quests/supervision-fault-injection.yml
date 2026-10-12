@@ -1,0 +1,44 @@
+id: supervision-fault-injection
+title: Fault Injection and Resilience Tests
+goal: |
+  Prove the supervision tree behaves under failure. Extend the fake agent
+  runner (src/lib/fake-agent-runner.ts) with scriptable faults: crash at
+  stage X, hang, flaky then healthy, repeated crash, slow shutdown, and
+  worktree creation failure. Add a resilience test suite under tests/ that
+  exercises:
+  - restart strategies
+  - intensity-exceeded escalation
+  - cascading shutdown
+  - daemon kill and restart with tree rebuild
+  - no leaked child processes, worktrees or branches after each scenario
+  Wire the suite into CI (.github/workflows/ci.yml) with a time budget, and
+  add an `bun dev`-runnable smoke scenario for manual chaos runs. Report
+  findings as tasks or wishlist items if bugs surface, per the project's
+  no-silent-workaround rule.
+  Acceptance: the suite is deterministic (no flaky sleeps), runs in CI, and
+  covers every restart strategy used by the tree.
+status: paused
+priority: low
+difficulty: hard
+depends_on:
+  - wave-supervision-tree
+branch: quest/supervision-fault-injection
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add:
+    - Use injected clocks and the fake agent; tests must not call real coding CLIs
+    - Assert on process, worktree and branch cleanup in every scenario
+    - Track any discovered bug as a task before working around it
+  ban:
+    - Do not use real network or GitHub access in tests
+    - Do not use fixed sleeps to wait for state
+    - Do not weaken existing tests to make the suite pass
+  override: {}
+created_at: 2026-10-12T08:40:26.210Z
+updated_at: 2026-10-12T08:51:53.409Z
+started_at: 2026-10-12T08:51:37.994Z
+ended_at: null
+notes:
+  - Test helpers live in tests/helpers/ (git repo, fake gh, daemon seed fixtures); reuse them
+  - Can proceed in parallel with supervision-observability

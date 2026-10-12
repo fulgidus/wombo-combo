@@ -9,13 +9,13 @@
  *
  * The recorder only sees harness-neutral ReplayEvents. The caller (AgentRunner)
  * converts raw monitor events with a harness normalizer such as
- * `normalizeOpenCodeEvent`.
+ * `normalizeHarnessEvent`.
  *
  * Failures are reported through `onDiagnostic` and never thrown into the
  * execution path. Nothing is written for executions that never launch.
  */
 
-import { ReplayStore, DEFAULT_KEEP_PER_TASK, truncateText, REPLAY_LIMITS, type ReplayEvent, type ReplayEndOutcome } from "../lib/replay";
+import { ReplayStore, DEFAULT_KEEP_PER_TASK, truncateText, REPLAY_LIMITS, type ReplayEvent, type ReplayEndOutcome, type PruneOptions } from "../lib/replay";
 import { captureWorktreeDiff } from "../lib/replay-diff";
 import type { AgentStatus } from "./agent-status";
 import type { DaemonState, InternalAgentState } from "./state";
@@ -26,6 +26,8 @@ export interface ReplayRecorderOptions {
   store?: ReplayStore;
   /** Executions kept per task after pruning (default DEFAULT_KEEP_PER_TASK). */
   keepPerTask?: number;
+  /** Full retention rules (see config.replay); keepPerFeature here wins over keepPerTask. */
+  retention?: Pick<PruneOptions, "keepPerFeature" | "maxAgeMs" | "maxTotalBytes">;
   onDiagnostic?: (message: string) => void;
 }
 
@@ -44,7 +46,7 @@ export class ReplayRecorder {
   readonly diagnostics: string[] = [];
 
   private readonly state: DaemonState;
-  private readonly keepPerTask: number;
+  private readonly retention: Pick<PruneOptions, "keepPerFeature" | "maxAgeMs" | "maxTotalBytes">;
   private readonly onDiagnostic?: (message: string) => void;
   private readonly tracked = new Map<string, Tracked>();
   private readonly stopRequests = new Set<string>();
@@ -54,7 +56,10 @@ export class ReplayRecorder {
   constructor(opts: ReplayRecorderOptions) {
     this.state = opts.state;
     this.store = opts.store ?? new ReplayStore(opts.projectRoot);
-    this.keepPerTask = opts.keepPerTask ?? DEFAULT_KEEP_PER_TASK;
+    this.retention = {
+      ...opts.retention,
+      keepPerFeature: opts.retention?.keepPerFeature ?? opts.keepPerTask ?? DEFAULT_KEEP_PER_TASK,
+    };
     this.onDiagnostic = opts.onDiagnostic;
     this.unsubscribe.push(
       this.state.observeStatus((agent, _prev, next, detail) => this.onStatus(agent, next, detail)),
@@ -202,7 +207,7 @@ export class ReplayRecorder {
       }
       const cut = detail === undefined ? null : truncateText(detail, REPLAY_LIMITS.error);
       this.store.append(t.taskId, t.executionId, { kind: "end", outcome, ...(cut ? { detail: cut.text } : {}) });
-      this.store.prune({ keepPerFeature: this.keepPerTask, protect: this.activeExecutionIds() });
+      this.store.prune({ ...this.retention, protect: this.activeExecutionIds() });
     } catch (err) {
       this.report(`finalize ${featureId}: ${errMsg(err)}`);
     }

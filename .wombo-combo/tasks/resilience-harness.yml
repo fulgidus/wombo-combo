@@ -1,0 +1,76 @@
+id: resilience-harness
+title: Resilience Scenario Harness
+description: |
+  Build the shared harness all resilience suites use: tests/helpers/resilience-harness.ts.
+  FIRST inspect the merged supervision code (src/daemon/supervision/ or
+  src/lib/supervision/, supervisor-core; the agent supervisors from
+  agent-process-supervision; the wave/quest tree in src/daemon/ from
+  wave-supervision-tree). Adapt the names below to the real exports.
+
+  Provide:
+    - FakeClock: injected clock/timer implementation compatible with the supervisor's
+      clock interface (reuse the one from supervisor-core tests if it exists, importing
+      rather than duplicating). advance(ms) fires due timers deterministically.
+    - createScenario({ tasks: [{id, quest?, dependsOn?, prompt}], strategy overrides,
+      intensity/backoff config, faultFor(taskId) }): sets up a temp repo
+      (tests/helpers/git-repo.ts makeRepo), .wombo-combo/config.json and task files
+      (see tests/helpers/daemon-seed.ts and post-merge-fixture.ts for how to seed), then
+      builds the real supervision tree wired to the real fake-agent-runner.ts process,
+      the FakeClock, and an event recorder subscribing to the supervisor typed events
+      (child_started, child_exited, child_restarted, supervisor_escalated).
+    - Stage waiting: waitForStage(taskId, stage) resolves from the fake agent's stdout
+      stage markers (see fake-agent-fault-script), waitForEvent(predicate) from the
+      recorder. Both via promises, with a hard deadline from tests/helpers/wait-for.ts.
+    - Worktree-creation failure: wire shouldFailWorktreeCreation (from
+      src/lib/fake-agent-faults.ts) into the tree's worktree-creation seam. If the
+      production code has no injectable seam, ADD a minimal optional dependency-injection
+      parameter in production code (default = current behaviour) and note it. If that is
+      too invasive, record a bug task via `bun dev tasks add` per the no-silent-workaround
+      rule and use a git-level failure instead (pre-create a conflicting branch name).
+    - Teardown: scenario.dispose() stops the tree, kills leftover tracked processes,
+      removes the temp repo, and always runs assertNoLeaks from tests/helpers/leak-check.ts.
+    - Daemon crash simulation: scenario.crashDaemon() drops the in-memory tree without
+      graceful shutdown (state.json left on disk, fake agent processes left running or
+      killed per option) and scenario.restartDaemon() rebuilds from persisted state
+      through the production recovery path.
+  Add tests/resilience/harness-smoke.test.ts: a healthy one-task scenario completes, the
+  recorder sees child_started then a normal child_exited, and no leaks remain.
+status: in_progress
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - fake-agent-fault-script
+  - resilience-leak-check
+effort: PT2H
+started_at: 2026-10-12T16:09:01.687Z
+ended_at: null
+constraints:
+  - All resilience tests live under tests/resilience/ so CI can run them as a separate budgeted step
+  - Time only advances through the injected FakeClock; no real timers in assertions
+  - Any production change must be an optional DI parameter defaulting to current behaviour
+  - "No network, no gh, no real coding CLI: use the fake agent only"
+forbidden:
+  - Do not add fixed sleeps
+  - Do not duplicate supervisor-core internals; import them
+  - Do not change supervision semantics
+references:
+  - tests/helpers/git-repo.ts
+  - tests/helpers/daemon-seed.ts
+  - tests/helpers/post-merge-fixture.ts
+  - tests/helpers/wait-for.ts
+  - src/daemon/scheduler.ts
+  - src/daemon/agent-runner.ts
+  - src/daemon/state.ts
+  - src/daemon/daemon.ts
+  - src/lib/worktree.ts
+  - src/lib/fake-agent-runner.ts
+  - tests/daemon-agent-runner.test.ts
+  - tests/daemon-scheduler.test.ts
+notes:
+  - tests/daemon-agent-runner.test.ts and tests/daemon-scheduler.test.ts show how the existing suites stub the runner
+    and scheduler; mirror their idioms
+  - If the supervision tree exposes snapshot() (supervisor-core), expose it on the scenario for assertions
+subtasks: []
+quest: supervision-fault-injection
+paths: []

@@ -24,6 +24,7 @@
  *   settings       → SettingsScreen
  *   onboarding     → OnboardingScreen
  *   dashboard      → DashboardScreen (realtime metrics)
+ *   replays        → ReplayScreen (task picker + replay viewer)
  *
  * Usage (from tui.ts):
  *
@@ -49,13 +50,17 @@ import { ChromeLayout, type DaemonStats } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
 import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
+import { AgentsRoutingScreen } from "./agents-routing-screen";
+import type { Draft } from "../lib/agents-routing";
 import { ThemeContext, getTheme } from "./theme";
 import { I18nContext, getLocaleT } from "./i18n";
+import { initI18n } from "../lib/i18n";
 import {
   DashboardScreen,
   DashboardStoreContext,
   type DashboardStore,
 } from "./dashboard";
+import { ReplayScreen } from "./replay-screen";
 import { DashboardMetricsProvider } from "./dashboard-provider";
 import type { DaemonClient } from "../daemon/client";
 import type { WomboConfig } from "../config";
@@ -82,6 +87,8 @@ import { OnboardingScreen } from "./onboarding/run-onboarding";
  */
 export interface TuiAppCallbacks {
   onPlan?: (questId: string) => Promise<void>;
+  /** Plan every unplanned quest in one batch, then review the proposals. */
+  onPlanAll?: () => Promise<void>;
   onGenesis?: (vision: string) => Promise<void>;
   onErrand?: (spec: ErrandSpec) => Promise<void>;
   onWishlist?: () => Promise<void>;
@@ -186,7 +193,12 @@ export function TuiApp({
   callbacks,
 }: TuiAppProps): React.ReactElement {
   const theme = getTheme(config.tui?.theme ?? "default");
-  const tFn = getLocaleT(config.tui?.locale ?? "en");
+  // Resolve once per render: config > env > en. Also syncs the global t().
+  const activeLocale = React.useMemo(
+    () => initI18n({ configLocale: config.tui?.locale, devMode: config.devMode }),
+    [config.tui?.locale, config.devMode],
+  );
+  const tFn = getLocaleT(activeLocale);
 
   const emptyDashStore: DashboardStore = {
     agents: [],
@@ -199,17 +211,22 @@ export function TuiApp({
   const [settingsConfig, setSettingsConfig] = useState<SettingsScreenConfig>({
     tui: config.tui,
     devMode: (config as any).devMode ?? false,
+    agentProfiles: config.agentProfiles,
+    routing: config.routing,
+    modelRouting: config.modelRouting,
   });
 
   // Track current screen for chrome title
   const SCREEN_NAMES: Record<string, string> = {
-    splash: "Loading",
-    "quest-picker": "Quest Picker",
-    "task-browser": "Task Browser",
-    "daemon-monitor": "Daemon Monitor",
-    settings: "Settings",
-    onboarding: "Setup",
-    dashboard: "Dashboard",
+    splash: tFn("screen.loading"),
+    "quest-picker": tFn("screen.questPicker"),
+    "task-browser": tFn("screen.taskBrowser"),
+    "daemon-monitor": tFn("screen.daemonMonitor"),
+    settings: tFn("screen.settings"),
+    "agents-routing": tFn("screen.agentsRouting"),
+    onboarding: tFn("screen.setup"),
+    dashboard: tFn("screen.dashboard"),
+    replays: tFn("screen.replays"),
   };
   const [currentScreenKey, setCurrentScreenKey] = useState<string>(
     initialScreenProp ?? (skipSplash ? "quest-picker" : "splash")
@@ -229,12 +246,20 @@ export function TuiApp({
           projectRoot,
           onSave: (patched: SettingsScreenConfig) => setSettingsConfig(patched),
           onBack: () => navRef.current?.pop(),
+          onOpenAgents: () =>
+            navRef.current?.push("agents-routing", {
+              config: { ...config, ...settingsConfig } as unknown,
+              projectRoot,
+              onSaved: (d: Draft) =>
+                setSettingsConfig((c) => ({ ...c, agentProfiles: d.profiles, routing: d.routing })),
+              onBack: () => navRef.current?.pop(),
+            } as Record<string, unknown>),
         } as Record<string, unknown>);
       } else if (action === "quit") {
         onExit();
       }
     },
-    [settingsConfig, projectRoot, onExit]
+    [settingsConfig, projectRoot, onExit, config]
   );
 
   // Initial quest-picker props (declared early: dashboard "back" may need them)
@@ -256,6 +281,14 @@ export function TuiApp({
     if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
     nav.push("dashboard", { onBack: backFromDashboard });
   }, [backFromDashboard]);
+
+  // Session replays entry from the ESC menu: task picker, then the viewer.
+  const handleOpenReplays = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.currentScreen === "replays" || nav.currentScreen === "splash") return;
+    nav.push("replays", { projectRoot, onBack: () => navRef.current?.pop() });
+  }, [projectRoot]);
 
   // Wrapped callbacks to handle local overrides (e.g. concurrency)
   const wrappedCallbacks = useMemo(() => {
@@ -289,7 +322,7 @@ export function TuiApp({
   // Poll daemon-state.json every second for top-right chrome stats
   const [daemonStats, setDaemonStats] = useState<DaemonStats | undefined>(undefined);
   useEffect(() => {
-    const ACTIVE = new Set(["installing", "running", "resolving_conflict"]);
+    const ACTIVE = new Set(["installing", "running", "resolving_conflict", "in_review"]);
     const poll = () => {
       const stateFile = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
       if (!existsSync(stateFile)) {
@@ -351,8 +384,10 @@ export function TuiApp({
     "task-browser": TaskBrowserScreen,
     "daemon-monitor": DaemonMonitorScreen,
     settings: SettingsScreen,
+    "agents-routing": AgentsRoutingScreen,
     onboarding: OnboardingScreen,
     dashboard: DashboardScreen,
+    replays: ReplayScreen,
   };
 
   const { rows, columns } = useTerminalSize();
@@ -363,12 +398,12 @@ export function TuiApp({
         <I18nContext.Provider value={tFn}>
           <DashboardStoreContext.Provider value={emptyDashStore}>
             <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={daemonClient}>
-              <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+              <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard} onOpenReplays={handleOpenReplays}>
                 <ChromeLayout
                   screenName={SCREEN_NAMES[currentScreenKey] ?? currentScreenKey}
                   daemonConnected={daemonConnected}
                   daemonStats={daemonStats}
-                  locale={config.tui?.locale ?? "en"}
+                  locale={activeLocale}
                   dashboardAvailable
                 >
                   <ScreenRouter

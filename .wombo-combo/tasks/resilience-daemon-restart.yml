@@ -1,0 +1,48 @@
+id: resilience-daemon-restart
+title: Daemon Kill and Tree Rebuild Tests
+description: |
+  Add tests/resilience/daemon-restart.test.ts covering crash recovery through the
+  single rebuild path (state.ts persisted state -> supervision tree).
+    - Kill the daemon mid-wave via scenario.crashDaemon() with agents running (hang and
+      healthy), then restartDaemon(): the tree is rebuilt, running agents are either
+      adopted or restarted per the documented policy, and state.json stays valid
+      (atomic writes; also test a truncated or partial temp file left from a crash).
+    - Stale pid / daemon.pid handling: restart succeeds after an unclean death.
+    - Orphaned fake agent processes from the killed daemon are reaped (no process leak),
+      including those that ignore SIGTERM.
+    - Orphaned worktrees/branches for agents that were running at crash time are
+      reconciled: either resumed or cleaned, never duplicated or leaked.
+    - Restart counters / intensity windows after rebuild behave as documented
+      (reset or persisted); retry feedback persisted across the restart is delivered
+      to the next attempt.
+    - Completed/merged tasks are not re-run; DAG readiness after rebuild matches
+      pre-crash readiness.
+    - A quest paused or a wave degraded by escalation stays so after rebuild.
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - resilience-harness
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Assert process, worktree and branch cleanup after each scenario
+  - Use tests/helpers/daemon-seed.ts style persisted-state seeding where possible
+forbidden:
+  - Do not use real network or GitHub access
+  - Do not use fixed sleeps; wait on events, markers and process exit promises
+references:
+  - tests/helpers/resilience-harness.ts
+  - tests/helpers/daemon-seed.ts
+  - src/daemon/state.ts
+  - src/daemon/daemon.ts
+  - src/daemon/pid-utils.ts
+  - src/daemon/launcher.ts
+  - tests/daemon-state.test.ts
+notes:
+  - If recovery leaves duplicates or leaks, create a bug- task via `bun dev tasks add` before adding any workaround
+subtasks: []
+quest: supervision-fault-injection
+paths: []

@@ -1,0 +1,39 @@
+id: sup-strategies
+title: Restart Strategy and Policy Functions
+description: >
+  Create src/lib/supervision/strategies.ts: pure, synchronous decision functions with no I/O and no clock.
+
+    - shouldRestart(restart: RestartType, reason: ExitReason): boolean — permanent: always true (even on normal/shutdown exits unless the supervisor itself is stopping, which the caller handles); transient: true only for crash; temporary: never.
+    - planRestart(strategy: RestartStrategy, order: readonly string[], failedId: string): { stop: string[]; start: string[] } — order is the child start order.
+        one_for_one: stop [] ; start [failedId]
+        one_for_all: stop = every other child in REVERSE start order (the failed child is already dead); start = all children in start order
+        rest_for_one: stop = children started AFTER failedId, in reverse start order; start = failedId followed by those later children in start order
+      Throw an Error for an unknown failedId.
+    - filterRestartable(plan, specs: ReadonlyMap<string, {restart: RestartType}>): when a sibling restarted by one_for_all / rest_for_one is "temporary", it is stopped but NOT started again (temporary children are never restarted); export this as part of planRestart's result by accepting an optional specs map parameter, or as a separate exported helper — choose one and document it.
+
+  Add tests/supervision-strategies.test.ts covering every restart type x exit reason combination, all three strategies
+  with first/middle/last failing child, a single-child list, unknown id, and temporary siblings under one_for_all.
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - sup-types
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Pure functions only, fully deterministic
+  - "Order semantics must match Erlang/OTP: stop in reverse start order, start in forward start order"
+forbidden:
+  - Do not modify types.ts
+  - Do not add dependencies
+references:
+  - src/lib/supervision/types.ts
+notes:
+  - Keeping the decision logic pure lets supervisor.ts stay small and lets all strategy cases be tested without fake
+    clocks.
+  - Do not touch supervisor.ts or index.ts.
+subtasks: []
+quest: supervisor-core
+paths: []

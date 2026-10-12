@@ -116,6 +116,62 @@ Changelog generation and GitHub PR publication after successful merges
 | `postMerge.prBaseBranch` | string \| null | `null` | PR target branch; null = the configured remote's default branch |
 | `postMerge.changelog` | boolean | `true` | Append a CHANGELOG.md entry after successful merges (independent of prMode) |
 
+## `replay`
+
+Retention of recorded agent session replays (.wombo-combo/replays/), applied after each execution finishes
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `replay.keepPerTask` | integer | `20` | Executions kept per task (newest first) Minimum: `0`. |
+| `replay.maxAgeDays` | number \| null | `null` | Delete replays older than this many days; null = no age limit |
+| `replay.maxTotalMB` | number \| null | `null` | Total size cap of all replays in MB (oldest removed first); null = no cap |
+
+## `team`
+
+Multi-developer coordination: git-tracked task claims (.wombo-combo/claims/) so teammates do not work on the same task
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `team.enabled` | boolean | `false` | Enable task claims; the daemon skips tasks claimed by another developer |
+| `team.owner` | string \| null | `null` | Claim owner identity; null = git config user.email |
+| `team.claimTtlHours` | number | `24` | Hours until a claim expires and can be taken over |
+
+## `comments`
+
+Task and quest comments (.wombo-combo/comments/): recent comments in agent prompts and optional daemon lifecycle comments
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `comments.enabled` | boolean | `true` | Include recent comments in agent prompts and tell agents how to leave one |
+| `comments.promptMaxItems` | integer | `10` | Maximum number of recent comments per task or quest in the agent prompt Minimum: `1`. |
+| `comments.promptMaxChars` | integer | `4000` | Maximum total characters of comment text in the agent prompt (oldest dropped first) Minimum: `1`. |
+| `comments.autoLifecycle` | boolean | `false` | Daemon posts system comments on task lifecycle events (started, failed, merged, retried) |
+
+## `review`
+
+Review gate: an optional reviewer agent checks the task diff (Standards and Spec) between verification and merge
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `review.enabled` | boolean | `false` | Run the review stage before merge |
+| `review.blockOn` | string | `"blocking"` | Lowest finding severity that sends the implementing agent back (major also blocks on blocking) Values: `blocking`, `major`. |
+| `review.maxRounds` | integer | `2` | Maximum review rounds per task Minimum: `1`. |
+| `review.maxDiffChars` | integer | `60000` | Maximum diff characters shown to the reviewer; a larger diff is cut with a truncation marker Minimum: `1`. |
+
+## `sync`
+
+Integrations that sync woco data with external services
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sync.github.enabled` | boolean | `false` | Master switch for the automatic behaviour (write-through push, daemon cycle) |
+| `sync.github.mode` | string | `"manual"` | manual: only explicit woco sync commands. auto: push changed items right after they are written, and run pull+push every intervalSeconds in the daemon Values: `manual`, `auto`. |
+| `sync.github.repo` | string \| object |  | Repository to sync with, as "owner/name" or { owner, name, host }. Default: the git origin remote |
+| `sync.github.intervalSeconds` | number | `60` | Seconds between automatic pull+push cycles (daemon and woco sync watch) Minimum: `15`. |
+| `sync.github.pushOnWrite` | boolean | `true` | In auto mode, push an item in the background right after a local change to it |
+| `sync.github.pull` | boolean | `true` | In auto mode, cycles also pull remote changes before pushing |
+| `sync.github.includeFinished` | boolean | `false` | Also mirror finished work that has no mapping yet (done/cancelled tasks, completed/abandoned quests, closed issues). Already-mapped items keep syncing either way |
+
 ## `modelRouting`
 
 Per-task model routing by weight class (light/medium/heavy); null/absent = session model

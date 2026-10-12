@@ -48,6 +48,8 @@ import { runQuestWizardInk } from "../ink/run-quest-wizard";
 import { runProgressInk, runConfirmInk, type ProgressController } from "../ink/run-progress";
 import { TuiApp, type TuiAppCallbacks } from "../ink/run-tui-app";
 import { getStableStdin } from "../ink/bun-stdin";
+import { t } from "../lib/i18n";
+import { handlePlanAllFlow } from "./tui-plan-all";
 
 import { enterAltScreen, exitAltScreen, installAltScreenGuard, clearScreen } from "../ink/alt-screen";
 // Daemon types only — actual modules are loaded via dynamic import() to
@@ -125,11 +127,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
 
   // The TUI requires a real TTY for keyboard input (Ink's useInput uses raw mode).
   if (!process.stdin.isTTY) {
-    console.error(
-      "\nThe interactive TUI requires a terminal with TTY support.\n" +
-        "If you're using `bun dev`, try running directly: bun src/index.ts\n" +
-        "Or use a specific command: bun dev tasks list\n"
-    );
+    console.error(`\n${t("cli.tui.noTty")}\n`);
     process.exit(1);
   }
 
@@ -195,6 +193,10 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
     const callbacks: TuiAppCallbacks = {
       onPlan: (questId: string) =>
         runMainTreeSuspended(() => handlePlanFlow(projectRoot, config, opts, questId)),
+      onPlanAll: () =>
+        runMainTreeSuspended(() =>
+          handlePlanAllFlow(projectRoot, config, { model: opts.model }),
+        ),
       onGenesis: (vision: string) =>
         runMainTreeSuspended(async () => {
           // If vision is empty, prompt for it
@@ -241,8 +243,8 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
             try {
               await runDaemonMonitor({ client: daemonClient, projectRoot, config });
             } catch (err: any) {
-              const errProgress = runProgressInk({ title: "Monitor Error" });
-              await errProgress.finish({ type: "error", message: `Daemon monitor error: ${err.message}` });
+              const errProgress = runProgressInk({ title: t("cli.tui.monitorErrorTitle") });
+              await errProgress.finish({ type: "error", message: t("cli.tui.monitorError", { error: err.message }) });
             }
           }
         }),
@@ -308,7 +310,7 @@ export async function cmdTui(opts: TUICommandOptions): Promise<void> {
   } catch (err: any) {
     // Surface internal errors — the finally block below exits the process,
     // which would otherwise swallow any pending error output.
-    console.error("TUI exited after an internal error:", err?.stack ?? err);
+    console.error(t("cli.tui.internalError"), err?.stack ?? err);
   } finally {
     // Disconnect daemon client gracefully
     if (daemonClient) {
@@ -342,8 +344,8 @@ async function handlePlanFlow(
 ): Promise<void> {
   const quest = loadQuest(projectRoot, questId);
   if (!quest) {
-    const progress = runProgressInk({ title: "Error" });
-    await progress.finish({ type: "error", message: `Quest "${questId}" not found.` });
+    const progress = runProgressInk({ title: t("cli.tui.errorTitle") });
+    await progress.finish({ type: "error", message: t("cli.tui.questNotFound", { id: questId }) });
     return;
   }
 
@@ -354,13 +356,13 @@ async function handlePlanFlow(
 
   // Show progress screen with spinner
   const progress = runProgressInk({
-    title: "Quest Planner",
+    title: t("cli.tui.plannerTitle"),
     context: `${quest.title} (${quest.id})`,
     onAbort: () => {
       abortQuestPlanner(questId);
     },
   });
-  progress.update("Running quest planner agent...");
+  progress.update(t("cli.tui.plannerRunning"));
 
   let planResult: PlanResult;
 
@@ -374,7 +376,7 @@ async function handlePlanFlow(
   } catch (err: any) {
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    await progress.finish({ type: "error", message: `Planner error: ${err.message}` });
+    await progress.finish({ type: "error", message: t("cli.tui.plannerError", { error: err.message }) });
     return;
   }
 
@@ -388,7 +390,7 @@ async function handlePlanFlow(
     saveQuest(projectRoot, quest);
     await progress.finish({
       type: "info",
-      message: `Planner aborted. Quest "${questId}" reverted to "${prevStatus}". Feedback note saved — the next plan run will include it.`,
+      message: t("cli.tui.plannerAborted", { id: questId, status: prevStatus }),
     });
     return;
   }
@@ -398,7 +400,7 @@ async function handlePlanFlow(
     saveQuest(projectRoot, quest);
     await progress.finish({
       type: "error",
-      message: `Planner failed: ${planResult.error ?? "No tasks produced"}`,
+      message: t("cli.tui.plannerFailed", { reason: planResult.error ?? t("cli.tui.noTasks") }),
     });
     return;
   }
@@ -406,7 +408,7 @@ async function handlePlanFlow(
   // Show results briefly before switching to plan review
   await progress.finish({
     type: "success",
-    message: `Planner produced ${planResult.tasks.length} tasks. Opening plan review...`,
+    message: t("cli.tui.plannerProduced", { count: planResult.tasks.length }),
   });
 
   // Show the plan review TUI
@@ -421,17 +423,17 @@ async function handlePlanFlow(
     quest.status = prevStatus;
     const discarded = planResult.tasks
       .slice(0, 5)
-      .map((t) => t.id)
+      .map((task) => task.id)
       .join(", ");
     quest.notes.push(
       `plan rejected at ${new Date().toISOString()}: ${planResult.tasks.length} tasks discarded (${discarded}${planResult.tasks.length > 5 ? " …" : ""}) — plan differently next time`
     );
     if (quest.notes.length > 20) quest.notes = quest.notes.slice(-20);
     saveQuest(projectRoot, quest);
-    const p2 = runProgressInk({ title: "Plan Cancelled" });
+    const p2 = runProgressInk({ title: t("cli.tui.planCancelledTitle") });
     await p2.finish({
       type: "info",
-      message: `Plan discarded. Quest "${questId}" reverted to "${prevStatus}". Feedback note saved — the next plan run will include it.`,
+      message: t("cli.tui.planDiscarded", { id: questId, status: prevStatus }),
     });
     return;
   }
@@ -445,17 +447,17 @@ async function handlePlanFlow(
     };
 
     const tasks = applyPlanToQuest(approvedResult, quest, projectRoot, config);
-    const p2 = runProgressInk({ title: "Plan Approved" });
-    let msg = `Created ${tasks.length} tasks. Quest "${questId}" is now active.`;
+    const p2 = runProgressInk({ title: t("cli.tui.planApprovedTitle") });
+    let summary = t("cli.tui.planCreated", { count: tasks.length, id: questId });
     if (reviewAction.knowledge) {
-      msg += ` Saved knowledge file (${reviewAction.knowledge.length} chars).`;
+      summary += ` ${t("cli.tui.savedKnowledge", { chars: reviewAction.knowledge.length })}`;
     }
-    await p2.finish({ type: "success", message: msg });
+    await p2.finish({ type: "success", message: summary });
   } catch (err: any) {
     quest.status = prevStatus;
     saveQuest(projectRoot, quest);
-    const p2 = runProgressInk({ title: "Plan Error" });
-    await p2.finish({ type: "error", message: `Failed to apply plan: ${err.message}` });
+    const p2 = runProgressInk({ title: t("cli.tui.planErrorTitle") });
+    await p2.finish({ type: "error", message: t("cli.tui.planApplyFailed", { error: err.message }) });
   }
 }
 
@@ -475,8 +477,8 @@ async function handleGenesisFlow(
   vision: string
 ): Promise<void> {
   if (!vision) {
-    const progress = runProgressInk({ title: "Genesis" });
-    await progress.finish({ type: "info", message: "No vision provided. Returning to quest picker." });
+    const progress = runProgressInk({ title: t("cli.tui.genesisTitle") });
+    await progress.finish({ type: "info", message: t("cli.tui.noVision") });
     return;
   }
 
@@ -484,8 +486,8 @@ async function handleGenesisFlow(
   const existingQuestIds = listQuestIds(projectRoot);
 
   // Show progress screen with spinner
-  const progress = runProgressInk({ title: "Genesis Planner" });
-  progress.update("Running genesis planner agent...");
+  const progress = runProgressInk({ title: t("cli.tui.genesisPlannerTitle") });
+  progress.update(t("cli.tui.genesisRunning"));
 
   let genesisResult: GenesisResult;
 
@@ -498,14 +500,14 @@ async function handleGenesisFlow(
       },
     });
   } catch (err: any) {
-    await progress.finish({ type: "error", message: `Genesis planner error: ${err.message}` });
+    await progress.finish({ type: "error", message: t("cli.tui.genesisError", { error: err.message }) });
     return;
   }
 
   if (!genesisResult.success && genesisResult.quests.length === 0) {
     await progress.finish({
       type: "error",
-      message: `Genesis planner failed: ${genesisResult.error ?? "No quests produced"}`,
+      message: t("cli.tui.genesisFailed", { reason: genesisResult.error ?? t("cli.tui.noQuests") }),
     });
     return;
   }
@@ -513,15 +515,15 @@ async function handleGenesisFlow(
   // Show results briefly before switching to genesis review
   await progress.finish({
     type: "success",
-    message: `Genesis planner produced ${genesisResult.quests.length} quests. Opening genesis review...`,
+    message: t("cli.tui.genesisProduced", { count: genesisResult.quests.length }),
   });
 
   // Show the genesis review TUI
   const reviewAction = await runGenesisReviewInk({ genesisResult });
 
   if (reviewAction.type === "cancel") {
-    const p2 = runProgressInk({ title: "Genesis Cancelled" });
-    await p2.finish({ type: "info", message: "Genesis plan discarded." });
+    const p2 = runProgressInk({ title: t("cli.tui.genesisCancelledTitle") });
+    await p2.finish({ type: "info", message: t("cli.tui.genesisDiscarded") });
     return;
   }
 
@@ -547,17 +549,17 @@ async function handleGenesisFlow(
   }
 
   // Show approval result
-  const p2 = runProgressInk({ title: "Genesis Approved" });
-  let msg = `Created ${created.length} quests.`;
+  const p2 = runProgressInk({ title: t("cli.tui.genesisApprovedTitle") });
+  let summary = t("cli.tui.genesisCreated", { count: created.length });
 
   // Save knowledge if the planner produced any (attach to the first quest)
   const knowledge = reviewAction.knowledge;
   if (knowledge && created.length > 0) {
     saveQuestKnowledge(projectRoot, created[0], knowledge);
-    msg += ` Saved knowledge file (${knowledge.length} chars) to quest "${created[0]}".`;
+    summary += ` ${t("cli.tui.genesisSavedKnowledge", { chars: knowledge.length, id: created[0] })}`;
   }
 
-  await p2.finish({ type: "success", message: msg });
+  await p2.finish({ type: "success", message: summary });
 }
 
 // ---------------------------------------------------------------------------
@@ -575,14 +577,14 @@ async function handleErrandFlow(
   spec: ErrandSpec
 ): Promise<void> {
   if (!spec.description) {
-    const progress = runProgressInk({ title: "Errand" });
-    await progress.finish({ type: "info", message: "No description provided. Returning." });
+    const progress = runProgressInk({ title: t("cli.tui.errandTitle") });
+    await progress.finish({ type: "info", message: t("cli.tui.noDescription") });
     return;
   }
 
   // Show progress screen with spinner
-  const progress = runProgressInk({ title: "Errand Planner" });
-  progress.update("Running errand planner...");
+  const progress = runProgressInk({ title: t("cli.tui.errandPlannerTitle") });
+  progress.update(t("cli.tui.errandRunning"));
 
   let planResult: PlanResult;
 
@@ -594,14 +596,14 @@ async function handleErrandFlow(
       },
     });
   } catch (err: any) {
-    await progress.finish({ type: "error", message: `Errand planner error: ${err.message}` });
+    await progress.finish({ type: "error", message: t("cli.tui.errandError", { error: err.message }) });
     return;
   }
 
   if (!planResult.success && planResult.tasks.length === 0) {
     await progress.finish({
       type: "error",
-      message: `Errand planner failed: ${planResult.error ?? "No tasks produced"}`,
+      message: t("cli.tui.errandFailed", { reason: planResult.error ?? t("cli.tui.noTasks") }),
     });
     return;
   }
@@ -611,7 +613,7 @@ async function handleErrandFlow(
   // Show results briefly before switching to plan review
   await progress.finish({
     type: "success",
-    message: `Errand planner produced ${planResult.tasks.length} task(s). Opening plan review...`,
+    message: t("cli.tui.errandProduced", { count: planResult.tasks.length }),
   });
 
   // Reuse the plan review TUI
@@ -622,8 +624,8 @@ async function handleErrandFlow(
   });
 
   if (reviewAction.type === "cancel") {
-    const p2 = runProgressInk({ title: "Errand Cancelled" });
-    await p2.finish({ type: "info", message: "Errand plan discarded." });
+    const p2 = runProgressInk({ title: t("cli.tui.errandCancelledTitle") });
+    await p2.finish({ type: "info", message: t("cli.tui.errandDiscarded") });
     return;
   }
 
@@ -636,15 +638,15 @@ async function handleErrandFlow(
     };
 
     const tasks = applyErrandPlan(approvedResult, projectRoot, config);
-    const p2 = runProgressInk({ title: "Errand Approved" });
-    const taskList = tasks.map((t) => `  - ${t.id}: ${t.title}`).join("\n");
+    const p2 = runProgressInk({ title: t("cli.tui.errandApprovedTitle") });
+    const taskList = tasks.map((task) => `  - ${task.id}: ${task.title}`).join("\n");
     await p2.finish({
       type: "success",
-      message: `Created ${tasks.length} task(s).\n${taskList}`,
+      message: `${t("cli.tui.errandCreated", { count: tasks.length })}\n${taskList}`,
     });
   } catch (err: any) {
-    const p2 = runProgressInk({ title: "Errand Error" });
-    await p2.finish({ type: "error", message: `Failed to create errand tasks: ${err.message}` });
+    const p2 = runProgressInk({ title: t("cli.tui.errandErrorTitle") });
+    await p2.finish({ type: "error", message: t("cli.tui.errandCreateFailed", { error: err.message }) });
   }
 }
 
@@ -716,21 +718,21 @@ async function maybeDeleteWishlistItem(
     item.text.length > 50 ? item.text.slice(0, 47) + "..." : item.text;
 
   const confirmed = await runConfirmInk({
-    title: "Delete Wishlist Item",
-    message: `Delete "${truncText}" from wishlist?`,
+    title: t("cli.tui.deleteWishlistTitle"),
+    message: t("cli.tui.deleteWishlistConfirm", { text: truncText }),
   });
 
   if (confirmed) {
     const deleted = deleteWishlistItem(projectRoot, item.id);
-    const p = runProgressInk({ title: "Wishlist" });
+    const p = runProgressInk({ title: t("cli.tui.wishlistTitle") });
     if (deleted) {
-      await p.finish({ type: "success", message: "Wishlist item deleted." });
+      await p.finish({ type: "success", message: t("cli.tui.wishlistDeleted") });
     } else {
-      await p.finish({ type: "info", message: "Item not found (may have been already deleted)." });
+      await p.finish({ type: "info", message: t("cli.tui.wishlistNotFound") });
     }
   } else {
-    const p = runProgressInk({ title: "Wishlist" });
-    await p.finish({ type: "info", message: "Wishlist item kept." });
+    const p = runProgressInk({ title: t("cli.tui.wishlistTitle") });
+    await p.finish({ type: "info", message: t("cli.tui.wishlistKept") });
   }
 }
 
@@ -750,7 +752,7 @@ async function promptVisionText(): Promise<string> {
   });
 
   return new Promise<string>((resolve) => {
-    rl.question("Enter your project vision (or press Enter to cancel): ", (answer) => {
+    rl.question(t("cli.tui.visionPrompt"), (answer) => {
       rl.close();
       resolve(answer.trim());
     });

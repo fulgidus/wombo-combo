@@ -1,0 +1,41 @@
+id: sup-shutdown
+title: Ordered Timeout-Bounded Shutdown
+description: >
+  Create src/lib/supervision/shutdown.ts with the child-stopping primitives (no knowledge of strategies).
+
+    - stopChild(handle: ChildHandle, opts: { timeoutMs: number; clock: Clock; controller?: AbortController }): Promise<{ reason: ExitReason; forced: boolean }>
+        Calls handle.abort("shutdown") (and controller.abort() if provided), then races handle.exit against a clock.setTimeout(timeoutMs). If the exit resolves first, clear the timer and return { reason, forced: false }. If the timeout wins, return { reason: { kind: "crash", error: new ShutdownTimeoutError(...) }, forced: true } and do not wait for the child any longer. Always clear the timer, and never leave an unhandled rejection. Calling stopChild on an already-exited handle resolves immediately.
+    - export class ShutdownTimeoutError extends Error (with childId optional, timeoutMs).
+    - stopChildrenInOrder(items: Array<{ id: string; handle: ChildHandle; timeoutMs: number; controller?: AbortController }>, clock: Clock): Promise<Map<string, {reason: ExitReason; forced: boolean}>> — stops sequentially in the order given (the caller passes reverse start order), each bounded by its own timeout, continuing after a forced child. A child whose abort() throws is treated as a forced stop with that error as the crash reason.
+
+  Tests in tests/supervision-shutdown.test.ts using FakeClock (tests/helpers/fake-clock.ts): graceful exit before
+  timeout, hung child hits timeout via clock.advanceAsync, ordering of stops is strictly sequential (second child's
+  abort is not called until the first has exited), timer cleared (pendingTimers() === 0 after), abort throwing,
+  already-exited handle.
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - sup-types
+  - sup-fake-clock
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - All timing through the injected Clock
+  - Never reject; always resolve with a result
+forbidden:
+  - Do not use real timers or Date.now
+  - Do not add dependencies
+references:
+  - src/lib/supervision/types.ts
+  - src/lib/supervision/clock.ts
+  - tests/helpers/fake-clock.ts
+notes:
+  - Do not touch supervisor.ts or index.ts.
+  - Write a tiny local test helper (inside the test file) to build a fake ChildHandle with a manually-resolvable exit
+    promise.
+subtasks: []
+quest: supervisor-core
+paths: []

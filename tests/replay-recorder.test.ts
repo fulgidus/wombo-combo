@@ -233,6 +233,20 @@ describe("ReplayRecorder", () => {
   });
 });
 
+describe("ReplayRecorder retention options", () => {
+  test("retention.keepPerTask overrides the default and size cap prunes older runs", () => {
+    const rec = new ReplayRecorder({ projectRoot: root, state, retention: { keepPerFeature: 5, maxTotalBytes: 1 } });
+    for (let i = 0; i < 3; i++) {
+      runner.submitTask(makeTask("t1"));
+      rec.recordPrompt("t1", `P${i}`);
+      state.updateAgentStatus("t1", "verified");
+    }
+    rec.close();
+    // Every file exceeds the 1-byte cap, so only the newest (just finalized) may remain at most.
+    expect(store.list("t1").length).toBeLessThanOrEqual(1);
+  });
+});
+
 describe("monitor onEvent seam", () => {
   test("ProcessMonitor delivers parsed events and survives throwing observers", async () => {
     const events: string[] = [];

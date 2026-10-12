@@ -1,0 +1,46 @@
+id: supervisor-core
+title: Supervisor Core Library
+goal: |
+  Implement a small, dependency-free supervision library in
+  src/daemon/supervision/ (or src/lib/supervision/):
+  - ChildSpec: id, start(), restart type (permanent / transient /
+    temporary), shutdown timeout.
+  - Supervisor: manages children and applies restart strategies
+    (one_for_one, one_for_all, rest_for_one).
+  - Restart intensity: max N restarts per T seconds, then the supervisor
+    gives up and escalates to its parent.
+  - Backoff between restarts.
+  - Ordered, timeout-bounded shutdown.
+  - Typed event emitter for child_started, child_exited, child_restarted
+    and supervisor_escalated.
+  Fully unit-tested with deterministic fake clocks. The library knows
+  nothing about agents or git.
+  Acceptance: all strategies and the intensity escalation have tests, and
+  typecheck and build pass.
+status: paused
+priority: medium
+difficulty: hard
+depends_on:
+  - otp-supervision-spike
+branch: quest/supervisor-core
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add:
+    - Pure TypeScript, ESM, extensionless relative imports
+    - Inject clock and timers so tests are deterministic
+    - Keep each module under ~500 lines
+    - Tests go in tests/*.test.ts
+  ban:
+    - Do not import from agent-runner, scheduler or any git/worktree code
+    - Do not add dependencies
+    - Do not change existing daemon behaviour in this quest
+  override: {}
+created_at: 2026-10-12T08:40:26.208Z
+updated_at: 2026-10-12T16:10:44.190Z
+started_at: 2026-10-12T15:56:34.409Z
+ended_at: null
+notes:
+  - Model a child as an abortable async task or process handle with an exit promise carrying a reason (normal | shutdown
+    | crash(error))
+  - Expose a snapshot() for the tree so observability can render it later

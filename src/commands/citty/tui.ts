@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../../config";
 import { ensureTasksFile } from "../../lib/tasks";
 import { cmdTui } from "../tui";
+import { t } from "../../lib/i18n";
 
 export const tuiCommand = defineCommand({
   meta: {
@@ -70,10 +71,7 @@ export const tuiCommand = defineCommand({
     const projectRoot = resolve(process.cwd());
 
     if (!isProjectInitialized(projectRoot)) {
-      console.error(
-        `\nThis project hasn't been initialized yet.\n` +
-          `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-      );
+      console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
       process.exit(1);
     }
 

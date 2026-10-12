@@ -24,6 +24,7 @@ import {
   type CommandDef,
   type FlagDef,
 } from "../lib/schema";
+import { t } from "../lib/i18n";
 
 /** Marker comment injected into rc files so we can find and remove our lines. */
 const RC_MARKER = "# Added by woco (wombo-combo) — do not edit this block";
@@ -47,13 +48,13 @@ export function cmdCompletion({ shell }: { shell?: string }): void {
       process.stdout.write(fishScript());
       break;
     default:
-      console.error(`Unsupported shell: "${resolved}"`);
-      console.error("Supported shells: bash, zsh, fish");
+      console.error(t("cli.completion.unsupportedShell", { shell: resolved }));
+      console.error(t("cli.completion.supportedShells"));
       console.error("");
-      console.error("Install completions:");
-      console.error("  woco completion install              # auto-detect & install");
-      console.error('  eval "$(woco completion bash)"       # Bash: add to ~/.bashrc');
-      console.error('  eval "$(woco completion zsh)"        # Zsh:  add to ~/.zshrc');
+      console.error(t("cli.completion.installHeading"));
+      console.error(`  woco completion install              # ${t("cli.completion.hintAuto")}`);
+      console.error(`  eval "$(woco completion bash)"       # ${t("cli.completion.hintBash")}`);
+      console.error(`  eval "$(woco completion zsh)"        # ${t("cli.completion.hintZsh")}`);
       console.error("  woco completion fish | source        # Fish");
       process.exit(1);
   }
@@ -85,8 +86,8 @@ export function installCompletions(): void {
       installFish();
       break;
     default:
-      console.log(`Shell "${shell}" is not supported for auto-install.`);
-      console.log("Supported: bash, zsh, fish");
+      console.log(t("cli.completion.noAutoInstall", { shell }));
+      console.log(t("cli.completion.supported"));
   }
 }
 
@@ -106,10 +107,10 @@ export function uninstallCompletions(): void {
   removed = uninstallFish() || removed;
 
   if (removed) {
-    console.log("Shell completions removed.");
-    console.log("Open a new terminal for changes to take effect.");
+    console.log(t("cli.completion.removed"));
+    console.log(t("cli.completion.openNewTerminal"));
   } else {
-    console.log("No woco completions found to remove.");
+    console.log(t("cli.completion.nothingToRemove"));
   }
 }
 
@@ -148,7 +149,7 @@ function installZsh(): void {
   // Check if our marker block already exists
   if (rcContent.includes(RC_MARKER) && rcContent.includes("fpath=")) {
     // Already installed — just update the completion file (already written above)
-    console.log("Zsh completions updated.");
+    console.log(t("cli.completion.zshUpdated"));
     return;
   }
 
@@ -167,8 +168,8 @@ function installZsh(): void {
     writeFileSync(zshrc, newContent, "utf-8");
   }
 
-  console.log("Zsh completions installed.");
-  console.log("  Open a new terminal or run: source ~/.zshrc");
+  console.log(t("cli.completion.zshInstalled"));
+  console.log(`  ${t("cli.completion.reload", { file: "~/.zshrc" })}`);
 }
 
 function uninstallZsh(): boolean {
@@ -210,21 +211,21 @@ function installBash(): void {
 
   // Already installed?
   if (rcContent.includes(RC_MARKER) && rcContent.includes("woco completion bash")) {
-    console.log("Bash completions already installed.");
+    console.log(t("cli.completion.bashAlready"));
     return;
   }
 
   // Also check for manual installs (user may have added eval line themselves)
   if (rcContent.includes("woco completion bash")) {
-    console.log("Bash completions already present in ~/.bashrc.");
+    console.log(t("cli.completion.bashPresent"));
     return;
   }
 
   const block = [RC_MARKER, evalLine, RC_MARKER_END, ""].join("\n");
   writeFileSync(bashrc, rcContent + "\n" + block, "utf-8");
 
-  console.log("Bash completions installed.");
-  console.log("  Open a new terminal or run: source ~/.bashrc");
+  console.log(t("cli.completion.bashInstalled"));
+  console.log(`  ${t("cli.completion.reload", { file: "~/.bashrc" })}`);
 }
 
 function uninstallBash(): boolean {
@@ -255,8 +256,8 @@ function installFish(): void {
   mkdirSync(compDir, { recursive: true });
   writeFileSync(compFile, fishScript(), "utf-8");
 
-  console.log("Fish completions installed.");
-  console.log("  Open a new terminal or run: source " + compFile);
+  console.log(t("cli.completion.fishInstalled"));
+  console.log(`  ${t("cli.completion.reload", { file: compFile })}`);
 }
 
 function uninstallFish(): boolean {

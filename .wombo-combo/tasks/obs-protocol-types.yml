@@ -1,0 +1,59 @@
+id: obs-protocol-types
+title: Add Supervision Protocol Messages
+description: >
+  Extend src/daemon/protocol.ts with additive supervision messages. Do not change any
+
+  existing Evt*/Cmd* shape and do not bump PROTOCOL_VERSION.
+
+
+  Add shared types:
+    - SupervisionChildKind = "supervisor" | "agent" (string-literal union, extensible).
+    - SupervisionExitReason { kind: "normal" | "crash" | "killed" | "timeout" | "shutdown" | "intensity_exceeded"; message?: string; code?: number }.
+    - SupervisionNode { id, label, kind, strategy?, state: "starting"|"running"|"restarting"|"stopped"|"failed", restartCount, lastExit?: SupervisionExitReason, lastExitAt?: string (ISO), children: SupervisionNode[] }.
+    - SupervisionTreeSnapshot { root: SupervisionNode | null; updatedAt: string; totalRestarts: number; escalations: number }.
+
+  Add events (all payload interfaces exported):
+    - EvtSupervisorStarted { supervisorId, parentId?, strategy?, label? }
+    - EvtChildRestarted { supervisorId, childId, restartCount, reason: SupervisionExitReason, delayMs?, at }
+    - EvtIntensityExceeded { supervisorId, maxRestarts, windowMs, restarts, at }
+    - EvtSupervisorEscalated { supervisorId, parentId?, outcome?: string, reason: SupervisionExitReason, at }
+    - EvtSupervisionTree { tree: SupervisionTreeSnapshot }  (reply to the new command)
+  Add command CmdGetSupervisionTree {} ("cmd:get-supervision-tree").
+
+  Register them in CommandMap / EventMap under names "evt:supervisor-started", "evt:child-restarted",
+
+  "evt:intensity-exceeded", "evt:supervisor-escalated", "evt:supervision-tree",
+
+  "cmd:get-supervision-tree". Update any exhaustive lists/type guards (grep for the event-name unions,
+
+  e.g. DashboardEvent in src/lib/dashboard-metrics.ts is handled by a later task, not here).
+
+  Older clients must ignore unknown events: verify src/daemon/client.ts does not throw on unknown
+
+  event types, and add a test.
+
+  Extend tests/daemon-protocol.test.ts with round-trip and backward-compat cases.
+status: in_progress
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT45M
+started_at: 2026-10-12T16:12:15.441Z
+ended_at: null
+constraints:
+  - New protocol messages are optional for older clients
+  - Existing Evt*/Cmd* interfaces must be byte-for-byte unchanged apart from map registrations
+forbidden:
+  - Do not change PROTOCOL_VERSION
+  - Do not edit dashboard-metrics.ts, daemon.ts or any TUI file
+references:
+  - src/daemon/protocol.ts
+  - src/daemon/client.ts
+  - tests/daemon-protocol.test.ts
+  - tests/daemon-client.test.ts
+notes:
+  - Timestamps in existing events are ISO strings or epoch ms; check neighbouring events and match.
+subtasks: []
+quest: supervision-observability
+paths: []

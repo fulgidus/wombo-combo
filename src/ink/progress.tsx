@@ -26,6 +26,8 @@
 
 import React from "react";
 import { Box, Text } from "ink";
+import { Spinner } from "./spinner";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,8 +62,6 @@ export interface ProgressViewProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SPIN_CHARS = ["⠂", "⠆", "⠇", "⠃", "⠉", "⠌", "⠎", "⠋"];
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -82,6 +82,7 @@ export function ProgressView({
   logLines,
   showDismiss = false,
 }: ProgressViewProps): React.ReactElement {
+  const t = useI18n();
   // Determine the icon and status text to display
   let icon: React.ReactElement | null = null;
   let statusText: React.ReactElement | null = null;
@@ -103,8 +104,7 @@ export function ProgressView({
         break;
     }
   } else if (spinning) {
-    const ch = SPIN_CHARS[spinFrame % SPIN_CHARS.length];
-    icon = <Text color="magenta">{ch}</Text>;
+    icon = <Spinner frame={spinFrame} color="magenta" />;
     statusText = status ? <Text color="cyan">{status}</Text> : null;
   }
 
@@ -143,7 +143,7 @@ export function ProgressView({
       {/* Footer */}
       {showDismiss && (
         <Box marginTop={1}>
-          <Text dimColor>Press any key to continue...</Text>
+          <Text dimColor>{t("ui.pressAnyKey")}</Text>
         </Box>
       )}
     </Box>

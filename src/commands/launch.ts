@@ -14,7 +14,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
-import { loadFeatures, selectFeatures } from "../lib/tasks";
+import { loadFeatures, selectFeatures, getDoneTaskIds, areDependenciesMet } from "../lib/tasks";
 import { computeTaskWeight } from "../lib/task-weight";
 import { resolveRoute } from "../lib/harness/routing";
 import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
@@ -32,6 +32,7 @@ import {
 } from "../lib/dependency-graph";
 import { ensureProxyRunning, isPortlessAvailable } from "../lib/portless";
 import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
+import { msg, t, type Msg } from "../lib/i18n";
 import { renderLaunchDryRun } from "../lib/toon";
 import {
   prepareAgentDefinitions,
@@ -45,6 +46,7 @@ import { resolveQuestConfig, applyQuestConstraintsToTask } from "../lib/quest";
 // used by schema.ts / citty-registry.ts).
 import type { DaemonClient } from "../daemon/client";
 import type { SchedulerStatus } from "../daemon/protocol";
+import type { AgentStatus } from "../daemon/agent-status";
 
 /**
  * Delegate the launch to the background daemon. This is the only execution
@@ -80,7 +82,7 @@ async function delegateToDaemon(
 
     // Step 3: send cmd:start
     if (fmt === "text") {
-      console.log(`Delegating ${taskIds.length} task(s) to daemon...`);
+      console.log(t("cli.launch.delegating", { count: taskIds.length }));
     }
     client.start({
       questId: opts.questId ?? undefined,
@@ -97,7 +99,7 @@ async function delegateToDaemon(
     if (!opts.noUi && !opts.noTui) {
       // TUI mode — open the daemon monitor
       const { InkDaemonTUI } = await import("../ink/run-daemon-monitor");
-      if (fmt === "text") console.log("Launching daemon monitor TUI...\n");
+      if (fmt === "text") console.log(`${t("cli.launch.openingMonitor")}\n`);
       const daemonTui = new InkDaemonTUI({
         client,
         projectRoot,
@@ -111,7 +113,7 @@ async function delegateToDaemon(
       daemonTui.stop();
     } else {
       // Headless mode — poll until scheduler goes idle / all agents done
-      if (fmt === "text") console.log("Daemon accepted. Waiting for completion (headless)...\n");
+      if (fmt === "text") console.log(`${t("cli.launch.waitingHeadless")}\n`);
       await waitForDaemonCompletion(client, fmt);
     }
   } finally {
@@ -154,35 +156,81 @@ export async function waitForDaemonCompletion(
     }
 
     const { scheduler, agents } = snapshot;
-    const active = agents.filter((a) =>
-      a.status === "running" || a.status === "installing" ||
-      a.status === "resolving_conflict" || a.status === "retry"
-    );
-    const queued = agents.filter((a) => a.status === "queued");
-    const done = agents.filter((a) =>
-      a.status === "completed" || a.status === "verified" ||
-      a.status === "merged" || a.status === "failed"
-    );
+    const progress = evaluateDaemonProgress(scheduler.status, agents);
 
     // Print periodic status in text/headless mode
     if (fmt === "text" && polls % DASHBOARD_INTERVAL === 0) {
       console.log(
-        `[daemon] ${active.length} active, ${queued.length} queued, ` +
-        `${done.length} done — scheduler: ${scheduler.status}`
+        t("cli.launch.daemonStatus", {
+          active: progress.active,
+          queued: progress.queued,
+          done: progress.done,
+          scheduler: scheduler.status,
+        })
       );
     }
 
-    // Terminal conditions
-    const terminalStatuses: SchedulerStatus[] = ["idle", "stopping", "draining", "shutdown"];
-    if (terminalStatuses.includes(scheduler.status) && active.length === 0 && queued.length === 0) {
+    if (progress.finished) {
       if (fmt === "text") {
-        const passed = agents.filter((a) => a.status === "merged" || a.status === "verified").length;
-        const failed = agents.filter((a) => a.status === "failed").length;
-        console.log(`\nDaemon completed: ${passed} succeeded, ${failed} failed out of ${agents.length} total.`);
+        console.log(
+          `\n${t("cli.launch.daemonCompleted", {
+            passed: progress.merged,
+            failed: progress.failed,
+            total: agents.length,
+          })}`
+        );
       }
       return;
     }
   }
+}
+
+/** Agent statuses that are final: nothing else will happen to the agent. */
+const FINAL_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set(["merged", "failed"]);
+
+/** Agent statuses where a process or pipeline stage (agent, retry, conflict resolution) is running. */
+const RUNNING_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set([
+  "running", "installing", "resolving_conflict", "in_review", "retry",
+]);
+
+export interface DaemonProgress {
+  active: number;
+  queued: number;
+  /** Agents in a final status (merged or failed). */
+  done: number;
+  merged: number;
+  failed: number;
+  finished: boolean;
+}
+
+/**
+ * Decide whether a headless launch is finished from a daemon state snapshot.
+ *
+ * "completed" (agent exited, build verification pending) and "verified"
+ * (awaiting merge) are in flight: an idle scheduler does not mean the work is
+ * over, because verification and merge run after the agent exits. Only
+ * merged/failed agents are final. A shutting-down or stopping/draining
+ * scheduler ends the wait once nothing is actively running.
+ */
+export function evaluateDaemonProgress(
+  schedulerStatus: SchedulerStatus,
+  agents: ReadonlyArray<{ status: AgentStatus }>,
+): DaemonProgress {
+  const active = agents.filter((a) => RUNNING_AGENT_STATUSES.has(a.status)).length;
+  const queued = agents.filter((a) => a.status === "queued").length;
+  const merged = agents.filter((a) => a.status === "merged").length;
+  const failed = agents.filter((a) => a.status === "failed").length;
+  const allFinal = agents.every((a) => FINAL_AGENT_STATUSES.has(a.status));
+
+  let finished: boolean;
+  if (schedulerStatus === "idle") {
+    finished = allFinal;
+  } else if (schedulerStatus === "stopping" || schedulerStatus === "draining" || schedulerStatus === "shutdown") {
+    finished = active === 0 && queued === 0;
+  } else {
+    finished = false;
+  }
+  return { active, queued, done: merged + failed, merged, failed, finished };
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +376,40 @@ function getGitattributesUnionFiles(projectRoot: string): Set<string> {
 }
 
 /**
+ * Build the "nothing to launch" error message, context-aware of the active
+ * filters. When no filter narrows the selection, backlog tasks whose
+ * dependencies are met are called out, since launch only takes planned tasks.
+ */
+export function describeNoLaunchable(
+  data: ReturnType<typeof loadFeatures>,
+  opts: Pick<LaunchCommandOptions, "allReady" | "topPriority" | "quickestWins" | "priority" | "difficulty" | "features">,
+): string {
+  const activeFilters: string[] = [];
+  if (opts.allReady) activeFilters.push("--all-ready");
+  if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
+  if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
+  if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
+  if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
+  if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
+
+  if (activeFilters.length > 0 && !(opts.allReady && activeFilters.length === 1)) {
+    return t("cli.launch.noMatchFilters", { filters: activeFilters.join(", ") });
+  }
+
+  let base = t(opts.allReady ? "cli.launch.noLaunchableAllReady" : "cli.launch.noLaunchable");
+  const doneIds = getDoneTaskIds(data, data.archive);
+  const backlog = data.tasks.filter((x) => x.status === "backlog" && areDependenciesMet(x, doneIds));
+  if (backlog.length > 0) {
+    base += "\n" + t("cli.launch.backlogHint", {
+      count: backlog.length,
+      ids: backlog.slice(0, 5).map((x) => x.id).join(", "),
+      more: backlog.length > 5 ? ", ..." : "",
+    });
+  }
+  return base;
+}
+
+/**
  * Pre-flight check: detect barrel files in the project that could cause
  * merge conflicts when multiple agents modify nearby code.
  *
@@ -361,11 +443,11 @@ function detectUnprotectedBarrels(
   }
 
   if (unprotected.length > 0 && fmt === "text") {
-    console.warn(`\n\x1b[33m[preflight]\x1b[0m Detected ${unprotected.length} unprotected barrel file(s) that may cause merge conflicts:`);
+    console.warn(`\n\x1b[33m[preflight]\x1b[0m ${t("cli.launch.barrelDetected", { count: unprotected.length })}`);
     for (const b of unprotected) {
-      console.warn(`  \x1b[33m${b.relativePath}\x1b[0m (${b.reExportPercent}% re-exports, ${b.reExportLines}/${b.totalLines} lines)`);
+      console.warn(`  \x1b[33m${b.relativePath}\x1b[0m (${t("cli.launch.barrelDetail", { percent: b.reExportPercent, lines: b.reExportLines, total: b.totalLines })})`);
     }
-    console.warn(`\n  \x1b[36mRecommendation:\x1b[0m Add these entries to .gitattributes to auto-resolve conflicts:`);
+    console.warn(`\n  \x1b[36m${t("cli.launch.recommendation")}\x1b[0m ${t("cli.launch.barrelAdvice")}`);
     for (const b of unprotected) {
       console.warn(`    ${b.relativePath} merge=union`);
     }
@@ -417,11 +499,11 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   let { config } = opts;
   const fmt = opts.outputFmt ?? "text";
 
-  const fail = (msg: string): never => {
-    outputError(fmt, msg);
+  const fail = (message: string | Msg): never => {
+    outputError(fmt, message);
   };
 
-  if (fmt === "text") console.log("\n--- wombo-combo: Launch ---\n");
+  if (fmt === "text") console.log(`\n${t("cli.launch.banner")}\n`);
 
   // Ensure agent definition exists — reinstall from template if missing
   ensureAgentDefinition(projectRoot, config, opts.agent);
@@ -435,42 +517,42 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   if (questId) {
     const quest = loadQuest(projectRoot, questId);
     if (!quest) {
-      fail(`Quest "${questId}" not found. Use 'woco quest list' to see available quests.`);
+      fail(msg("cli.launch.questNotFound", { id: questId }));
       return; // unreachable
     }
 
     if (quest.status !== "active") {
-      fail(`Quest "${questId}" is in status "${quest.status}" — only active quests can be launched. Use 'woco quest activate ${questId}' first.`);
+      fail(msg("cli.launch.questNotActive", { id: questId, status: quest.status }));
       return; // unreachable
     }
 
     // Ensure the quest branch exists (create from baseBranch if needed)
     if (!questBranchExists(projectRoot, questId)) {
-      if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
+      if (fmt === "text") console.log(t("cli.launch.creatingQuestBranch", { branch: quest.branch, base: quest.baseBranch }));
       await createQuestBranch(projectRoot, questId, quest.baseBranch);
     } else {
       // Sync quest branch with baseBranch (merge main → quest branch)
       // This ensures task statuses and code changes are up-to-date
-      if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+      if (fmt === "text") console.log(t("cli.launch.syncingQuestBranch", { branch: quest.branch, base: quest.baseBranch }));
       const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
       if (syncResult.conflicting) {
-        fail(syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+        fail(syncResult.error ?? msg("cli.launch.syncConflicts", { base: quest.baseBranch, branch: quest.branch }));
         return;
       }
       if (syncResult.error) {
-        fail(`Failed to sync quest branch: ${syncResult.error}`);
+        fail(msg("cli.launch.syncFailed", { error: syncResult.error }));
         return;
       }
       if (syncResult.synced && fmt === "text") {
-        console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+        console.log(t("cli.launch.questSynced", { base: quest.baseBranch }));
       }
     }
 
     // Override baseBranch — task branches will fork from the quest branch
     opts.baseBranch = quest.branch;
     if (fmt === "text") {
-      console.log(`Quest: ${quest.title} (${questId})`);
-      console.log(`  Base branch overridden to: ${quest.branch}`);
+      console.log(t("cli.launch.quest", { title: quest.title, id: questId }));
+      console.log(t("cli.launch.baseOverridden", { branch: quest.branch }));
     }
 
     // Apply quest config overrides (layered on top of project config)
@@ -490,10 +572,10 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     if (fmt === "text") {
       const constraintCount = questContext.addedConstraints.length + questContext.addedForbidden.length;
       if (constraintCount > 0) {
-        console.log(`  Quest constraints: ${questContext.addedConstraints.length} added, ${questContext.addedForbidden.length} banned`);
+        console.log(t("cli.launch.questConstraints", { added: questContext.addedConstraints.length, banned: questContext.addedForbidden.length }));
       }
       if (knowledge) {
-        console.log(`  Quest knowledge: loaded (${knowledge.length} bytes)`);
+        console.log(t("cli.launch.questKnowledge", { count: knowledge.length }));
       }
       console.log("");
     }
@@ -504,17 +586,11 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     if (isPortlessAvailable(config)) {
       const proxyOk = ensureProxyRunning(config);
       if (!proxyOk && fmt === "text") {
-        console.warn(
-          "\x1b[33m[portless]\x1b[0m proxy could not be started — agents may encounter port collisions"
-        );
+        console.warn(`\x1b[33m[portless]\x1b[0m ${t("cli.launch.portlessProxyFailed")}`);
       }
     } else if (fmt === "text") {
-      console.warn(
-        "\x1b[33m[portless]\x1b[0m enabled but not installed. Install with: npm install -g portless"
-      );
-      console.warn(
-        "  Agents will run without portless — concurrent dev servers may have port collisions.\n"
-      );
+      console.warn(`\x1b[33m[portless]\x1b[0m ${t("cli.launch.portlessMissing")}`);
+      console.warn(`${t("cli.launch.portlessNoAgents")}\n`);
     }
   }
 
@@ -522,10 +598,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   // Validate that the configured baseBranch exists as a local branch
   // -------------------------------------------------------------------------
   if (!branchExists(projectRoot, opts.baseBranch)) {
-    const msg = `Base branch "${opts.baseBranch}" does not exist as a local branch. ` +
-      `Create it first (e.g. "git checkout -b ${opts.baseBranch}") or specify ` +
-      `a different branch with --base-branch.`;
-    fail(msg);
+    fail(msg("cli.launch.baseBranchMissing", { branch: opts.baseBranch }));
   }
 
   // Load features
@@ -544,26 +617,8 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   let selected = selectFeatures(data, selOpts);
 
   if (selected.length === 0) {
-    // Build a context-aware message based on which flags were passed
-    const activeFilters: string[] = [];
-    if (opts.allReady) activeFilters.push("--all-ready");
-    if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
-    if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
-    if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
-    if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
-    if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
-
-    let msg: string;
-    if (opts.allReady && activeFilters.length === 1) {
-      msg = "No launchable tasks found (all tasks are done, cancelled, or have unmet dependencies).";
-    } else if (activeFilters.length > 0) {
-      msg = `No tasks matched the current filters: ${activeFilters.join(", ")}.`;
-    } else {
-      msg = "No launchable tasks found.";
-    }
-
     // Throw so callers can catch gracefully (CLI command handler catches).
-    throw new Error(msg);
+    throw new Error(describeNoLaunchable(data, opts));
   }
 
   // -------------------------------------------------------------------------
@@ -579,30 +634,30 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
         // Ensure the quest branch exists
         if (!questBranchExists(projectRoot, autoQuestId)) {
-          if (fmt === "text") console.log(`Creating quest branch "${quest.branch}" from "${quest.baseBranch}"...`);
+          if (fmt === "text") console.log(t("cli.launch.creatingQuestBranch", { branch: quest.branch, base: quest.baseBranch }));
           await createQuestBranch(projectRoot, autoQuestId, quest.baseBranch);
         } else {
           // Sync quest branch with baseBranch
-          if (fmt === "text") console.log(`Syncing quest branch "${quest.branch}" with "${quest.baseBranch}"...`);
+          if (fmt === "text") console.log(t("cli.launch.syncingQuestBranch", { branch: quest.branch, base: quest.baseBranch }));
           const syncResult = await syncQuestBranch(projectRoot, quest.branch, quest.baseBranch);
           if (syncResult.conflicting) {
-            fail(syncResult.error ?? `Merge conflicts syncing ${quest.baseBranch} into ${quest.branch}.`);
+            fail(syncResult.error ?? msg("cli.launch.syncConflicts", { base: quest.baseBranch, branch: quest.branch }));
             return;
           }
           if (syncResult.error) {
-            fail(`Failed to sync quest branch: ${syncResult.error}`);
+            fail(msg("cli.launch.syncFailed", { error: syncResult.error }));
             return;
           }
           if (syncResult.synced && fmt === "text") {
-            console.log(`  Quest branch synced with ${quest.baseBranch}.`);
+            console.log(t("cli.launch.questSynced", { base: quest.baseBranch }));
           }
         }
 
         // Override baseBranch — task branches will fork from the quest branch
         opts.baseBranch = quest.branch;
         if (fmt === "text") {
-          console.log(`Auto-detected quest: ${quest.title} (${autoQuestId})`);
-          console.log(`  Base branch overridden to: ${quest.branch}`);
+          console.log(t("cli.launch.autoQuest", { title: quest.title, id: autoQuestId }));
+          console.log(t("cli.launch.baseOverridden", { branch: quest.branch }));
         }
 
         // Apply quest config overrides
@@ -619,10 +674,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
         };
       }
     } else if (taskQuests.size > 1) {
-      fail(
-        `Selected tasks belong to multiple quests: ${[...taskQuests].join(", ")}. ` +
-        `Launch tasks from a single quest at a time, or use --quest to scope the wave.`
-      );
+      fail(msg("cli.launch.multipleQuests", { quests: [...taskQuests].join(", ") }));
       return;
     }
   }
@@ -683,8 +735,10 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   }
   if (fmt === "text" && launchScopeIds.length > selected.length) {
     console.log(
-      `Daemon scope: ${launchScopeIds.length} task(s) ` +
-      `(selected + ${launchScopeIds.length - selected.length} dependent(s) pending dependencies)`
+      t("cli.launch.daemonScope", {
+        count: launchScopeIds.length,
+        dependents: launchScopeIds.length - selected.length,
+      })
     );
   }
 
@@ -704,7 +758,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     try {
       validateDepGraph(depGraph);
     } catch (err: any) {
-      fail(`${err.message}\nFix dependency issues before launching.`);
+      fail(msg("cli.launch.depIssues", { message: err.message }));
     }
 
     // Build scheduling plan
@@ -759,14 +813,14 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
     };
 
     output(fmt, dryRunResult, () => {
-      console.log("Dry run — not launching agents.");
+      console.log(t("cli.launch.dryRun"));
       if (config.modelRouting || config.agentProfiles || config.routing) {
         for (const f of selected) {
           const info = routeInfo(f);
-          const who = info.route_error
-            ? `ERROR ${info.route_error}`
-            : `${info.harness}${info.profile !== "default" ? `:${info.profile}` : ""} model=${info.model ?? "(agent default)"}`;
-          console.log(`  ${f.id}: weight=${computeTaskWeight(f)} ${who}`);
+          const route = info.route_error
+            ? t("cli.launch.routeError", { error: info.route_error })
+            : `${info.harness}${info.profile !== "default" ? `:${info.profile}` : ""} model=${info.model ?? t("cli.launch.agentDefault")}`;
+          console.log(t("cli.launch.dryRunRoute", { id: f.id, weight: computeTaskWeight(f), route }));
         }
       }
       const scopeTasks = data.tasks.filter((t) => scopeSet.has(t.id));
@@ -787,15 +841,19 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   if (config.agentRegistry.mode !== "disabled") {
     const tasksWithAgentType = selected.filter((t) => t.agent_type);
     if (tasksWithAgentType.length > 0) {
-      if (fmt === "text") console.log(`\nResolving ${tasksWithAgentType.length} specialized agent(s) from registry...`);
+      if (fmt === "text") console.log(`\n${t("cli.launch.resolvingAgents", { count: tasksWithAgentType.length })}`);
       agentResolutions = await prepareAgentDefinitions(selected, config, projectRoot);
 
       const specialized = [...agentResolutions.values()].filter(isSpecializedAgent);
       const cached = specialized.filter((r) => r.fromCache);
       if (fmt === "text") {
         console.log(
-          `  ${specialized.length} specialized (${cached.length} cached, ${specialized.length - cached.length} fetched), ` +
-          `${selected.length - specialized.length} generalist`
+          t("cli.launch.agentsResolved", {
+            specialized: specialized.length,
+            cached: cached.length,
+            fetched: specialized.length - cached.length,
+            generalist: selected.length - specialized.length,
+          })
         );
       }
     }
@@ -812,7 +870,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
       : await consolePreflightConfirm(selected, agentResolutions, config);
 
     if (!preflight.proceed) {
-      outputMessage(fmt, "Launch cancelled.");
+      outputMessage(fmt, msg("cli.launch.cancelled"));
       return;
     }
 
@@ -829,7 +887,7 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   try {
     await delegateToDaemon(projectRoot, opts, launchScopeIds, fmt);
   } catch (err: any) {
-    fail(`Failed to launch via daemon: ${err?.message ?? err}`);
+    fail(msg("cli.launch.daemonFailed", { message: String(err?.message ?? err) }));
   }
 }
 

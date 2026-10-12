@@ -18,6 +18,7 @@ import {
   allCommandSchemas,
 } from "../../lib/schema";
 import { buildToonSpec, renderToonLegend } from "../../lib/toon-spec";
+import { t } from "../../lib/i18n";
 
 /**
  * Read the version string from package.json.
@@ -65,9 +66,7 @@ export const describeCommand = defineCommand({
         const spec = buildToonSpec(version);
         const cmdSpec = spec.commands.find((c) => c.command === commandName);
         if (!cmdSpec) {
-          console.error(
-            `Unknown command: "${commandName}". Run 'woco describe --output toon' to see the full TOON spec.`
-          );
+          console.error(t("cli.describe.unknownToon", { name: commandName }));
           process.exit(1);
         }
         console.log(JSON.stringify(cmdSpec, null, 2));
@@ -83,9 +82,7 @@ export const describeCommand = defineCommand({
       // Describe a specific command
       const def = findCommandDef(commandName);
       if (!def) {
-        console.error(
-          `Unknown command: "${commandName}". Run 'woco describe' to list all commands.`
-        );
+        console.error(t("cli.describe.unknown", { name: commandName }));
         process.exit(1);
       }
       console.log(JSON.stringify(commandToSchema(def), null, 2));

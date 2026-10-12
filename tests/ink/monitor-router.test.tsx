@@ -24,6 +24,7 @@ import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
 import { stripAnsi } from "./ansi";
+import { selectFromEscMenu, waitFor, eventually } from "../helpers/wait-for";
 
 // ---------------------------------------------------------------------------
 // Inline stubs
@@ -408,12 +409,8 @@ async function mountShell(opts: { client?: LiveFakeClient; store?: any; notifyRe
 }
 
 async function openDashboardFromMenu(app: Awaited<ReturnType<typeof mountShell>>) {
-  app.key("\u001b");
-  await sleep(400);
-  app.key("\u001b[B"); // Return to app -> Dashboard
-  await sleep();
-  app.key("\r");
-  await sleep(80);
+  await selectFromEscMenu(app, "Dashboard"); // Return to app -> Dashboard
+  await waitFor(() => app.frame().includes("Home › Dashboard"), "dashboard screen");
 }
 
 describe("DaemonMonitorShell dashboard", () => {
@@ -432,8 +429,7 @@ describe("DaemonMonitorShell dashboard", () => {
     expect(app.frame()).toContain("Home › Dashboard");
     expect(app.frame()).toContain("Throughput");
     app.key("b");
-    await sleep(80);
-    expect(app.frame()).toContain("Home › Wave Monitor");
+    await waitFor(() => app.frame().includes("Home › Wave Monitor"), "monitor screen after b");
     expect(app.quits).toHaveLength(0);
     app.unmount();
   });
@@ -445,8 +441,7 @@ describe("DaemonMonitorShell dashboard", () => {
     await openDashboardFromMenu(app);
     expect(app.frame()).toContain("Home › Dashboard");
     app.key("b");
-    await sleep(80);
-    expect(app.frame()).toContain("Home › Wave Monitor"); // a single pop was enough
+    await waitFor(() => app.frame().includes("Home › Wave Monitor"), "monitor screen after b"); // a single pop was enough
     app.unmount();
   });
 
@@ -458,7 +453,7 @@ describe("DaemonMonitorShell dashboard", () => {
     const notifyRef: any = { current: null };
     const client = new LiveFakeClient();
     const app = await mountShell({ client, store, notifyRef });
-    await sleep();
+    await waitFor(() => client.onCalls > 0 && notifyRef.current != null, "provider subscriptions");
     const subscribed = client.onCalls;
     const listeners = client.listenerCount();
 
@@ -474,21 +469,16 @@ describe("DaemonMonitorShell dashboard", () => {
     await sleep(250);
 
     await openDashboardFromMenu(app);
-    let f = app.frame();
-    expect(f).toContain("Home › Dashboard");
-    expect(f).toContain("Done 1");
-    expect(f).toContain("peak 1/min"); // one completion despite completed -> verified -> merged
+    await eventually(() => {
+      const f = app.frame();
+      expect(f).toContain("Home › Dashboard");
+      expect(f).toContain("Done 1");
+      expect(f).toContain("peak 1/min"); // one completion despite completed -> verified -> merged
+    });
 
     // dashboard -> settings (ESC menu) keeps the same subscriptions
-    app.key("\u001b");
-    await sleep(400);
-    app.key("\u001b[B");
-    await sleep();
-    app.key("\u001b[B"); // Settings
-    await sleep();
-    app.key("\r");
-    await sleep(80);
-    expect(app.frame()).toContain("Home › Settings");
+    await selectFromEscMenu(app, "Settings");
+    await waitFor(() => app.frame().includes("Home › Settings"), "Settings screen");
     expect(client.onCalls).toBe(subscribed);
     expect(client.listenerCount()).toBe(listeners);
 

@@ -11,6 +11,7 @@
  *   woco quest abandon <id>                                   (alias: q ab)
  */
 
+import { commentsForShow, printRecentComments } from "./comment";
 import type { WomboConfig } from "../config";
 import type { Priority, Difficulty, Task } from "../lib/tasks";
 import { loadFeatures, saveFeatures } from "../lib/tasks";
@@ -49,7 +50,18 @@ import {
 import { VALID_PRIORITIES, VALID_DIFFICULTIES } from "../lib/task-schema";
 import { loadTasksFromStore } from "../lib/task-store";
 import { output, outputError, outputMessage } from "../lib/output";
+import { msg, t } from "../lib/i18n";
 import { validateEnum } from "../lib/validate";
+import { maybeSyncItem } from "../lib/sync/auto";
+import {
+  selectPlannableQuests,
+  runPlanAll,
+  splitValidPlans,
+  sumTotals,
+  DEFAULT_PLAN_ALL_CONCURRENCY,
+  type PlanAllRunner,
+} from "../lib/quest-plan-all";
+import { loadArchiveFromStore } from "../lib/task-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +83,12 @@ export interface QuestCommandOptions {
   force?: boolean;
   outputFmt?: OutputFormat;
   fields?: string[];
+  /** Model override for planner agents (plan, plan-all) */
+  model?: string;
+  /** Max parallel planners for plan-all */
+  concurrency?: number;
+  /** Test seam: replaces runQuestPlanner in plan-all */
+  planAllRunner?: PlanAllRunner;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +114,11 @@ const STATUS_COLOR: Record<QuestStatus, string> = {
   abandoned: "\x1b[90m",   // gray
 };
 
+/** "  Label:" padded so values align regardless of translation length. */
+function label(key: string): string {
+  return `  ${t(key)}:`.padEnd(15);
+}
+
 // ---------------------------------------------------------------------------
 // Subcommand: create
 // ---------------------------------------------------------------------------
@@ -105,17 +128,17 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest create <id> \"Title\" --goal \"Goal description\"");
+    outputError(fmt, msg("cli.quest.create.usage"));
     return;
   }
 
   if (!opts.title) {
-    outputError(fmt, "A title is required. Usage: woco quest create <id> \"Title\" --goal \"...\"");
+    outputError(fmt, msg("cli.quest.create.titleRequired"));
     return;
   }
 
   if (!opts.goal) {
-    outputError(fmt, "--goal is required when creating a quest.");
+    outputError(fmt, msg("cli.quest.create.goalRequired"));
     return;
   }
 
@@ -136,7 +159,7 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
   // Check for duplicate
   const existing = loadQuest(projectRoot, opts.questId);
   if (existing) {
-    outputError(fmt, `Quest "${opts.questId}" already exists (status: ${existing.status}).`);
+    outputError(fmt, msg("cli.quest.create.exists", { id: opts.questId, status: existing.status }));
     return;
   }
 
@@ -149,7 +172,7 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
   });
 
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would create quest: ${quest.id} — ${quest.title}`, {
+    outputMessage(fmt, msg("cli.quest.create.dryRun", { id: quest.id, title: quest.title }), {
       dry_run: true,
       id: quest.id,
       title: quest.title,
@@ -165,8 +188,9 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
 
   // Save to store
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
-  outputMessage(fmt, `Created quest: ${quest.id} — ${quest.title}`, {
+  outputMessage(fmt, msg("cli.quest.create.created", { id: quest.id, title: quest.title }), {
     id: quest.id,
     title: quest.title,
     goal: quest.goal,
@@ -179,9 +203,9 @@ async function questCreate(opts: QuestCommandOptions): Promise<void> {
   });
 
   if (fmt === "text") {
-    console.log(`  priority: ${quest.priority}, difficulty: ${quest.difficulty}`);
-    console.log(`  hitl: ${quest.hitlMode}, branch: ${quest.branch}`);
-    console.log(`  Status is "draft". Use ${BOLD}woco quest activate ${quest.id}${RESET} to create the branch and start.`);
+    console.log(t("cli.quest.create.summary", { priority: quest.priority, difficulty: quest.difficulty }));
+    console.log(t("cli.quest.create.hitlBranch", { hitl: quest.hitlMode, branch: quest.branch }));
+    console.log(t("cli.quest.create.nextStep", { command: `${BOLD}woco quest activate ${quest.id}${RESET}` }));
   }
 }
 
@@ -198,7 +222,7 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
 
   if (quests.length === 0) {
     output(fmt, { quests: [], total: 0 }, () => {
-      console.log("No quests found. Use `woco quest create` to create one.");
+      console.log(t("cli.quest.list.none"));
     });
     return;
   }
@@ -209,7 +233,7 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
     filtered = quests.filter((q) => q.status === opts.status);
     if (filtered.length === 0) {
       output(fmt, { quests: [], total: 0, filter: opts.status }, () => {
-        console.log(`No quests with status "${opts.status}".`);
+        console.log(t("cli.quest.list.noneWithStatus", { status: opts.status ?? "" }));
       });
       return;
     }
@@ -244,7 +268,7 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
     fmt,
     { quests: questData, total: filtered.length },
     () => {
-      console.log(`\n${BOLD}Quests (${filtered.length} total)${RESET}\n`);
+      console.log(`\n${BOLD}${t("cli.quest.list.heading", { count: filtered.length })}${RESET}\n`);
 
       // Group by status
       const byStatus = new Map<QuestStatus, Quest[]>();
@@ -267,8 +291,8 @@ async function questList(opts: QuestCommandOptions): Promise<void> {
 
         for (const q of group) {
           const taskCount = getQuestTaskIds(q.id, allTasks).length;
-          const tasks = taskCount > 0 ? ` ${DIM}(${taskCount} tasks)${RESET}` : "";
-          const deps = q.depends_on.length > 0 ? ` ${DIM}deps: ${q.depends_on.join(", ")}${RESET}` : "";
+          const tasks = taskCount > 0 ? ` ${DIM}(${t("cli.quest.list.taskCount", { count: taskCount })})${RESET}` : "";
+          const deps = q.depends_on.length > 0 ? ` ${DIM}${t("cli.common.deps", { deps: q.depends_on.join(", ") })}${RESET}` : "";
           console.log(
             `    ${color}${q.id}${RESET} — ${q.title} [${q.priority}/${q.difficulty}] ${DIM}hitl:${q.hitlMode}${RESET}${tasks}${deps}`
           );
@@ -288,22 +312,24 @@ async function questShow(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest show <quest-id>");
+    outputError(fmt, msg("cli.quest.show.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   const knowledge = loadQuestKnowledge(projectRoot, quest.id);
 
+  const comments = commentsForShow(projectRoot, { kind: "quest", id: quest.id });
   const fullData = {
     ...quest,
     has_knowledge: knowledge !== null,
     knowledge_length: knowledge?.length ?? 0,
+    ...(comments.length > 0 ? { comments } : {}),
   };
 
   output(
@@ -311,75 +337,77 @@ async function questShow(opts: QuestCommandOptions): Promise<void> {
     fullData,
     () => {
       const sc = STATUS_COLOR[quest.status] ?? "";
-      console.log(`\n${BOLD}Quest: ${quest.title}${RESET}`);
-      console.log(`  ID:          ${quest.id}`);
-      console.log(`  Status:      ${sc}${quest.status}${RESET}`);
-      console.log(`  Priority:    ${quest.priority}`);
-      console.log(`  Difficulty:  ${quest.difficulty}`);
-      console.log(`  HITL Mode:   ${quest.hitlMode}`);
-      console.log(`  Branch:      ${CYAN}${quest.branch}${RESET}`);
-      console.log(`  Base Branch: ${quest.baseBranch}`);
+      console.log(`\n${BOLD}${t("cli.quest.show.quest", { title: quest.title })}${RESET}`);
+      console.log(`${label("cli.quest.show.id")}${quest.id}`);
+      console.log(`${label("cli.quest.show.status")}${sc}${quest.status}${RESET}`);
+      console.log(`${label("cli.quest.show.priority")}${quest.priority}`);
+      console.log(`${label("cli.quest.show.difficulty")}${quest.difficulty}`);
+      console.log(`${label("cli.quest.show.hitlMode")}${quest.hitlMode}`);
+      console.log(`${label("cli.quest.show.branch")}${CYAN}${quest.branch}${RESET}`);
+      console.log(`${label("cli.quest.show.baseBranch")}${quest.baseBranch}`);
 
-      if (quest.created_at) console.log(`  Created:     ${DIM}${quest.created_at}${RESET}`);
-      if (quest.started_at) console.log(`  Started:     ${DIM}${quest.started_at}${RESET}`);
-      if (quest.ended_at) console.log(`  Ended:       ${DIM}${quest.ended_at}${RESET}`);
+      if (quest.created_at) console.log(`${label("cli.quest.show.created")}${DIM}${quest.created_at}${RESET}`);
+      if (quest.started_at) console.log(`${label("cli.quest.show.started")}${DIM}${quest.started_at}${RESET}`);
+      if (quest.ended_at) console.log(`${label("cli.quest.show.ended")}${DIM}${quest.ended_at}${RESET}`);
 
-      console.log(`\n  ${BOLD}Goal:${RESET}`);
+      console.log(`\n  ${BOLD}${t("cli.quest.show.goal")}${RESET}`);
       for (const line of quest.goal.split("\n")) {
         console.log(`    ${line}`);
       }
 
       const questTaskIds = getQuestTaskIds(quest.id, loadTasksFromStore(projectRoot, config).tasks);
       if (questTaskIds.length > 0) {
-        console.log(`\n  ${BOLD}Tasks (${questTaskIds.length}):${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.tasks", { count: questTaskIds.length })}${RESET}`);
         for (const tid of questTaskIds) {
           console.log(`    - ${tid}`);
         }
       }
 
       if (quest.depends_on.length > 0) {
-        console.log(`\n  ${BOLD}Dependencies:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.dependencies")}${RESET}`);
         for (const dep of quest.depends_on) {
           console.log(`    - ${dep}`);
         }
       }
 
       if (quest.constraints.add.length > 0) {
-        console.log(`\n  ${BOLD}Constraints (add):${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.constraintsAdd")}${RESET}`);
         for (const c of quest.constraints.add) {
           console.log(`    + ${c}`);
         }
       }
 
       if (quest.constraints.ban.length > 0) {
-        console.log(`\n  ${BOLD}Constraints (ban):${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.constraintsBan")}${RESET}`);
         for (const b of quest.constraints.ban) {
           console.log(`    ${RED}- ${b}${RESET}`);
         }
       }
 
       if (Object.keys(quest.constraints.override).length > 0) {
-        console.log(`\n  ${BOLD}Config Overrides:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.configOverrides")}${RESET}`);
         console.log(`    ${DIM}${JSON.stringify(quest.constraints.override)}${RESET}`);
       }
 
       if (quest.notes.length > 0) {
-        console.log(`\n  ${BOLD}Notes:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.notes")}${RESET}`);
         for (const n of quest.notes) {
           console.log(`    - ${n}`);
         }
       }
 
       if (quest.agent_type) {
-        console.log(`  Agent Type:  ${quest.agent_type}`);
+        console.log(`${label("cli.quest.show.agentType")}${quest.agent_type}`);
       }
       if (quest.agent) {
-        console.log(`  Agent:       ${quest.agent}`);
+        console.log(`${label("cli.quest.show.agent")}${quest.agent}`);
       }
 
       if (knowledge !== null) {
-        console.log(`\n  ${BOLD}Knowledge:${RESET} ${DIM}${knowledge.length} chars${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.quest.show.knowledge")}${RESET} ${DIM}${t("cli.common.chars", { count: knowledge.length })}${RESET}`);
       }
+
+      printRecentComments(projectRoot, { kind: "quest", id: quest.id });
 
       console.log("");
     }
@@ -395,23 +423,23 @@ async function questActivate(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest activate <quest-id>");
+    outputError(fmt, msg("cli.quest.activate.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   if (quest.status === "active") {
-    outputMessage(fmt, `Quest "${quest.id}" is already active.`, { id: quest.id, status: quest.status });
+    outputMessage(fmt, msg("cli.quest.activate.already", { id: quest.id }), { id: quest.id, status: quest.status });
     return;
   }
 
   if (quest.status === "completed" || quest.status === "abandoned") {
-    outputError(fmt, `Quest "${quest.id}" is ${quest.status} and cannot be reactivated.`);
+    outputError(fmt, msg("cli.quest.activate.cannotReactivate", { id: quest.id, status: quest.status }));
     return;
   }
 
@@ -422,7 +450,7 @@ async function questActivate(opts: QuestCommandOptions): Promise<void> {
       await createQuestBranch(projectRoot, quest.id, quest.baseBranch);
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : String(err);
-      outputError(fmt, `Failed to create quest branch "${quest.branch}": ${reason}`);
+      outputError(fmt, msg("cli.quest.activate.branchFailed", { branch: quest.branch, reason }));
       return;
     }
   }
@@ -432,8 +460,9 @@ async function questActivate(opts: QuestCommandOptions): Promise<void> {
     quest.started_at = new Date().toISOString();
   }
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
-  outputMessage(fmt, `Quest "${quest.id}" activated.`, {
+  outputMessage(fmt, msg("cli.quest.activate.done", { id: quest.id }), {
     id: quest.id,
     status: quest.status,
     branch: quest.branch,
@@ -442,9 +471,9 @@ async function questActivate(opts: QuestCommandOptions): Promise<void> {
 
   if (fmt === "text") {
     if (!branchAlreadyExists) {
-      console.log(`  Branch ${CYAN}${quest.branch}${RESET} created from ${quest.baseBranch}.`);
+      console.log(t("cli.quest.activate.branchCreated", { branch: `${CYAN}${quest.branch}${RESET}`, base: quest.baseBranch }));
     }
-    console.log(`  Use ${BOLD}woco launch${RESET} to start agents on quest tasks.`);
+    console.log(t("cli.quest.activate.useLaunch", { command: `${BOLD}woco launch${RESET}` }));
   }
 }
 
@@ -457,33 +486,34 @@ async function questPause(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest pause <quest-id>");
+    outputError(fmt, msg("cli.quest.pause.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   if (quest.status === "paused") {
-    outputMessage(fmt, `Quest "${quest.id}" is already paused.`, { id: quest.id, status: quest.status });
+    outputMessage(fmt, msg("cli.quest.pause.already", { id: quest.id }), { id: quest.id, status: quest.status });
     return;
   }
 
   if (quest.status !== "active" && quest.status !== "planning") {
-    outputError(fmt, `Quest "${quest.id}" is ${quest.status} — only active/planning quests can be paused.`);
+    outputError(fmt, msg("cli.quest.pause.cannotPause", { id: quest.id, status: quest.status }));
     return;
   }
 
   quest.status = "paused";
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
-  outputMessage(fmt, `Quest "${quest.id}" paused.`, { id: quest.id, status: quest.status });
+  outputMessage(fmt, msg("cli.quest.pause.done", { id: quest.id }), { id: quest.id, status: quest.status });
 
   if (fmt === "text") {
-    console.log(`  Branch ${CYAN}${quest.branch}${RESET} preserved. Use ${BOLD}woco quest activate ${quest.id}${RESET} to resume.`);
+    console.log(t("cli.quest.pause.branchPreserved", { branch: `${CYAN}${quest.branch}${RESET}`, command: `${BOLD}woco quest activate ${quest.id}${RESET}` }));
   }
 }
 
@@ -496,23 +526,23 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest complete <quest-id>");
+    outputError(fmt, msg("cli.quest.complete.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   if (quest.status === "completed") {
-    outputMessage(fmt, `Quest "${quest.id}" is already completed.`, { id: quest.id, status: quest.status });
+    outputMessage(fmt, msg("cli.quest.complete.already", { id: quest.id }), { id: quest.id, status: quest.status });
     return;
   }
 
   if (quest.status === "abandoned") {
-    outputError(fmt, `Quest "${quest.id}" was abandoned and cannot be completed. Create a new quest instead.`);
+    outputError(fmt, msg("cli.quest.complete.abandoned", { id: quest.id }));
     return;
   }
 
@@ -520,7 +550,7 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
   const hasBranch = questBranchExists(projectRoot, quest.id);
 
   if (opts.dryRun) {
-    outputMessage(fmt, `[dry-run] Would complete quest "${quest.id}" and merge ${quest.branch} into ${quest.baseBranch}.`, {
+    outputMessage(fmt, msg("cli.quest.complete.dryRun", { id: quest.id, branch: quest.branch, base: quest.baseBranch }), {
       dry_run: true,
       id: quest.id,
       branch: quest.branch,
@@ -549,7 +579,7 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
   if (!mergeSuccess && !opts.force) {
     outputError(
       fmt,
-      `Merge of ${quest.branch} into ${quest.baseBranch} failed: ${mergeMessage}\nUse --force to complete without merging.`
+      msg("cli.quest.complete.mergeFailed", { branch: quest.branch, base: quest.baseBranch, message: mergeMessage })
     );
     return;
   }
@@ -558,13 +588,14 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
   quest.status = "completed";
   quest.ended_at = new Date().toISOString();
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   // Clean up the quest branch (optional, only if merge succeeded)
   if (mergeSuccess && hasBranch) {
     deleteQuestBranch(projectRoot, quest.id);
   }
 
-  outputMessage(fmt, `Quest "${quest.id}" completed.`, {
+  outputMessage(fmt, msg("cli.quest.complete.done", { id: quest.id }), {
     id: quest.id,
     status: quest.status,
     merged: mergeSuccess,
@@ -574,12 +605,12 @@ async function questComplete(opts: QuestCommandOptions): Promise<void> {
 
   if (fmt === "text") {
     if (mergeSuccess && hasBranch) {
-      console.log(`  ${GREEN}Merged${RESET} ${CYAN}${quest.branch}${RESET} into ${quest.baseBranch} and deleted the branch.`);
+      console.log(`  ${t("cli.quest.complete.merged", { branch: `${CYAN}${quest.branch}${RESET}`, base: quest.baseBranch })}`);
     } else if (!mergeSuccess) {
-      console.log(`  ${YELLOW}Warning:${RESET} Merge failed (${mergeMessage}). Quest marked complete with --force.`);
-      console.log(`  Branch ${CYAN}${quest.branch}${RESET} preserved for manual resolution.`);
+      console.log(`  ${YELLOW}${t("cli.quest.complete.warning")}${RESET} ${t("cli.quest.complete.forcedAfterFailure", { message: mergeMessage })}`);
+      console.log(t("cli.quest.complete.branchPreserved", { branch: `${CYAN}${quest.branch}${RESET}` }));
     } else {
-      console.log(`  No branch to merge (quest had no branch).`);
+      console.log(t("cli.quest.complete.noBranch"));
     }
   }
 }
@@ -593,29 +624,29 @@ async function questAbandon(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest abandon <quest-id>");
+    outputError(fmt, msg("cli.quest.abandon.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   if (quest.status === "abandoned") {
-    outputMessage(fmt, `Quest "${quest.id}" is already abandoned.`, { id: quest.id, status: quest.status });
+    outputMessage(fmt, msg("cli.quest.abandon.already", { id: quest.id }), { id: quest.id, status: quest.status });
     return;
   }
 
   if (quest.status === "completed") {
-    outputError(fmt, `Quest "${quest.id}" is completed — cannot abandon a completed quest.`);
+    outputError(fmt, msg("cli.quest.abandon.completed", { id: quest.id }));
     return;
   }
 
   if (opts.dryRun) {
     const hasBranch = questBranchExists(projectRoot, quest.id);
-    outputMessage(fmt, `[dry-run] Would abandon quest "${quest.id}".`, {
+    outputMessage(fmt, msg("cli.quest.abandon.dryRun", { id: quest.id }), {
       dry_run: true,
       id: quest.id,
       branch: quest.branch,
@@ -628,6 +659,7 @@ async function questAbandon(opts: QuestCommandOptions): Promise<void> {
   quest.status = "abandoned";
   quest.ended_at = new Date().toISOString();
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   // Optionally delete the branch with --force
   let branchDeleted = false;
@@ -638,7 +670,7 @@ async function questAbandon(opts: QuestCommandOptions): Promise<void> {
     }
   }
 
-  outputMessage(fmt, `Quest "${quest.id}" abandoned.`, {
+  outputMessage(fmt, msg("cli.quest.abandon.done", { id: quest.id }), {
     id: quest.id,
     status: quest.status,
     branchDeleted,
@@ -646,11 +678,11 @@ async function questAbandon(opts: QuestCommandOptions): Promise<void> {
 
   if (fmt === "text") {
     if (branchDeleted) {
-      console.log(`  Branch ${CYAN}${quest.branch}${RESET} deleted.`);
+      console.log(t("cli.quest.abandon.branchDeleted", { branch: `${CYAN}${quest.branch}${RESET}` }));
     } else {
       const hasBranch = questBranchExists(projectRoot, quest.id);
       if (hasBranch) {
-        console.log(`  Branch ${CYAN}${quest.branch}${RESET} preserved. Use ${BOLD}--force${RESET} to delete it.`);
+        console.log(t("cli.quest.abandon.branchPreserved", { branch: `${CYAN}${quest.branch}${RESET}`, flag: `${BOLD}--force${RESET}` }));
       }
     }
   }
@@ -665,35 +697,36 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.questId) {
-    outputError(fmt, "Usage: woco quest plan <quest-id> [--model <model>]");
+    outputError(fmt, msg("cli.quest.plan.usage"));
     return;
   }
 
   const quest = loadQuest(projectRoot, opts.questId);
   if (!quest) {
-    outputError(fmt, `Quest "${opts.questId}" not found.`);
+    outputError(fmt, msg("cli.quest.notFound", { id: opts.questId }));
     return;
   }
 
   if (quest.status === "completed" || quest.status === "abandoned") {
-    outputError(fmt, `Quest "${quest.id}" is ${quest.status} and cannot be planned.`);
+    outputError(fmt, msg("cli.quest.plan.cannotPlan", { id: quest.id, status: quest.status }));
     return;
   }
 
   // Set quest to planning status
   quest.status = "planning";
   saveQuest(projectRoot, quest);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
   if (fmt === "text") {
-    console.log(`\n${BOLD}Planning quest: ${quest.title}${RESET}`);
-    console.log(`  Goal: ${quest.goal}`);
-    console.log(`  Running quest planner agent...\n`);
+    console.log(`\n${BOLD}${t("cli.quest.plan.planning", { title: quest.title })}${RESET}`);
+    console.log(t("cli.quest.plan.goal", { goal: quest.goal }));
+    console.log(`${t("cli.quest.plan.running")}\n`);
   }
 
   let result: PlanResult;
   try {
     result = await runQuestPlanner(quest, projectRoot, config, {
-      model: opts.dryRun ? undefined : undefined, // model passed via config or CLI
+      model: opts.model,
       onProgress: (msg) => {
         if (fmt === "text") {
           console.log(`  ${DIM}${msg}${RESET}`);
@@ -705,29 +738,30 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert planning status on failure
     quest.status = "draft";
     saveQuest(projectRoot, quest);
-    outputError(fmt, `Planner failed: ${reason}`);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
+    outputError(fmt, msg("cli.quest.plan.failed", { reason }));
     return;
   }
 
   // Show results
   if (fmt === "text") {
-    console.log(`\n  ${BOLD}Planner produced ${result.tasks.length} tasks${RESET}`);
+    console.log(`\n  ${BOLD}${t("cli.quest.plan.produced", { count: result.tasks.length })}${RESET}`);
 
     if (result.issues.length > 0) {
-      console.log(`\n  ${BOLD}Validation Issues:${RESET}`);
+      console.log(`\n  ${BOLD}${t("cli.quest.plan.validationIssues")}${RESET}`);
       for (const issue of result.issues) {
         const color = issue.level === "error" ? RED : YELLOW;
-        const prefix = issue.level === "error" ? "ERROR" : "WARN";
+        const prefix = issue.level === "error" ? t("cli.quest.plan.levelError") : t("cli.quest.plan.levelWarn");
         const taskRef = issue.taskId ? ` [${issue.taskId}]` : "";
         console.log(`    ${color}${prefix}${taskRef}: ${issue.message}${RESET}`);
       }
     }
 
     if (result.tasks.length > 0) {
-      console.log(`\n  ${BOLD}Proposed Tasks:${RESET}`);
+      console.log(`\n  ${BOLD}${t("cli.quest.plan.proposedTasks")}${RESET}`);
       for (const task of result.tasks) {
         const deps = task.depends_on.length > 0
-          ? ` ${DIM}deps: ${task.depends_on.join(", ")}${RESET}`
+          ? ` ${DIM}${t("cli.common.deps", { deps: task.depends_on.join(", ") })}${RESET}`
           : "";
         console.log(
           `    ${CYAN}${task.id}${RESET} — ${task.title} ` +
@@ -737,7 +771,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     }
 
     if (result.knowledge) {
-      console.log(`\n  ${BOLD}Knowledge:${RESET} ${DIM}${result.knowledge.length} chars${RESET}`);
+      console.log(`\n  ${BOLD}${t("cli.quest.show.knowledge")}${RESET} ${DIM}${t("cli.common.chars", { count: result.knowledge.length })}${RESET}`);
     }
   }
 
@@ -745,6 +779,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert to draft if plan has errors
     quest.status = "draft";
     saveQuest(projectRoot, quest);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
     output(fmt, {
       success: false,
@@ -752,8 +787,8 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
       issues: result.issues,
       error: result.error,
     }, () => {
-      console.log(`\n  ${RED}Plan has errors. Quest reverted to draft.${RESET}`);
-      console.log(`  Fix issues and run ${BOLD}woco quest plan ${quest.id}${RESET} again.\n`);
+      console.log(`\n  ${RED}${t("cli.quest.plan.hasErrors")}${RESET}`);
+      console.log(`${t("cli.quest.plan.fixAndRerun", { command: `${BOLD}woco quest plan ${quest.id}${RESET}` })}\n`);
     });
     return;
   }
@@ -762,6 +797,7 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     // Revert to previous status
     quest.status = "draft";
     saveQuest(projectRoot, quest);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
 
     output(fmt, {
       dry_run: true,
@@ -770,13 +806,15 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
       knowledge: result.knowledge ? `${result.knowledge.length} chars` : null,
       issues: result.issues,
     }, () => {
-      console.log(`\n  ${GREEN}[dry-run]${RESET} Plan looks good. Run without --dry-run to apply.`);
+      console.log(`\n  ${GREEN}[dry-run]${RESET} ${t("cli.quest.plan.dryRunOk")}`);
     });
     return;
   }
 
   // Apply the plan — creates tasks and activates the quest
   const tasks = applyPlanToQuest(result, quest, projectRoot, config);
+  maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
+  for (const task of tasks) maybeSyncItem(projectRoot, { kind: "task", id: task.id });
 
   output(fmt, {
     success: true,
@@ -786,12 +824,94 @@ async function questPlan(opts: QuestCommandOptions): Promise<void> {
     task_ids: tasks.map((t) => t.id),
     has_knowledge: result.knowledge !== null,
   }, () => {
-    console.log(`\n  ${GREEN}Plan applied!${RESET}`);
-    console.log(`  Created ${tasks.length} tasks and activated quest "${quest.id}".`);
+    console.log(`\n  ${GREEN}${t("cli.quest.plan.applied")}${RESET}`);
+    console.log(t("cli.quest.plan.created", { count: tasks.length, id: quest.id }));
     if (result.knowledge) {
-      console.log(`  Saved knowledge file (${result.knowledge.length} chars).`);
+      console.log(t("cli.quest.plan.savedKnowledge", { count: result.knowledge.length }));
     }
-    console.log(`\n  Use ${BOLD}woco launch --quest ${quest.id}${RESET} or the TUI to start agents.\n`);
+    console.log(`\n${t("cli.quest.plan.useLaunch", { command: `${BOLD}woco launch --quest ${quest.id}${RESET}` })}\n`);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Subcommand: plan-all
+// ---------------------------------------------------------------------------
+
+async function questPlanAll(opts: QuestCommandOptions): Promise<void> {
+  const { projectRoot, config } = opts;
+  const fmt = opts.outputFmt ?? "text";
+  const concurrency = opts.concurrency ?? DEFAULT_PLAN_ALL_CONCURRENCY;
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    outputError(fmt, msg("cli.quest.planAll.badConcurrency"));
+    return;
+  }
+
+  const { plannable, skipped } = selectPlannableQuests(
+    loadAllQuests(projectRoot),
+    loadTasksFromStore(projectRoot, config).tasks,
+    loadArchiveFromStore(projectRoot, config).tasks,
+  );
+  const skippedOut = skipped.map((s) => ({ quest_id: s.quest.id, reason: s.reason }));
+
+  if (opts.dryRun || plannable.length === 0) {
+    output(fmt, {
+      dry_run: Boolean(opts.dryRun),
+      would_plan: plannable.map((q) => q.id),
+      skipped: skippedOut,
+    }, () => {
+      console.log(`\n${BOLD}${t("cli.quest.planAll.header", { count: plannable.length })}${RESET}`);
+      for (const q of plannable) console.log(`  ${CYAN}${q.id}${RESET} ${DIM}${q.title}${RESET}`);
+      for (const s of skipped) {
+        console.log(`  ${DIM}${t("cli.quest.planAll.skipped", { id: s.quest.id, reason: t(`cli.quest.planAll.reason.${s.reason}`) })}${RESET}`);
+      }
+      if (opts.dryRun) console.log(`\n  ${GREEN}[dry-run]${RESET} ${t("cli.quest.planAll.dryRunOk")}\n`);
+    });
+    return;
+  }
+
+  if (fmt === "text") {
+    console.log(`\n${BOLD}${t("cli.quest.planAll.header", { count: plannable.length })}${RESET}`);
+  }
+  const run = runPlanAll({
+    quests: plannable,
+    concurrency,
+    model: opts.model,
+    projectRoot,
+    config,
+    runner: opts.planAllRunner,
+  });
+  const onSigint = () => run.abort();
+  process.once("SIGINT", onSigint);
+  const rows = await run.done;
+  process.removeListener("SIGINT", onSigint);
+
+  const { valid, invalid } = splitValidPlans(rows);
+  const planned: { quest_id: string; tasks_created: number }[] = [];
+  for (const row of valid) {
+    const quest = loadQuest(projectRoot, row.quest.id) ?? row.quest;
+    const created = applyPlanToQuest(row.result!, quest, projectRoot, config);
+    maybeSyncItem(projectRoot, { kind: "quest", id: quest.id });
+    for (const task of created) maybeSyncItem(projectRoot, { kind: "task", id: task.id });
+    planned.push({ quest_id: quest.id, tasks_created: created.length });
+  }
+  const failed = invalid.map((r) => ({
+    quest_id: r.quest.id,
+    error: r.state === "aborted" ? "aborted" : (r.error ?? r.result?.error ?? "plan has errors"),
+  }));
+  const totals = sumTotals(rows);
+
+  output(fmt, {
+    planned,
+    failed,
+    skipped: skippedOut,
+    tokens_in: totals.tokensIn,
+    tokens_out: totals.tokensOut,
+    cost_usd: totals.cost,
+  }, () => {
+    for (const p of planned) console.log(`  ${GREEN}✔${RESET} ${p.quest_id} — ${t("cli.quest.planAll.created", { count: p.tasks_created })}`);
+    for (const f of failed) console.log(`  ${RED}✘${RESET} ${f.quest_id} — ${f.error}`);
+    const cost = totals.cost === null ? "" : ` · $${totals.cost.toFixed(4)}`;
+    console.log(`\n${DIM}${t("cli.quest.planAll.total", { tokensIn: totals.tokensIn, tokensOut: totals.tokensOut })}${cost}${RESET}\n`);
   });
 }
 
@@ -813,16 +933,16 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
       // Check if already archived
       const archived = loadAllArchivedQuests(projectRoot);
       if (archived.some((q) => q.id === questId)) {
-        outputError(outputFmt ?? "text", `Quest "${questId}" is already archived.`);
+        outputError(outputFmt ?? "text", msg("cli.quest.archive.alreadyArchived", { id: questId }));
         return;
       }
-      outputError(outputFmt ?? "text", `Quest "${questId}" not found.`);
+      outputError(outputFmt ?? "text", msg("cli.quest.notFound", { id: questId }));
       return;
     }
     if (quest.status !== "completed" && quest.status !== "abandoned") {
       outputError(
         outputFmt ?? "text",
-        `Quest "${questId}" is ${quest.status} — only completed or abandoned quests can be archived.`
+        msg("cli.quest.archive.wrongStatus", { id: questId, status: quest.status })
       );
       return;
     }
@@ -832,7 +952,7 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
       (q) => q.status === "completed" || q.status === "abandoned"
     );
     if (toArchive.length === 0) {
-      outputMessage(outputFmt ?? "text", "No completed or abandoned quests to archive.");
+      outputMessage(outputFmt ?? "text", msg("cli.quest.archive.none"));
       return;
     }
   }
@@ -851,13 +971,13 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
       quests: toArchive.map((q) => ({ id: q.id, status: q.status, title: q.title })),
       tasksToArchive: dryRunTaskCount,
     }, () => {
-      console.log(`\n  Would archive ${toArchive.length} quest(s):`);
+      console.log(`\n${t("cli.quest.archive.dryRun", { count: toArchive.length })}`);
       for (const q of toArchive) {
         const taskIds = getQuestTaskIds(q.id, data.tasks);
-        console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET} (${taskIds.length} task${taskIds.length !== 1 ? "s" : ""})`);
+        console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET} (${t("cli.quest.archive.taskCount", { count: taskIds.length })})`);
       }
       if (dryRunTaskCount > 0) {
-        console.log(`  Would archive ${dryRunTaskCount} associated task(s).`);
+        console.log(t("cli.quest.archive.dryRunTasks", { count: dryRunTaskCount }));
       }
       console.log();
     });
@@ -884,6 +1004,7 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
 
     // Archive the quest itself
     archiveQuest(projectRoot, q.id);
+    maybeSyncItem(projectRoot, { kind: "quest", id: q.id });
   }
 
   output(outputFmt ?? "text", {
@@ -891,12 +1012,12 @@ async function questArchive(opts: QuestCommandOptions): Promise<void> {
     quests: toArchive.map((q) => ({ id: q.id, status: q.status, title: q.title })),
     tasksArchived: totalTasksArchived,
   }, () => {
-    console.log(`\n  Archived ${toArchive.length} quest(s):`);
+    console.log(`\n${t("cli.quest.archive.done", { count: toArchive.length })}`);
     for (const q of toArchive) {
       console.log(`    ${GREEN}${q.id}${RESET} — ${q.title} ${DIM}[${q.status}]${RESET}`);
     }
     if (totalTasksArchived > 0) {
-      console.log(`  Archived ${totalTasksArchived} associated task(s).`);
+      console.log(t("cli.quest.archive.doneTasks", { count: totalTasksArchived }));
     }
     console.log();
   });
@@ -932,6 +1053,9 @@ export async function handleQuestSubcommand(opts: QuestCommandOptions): Promise<
     case "plan":
       await questPlan(opts);
       break;
+    case "plan-all":
+      await questPlanAll(opts);
+      break;
     case "archive":
       await questArchive(opts);
       break;
@@ -950,7 +1074,7 @@ export async function handleQuestSubcommand(opts: QuestCommandOptions): Promise<
     default:
       outputError(
         opts.outputFmt ?? "text",
-        `Unknown quest subcommand: "${opts.subcommand}". Run 'woco quest help' for usage.`
+        msg("cli.quest.unknownSubcommand", { subcommand: opts.subcommand })
       );
       return;
   }
@@ -967,6 +1091,7 @@ Quest Subcommands:                (alias)
   quest list                      (ls)    List all quests (--status to filter)
   quest show <id>                 (sh)    Show full quest details
   quest plan <id>                 (pl)    Run planner agent to decompose quest into tasks
+  quest plan-all                  (pla)   Plan every unplanned quest (--dry-run, --concurrency N)
   quest activate <id>             (a)     Activate a quest (creates branch, sets status to active)
   quest pause <id>                (p)     Pause an active quest
   quest complete <id>             (co)    Complete quest (merges branch into base, --force to skip merge)

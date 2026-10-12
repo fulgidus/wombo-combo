@@ -10,6 +10,7 @@
  *   list (ls)     — List all quests
  *   show (sh)     — Show full quest details
  *   plan (pl)     — Run planner agent to decompose quest into tasks
+ *   plan-all (pla) — Plan every unplanned quest in one batch
  *   activate (a)  — Activate a quest
  *   pause (p)     — Pause an active quest
  *   complete (co) — Complete quest (merges branch)
@@ -23,6 +24,7 @@ import { resolveOutputFormat } from "../../lib/output";
 import type { Priority, Difficulty } from "../../lib/tasks";
 import type { QuestHitlMode } from "../../lib/quest";
 import { handleQuestSubcommand } from "../quest";
+import { t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Shared: load config, validate
@@ -30,10 +32,7 @@ import { handleQuestSubcommand } from "../quest";
 
 function loadProjectConfigSync(projectRoot: string) {
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-        `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-    );
+    console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
   const config = loadConfig(projectRoot);
@@ -247,6 +246,56 @@ const planCommand = defineCommand({
       config,
       subcommand: "plan",
       questId: args.questId,
+      model: args.model,
+      dryRun: args.dryRun,
+      outputFmt: resolveOutputFormat(args.output),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Subcommand: plan-all
+// ---------------------------------------------------------------------------
+
+const planAllCommand = defineCommand({
+  meta: {
+    name: "plan-all",
+    description: "Plan every unplanned quest in one batch (also: pla)",
+  },
+  args: {
+    concurrency: {
+      type: "string",
+      alias: "c",
+      description: "Max parallel planners (default 2)",
+      required: false,
+    },
+    model: {
+      type: "string",
+      alias: "m",
+      description: "Model to use for planner agents",
+      required: false,
+    },
+    dryRun: {
+      type: "boolean",
+      description: "List which quests would be planned without running planners",
+      required: false,
+    },
+    output: {
+      type: "string",
+      alias: "o",
+      description: "Output format: text (default), json, or toon",
+      required: false,
+    },
+  },
+  async run({ args }) {
+    const projectRoot = resolve(process.cwd());
+    const config = loadProjectConfigSync(projectRoot);
+    await handleQuestSubcommand({
+      projectRoot,
+      config,
+      subcommand: "plan-all",
+      concurrency: args.concurrency === undefined ? undefined : Number(args.concurrency),
+      model: args.model,
       dryRun: args.dryRun,
       outputFmt: resolveOutputFormat(args.output),
     });
@@ -469,6 +518,7 @@ export const questCommand = defineCommand({
     list: listCommand,
     show: showCommand,
     plan: planCommand,
+    "plan-all": planAllCommand,
     activate: activateCommand,
     pause: pauseCommand,
     complete: completeCommand,
@@ -479,6 +529,7 @@ export const questCommand = defineCommand({
     ls: listCommand,
     sh: showCommand,
     pl: planCommand,
+    pla: planAllCommand,
     a: activateCommand,
     p: pauseCommand,
     co: completeCommand,

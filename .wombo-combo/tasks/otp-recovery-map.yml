@@ -1,0 +1,50 @@
+id: otp-recovery-map
+title: Map Current Ad Hoc Recovery
+description: |
+  Write docs/adr/0001-otp-supervision/recovery-map.md: an inventory of every place the daemon
+  recovers from failure today, and for each, the OTP supervision primitive that would replace it.
+
+  Read src/daemon/agent-runner.ts, scheduler.ts, state.ts and daemon.ts first. Cover at least:
+  - agent-runner.ts: the onError retry path (agent.retries < agent.maxRetries, then
+    cancelDownstream + rescueChainPredecessors), the build-verification retry path, the
+    handleRetry session-reuse vs re-queue branch (and its baseline gate), and the tiered
+    merge-conflict escalation (tiers 1 to 4).
+  - agent-runner.ts reconcileOrphanedTasks (in_progress task with no agent -> planned) and the
+    startup reconciliation of "completed", "verified" and "resolving_conflict" agents.
+  - daemon.ts: how startup calls reconcile, and any stale-agent / PID-only recovery
+    (isProcessRunning, pid-utils.ts).
+  - scheduler.ts: how queued agents are re-picked each tick, pinned tasks, concurrency pinning.
+  - config.defaults.maxRetries and the setMaxRetries session override.
+  For each entry give: file and function, trigger, current behaviour, state it mutates, the
+  replacing primitive (restart type, restart strategy, intensity/period, shutdown, link/monitor,
+  or "stays as-is, not a supervision concern") and any behaviour gap. Use a table plus short notes.
+  Use wombo vocabulary: task, quest, wave, agent, harness.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T16:12:10.761Z
+ended_at: null
+constraints:
+  - Cite real function names and line-level locations that exist today; verify each by reading the code
+  - "Docs only: change no files outside docs/adr/0001-otp-supervision/"
+  - Do not rename existing terms (wave, quest, agent)
+forbidden:
+  - Do not edit any file under src/
+  - Do not create or edit docs/adr/0001-otp-supervision.md (owned by otp-adr-decision)
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/scheduler.ts
+  - src/daemon/state.ts
+  - src/daemon/daemon.ts
+  - src/daemon/pid-utils.ts
+  - docs/agents/domain.md
+notes:
+  - reconcileOrphanedTasks is around agent-runner.ts:2187; onError retry is around line 360; handleRetry is around line
+    1943
+  - GLOSSARY.md does not exist yet; docs/adr/ does not exist yet, create the directory
+subtasks: []
+quest: otp-supervision-spike
+paths: []

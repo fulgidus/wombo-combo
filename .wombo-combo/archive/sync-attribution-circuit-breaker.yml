@@ -1,0 +1,26 @@
+id: sync-attribution-circuit-breaker
+title: Sync circuit breaker when host re-adds attribution
+description: In src/lib/sync/push.ts, after any create/update write, re-read the item from GitHub and run
+  containsAiAttribution on the stored body. If attribution is present although the sent body was clean (a proxy or host
+  appended it), stop all further writes in that sync run (circuit breaker), record the state so `sync status` reports it
+  with a clear warning, and exit non-zero. Do not retry endlessly or loop-edit. Document in
+  docs/agents/no-ai-attribution.md Limits and the github-sync guide that sync must run from a machine whose network path
+  does not append footers. Tests with the fake GitHub server configured to append a footer on write.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T03:03:28.381Z
+ended_at: 2026-10-12T03:31:15.612Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references:
+  - src/lib/sync/push.ts
+  - src/lib/attribution.ts
+  - tests/helpers/fake-github.ts
+notes: []
+subtasks: []
+paths: []

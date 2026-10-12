@@ -1,0 +1,33 @@
+id: sync-footer-scrub-reread
+title: "Sync: remove host-added footers found on re-read, not only in the create response"
+description: "Found by dogfooding: GitHub issues and comments created through this environment's proxy end with an AI
+  attribution footer that is NOT in the POST response body, only when the issue is read back (a list or GET). Our scrub
+  (scrubIssue/scrubComment in src/lib/sync/push.ts) inspects only the create response, so the footers stayed on 15 new
+  issues. Fix: (1) after createIssue and createComment, re-read the item (getIssue; listComments for the new comment)
+  and scrub if the re-read text contains attribution; (2) on every push, if the raw remote body of a mapped issue (or a
+  mirrored comment) contains attribution, PATCH it clean even if the normalized text matches the draft (today the
+  comparison runs on stripped text so no edit is ever sent); (3) 'woco sync push' should therefore clean the existing 15
+  issues without any other change. Extend tests/helpers/fake-github.ts with an option appendOnRead (text appended only
+  when issues/comments are returned by GET/list, not in the POST response) and add tests for create, for a later push
+  cleaning an already-dirty issue and comment, and for idempotence (second push sends zero writes). Update
+  docs/src/content/docs/guides/github-sync.md and docs/agents/no-ai-attribution.md Limits section."
+status: done
+completion: 100
+difficulty: easy
+priority: high
+depends_on: []
+effort: PT2H
+started_at: 2026-10-12T02:47:55.992Z
+ended_at: 2026-10-12T03:04:31.760Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+  - "Idempotent: a clean issue costs zero writes"
+forbidden: []
+references:
+  - src/lib/sync/push.ts
+  - tests/helpers/fake-github.ts
+  - tests/attribution-entrypoints.test.ts
+  - src/lib/attribution.ts
+notes: []
+subtasks: []
+paths: []

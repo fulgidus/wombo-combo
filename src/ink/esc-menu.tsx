@@ -30,6 +30,7 @@ import React, {
   createContext,
   useContext,
   useState,
+  useRef,
   useCallback,
   useEffect,
   useRef,
@@ -195,13 +196,19 @@ export interface EscMenuProps {
    * onNavigate so the settings/quit action union is unchanged.
    */
   onOpenDashboard?: () => void;
+  /**
+   * Optional. When supplied, a Session replays item is shown; selecting it
+   * closes the menu first, then invokes this callback (task picker + viewer).
+   */
+  onOpenReplays?: () => void;
 }
 
-type MenuAction = "close" | "settings" | "quit" | "dashboard";
+type MenuAction = "close" | "settings" | "quit" | "dashboard" | "replays";
 
 const MENU_ITEMS: Array<{ key: string; label: () => string; action: MenuAction }> = [
   { key: "return",    label: () => t("menu.returnToApp"), action: "close" },
   { key: "dashboard", label: () => t("screen.dashboard"), action: "dashboard" },
+  { key: "replays",   label: () => t("menu.sessionReplays"), action: "replays" },
   { key: "settings",  label: () => t("menu.settings"),    action: "settings" },
   { key: "quit",      label: () => t("menu.quit"),        action: "quit" },
 ];
@@ -217,11 +224,22 @@ export function EscMenu({
   onClose,
   onNavigate,
   onOpenDashboard,
+  onOpenReplays,
 }: EscMenuProps): React.ReactElement | null {
-  const [cursor, setCursor] = useState(0);
-  const items = onOpenDashboard
-    ? MENU_ITEMS
-    : MENU_ITEMS.filter((item) => item.action !== "dashboard");
+  const [cursor, setCursorState] = useState(0);
+  // Mirror of `cursor` readable synchronously: the useInput handler is only
+  // re-bound after a passive effect, so a fast Enter right after a rendered
+  // arrow move could otherwise activate the previous item.
+  const cursorRef = useRef(0);
+  const setCursor = (update: (c: number) => number): void => {
+    cursorRef.current = update(cursorRef.current);
+    setCursorState(cursorRef.current);
+  };
+  const items = MENU_ITEMS.filter(
+    (item) =>
+      (item.action !== "dashboard" || onOpenDashboard) &&
+      (item.action !== "replays" || onOpenReplays),
+  );
 
   const activate = (action: MenuAction): void => {
     if (action === "close") {
@@ -230,6 +248,9 @@ export function EscMenu({
       // Close the overlay before navigating.
       onClose();
       onOpenDashboard?.();
+    } else if (action === "replays") {
+      onClose();
+      onOpenReplays?.();
     } else {
       onNavigate(action);
     }
@@ -251,7 +272,7 @@ export function EscMenu({
       } else if (key.downArrow) {
         setCursor((c) => Math.min(items.length - 1, c + 1));
       } else if (key.return) {
-        const item = items[Math.min(cursor, items.length - 1)];
+        const item = items[Math.min(cursorRef.current, items.length - 1)];
         if (item) activate(item.action);
       } else if (key.escape) {
         onClose();
@@ -306,6 +327,11 @@ export interface EscMenuProviderProps {
    * menu and then calls this.
    */
   onOpenDashboard?: () => void;
+  /**
+   * Optional. When supplied, the menu shows a Session replays item that
+   * closes the menu and then calls this.
+   */
+  onOpenReplays?: () => void;
 }
 
 /**
@@ -318,6 +344,7 @@ export function EscMenuProvider({
   children,
   onNavigate,
   onOpenDashboard,
+  onOpenReplays,
 }: EscMenuProviderProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const { rows, columns } = useTerminalSize();
@@ -361,6 +388,7 @@ export function EscMenuProvider({
             onClose={closeMenu}
             onNavigate={handleNavigate}
             onOpenDashboard={onOpenDashboard}
+            onOpenReplays={onOpenReplays}
           />
         </Box>
       )}

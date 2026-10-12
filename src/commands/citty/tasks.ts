@@ -24,6 +24,7 @@ import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../
 import { ensureTasksFile } from "../../lib/tasks";
 import type { FeatureStatus, Priority, Difficulty } from "../../lib/tasks";
 import { resolveOutputFormat, outputError } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 import { cmdTasksList } from "../tasks/list";
 import { cmdTasksAdd } from "../tasks/add";
 import { cmdTasksSetStatus } from "../tasks/set-status";
@@ -41,10 +42,7 @@ import { cmdTasksGraph } from "../tasks/graph";
 
 async function loadProjectConfig(projectRoot: string) {
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-        `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-    );
+    console.error(t("cli.tasksCmd.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
   const config = loadConfig(projectRoot);
@@ -78,9 +76,14 @@ const listCommand = defineCommand({
       description: "Filter by difficulty (trivial|easy|medium|hard|very_hard)",
       required: false,
     },
+    quest: {
+      type: "string",
+      description: "Filter by quest ID",
+      required: false,
+    },
     ready: {
       type: "boolean",
-      description: "Show only ready tasks (backlog + deps met)",
+      description: "Show only ready tasks (planned + deps met; what launch --all-ready starts)",
       required: false,
     },
     includeArchive: {
@@ -109,6 +112,7 @@ const listCommand = defineCommand({
       status: args.status as FeatureStatus | undefined,
       priority: args.priority as Priority | undefined,
       difficulty: args.difficulty as Difficulty | undefined,
+      quest: args.quest,
       ready: args.ready,
       includeArchive: args.includeArchive,
       outputFmt: resolveOutputFormat(args.output),
@@ -201,7 +205,7 @@ const addCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.id || !args.title) {
-      outputError(fmt, "Usage: woco tasks add <id> <title> [--desc <desc>] [--priority <p>] [--difficulty <d>] [--effort <e>] [--depends-on <ids>] [--quest <id>] [--constraints <a;b>] [--forbidden <a;b>] [--references <a;b>]");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks add <id> <title> [--desc <desc>] [--priority <p>] [--difficulty <d>] [--effort <e>] [--depends-on <ids>] [--quest <id>] [--constraints <a;b>] [--forbidden <a;b>] [--references <a;b>]" }));
       return;
     }
 
@@ -263,7 +267,7 @@ const setStatusCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.taskId || !args.status) {
-      outputError(fmt, "Usage: woco tasks set-status <task-id> <status>");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks set-status <task-id> <status>" }));
       return;
     }
 
@@ -316,7 +320,7 @@ const setPriorityCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.taskId || !args.priority) {
-      outputError(fmt, "Usage: woco tasks set-priority <task-id> <priority>");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks set-priority <task-id> <priority>" }));
       return;
     }
 
@@ -369,7 +373,7 @@ const setQuestCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.taskId || !args.questId) {
-      outputError(fmt, "Usage: woco tasks set-quest <task-id> <quest-id|none>");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks set-quest <task-id> <quest-id|none>" }));
       return;
     }
 
@@ -422,7 +426,7 @@ const setDifficultyCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.taskId || !args.difficulty) {
-      outputError(fmt, "Usage: woco tasks set-difficulty <task-id> <difficulty>");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks set-difficulty <task-id> <difficulty>" }));
       return;
     }
 
@@ -447,6 +451,16 @@ const checkCommand = defineCommand({
     description: "Validate tasks file (schema, deps, duplicates, cycles) (also: ch)",
   },
   args: {
+    mirror: {
+      type: "boolean",
+      description: "Also report GitHub mirror drift (offline, warnings)",
+      required: false,
+    },
+    strict: {
+      type: "boolean",
+      description: "With --mirror: treat mirror findings as errors",
+      required: false,
+    },
     output: {
       type: "string",
       alias: "o",
@@ -460,6 +474,8 @@ const checkCommand = defineCommand({
     await cmdTasksCheck({
       projectRoot,
       config,
+      mirror: args.mirror,
+      strict: args.strict,
       outputFmt: resolveOutputFormat(args.output),
     });
   },
@@ -538,7 +554,7 @@ const showCommand = defineCommand({
     const fmt = resolveOutputFormat(args.output);
 
     if (!args.taskId) {
-      outputError(fmt, "Usage: woco tasks show <task-id>");
+      outputError(fmt, msg("cli.tasksCmd.usage", { usage: "woco tasks show <task-id>" }));
       return;
     }
 

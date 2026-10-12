@@ -1,0 +1,76 @@
+id: fake-agent-fault-script
+title: Scriptable Fault Directives for Fake Agent
+description: >
+  Extend the fake agent so tests and chaos runs can script failures through
+
+  the prompt, the same way FAKE_SLEEP_MS works today.
+
+
+  1. Create src/lib/fake-agent-faults.ts (pure, no I/O except an injected
+     state-dir reader/writer) exporting:
+     - type FaultStage = "start" | "after-text" | "before-commit" | "after-commit" | "before-finish"
+     - type FaultSpec, a discriminated union of:
+         crash        { stage, exitCode?, signal? }  exit non-zero or self-kill at the stage
+         hang         { stage }                      block forever, with no timers, waiting only for a signal
+         flaky        { stage, failTimes }           crash the first N attempts, then run healthy
+         repeat-crash { stage }                      crash on every attempt
+         slow-shutdown{ ignoreSigtermMs? | ignoreSigterm: true }  trap SIGTERM and delay or refuse exit (SIGKILL still works)
+         worktree-fail                               see below
+     - parseFaultDirectives(prompt: string): FaultSpec[] parsing directives such as
+       FAKE_FAULT=crash@before-commit, FAKE_FAULT=hang@after-text,
+       FAKE_FAULT=flaky:2@before-commit, FAKE_FAULT=repeat-crash@start,
+       FAKE_FAULT=slow-shutdown:ignore. Several directives may appear in one prompt.
+     - Attempt counting for flaky: persist an attempt counter in a file under
+       FAKE_FAULT_STATE_DIR (env) or, if unset, <dir>/.fake-agent/attempts-<taskId>.txt.
+       Read-increment-write it at process start so flaky works across restarts without clocks.
+  2. Edit src/lib/fake-agent-runner.ts to call a checkpoint(stage) function at each
+     stage boundary. checkpoint applies any matching fault. The runner must emit a
+     parseable stage event on stdout at every checkpoint, for example
+     {"type":"text", ... "[fake-agent] stage:<stage>"}, so test harnesses can wait on
+     stage markers instead of sleeping.
+     - Behaviour with NO directives must stay byte-for-byte compatible with today:
+       same events, same commit, exit 0.
+     - hang: await a Promise that never resolves, with no setInterval or sleep loop, so the process
+       exits only on a signal.
+     - slow-shutdown: install a SIGTERM handler that delays exit by the configured
+       amount, or ignores SIGTERM entirely, and emit a "[fake-agent] sigterm-received"
+       event so tests can observe delivery.
+  3. "worktree-fail" is NOT executed in the agent process (the process never starts
+     if worktree creation fails). Export a helper
+     shouldFailWorktreeCreation(prompt|taskDescription): boolean and document that the
+     resilience harness (task resilience-harness) injects it through a createWorktree
+     seam. Do not change src/lib/worktree.ts here.
+  4. Add tests/fake-agent-faults.test.ts: unit-test parsing and attempt counting
+     (temp dir). Spawn the real fake-agent-runner.ts with Bun.spawn against a
+     tests/helpers/git-repo.ts repo for crash/flaky/hang/slow-shutdown and assert exit
+     codes, stage markers and signals. Wait via stdout markers and process exit
+     promises only. Kill hung children in afterEach.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H30M
+started_at: null
+ended_at: 2026-10-12T15:22:42.942Z
+constraints:
+  - Default (no directive) behaviour of fake-agent-runner.ts must be unchanged
+  - "Faults must be deterministic: no randomness, no timing races; hang must not rely on a timer"
+  - Stay compatible with the opencode-style CLI argument parsing already in the runner
+  - Keep new module under ~300 lines; keep fake-agent-runner.ts changes small
+forbidden:
+  - Do not call any real coding CLI or network
+  - Do not use fixed sleeps in tests to wait for process state
+  - Do not modify src/lib/launcher.ts or src/lib/worktree.ts
+references:
+  - src/lib/fake-agent-runner.ts
+  - src/lib/launcher.ts
+  - tests/helpers/git-repo.ts
+  - tests/helpers/wait-for.ts
+notes:
+  - launcher.ts resolves the runner via FAKE_AGENT_SENTINEL and getFakeAgentRunnerPath; the prompt reaches the runner as
+    the last positional arg
+  - Existing sleep directive is parsed by extractSleepMs with a regex; follow that idiom
+subtasks: []
+quest: supervision-fault-injection
+paths: []

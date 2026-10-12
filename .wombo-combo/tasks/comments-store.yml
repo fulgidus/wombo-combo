@@ -1,0 +1,29 @@
+id: comments-store
+title: "Comment store: one tracked file per comment"
+description: "Add src/lib/comments.ts. Storage:
+  .wombo-combo/comments/<task|quest>/<ref-id>/<ISO-timestamp>-<author-slug>-<rand4>.yml with fields id, ref_kind
+  (task|quest), ref_id, author, role (agent|human|system), created_at, body, optional reply_to, optional github_url. One
+  file per comment so concurrent teammates never conflict and git history is the audit trail. API: addComment,
+  listComments(ref, {since, limit, author}), getComment, validation (ref must exist, non-empty body, size cap 20k
+  chars), deterministic sort. Author resolution like claims.resolveOwner, overridable with WOMBO_AUTHOR env. Comments of
+  archived/deleted refs are kept. Tests with temp dirs. Directory is tracked (not gitignored); update AGENTS.md file
+  layout."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: 2026-10-11T22:13:48.184Z
+constraints:
+  - No network
+  - Atomic writes (temp file + rename)
+  - Filenames sortable chronologically
+forbidden:
+  - Do not store comments inside the task yml (merge conflicts)
+references: []
+notes: []
+subtasks: []
+quest: inter-agent-comments
+paths: []

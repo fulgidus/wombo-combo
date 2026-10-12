@@ -34,6 +34,7 @@ import {
 } from "./tui-constants";
 import { useTerminalSize } from "./use-terminal-size";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -156,6 +157,7 @@ function Header({
   totalTokens?: number;
   totalCost?: number;
 }): React.ReactElement {
+  const t = useI18n();
   const done = counts.verified + counts.merged;
 
   return (
@@ -164,32 +166,32 @@ function Header({
       <Box>
         {waveComplete && (
           <>
-            <Text bold color="green">WAVE COMPLETE</Text>
+            <Text bold color="green">{t("waveMonitor.waveComplete")}</Text>
             <Text dimColor>  │  </Text>
           </>
         )}
         <Text dimColor>{waveId}</Text>
         <Text dimColor>  │  </Text>
-        <Text>Base: </Text>
+        <Text>{t("waveMonitor.base")} </Text>
         <Text color="cyan">{baseBranch}</Text>
         <Text dimColor>  │  </Text>
-        <Text>Mode: </Text>
+        <Text>{t("waveMonitor.mode")} </Text>
         {interactive ? (
-          <Text color="green">interactive</Text>
+          <Text color="green">{t("waveMonitor.interactive")}</Text>
         ) : (
-          <Text color="blue">headless</Text>
+          <Text color="blue">{t("waveMonitor.headless")}</Text>
         )}
         {model && (
           <>
             <Text dimColor>  │  </Text>
-            <Text>Model: </Text>
+            <Text>{t("waveMonitor.model")} </Text>
             <Text color="yellow">{model}</Text>
           </>
         )}
         {totalTokens !== undefined && totalTokens > 0 && (
           <>
             <Text dimColor>  │  </Text>
-            <Text color="yellow">{formatTokenCount(totalTokens)} tok</Text>
+            <Text color="yellow">{formatTokenCount(totalTokens)} {t("waveMonitor.tokens")}</Text>
             {totalCost !== undefined && totalCost > 0 && (
               <Text color="yellow"> {formatCost(totalCost)}</Text>
             )}
@@ -199,7 +201,7 @@ function Header({
 
       {/* Line 2: progress */}
       <Box>
-        <Text> Progress: </Text>
+        <Text> {t("waveMonitor.progress")} </Text>
         <Text color="green">{done}</Text>
         <Text>/</Text>
         <Text>{totalAgents}</Text>
@@ -218,6 +220,9 @@ function Header({
         {counts.resolving_conflict > 0 && (
           <Text>  <Text color="cyan">{counts.resolving_conflict} resolving</Text></Text>
         )}
+        {counts.in_review > 0 && (
+          <Text>  <Text color="cyan">{counts.in_review} in review</Text></Text>
+        )}
       </Box>
     </Box>
   );
@@ -235,6 +240,7 @@ function AgentListItem({
   isSelected: boolean;
   tokenCount?: number;
 }): React.ReactElement {
+  const t = useI18n();
   const color = AGENT_STATUS_COLORS[agent.status];
   const icon = AGENT_STATUS_ICONS[agent.status];
 
@@ -273,7 +279,7 @@ function AgentListItem({
         : agent.activity;
     actSnippet = <Text color="cyan"> {rawAct}</Text>;
   } else if (agent.status === "installing") {
-    actSnippet = <Text color="cyan"> setting up…</Text>;
+    actSnippet = <Text color="cyan"> {t("waveMonitor.settingUp")}</Text>;
   }
 
   // Retries
@@ -317,13 +323,14 @@ function ActivityPreview({
   activityLog: ActivityEntry[];
   systemMessages: ActivityEntry[];
 }): React.ReactElement {
+  const t = useI18n();
   if (!agentId) {
-    return <Text dimColor>No agent selected</Text>;
+    return <Text dimColor>{t("waveMonitor.noAgentSelected")}</Text>;
   }
 
   if (activityLog.length === 0 && systemMessages.length === 0) {
     return (
-      <Text dimColor>No activity yet. Waiting for agent output…</Text>
+      <Text dimColor>{t("waveMonitor.noActivity")}</Text>
     );
   }
 
@@ -335,7 +342,7 @@ function ActivityPreview({
       {systemMessages.length > 0 && (
         <>
           <Text> </Text>
-          <Text color="yellow">-- system --</Text>
+          <Text color="yellow">{t("waveMonitor.system")}</Text>
           {systemMessages.map((entry, i) => (
             <Text key={`sys-${entry.timestamp}-${i}`}>
               <Text dimColor>{entry.timestamp} </Text>
@@ -396,15 +403,16 @@ function BuildLogOverlay({
   buildPassed: boolean | null;
   buildOutput: string | null;
 }): React.ReactElement {
+  const t = useI18n();
   let content: React.ReactElement;
   if (buildOutput) {
     content = <Text>{buildOutput}</Text>;
   } else if (buildPassed === true) {
-    content = <Text color="green">Build passed — no errors.</Text>;
+    content = <Text color="green">{t("waveMonitor.buildPassed")}</Text>;
   } else if (buildPassed === false) {
-    content = <Text color="red">Build failed — no output captured.</Text>;
+    content = <Text color="red">{t("waveMonitor.buildFailed")}</Text>;
   } else {
-    content = <Text dimColor>No build has been run yet.</Text>;
+    content = <Text dimColor>{t("waveMonitor.noBuild")}</Text>;
   }
 
   return (
@@ -415,7 +423,7 @@ function BuildLogOverlay({
       width="80%"
       paddingX={1}
     >
-      <Text bold> Build Log — {agentId} </Text>
+      <Text bold> {t("waveMonitor.buildLogTitle", { id: agentId })} </Text>
       <Text> </Text>
       {content}
     </Box>
@@ -432,6 +440,7 @@ function LogFileOverlay({
   agentId: string;
   content: string;
 }): React.ReactElement {
+  const t = useI18n();
   // Truncate to last 200 lines
   const lines = content.split("\n");
   const truncated =
@@ -445,7 +454,7 @@ function LogFileOverlay({
       width="90%"
       paddingX={1}
     >
-      <Text bold> Log — {agentId} (Esc to close) </Text>
+      <Text bold> {t("waveMonitor.logTitle", { id: agentId })} </Text>
       <Text> </Text>
       <Text>{truncated}</Text>
     </Box>
@@ -465,66 +474,67 @@ function StatusBar({
   pendingQuestionCount: number;
   selectedAgentId: string | null;
 }): React.ReactElement {
-  const enterHint = interactive ? "attach session" : "view log";
+  const t = useI18n();
+  const enterHint = interactive ? t("waveMonitor.attachSession") : t("waveMonitor.viewLog");
 
   return (
     <Box flexDirection="column" height={3}>
       <Box flexWrap="wrap">
         {waveComplete ? (
           <>
-            <Text bold color="green">Wave complete.</Text>
+            <Text bold color="green">{t("waveMonitor.waveCompleteDot")}</Text>
             <Text>  </Text>
           </>
         ) : (
           <>
-            <Text bold>Keys:</Text>
+            <Text bold>{t("waveMonitor.keys")}</Text>
             <Text>  </Text>
           </>
         )}
         <Text dimColor>↑↓</Text>
-        <Text> navigate</Text>
+        <Text> {t("waveMonitor.navigate")}</Text>
         <Text>  </Text>
         <Text dimColor>Enter</Text>
         <Text> {enterHint}</Text>
         <Text>  </Text>
-        <Text dimColor>R</Text>
-        <Text> retry</Text>
+        <Text dimColor>r</Text>
+        <Text> {t("waveMonitor.retry")}</Text>
         <Text>  </Text>
-        <Text dimColor>B</Text>
-        <Text> build log</Text>
+        <Text dimColor>b</Text>
+        <Text> {t("waveMonitor.buildLog")}</Text>
         <Text>  </Text>
-        <Text dimColor>P</Text>
+        <Text dimColor>p</Text>
         <Text> {autoScroll ? (
-          <Text color="green">auto-scroll</Text>
+          <Text color="green">{t("waveMonitor.autoScroll")}</Text>
         ) : (
-          <Text color="yellow">paused</Text>
+          <Text color="yellow">{t("waveMonitor.paused")}</Text>
         )}</Text>
         {pendingQuestionCount > 0 && (
           <>
             <Text>  </Text>
-            <Text bold color="yellow">? {pendingQuestionCount} pending</Text>
+            <Text bold color="yellow">? {t("waveMonitor.pending", { count: pendingQuestionCount })}</Text>
             <Text>  </Text>
-            <Text dimColor>H</Text>
-            <Text> answer</Text>
+            <Text dimColor>h</Text>
+            <Text> {t("waveMonitor.answer")}</Text>
           </>
         )}
         <Text>  </Text>
         {waveComplete ? (
           <>
             <Text bold color="yellow">Q</Text>
-            <Text bold> exit</Text>
+            <Text bold> {t("waveMonitor.exit")}</Text>
           </>
         ) : (
           <>
-            <Text dimColor>Q</Text>
-            <Text> quit</Text>
+            <Text dimColor>q</Text>
+            <Text> {t("waveMonitor.quit")}</Text>
           </>
         )}
       </Box>
       <Box>
         {selectedAgentId ? (
           <Text>
-            <Text dimColor>Selected: </Text>
+            <Text dimColor>{t("waveMonitor.selected")} </Text>
             <Text>{selectedAgentId}</Text>
           </Text>
         ) : (
@@ -547,6 +557,7 @@ function StatusBar({
  * data collection, console interception, and tmux management.
  */
 export function WaveMonitorView(props: WaveMonitorViewProps): React.ReactElement {
+  const t = useI18n();
   const {
     waveId,
     baseBranch,
@@ -679,7 +690,7 @@ export function WaveMonitorView(props: WaveMonitorViewProps): React.ReactElement
             />
           ))}
           {agents.length === 0 && (
-            <Text dimColor>  No agents</Text>
+            <Text dimColor>  {t("waveMonitor.noAgents")}</Text>
           )}
         </Box>
 

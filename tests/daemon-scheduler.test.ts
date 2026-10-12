@@ -30,6 +30,7 @@ import type { SchedulerConfig, SchedulerDeps } from "../src/daemon/scheduler";
 import type { WomboConfig } from "../src/config";
 import { AgentRunner } from "../src/daemon/agent-runner";
 import { worktreePath } from "../src/lib/worktree";
+import { FAKE_AGENT_SENTINEL } from "../src/lib/launcher";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -927,6 +928,37 @@ describe("AgentRunner.reconcileOrphanedTasks()", () => {
   });
 });
 
+describe("AgentRunner.reconcileVerifiedAgents() — stuck completed agents", () => {
+  test("re-runs verification for agents restored as completed", async () => {
+    const config = makeConfig({ tasksDir: "tasks", archiveDir: "archive" });
+    const state = new DaemonState(tempDir);
+    state.addAgent(makeAgent("stuck-1", { agentName: FAKE_AGENT_SENTINEL }));
+    state.updateAgentStatus("stuck-1", "completed");
+
+    const logs: string[] = [];
+    state.subscribe((type: string, payload: any) => {
+      if (type === "evt:log") logs.push(payload?.message ?? "");
+    });
+
+    const runner = new AgentRunner({ projectRoot: tempDir, config }, state);
+    runner.reconcileVerifiedAgents();
+
+    for (let i = 0; i < 100; i++) {
+      const s = state.getAgent("stuck-1")!.status;
+      if (s === "merged" || s === "failed") break;
+      await sleep(50);
+    }
+
+    const status = state.getAgent("stuck-1")!.status;
+    expect(["merged", "failed"]).toContain(status);
+    expect(state.getAgent("stuck-1")!.verification).toBeTruthy();
+    expect(logs.some((m) => m.includes("Reconciling completed agent stuck-1"))).toBe(true);
+
+    runner.destroy();
+    state.destroy();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Concurrency: persisted state survives daemon boot (fix-concurrency-boot-reset)
 // ---------------------------------------------------------------------------
@@ -1360,5 +1392,119 @@ describe("File-scope steering", () => {
 
     scheduler.shutdown();
     state.destroy();
+  });
+});
+
+describe("Scheduler wake on dependency satisfied", () => {
+  function writeTask(dir: string, id: string, dependsOn: string[], status = "planned"): void {
+    const tasksDir = join(dir, ".wombo-combo", "tasks");
+    mkdirSync(tasksDir, { recursive: true });
+    const deps = dependsOn.length
+      ? `depends_on:\n${dependsOn.map((d) => `  - "${d}"`).join("\n")}`
+      : "depends_on: []";
+    writeFileSync(
+      join(tasksDir, `${id}.yml`),
+      [
+        `id: "${id}"`, `title: "${id}"`, `description: ""`, `status: "${status}"`,
+        `completion: 0`, `difficulty: "medium"`, `priority: "medium"`, deps,
+        `effort: "PT1H"`, `constraints: []`, `forbidden: []`, `references: []`,
+        `notes: []`, `subtasks: []`, "",
+      ].join("\n")
+    );
+  }
+
+  function setup(taskIds: string[]) {
+    const state = new DaemonState(tempDir);
+    state.setMaxConcurrent(0);
+    const { calls, runner } = makeMockRunner();
+    const scheduler = new Scheduler(
+      {
+        projectRoot: tempDir,
+        config: makeConfig({ tasksDir: "tasks", archiveDir: "archive" }),
+        taskIds,
+        tickIntervalMs: 60000,
+      },
+      { state, runner: runner as never }
+    );
+    return { state, calls, scheduler };
+  }
+
+  const submitted = (calls: Array<{ method: string; args: any[] }>) =>
+    calls.filter((c) => c.method === "submitTask").map((c) => c.args[0].id);
+
+  test("re-evaluates after going idle when a dependency becomes verified in daemon state", () => {
+    writeTask(tempDir, "dep-a", []);
+    writeTask(tempDir, "child-b", ["dep-a"]);
+    const { state, calls, scheduler } = setup(["child-b"]);
+    scheduler.start();
+
+    // child-b is blocked on dep-a (not in scope) → nothing to do, scheduler idles
+    expect(submitted(calls)).toEqual([]);
+    expect(state.getSchedulerStatus()).toBe("idle");
+
+    // dep-a is verified in daemon state only (disk still says planned)
+    state.addAgent(makeAgent("dep-a", { status: "running" }));
+    state.updateAgentStatus("dep-a", "verified");
+
+    expect(submitted(calls)).toEqual(["child-b"]);
+    expect(state.getSchedulerStatus()).toBe("running");
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+
+  test("does not wake a scheduler the user stopped", () => {
+    writeTask(tempDir, "dep-a", []);
+    writeTask(tempDir, "child-b", ["dep-a"]);
+    const { state, calls, scheduler } = setup(["child-b"]);
+    scheduler.start();
+    scheduler.stop();
+    scheduler.nudge();
+    state.setSchedulerStatus("idle", "All agents finished");
+
+    state.addAgent(makeAgent("dep-a", { status: "running" }));
+    state.updateAgentStatus("dep-a", "verified");
+
+    expect(submitted(calls)).toEqual([]);
+    expect(state.getSchedulerStatus()).toBe("idle");
+
+    scheduler.shutdown();
+    state.destroy();
+  });
+});
+
+describe("Scheduler team claims", () => {
+  test("skips tasks claimed by another developer only when team.enabled", async () => {
+    const dir = makeTempDir();
+    try {
+      const { claimTask } = await import("../src/lib/claims");
+      const tasksDir = join(dir, ".wombo-combo", "tasks");
+      mkdirSync(tasksDir, { recursive: true });
+      for (const id of ["mine-1", "theirs-1"]) {
+        writeFileSync(
+          join(tasksDir, `${id}.yml`),
+          `id: ${id}\ntitle: T ${id}\nstatus: planned\npriority: medium\neffort: PT30M\ndepends_on: []\n`,
+        );
+      }
+      const team = (owner: string, enabled: boolean) =>
+        makeConfig({ tasksDir: "tasks", archiveDir: "archive", team: { enabled, owner, claimTtlHours: 24 } });
+      claimTask(dir, team("other@x", true), "theirs-1");
+
+      const candidates = (enabled: boolean) => {
+        const state = new DaemonState(dir);
+        const runner = { setAgentOverride() {} } as unknown as AgentRunner;
+        const s = new Scheduler(
+          { projectRoot: dir, config: team("me@x", enabled), tickIntervalMs: 60000 },
+          { state, runner },
+        );
+        const ids = (s as any).getCandidateTasks().map((t: any) => t.id).sort();
+        state.destroy();
+        return ids;
+      };
+      expect(candidates(true)).toEqual(["mine-1"]);
+      expect(candidates(false)).toEqual(["mine-1", "theirs-1"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

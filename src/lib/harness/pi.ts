@@ -42,6 +42,7 @@ export const piHarness: HarnessAdapter = {
     providerFlag: true,
     jsonStream: true,
     usage: true,
+    cost: true,
   },
   buildLaunch: (req) => build(req, false),
   buildResume: (req) => build(req, true),

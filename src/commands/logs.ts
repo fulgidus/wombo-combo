@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { existsSync, readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderLogs } from "../lib/toon";
+import { msg, t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -101,13 +102,13 @@ function colorize(line: string): string {
  */
 function renderText(lines: LogLine[], featureId: string, logPath: string): void {
   if (lines.length === 0) {
-    console.log(`\x1b[33mLog file is empty: ${logPath}\x1b[0m`);
+    console.log(`\x1b[33m${t("cli.logs.empty", { path: logPath })}\x1b[0m`);
     return;
   }
 
-  console.log(`\x1b[1m--- Logs for ${featureId} ---\x1b[0m`);
-  console.log(`\x1b[2mFile: ${logPath}\x1b[0m`);
-  console.log(`\x1b[2mLines: ${lines[0].lineNumber}–${lines[lines.length - 1].lineNumber}\x1b[0m`);
+  console.log(`\x1b[1m${t("cli.logs.header", { id: featureId })}\x1b[0m`);
+  console.log(`\x1b[2m${t("cli.logs.file", { path: logPath })}\x1b[0m`);
+  console.log(`\x1b[2m${t("cli.logs.lines", { first: lines[0].lineNumber, last: lines[lines.length - 1].lineNumber })}\x1b[0m`);
   console.log();
 
   for (const line of lines) {
@@ -155,8 +156,8 @@ async function followLog(
         console.log(line.content);
       }
     } else {
-      console.log(`\x1b[1m--- Following logs for ${featureId} (Ctrl+C to stop) ---\x1b[0m`);
-      console.log(`\x1b[2mFile: ${logPath}\x1b[0m`);
+      console.log(`\x1b[1m${t("cli.logs.following", { id: featureId })}\x1b[0m`);
+      console.log(`\x1b[2m${t("cli.logs.file", { path: logPath })}\x1b[0m`);
       console.log();
       for (const line of lines) {
         console.log(colorize(line.content));
@@ -164,8 +165,8 @@ async function followLog(
     }
   } else {
     if (outputFmt === "text") {
-      console.log(`\x1b[1m--- Following logs for ${featureId} (Ctrl+C to stop) ---\x1b[0m`);
-      console.log(`\x1b[33mWaiting for log file to appear...\x1b[0m`);
+      console.log(`\x1b[1m${t("cli.logs.following", { id: featureId })}\x1b[0m`);
+      console.log(`\x1b[33m${t("cli.logs.waiting")}\x1b[0m`);
     } else if (outputFmt === "toon") {
       console.log(`#FOLLOW fid:${featureId}|waiting:1`);
     }
@@ -254,7 +255,7 @@ async function followLog(
   }
 
   if (outputFmt === "text") {
-    console.log(`\n\x1b[2m--- Stopped following ${featureId} ---\x1b[0m`);
+    console.log(`\n\x1b[2m${t("cli.logs.stopped", { id: featureId })}\x1b[0m`);
   }
 }
 
@@ -275,13 +276,7 @@ export async function cmdLogs(opts: LogsCommandOptions): Promise<void> {
 
   // For non-follow mode, the file must exist
   if (!existsSync(logPath)) {
-    outputError(
-      outputFmt,
-      `Log file not found: ${logPath}\n` +
-        `No logs exist for feature "${featureId}". ` +
-        `Logs are created when agents run in headless mode.\n` +
-        `Hint: Check .wombo-combo/logs/ for available log files, or run 'woco launch' first.`
-    );
+    outputError(outputFmt, msg("cli.logs.notFound", { path: logPath, id: featureId }));
   }
 
   const lines = readLogLines(logPath, tail);

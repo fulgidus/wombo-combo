@@ -19,6 +19,7 @@ import { resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { WomboConfig } from "../config";
 import { launchPlanner, canonicalizeOutput } from "./launcher";
+import { createPlannerTelemetry, formatPlannerTelemetry } from "./planner-telemetry";
 import type { Priority, Difficulty } from "./tasks";
 import type { QuestHitlMode } from "./quest";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
@@ -514,8 +515,18 @@ export async function runGenesisPlanner(
   const chunks: Buffer[] = [];
   let stderrText = "";
 
+  const telemetry = createPlannerTelemetry({
+    model: launch.result.route.model,
+    normalize: launch.result.normalize,
+    onUpdate: (snap) => {
+      const text = formatPlannerTelemetry(snap);
+      if (text) onProgress(text);
+    },
+  });
+
   child.stdout?.on("data", (chunk: Buffer) => {
     chunks.push(chunk);
+    telemetry.feed(chunk);
   });
 
   child.stderr?.on("data", (chunk: Buffer) => {
@@ -559,6 +570,7 @@ export async function runGenesisPlanner(
 
   const rawOutput = Buffer.concat(chunks).toString("utf-8");
 
+  telemetry.flush();
   onProgress("Parsing genesis output...");
 
   if (exitCode === -1) {

@@ -27,6 +27,7 @@ import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
 import { stripAnsi } from "./ansi";
+import { selectFromEscMenu, waitFor } from "../helpers/wait-for";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -522,21 +523,15 @@ describe("TuiApp dashboard", () => {
   test("metrics provider survives navigation; one subscription set, no connect/disconnect", async () => {
     const client = new FakeDaemonClient();
     const app = await mountTuiApp({ initialScreen: "dashboard", daemonClient: client });
-    await sleep();
+    await waitFor(() => client.onCalls > 0, "daemon subscriptions");
+    await waitFor(() => app.frame().includes("Home › Dashboard"), "dashboard");
     const subscribed = client.onCalls;
     const listeners = client.listenerCount();
     expect(subscribed).toBeGreaterThan(0);
 
-    // dashboard -> (menu) settings -> back -> back to quest-picker
-    app.key("\u001b");
-    await sleep(400);
-    app.key("\u001b[B");
-    await sleep();
-    app.key("\u001b[B"); // Settings
-    await sleep();
-    app.key("\r");
-    await sleep(80);
-    expect(app.frame()).toContain("Settings");
+    // dashboard -> (menu) settings
+    await selectFromEscMenu(app, "Settings");
+    await waitFor(() => app.frame().includes("Settings"), "Settings screen");
     expect(client.onCalls).toBe(subscribed);
     expect(client.listenerCount()).toBe(listeners);
 

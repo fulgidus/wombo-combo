@@ -1,0 +1,25 @@
+id: sync-check-and-docs
+title: tasks check --mirror, sync guide, tracker docs and label bootstrap
+description: "'woco tasks check --mirror' reports tasks/quests with no mapping, mappings whose issue is gone, comments
+  without a GitHub id and items whose hashes diverged (report only, -o json). Docs: guide
+  docs/src/content/docs/guides/github-sync.md (manual vs auto, auth, labels auto-created, conflict policy, multi-user
+  behaviour, troubleshooting), update docs/agents/issue-tracker.md (the lockstep mirror is now automated: describe 'bun
+  dev sync run' and auto mode; keep the manual fallback) and docs/agents/triage-labels.md (labels are created
+  automatically by 'sync labels' or on first push, with the 'gh label create' commands as a manual fallback), README
+  section, AGENTS.md layout list (sync/ mapping dir tracked)."
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - sync-auto-mode
+effort: PT2H
+started_at: null
+ended_at: 2026-10-11T23:15:18.737Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

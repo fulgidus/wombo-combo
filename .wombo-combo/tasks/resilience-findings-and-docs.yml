@@ -1,0 +1,52 @@
+id: resilience-findings-and-docs
+title: Triage Findings and Document Suite
+description: |
+  Final pass once the suite and CI wiring are merged.
+    1. Run `bun test tests/resilience` repeatedly (for example 5 consecutive runs, in a
+       loop in the shell) and under `--randomize` if bun supports it, to confirm there
+       is no flakiness. Any flake is a bug: fix the offending sleep or race or file a task.
+    2. Collect every bug surfaced by the other tasks (look for test.todo/skip entries
+       referencing task IDs, and `bun dev tasks list` entries prefixed bug-). Make sure
+       each has a task (`bun dev tasks add <bug-id> "<title>" --priority ...`) or a
+       wishlist item in .wombo-combo/wishlist.yml with reproduction steps referencing
+       the failing scenario and fault directive. Do not fix supervision bugs here
+       unless trivial; the point is tracking.
+    3. Write docs/src/content/docs/guides/resilience-testing.md (Starlight page, follow
+       frontmatter of sibling guides): fault directive reference (FAKE_FAULT syntax,
+       stages), how to run `bun test tests/resilience` and `bun run chaos`, how to add a
+       scenario with the harness, the no-sleep and cleanup rules, the CI time budget. Add the
+       page to the docs sidebar config only if sidebar entries are explicit in
+       docs/astro.config.mjs.
+    4. Verify `bun run typecheck` and `bun run build` pass, then run `bun dev tasks check`.
+    5. Run `graphify update .` as required by project rules.
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - resilience-restart-strategies
+  - resilience-intensity-escalation
+  - resilience-cascading-shutdown
+  - resilience-daemon-restart
+  - resilience-strategy-coverage-guard
+  - resilience-ci-wiring
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Every discovered bug must be tracked before any workaround
+  - Docs follow plain, concise style used by existing guides
+forbidden:
+  - Do not mark flaky tests as skipped without a tracking task
+  - Do not add any AI attribution to docs, tasks or commits
+references:
+  - docs/src/content/docs/guides/running-agents.md
+  - docs/astro.config.mjs
+  - .wombo-combo/wishlist.yml
+  - docs/agents/issue-tracker.md
+  - tests/resilience
+notes:
+  - Use `bun dev tasks add` and `bun dev tasks check`, never the global binary
+subtasks: []
+quest: supervision-fault-injection
+paths: []

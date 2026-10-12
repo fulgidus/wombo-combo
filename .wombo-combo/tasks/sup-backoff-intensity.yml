@@ -1,0 +1,44 @@
+id: sup-backoff-intensity
+title: Backoff and Restart Intensity Tracker
+description: >
+  Create two pure modules plus tests.
+
+
+  src/lib/supervision/backoff.ts:
+    - computeBackoff(attempt: number, opts: BackoffOptions, random: () => number = Math.random): number — delay = min(maxMs, initialMs * factor^(attempt-1)); attempt 1 => initialMs. Apply jitter symmetric fraction: delay * (1 + jitter * (random()*2-1)), clamped to [0, maxMs]. Validate/normalize inputs (attempt < 1 treated as 1; factor < 1 treated as 1).
+    - DEFAULT_BACKOFF constant (initial 100, max 5000, factor 2, jitter 0).
+    - A BackoffTracker per child is NOT needed here; the supervisor tracks the attempt count. However export `resetAfterMs` helper semantic: export function shouldResetAttempt(runMs: number, resetAfterMs: number): boolean (true when a child ran healthy for at least resetAfterMs, so its attempt counter resets). Add DEFAULT_BACKOFF_RESET_MS = 10000.
+
+  src/lib/supervision/intensity.ts:
+    - class IntensityTracker constructor(opts: IntensityOptions, clock: Clock). record(): { exceeded: boolean; count: number } — prunes timestamps older than periodMs (strictly older than now - periodMs), pushes now(), exceeded = count > maxRestarts. count(): number (restarts within window after pruning). reset(). Sliding-window semantics: with maxRestarts=3, period=1000, a 4th restart within 1000ms exceeded; a 4th at exactly +1000ms after the first is still inside or outside? Define: window includes timestamps with t > now - periodMs (so a restart exactly periodMs old is pruned). Document this in a comment and test it.
+    - DEFAULT_INTENSITY (3 restarts per 5000ms).
+
+  Tests in tests/supervision-backoff.test.ts and tests/supervision-intensity.test.ts using FakeClock from
+  tests/helpers/fake-clock (created by a parallel-dependent task; it is a dependency so it exists when you run).
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - sup-types
+  - sup-fake-clock
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Pure functions/classes, all time via the injected Clock
+  - Random injected, never call Math.random inside tests
+  - "Edge cases tested: attempt 1, capping at maxMs, jitter bounds with random 0/0.5/1, window boundary, maxRestarts=0
+    (first restart exceeds)"
+forbidden:
+  - Do not use Date.now or real timers in these modules
+  - Do not add dependencies
+references:
+  - src/lib/supervision/types.ts
+  - src/lib/supervision/clock.ts
+  - tests/helpers/fake-clock.ts
+notes:
+  - Do not touch supervisor.ts, strategies.ts or index.ts.
+subtasks: []
+quest: supervisor-core
+paths: []

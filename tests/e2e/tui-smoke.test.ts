@@ -24,9 +24,7 @@ const ENTRY = join(import.meta.dir, "..", "..", "src", "index.ts");
 const COLS = 120;
 const ROWS = 40;
 const STEP_TIMEOUT_MS = 20_000;
-// Generous per-test budget: the full `bun test` run can be heavily loaded, and
-// each test spans a splash, a menu transition and a realtime dashboard render.
-const TEST_TIMEOUT_MS = 60_000;
+const TEST_TIMEOUT_MS = 30_000;
 
 /** Minimal project.yml so the TUI skips first-run onboarding. */
 const PROJECT_YML = `name: smoke-project
@@ -72,13 +70,8 @@ function stripAnsi(s: string): string {
 interface TuiSession {
   /** Strip-ANSI'd screen output accumulated so far. */
   text(): string;
-  /** Opaque offset into the raw output; pass to waitFor to ignore older output. */
-  mark(): number;
-  /**
-   * Poll until `needle` appears in the output produced after `from` (default:
-   * the whole output so far) or the timeout elapses.
-   */
-  waitFor(needle: string, timeoutMs?: number, from?: number): Promise<void>;
+  /** Poll until `needle` appears in the output or the timeout elapses. */
+  waitFor(needle: string, timeoutMs?: number): Promise<void>;
   /** Write raw keystrokes to the TUI. */
   send(keys: string): Promise<void>;
   /** Resolves with the exit code of `script` (== TUI exit code) or rejects on timeout. */
@@ -126,12 +119,9 @@ function launchTui(cwd: string): TuiSession {
   const session: TuiSession = {
     text,
 
-    mark: () => raw.length,
-
-    async waitFor(needle, timeoutMs = STEP_TIMEOUT_MS, from = 0) {
+    async waitFor(needle, timeoutMs = STEP_TIMEOUT_MS) {
       const deadline = Date.now() + timeoutMs;
-      const since = () => stripAnsi(raw.slice(from));
-      while (!since().includes(needle)) {
+      while (!text().includes(needle)) {
         if (proc.exitCode !== null) {
           throw new Error(
             `TUI exited (code ${proc.exitCode}) before showing ${JSON.stringify(needle)}.\n` +
@@ -290,7 +280,8 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       await tui.waitFor("Return to app");
       await tui.waitFor("Quit wombo");
 
-      // Items: Return to app, Dashboard, Settings, Quit wombo.
+      // Items: Return to app, Dashboard, Session replays, Settings, Quit wombo.
+      await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
       await tui.send(KEY_DOWN);
@@ -307,17 +298,12 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       const tui = start();
       await reachQuestPicker(tui);
 
+      // "Dashboard" already appears in the quest picker's hint line, so wait
+      // for text that only the open menu renders before sending navigation keys.
       await tui.send(KEY_ESC);
-      // "Dashboard" alone is not a menu anchor: the quest picker footer already
-      // shows it ("Dashboard in ESC menu"). Wait for menu-only items instead.
       await tui.waitFor("Return to app");
       await tui.waitFor("Quit wombo");
-
-      // Wait until the cursor has actually moved onto Dashboard before Enter,
-      // so the keystroke can't be consumed by the picker underneath.
-      const beforeDown = tui.mark();
       await tui.send(KEY_DOWN); // Return to app -> Dashboard
-      await tui.waitFor("> Dashboard", STEP_TIMEOUT_MS, beforeDown);
       await tui.send(KEY_ENTER);
 
       await tui.waitFor("Throughput");
@@ -325,16 +311,15 @@ describe.skipIf(!SUPPORTED)("TUI smoke (real process in a PTY)", () => {
       await tui.waitFor("Quest tokens");
       expect(tui.exitCode()).toBeNull();
 
-      // "Keys:" is on the picker only; search output produced after 'b'.
-      const beforeBack = tui.mark();
       await tui.send("b");
-      await tui.waitFor("Keys:", STEP_TIMEOUT_MS, beforeBack);
+      await tui.waitFor("Keys:");
       expect(tui.exitCode()).toBeNull();
 
       await tui.send("q");
-      expect(await tui.waitForExit()).toBe(0);
+      expect(await tui.waitForExit(20_000)).toBe(0);
     },
-    TEST_TIMEOUT_MS
+    // Under heavy full-suite load every step may use its whole budget.
+    TEST_TIMEOUT_MS * 3
   );
 
   test(

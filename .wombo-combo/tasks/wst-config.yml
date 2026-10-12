@@ -1,0 +1,58 @@
+id: wst-config
+title: Add Supervision Tree Config
+description: |
+  Add an optional `supervision` block to WomboConfig in src/config.ts, with
+  matching entries in schemas/config.schema.json (keep the two in sync and
+  extend the validator in src/config.ts). Shape:
+
+    supervision?: {
+      restartIntensity?: { maxRestarts?: number; windowMs?: number };
+      backoff?: { initialMs?: number; maxMs?: number; factor?: number };
+      strategy?: { wave?: "one_for_one"; quest?: "one_for_one" | "rest_for_one" };
+      escalation?: {
+        onBaselineFailure?: "none" | "pause_quest" | "degrade_wave" | "abort_wave";
+        onBaseBranchFailure?: "none" | "pause_quest" | "degrade_wave" | "abort_wave";
+        onIntensityExceeded?: "none" | "pause_quest" | "degrade_wave" | "abort_wave";
+      };
+    }
+
+  Defaults (exported as DEFAULT_SUPERVISION and a `resolveSupervision(config)`
+  helper that returns a fully-populated object) must reproduce today's
+  behaviour exactly:
+  - maxRestarts: unset resolves to config.defaults.maxRetries; windowMs 0 = no
+    time window (count-based, as today).
+  - backoff: initialMs 0, maxMs 0, factor 1 (no delay).
+  - strategy: wave and quest both one_for_one.
+  - escalation: every trigger "none" (a failing baseline/base branch only
+    fails the individual agent, as at agent-runner.ts ~L561-575).
+  Validation: numbers must be >= 0 (factor >= 1), enums must be one of the
+  listed values; error messages follow the existing "config.x must be ..."
+  style. Add tests/config-supervision.test.ts: defaults resolve to
+  today's behaviour, invalid values throw, a config without the block
+  validates unchanged.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T16:12:02.387Z
+ended_at: null
+constraints:
+  - The block is optional; a config.json without it must load and validate with no changes
+  - schemas/config.schema.json and src/config.ts validation are updated in the same task
+  - resolveSupervision must be a pure function with no I/O
+forbidden:
+  - Do not modify src/daemon/*
+  - Do not change the meaning of defaults.maxRetries
+references:
+  - src/config.ts
+  - schemas/config.schema.json
+  - tests/config.test.ts
+notes:
+  - Look at how other optional blocks (e.g. postMerge, sync) are typed, defaulted and validated and copy that idiom
+  - docs/src/content/docs/reference/config.md may be generated from the schema; do not hand-edit it here (wst-docs
+    covers docs)
+subtasks: []
+quest: wave-supervision-tree
+paths: []

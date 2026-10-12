@@ -18,6 +18,7 @@ import {
 } from "../lib/history";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderHistoryList, renderHistoryDetail } from "../lib/toon";
+import { msg, t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -105,24 +106,24 @@ function statusColor(status: string): string {
 
 function renderWaveList(records: WaveHistoryRecord[]): void {
   if (records.length === 0) {
-    console.log("\nNo wave history found.");
-    console.log("History is auto-exported when a wave completes.\n");
+    console.log(`\n${t("cli.history.empty")}`);
+    console.log(`${t("cli.history.emptyHint")}\n`);
     return;
   }
 
   console.log("");
-  console.log(`${BOLD}Wave History (${records.length} wave(s)):${RESET}`);
+  console.log(`${BOLD}${t("cli.history.listTitle", { count: records.length })}${RESET}`);
   console.log("");
 
   const header = [
-    pad("Wave ID", 24),
-    pad("Date", 22),
-    padLeft("Total", 6),
-    padLeft("OK", 4),
-    padLeft("Fail", 5),
-    padLeft("Merged", 7),
-    padLeft("Retries", 8),
-    padLeft("Duration", 10),
+    pad(t("cli.history.colWaveId"), 24),
+    pad(t("cli.history.colDate"), 22),
+    padLeft(t("cli.history.colTotal"), 6),
+    padLeft(t("cli.history.colOk"), 4),
+    padLeft(t("cli.history.colFail"), 5),
+    padLeft(t("cli.history.colMerged"), 7),
+    padLeft(t("cli.history.colRetries"), 8),
+    padLeft(t("cli.history.colDuration"), 10),
   ].join(" ");
 
   console.log(`${BOLD}${header}${RESET}`);
@@ -148,7 +149,7 @@ function renderWaveList(records: WaveHistoryRecord[]): void {
   }
 
   console.log("");
-  console.log(`${DIM}Use 'woco history <wave-id>' for details.${RESET}`);
+  console.log(`${DIM}${t("cli.history.detailsHint")}${RESET}`);
   console.log("");
 }
 
@@ -158,38 +159,40 @@ function renderWaveList(records: WaveHistoryRecord[]): void {
 
 function renderWaveDetails(rec: WaveHistoryRecord): void {
   console.log("");
-  console.log(`${BOLD}Wave: ${rec.wave_id}${RESET}`);
-  console.log(`${DIM}Base: ${rec.base_branch} | Concurrency: ${rec.max_concurrent} | Mode: ${rec.interactive ? "interactive" : "headless"}${RESET}`);
+  console.log(`${BOLD}${t("cli.history.wave", { id: rec.wave_id })}${RESET}`);
+  const mode = t(rec.interactive ? "cli.history.modeInteractive" : "cli.history.modeHeadless");
+  console.log(`${DIM}${t("cli.history.meta", { base: rec.base_branch, concurrency: rec.max_concurrent, mode })}${RESET}`);
   if (rec.model) {
-    console.log(`${DIM}Model: ${rec.model}${RESET}`);
+    console.log(`${DIM}${t("cli.history.model", { model: rec.model })}${RESET}`);
   }
-  console.log(`${DIM}Started: ${formatDate(rec.started_at)} | Exported: ${formatDate(rec.exported_at)}${RESET}`);
+  console.log(`${DIM}${t("cli.history.dates", { started: formatDate(rec.started_at), exported: formatDate(rec.exported_at) })}${RESET}`);
   console.log("");
 
   // Summary
   const s = rec.summary;
-  console.log(`${BOLD}Summary:${RESET}`);
-  console.log(`  Total agents:    ${s.total}`);
-  console.log(`  Succeeded:       ${FG.green}${s.succeeded}${RESET}`);
-  console.log(`  Failed:          ${s.failed > 0 ? FG.red : FG.gray}${s.failed}${RESET}`);
-  console.log(`  Merged:          ${FG.magenta}${s.merged}${RESET}`);
-  console.log(`  Verified:        ${FG.green}${s.verified}${RESET}`);
-  console.log(`  Total retries:   ${s.total_retries}`);
-  console.log(`  Total duration:  ${formatDurationMs(s.total_duration_ms)}`);
+  const label = (key: string) => `  ${t(key).padEnd(17)}`;
+  console.log(`${BOLD}${t("cli.history.summary")}${RESET}`);
+  console.log(`${label("cli.history.totalAgents")}${s.total}`);
+  console.log(`${label("cli.history.succeeded")}${FG.green}${s.succeeded}${RESET}`);
+  console.log(`${label("cli.history.failed")}${s.failed > 0 ? FG.red : FG.gray}${s.failed}${RESET}`);
+  console.log(`${label("cli.history.merged")}${FG.magenta}${s.merged}${RESET}`);
+  console.log(`${label("cli.history.verified")}${FG.green}${s.verified}${RESET}`);
+  console.log(`${label("cli.history.totalRetries")}${s.total_retries}`);
+  console.log(`${label("cli.history.totalDuration")}${formatDurationMs(s.total_duration_ms)}`);
   console.log("");
 
   // Agent table
-  console.log(`${BOLD}Agents:${RESET}`);
+  console.log(`${BOLD}${t("cli.history.agents")}${RESET}`);
   console.log("");
 
   const header = [
-    pad("Feature", 30),
-    pad("Status", 12),
-    padLeft("Retries", 8),
-    padLeft("Duration", 10),
-    pad("Build", 6),
-    pad("Conflict", 9),
-    pad("Error", 30),
+    pad(t("cli.history.colFeature"), 30),
+    pad(t("cli.history.colStatus"), 12),
+    padLeft(t("cli.history.colRetries"), 8),
+    padLeft(t("cli.history.colDuration"), 10),
+    pad(t("cli.history.colBuild"), 6),
+    pad(t("cli.history.colConflict"), 9),
+    pad(t("cli.history.colError"), 30),
   ].join(" ");
 
   console.log(`${BOLD}${header}${RESET}`);
@@ -198,13 +201,13 @@ function renderWaveDetails(rec: WaveHistoryRecord): void {
   for (const agent of rec.agents) {
     const color = statusColor(agent.status);
     const buildStr = agent.build_passed === true
-      ? `${FG.green}pass${RESET}`
+      ? `${FG.green}${t("cli.history.buildPass")}${RESET}`
       : agent.build_passed === false
-        ? `${FG.red}fail${RESET}`
+        ? `${FG.red}${t("cli.history.buildFail")}${RESET}`
         : `${FG.gray}-${RESET}`;
     const conflictStr = agent.had_merge_conflict
-      ? `${FG.yellow}yes${RESET}`
-      : `${FG.gray}no${RESET}`;
+      ? `${FG.yellow}${t("cli.history.yes")}${RESET}`
+      : `${FG.gray}${t("cli.history.no")}${RESET}`;
     const errorStr = agent.error
       ? agent.error.split("\n")[0].slice(0, 28)
       : "-";
@@ -239,10 +242,7 @@ export async function cmdHistory(opts: HistoryCommandOptions): Promise<void> {
     // Show details for a specific wave
     const record = loadHistory(projectRoot, opts.waveId);
     if (!record) {
-      outputError(
-        outputFmt,
-        `Wave history not found: ${opts.waveId}. Use 'woco history' to list available waves.`
-      );
+      outputError(outputFmt, msg("cli.history.notFound", { id: opts.waveId }));
       return; // unreachable — helps TypeScript narrow
     }
 

@@ -1,0 +1,44 @@
+id: shutdown-hook-cleanup
+title: Worktree Cleanup as Shutdown Hook
+description: |
+  Make worktree cleanup and process kill the supervised child's shutdown
+  hook (supervisor-core SupervisedChild.shutdown). One idempotent hook per
+  agent that: kills the process via the monitor, captures best-effort
+  analytics diff (analytics.captureBestEffort) BEFORE removing the
+  worktree, removes the worktree (removeWorktree) and the task branch when
+  the agent is abandoned (not on merge success, which keeps its existing
+  cleanup), and resets the task to planned where reapDeadProcesses does
+  today. Route cancelAgent, killAll, reapDeadProcesses (dead PID and
+  exhausted-retry paths), give-up from the restart policy (failed agents keep
+  their worktree only if that is today's behaviour; preserve it) and
+  destroy() through the hook. Hook errors are contained and logged; running
+  it twice is a no-op. Preserve chain semantics: worktrees shared by a
+  depends_on chain must not be removed while a successor still needs them.
+  Add tests proving no orphaned worktree or branch remains after cancel,
+  killAll, dead-PID reap and exhausted retries.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - wire-transient-restart-policy
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Existing cleanup outcomes unchanged for each path
+  - Hook is idempotent and never throws
+  - Never remove a worktree shared with a live chain successor
+forbidden:
+  - Do not leave orphaned worktrees or branches when an agent is shut down
+  - Do not change protocol shapes
+references:
+  - src/daemon/agent-runner.ts
+  - src/lib/worktree.ts
+  - src/lib/supervisor-core.ts
+  - src/daemon/analytics-tracker.ts
+notes:
+  - Add tests/daemon-agent-shutdown.test.ts using temp git repos from tests/helpers
+subtasks: []
+quest: agent-process-supervision
+paths: []

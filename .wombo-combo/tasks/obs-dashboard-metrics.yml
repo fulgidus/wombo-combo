@@ -1,0 +1,39 @@
+id: obs-dashboard-metrics
+title: Extend Dashboard Metrics For Supervision
+description: |
+  Extend src/lib/dashboard-metrics.ts so applySnapshot and applyDashboardEvent handle the new
+  events. Add an optional `supervision: SupervisionTreeSnapshot` field to the dashboard state
+  (initial value from emptySupervisionTree) and add the four evt:* supervision types plus
+  evt:supervision-tree to the DashboardEvent union; route them through applySupervisionEvent in
+  applyDashboardEvent. applySnapshot must preserve the supervision field untouched (state
+  snapshots carry no tree). Add the matching event subscriptions in
+  src/ink/dashboard-provider.tsx (the event loop around line 220), and send
+  cmd:get-supervision-tree on connect/reconnect so the tree is seeded. Expose the tree through
+  DashboardMetricsValue in src/ink/dashboard-metrics-context.tsx.
+  Extend existing dashboard-metrics tests (find them with grep for applyDashboardEvent in tests/ and
+  src/) with cases for every new event and for snapshot preservation.
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-tree-model
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Keep reducers pure; pass now explicitly
+  - Existing dashboard state fields and tests must keep passing unchanged
+forbidden:
+  - Do not add UI components here
+  - Do not change existing event payload handling
+references:
+  - src/lib/dashboard-metrics.ts
+  - src/ink/dashboard-provider.tsx
+  - src/ink/dashboard-metrics-context.tsx
+  - src/lib/supervision-tree.ts
+notes:
+  - "Quest planning feedback: extend applySnapshot/applyDashboardEvent rather than adding a parallel store."
+subtasks: []
+quest: supervision-observability
+paths: []

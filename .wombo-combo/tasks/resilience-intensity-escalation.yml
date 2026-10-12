@@ -1,0 +1,45 @@
+id: resilience-intensity-escalation
+title: Intensity Exceeded Escalation Tests
+description: |
+  Add tests/resilience/intensity-escalation.test.ts covering restart-intensity limits
+  and the escalation chain at each level, using FakeClock for the T-second window.
+    - repeat-crash@start exceeds N restarts in T seconds at the agent supervisor: the
+      agent ends in a failed state, a supervisor_escalated event is emitted, and the
+      parent applies its configured outcome (quest paused, wave degraded, or wave
+      aborted, as defined by wave-supervision-tree). Assert each defined outcome.
+    - Window semantics: N crashes spaced beyond T (advance the clock between them) do
+      NOT escalate; N+1 within T does. Boundary cases exactly at N and exactly at T.
+    - Escalation up two levels (agent -> quest -> wave) when the quest supervisor's own
+      intensity is exceeded; unrelated quests keep running.
+    - Default config matches today's behaviour (config.defaults.maxRetries semantics):
+      with no intensity config, the failure count equals the legacy retry limit.
+    - Worktree creation failure (worktree-fail directive via the harness): treated as a
+      start failure, restarts then escalates, and leaves no half-created worktree or branch.
+    - Every escalation emits an event (none implicit).
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - resilience-harness
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Assert cleanup of processes, worktrees and branches after every scenario
+  - Window timing driven only by FakeClock
+forbidden:
+  - Do not use fixed sleeps
+  - Do not change supervision or config defaults to make tests pass
+references:
+  - tests/helpers/resilience-harness.ts
+  - src/config.ts
+  - schemas/config.schema.json
+  - src/daemon/scheduler.ts
+  - src/daemon/state.ts
+notes:
+  - Read the escalation-policy config added by wave-supervision-tree for the exact field names
+  - File a bug- task (bun dev tasks add) for any defect found and reference it in a skipped/todo test
+subtasks: []
+quest: supervision-fault-injection
+paths: []

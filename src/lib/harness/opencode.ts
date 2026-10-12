@@ -27,6 +27,7 @@ export const opencodeHarness: HarnessAdapter = {
     providerFlag: false,
     jsonStream: true,
     usage: true,
+    cost: true,
   },
   buildLaunch(req) {
     const args = ["run", "--format", "json", "--agent", req.agentName ?? "generalist-agent"];

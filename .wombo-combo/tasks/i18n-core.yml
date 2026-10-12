@@ -1,0 +1,35 @@
+id: i18n-core
+title: Integrate i18next core with locale files, detection, plural and interpolation
+description: "Add i18next (pinned 26.4.2) and a core module src/lib/i18n.ts: initI18n, t, getFixedT, detectLocale
+  (tui.locale > WOMBO_LOCALE > LC_ALL > LC_MESSAGES > LANG > en), AVAILABLE_LOCALES, missing-key fallback to en with
+  dev-mode reporting. Move src/ink/strings/en.ts into src/locales/en/tui.json (flat keys), turn wo ave.agentCount etc
+  into plural keys. Keep src/ink/i18n.ts as a backward-compatible facade (t, createI18n, getLocaleT, I18nContext,
+  useI18n, EN_STRINGS). Config tui.locale default becomes auto. Verify bun dev and node dist/index.js both load locales;
+  add src/locales to package.json files."
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: 2026-10-11T13:50:50.461Z
+ended_at: 2026-10-11T14:02:29.903Z
+constraints:
+  - Existing t(key) call sites and tests/ink/i18n.test.ts keep passing
+  - Resources are statically imported JSON so Bun.build bundles them
+  - Flat dotted keys with keySeparator and nsSeparator disabled
+  - Init is synchronous
+forbidden:
+  - Do not add react-i18next
+  - Do not use a floating version range for i18next
+  - Do not read locale files from disk at runtime
+references:
+  - src/ink/i18n.ts
+  - src/ink/strings/en.ts
+  - src/config.ts
+  - scripts/build.ts
+  - tests/ink/i18n.test.ts
+notes: []
+subtasks: []
+quest: i18n-full
+paths: []

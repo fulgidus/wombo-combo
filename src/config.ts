@@ -112,6 +112,34 @@ export interface WomboConfig {
    * normalizePostMergeConfig().
    */
   postMerge?: PostMergeConfig;
+  /**
+   * Session replay retention. Optional so older config files and manually
+   * constructed configs keep working; read it through normalizeReplayConfig().
+   */
+  replay?: ReplayConfig;
+  /**
+   * Multi-developer coordination (git-tracked task claims). Optional so older
+   * config files keep working; read it through normalizeTeamConfig().
+   */
+  team?: TeamConfig;
+  /**
+   * Task/quest comments in agent prompts and daemon lifecycle comments.
+   * Optional so older config files keep working; read it through
+   * normalizeCommentsConfig().
+   */
+  comments?: CommentsConfig;
+  /**
+   * Optional reviewer-agent stage between verification and merge (off by
+   * default). Optional so older config files keep working; read it through
+   * normalizeReviewConfig().
+   */
+  review?: ReviewConfig;
+  /**
+   * Integrations that sync woco data with external services (GitHub issues).
+   * Optional so older config files keep working; read it through
+   * normalizeSyncGithubConfig().
+   */
+  sync?: SyncConfig;
   /** Per-task model routing: task weight → model (undefined entry = session model) */
   modelRouting?: {
     light?: string | null;
@@ -181,6 +209,89 @@ export interface PostMergeConfig {
   changelog: boolean;
 }
 
+/** Multi-developer coordination via git-tracked claim files (.wombo-combo/claims/) */
+export interface TeamConfig {
+  /** Enable task claims; disabled keeps single-developer behaviour unchanged */
+  enabled: boolean;
+  /** Claim owner override; null = git config user.email */
+  owner: string | null;
+  /** Hours until a claim expires */
+  claimTtlHours: number;
+}
+
+/** Comments on tasks and quests (.wombo-combo/comments/) in agent prompts */
+export interface CommentsConfig {
+  /** Include recent comments in agent prompts and tell agents how to comment */
+  enabled: boolean;
+  /** Maximum number of recent comments per task/quest in the prompt */
+  promptMaxItems: number;
+  /** Maximum total characters of comment text in the prompt */
+  promptMaxChars: number;
+  /** Daemon posts system comments on lifecycle events (started, failed, merged, retried) */
+  autoLifecycle: boolean;
+}
+
+export const REVIEW_BLOCK_ON = ["blocking", "major"] as const;
+export type ReviewBlockOn = (typeof REVIEW_BLOCK_ON)[number];
+/** Allowed range of `review.maxRounds` */
+export const REVIEW_MIN_ROUNDS = 1;
+export const REVIEW_MAX_ROUNDS = 5;
+
+/** Review gate: a reviewer agent checks the task diff before merge */
+export interface ReviewConfig {
+  /** Master switch; the review stage is skipped when false */
+  enabled: boolean;
+  /** Lowest finding severity that sends the implementing agent back */
+  blockOn: ReviewBlockOn;
+  /** Maximum review rounds per task (1-5) */
+  maxRounds: number;
+  /** Diff characters shown to the reviewer; the rest is cut with a marker */
+  maxDiffChars: number;
+}
+
+export const SYNC_GITHUB_MODES = ["manual", "auto"] as const;
+export type SyncGithubMode = (typeof SYNC_GITHUB_MODES)[number];
+/** Smallest allowed `sync.github.intervalSeconds` */
+export const SYNC_MIN_INTERVAL_SECONDS = 15;
+
+/** A GitHub repository reference: "owner/name" (or "host/owner/name") or an object. */
+export type SyncRepoRef = string | { owner: string; name: string; host?: string };
+
+/** GitHub issue sync (`woco sync`) */
+export interface SyncGithubConfig {
+  /** Master switch for the automatic behaviour (manual `woco sync` commands always work) */
+  enabled: boolean;
+  /** manual: only explicit `woco sync ...`; auto: write-through push, daemon/watch cycles */
+  mode: SyncGithubMode;
+  /** Repository to sync with; unset = the git `origin` remote */
+  repo?: SyncRepoRef;
+  /** Seconds between automatic pull+push cycles (daemon and `sync watch`), minimum 15 */
+  intervalSeconds: number;
+  /** In auto mode, push an item right after it is changed locally */
+  pushOnWrite: boolean;
+  /** In auto mode, cycles also pull remote changes */
+  pull: boolean;
+  /**
+   * Mirror finished work (done/cancelled tasks, completed/abandoned quests, closed issues)
+   * that has no mapping yet. Default false: already-mapped items keep syncing.
+   */
+  includeFinished: boolean;
+}
+
+export interface SyncConfig {
+  github?: Partial<SyncGithubConfig>;
+}
+
+/** Retention of recorded agent session replays (.wombo-combo/replays/) */
+export interface ReplayConfig {
+  /** Executions kept per task (0 = keep none once finished) */
+  keepPerTask: number;
+  /** Delete replays older than this many days; null = no age limit */
+  maxAgeDays: number | null;
+  /** Total size cap of all replays in MB (oldest removed first); null = no cap */
+  maxTotalMB: number | null;
+}
+
 /** Configuration for browser-based verification and testing */
 export interface BrowserConfig {
   /** Enable browser testing in the verify pipeline */
@@ -239,8 +350,10 @@ export interface TuiConfig {
    */
   theme: "default" | "high-contrast" | "minimal";
   /**
-   * Locale identifier for i18n string lookup.
-   * Currently only 'en' is shipped; skeleton for future locales.
+   * Locale for CLI and TUI text: a shipped locale code (e.g. 'en', 'it') or
+   * 'auto' (default) to detect from WOMBO_LOCALE / LC_ALL / LC_MESSAGES / LANG,
+   * falling back to 'en'. An explicit value here wins over the environment.
+   * @see src/lib/i18n.ts
    */
   locale: string;
   /**
@@ -349,10 +462,42 @@ export const DEFAULT_CONFIG: WomboConfig = {
     prBaseBranch: null,
     changelog: true,
   },
+  replay: {
+    keepPerTask: 20,
+    maxAgeDays: null,
+    maxTotalMB: null,
+  },
+  team: {
+    enabled: false,
+    owner: null,
+    claimTtlHours: 24,
+  },
+  comments: {
+    enabled: true,
+    promptMaxItems: 10,
+    promptMaxChars: 4000,
+    autoLifecycle: false,
+  },
+  review: {
+    enabled: false,
+    blockOn: "blocking",
+    maxRounds: 2,
+    maxDiffChars: 60000,
+  },
+  sync: {
+    github: {
+      enabled: false,
+      mode: "manual",
+      intervalSeconds: 60,
+      pushOnWrite: true,
+      pull: true,
+      includeFinished: false,
+    },
+  },
   devMode: false,
   tui: {
     theme: "default",
-    locale: "en",
+    locale: "auto",
     checkForUpdates: true,
     autoInstallUpdates: false,
   },
@@ -442,6 +587,102 @@ export function normalizePostMergeConfig(
     prMode: src.prMode ?? d.prMode,
     prBaseBranch: base === undefined ? d.prBaseBranch : (base as string | null),
     changelog: src.changelog ?? d.changelog,
+  };
+}
+
+/** Fill in team defaults for legacy or manually constructed configs. */
+export function normalizeTeamConfig(block?: Partial<TeamConfig> | null): TeamConfig {
+  const d = DEFAULT_CONFIG.team!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    enabled: src.enabled ?? d.enabled,
+    owner: src.owner === undefined ? d.owner : src.owner,
+    claimTtlHours: src.claimTtlHours ?? d.claimTtlHours,
+  };
+}
+
+/** Fill in comments defaults for legacy or manually constructed configs. */
+export function normalizeCommentsConfig(block?: Partial<CommentsConfig> | null): CommentsConfig {
+  const d = DEFAULT_CONFIG.comments!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    enabled: src.enabled ?? d.enabled,
+    promptMaxItems: src.promptMaxItems ?? d.promptMaxItems,
+    promptMaxChars: src.promptMaxChars ?? d.promptMaxChars,
+    autoLifecycle: src.autoLifecycle ?? d.autoLifecycle,
+  };
+}
+
+/** Fill in review defaults for legacy or manually constructed configs. Never throws. */
+export function normalizeReviewConfig(block?: Partial<ReviewConfig> | null): ReviewConfig {
+  const d = DEFAULT_CONFIG.review!;
+  const src = block && typeof block === "object" ? block : {};
+  const rounds =
+    typeof src.maxRounds === "number" && Number.isFinite(src.maxRounds)
+      ? Math.min(REVIEW_MAX_ROUNDS, Math.max(REVIEW_MIN_ROUNDS, Math.floor(src.maxRounds)))
+      : d.maxRounds;
+  const chars =
+    typeof src.maxDiffChars === "number" && Number.isInteger(src.maxDiffChars) && src.maxDiffChars >= 1
+      ? src.maxDiffChars
+      : d.maxDiffChars;
+  return {
+    enabled: typeof src.enabled === "boolean" ? src.enabled : d.enabled,
+    blockOn: REVIEW_BLOCK_ON.includes(src.blockOn as ReviewBlockOn) ? (src.blockOn as ReviewBlockOn) : d.blockOn,
+    maxRounds: rounds,
+    maxDiffChars: chars,
+  };
+}
+
+/** Fill in sync.github defaults for legacy or manually constructed configs. Never throws. */
+export function normalizeSyncGithubConfig(block?: Partial<SyncConfig> | null): SyncGithubConfig {
+  const d = DEFAULT_CONFIG.sync!.github as SyncGithubConfig;
+  const g = (block && typeof block === "object" ? block.github : undefined) ?? {};
+  const src = g && typeof g === "object" ? g : {};
+  const mode = SYNC_GITHUB_MODES.includes(src.mode as SyncGithubMode) ? (src.mode as SyncGithubMode) : d.mode;
+  const iv = typeof src.intervalSeconds === "number" && Number.isFinite(src.intervalSeconds) ? src.intervalSeconds : d.intervalSeconds;
+  const out: SyncGithubConfig = {
+    enabled: typeof src.enabled === "boolean" ? src.enabled : d.enabled,
+    mode,
+    intervalSeconds: Math.max(SYNC_MIN_INTERVAL_SECONDS, iv),
+    pushOnWrite: typeof src.pushOnWrite === "boolean" ? src.pushOnWrite : d.pushOnWrite,
+    pull: typeof src.pull === "boolean" ? src.pull : d.pull,
+    includeFinished: typeof src.includeFinished === "boolean" ? src.includeFinished : d.includeFinished,
+  };
+  const repo = src.repo;
+  if (typeof repo === "string" && repo.trim()) out.repo = repo.trim();
+  else if (repo && typeof repo === "object" && typeof repo.owner === "string" && typeof repo.name === "string") {
+    out.repo = { owner: repo.owner, name: repo.name, ...(typeof repo.host === "string" ? { host: repo.host } : {}) };
+  }
+  return out;
+}
+
+/** True when automatic GitHub sync is switched on (enabled and mode auto). */
+export function isSyncAuto(cfg: SyncGithubConfig): boolean {
+  return cfg.enabled && cfg.mode === "auto";
+}
+
+/** Fill in replay retention defaults for legacy or manually constructed configs. */
+export function normalizeReplayConfig(block?: Partial<ReplayConfig> | null): ReplayConfig {
+  const d = DEFAULT_CONFIG.replay!;
+  const src = block && typeof block === "object" ? block : {};
+  return {
+    keepPerTask: src.keepPerTask ?? d.keepPerTask,
+    maxAgeDays: src.maxAgeDays === undefined ? d.maxAgeDays : src.maxAgeDays,
+    maxTotalMB: src.maxTotalMB === undefined ? d.maxTotalMB : src.maxTotalMB,
+  };
+}
+
+/** Convert replay config into ReplayStore.prune() options. */
+export function replayRetentionOptions(block?: Partial<ReplayConfig> | null): {
+  keepPerFeature: number;
+  maxAgeMs?: number;
+  maxTotalBytes?: number;
+} {
+  const r = normalizeReplayConfig(block);
+  return {
+    keepPerFeature: r.keepPerTask,
+    ...(r.maxAgeDays != null ? { maxAgeMs: r.maxAgeDays * 86_400_000 } : {}),
+    ...(r.maxTotalMB != null ? { maxTotalBytes: r.maxTotalMB * 1024 * 1024 } : {}),
   };
 }
 
@@ -628,6 +869,99 @@ export function validateConfig(config: WomboConfig): void {
     throw new Error("config.tdd.testCommand must be a non-empty string when TDD is enabled");
   }
   validateAgentRouting(config);
+  if (config.replay !== undefined) {
+    const rp = config.replay as Partial<ReplayConfig>;
+    if (rp.keepPerTask !== undefined && (!Number.isInteger(rp.keepPerTask) || rp.keepPerTask < 0)) {
+      throw new Error("config.replay.keepPerTask must be an integer >= 0");
+    }
+    for (const k of ["maxAgeDays", "maxTotalMB"] as const) {
+      const v = rp[k];
+      if (v !== undefined && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v <= 0)) {
+        throw new Error(`config.replay.${k} must be null or a number > 0`);
+      }
+    }
+  }
+  if (config.team !== undefined) {
+    const tm = config.team as Partial<TeamConfig>;
+    if (tm.enabled !== undefined && typeof tm.enabled !== "boolean") {
+      throw new Error("config.team.enabled must be a boolean");
+    }
+    if (tm.owner !== undefined && tm.owner !== null && (typeof tm.owner !== "string" || !tm.owner.trim())) {
+      throw new Error("config.team.owner must be null or a non-empty string");
+    }
+    if (
+      tm.claimTtlHours !== undefined &&
+      (typeof tm.claimTtlHours !== "number" || !Number.isFinite(tm.claimTtlHours) || tm.claimTtlHours <= 0)
+    ) {
+      throw new Error("config.team.claimTtlHours must be a number > 0");
+    }
+  }
+  if (config.comments !== undefined) {
+    const cm = config.comments as Partial<CommentsConfig>;
+    for (const k of ["enabled", "autoLifecycle"] as const) {
+      if (cm[k] !== undefined && typeof cm[k] !== "boolean") {
+        throw new Error(`config.comments.${k} must be a boolean`);
+      }
+    }
+    for (const k of ["promptMaxItems", "promptMaxChars"] as const) {
+      const v = cm[k];
+      if (v !== undefined && (typeof v !== "number" || !Number.isInteger(v) || v < 1)) {
+        throw new Error(`config.comments.${k} must be an integer >= 1`);
+      }
+    }
+  }
+  if (config.review !== undefined) {
+    const rv = config.review as Partial<ReviewConfig>;
+    if (rv === null || typeof rv !== "object" || Array.isArray(rv)) {
+      throw new Error("config.review must be an object");
+    }
+    if (rv.enabled !== undefined && typeof rv.enabled !== "boolean") {
+      throw new Error("config.review.enabled must be a boolean");
+    }
+    if (rv.blockOn !== undefined && !REVIEW_BLOCK_ON.includes(rv.blockOn)) {
+      throw new Error(`config.review.blockOn must be one of: ${REVIEW_BLOCK_ON.join(", ")}`);
+    }
+    if (
+      rv.maxRounds !== undefined &&
+      (typeof rv.maxRounds !== "number" || !Number.isInteger(rv.maxRounds) ||
+        rv.maxRounds < REVIEW_MIN_ROUNDS || rv.maxRounds > REVIEW_MAX_ROUNDS)
+    ) {
+      throw new Error(`config.review.maxRounds must be an integer between ${REVIEW_MIN_ROUNDS} and ${REVIEW_MAX_ROUNDS}`);
+    }
+    if (rv.maxDiffChars !== undefined && (typeof rv.maxDiffChars !== "number" || !Number.isInteger(rv.maxDiffChars) || rv.maxDiffChars < 1)) {
+      throw new Error("config.review.maxDiffChars must be an integer >= 1");
+    }
+  }
+  if (config.sync !== undefined) {
+    if (config.sync === null || typeof config.sync !== "object" || Array.isArray(config.sync)) {
+      throw new Error("config.sync must be an object");
+    }
+    const g = (config.sync as SyncConfig).github;
+    if (g !== undefined) {
+      if (g === null || typeof g !== "object" || Array.isArray(g)) throw new Error("config.sync.github must be an object");
+      for (const k of ["enabled", "pushOnWrite", "pull", "includeFinished"] as const) {
+        if (g[k] !== undefined && typeof g[k] !== "boolean") {
+          throw new Error(`config.sync.github.${k} must be a boolean`);
+        }
+      }
+      if (g.mode !== undefined && !SYNC_GITHUB_MODES.includes(g.mode)) {
+        throw new Error(`config.sync.github.mode must be one of: ${SYNC_GITHUB_MODES.join(", ")}`);
+      }
+      if (
+        g.intervalSeconds !== undefined &&
+        (typeof g.intervalSeconds !== "number" || !Number.isFinite(g.intervalSeconds) || g.intervalSeconds < SYNC_MIN_INTERVAL_SECONDS)
+      ) {
+        throw new Error(`config.sync.github.intervalSeconds must be a number >= ${SYNC_MIN_INTERVAL_SECONDS}`);
+      }
+      if (g.repo !== undefined) {
+        const r = g.repo as unknown;
+        const ok =
+          (typeof r === "string" && r.trim().length > 0) ||
+          (r !== null && typeof r === "object" && typeof (r as any).owner === "string" && typeof (r as any).name === "string");
+        if (!ok) throw new Error("config.sync.github.repo must be an \"owner/name\" string or an { owner, name } object");
+      }
+    }
+  }
   if (config.postMerge !== undefined) {
     const pm = config.postMerge as Partial<PostMergeConfig>;
     if (pm.prMode !== undefined && !POST_MERGE_PR_MODES.includes(pm.prMode)) {
@@ -671,10 +1005,15 @@ export function generateDefaultConfig(): string {
  * The on-disk file is updated with only the keys present in `partial` — existing
  * keys that are not in `partial` are preserved. This makes it safe to call from
  * the settings screen without accidentally wiping fields the UI doesn't expose.
+ * Keys listed in `opts.replace` are overwritten (or removed when undefined) instead of merged.
  *
  * If the config file does not exist yet, a fresh one is created.
  */
-export function saveConfig(projectRoot: string, partial: Partial<WomboConfig>): void {
+export function saveConfig(
+  projectRoot: string,
+  partial: Partial<WomboConfig>,
+  opts: { replace?: (keyof WomboConfig)[] } = {},
+): void {
   const configPath = resolve(projectRoot, CONFIG_FILE);
   const dir = dirname(configPath);
 
@@ -694,5 +1033,11 @@ export function saveConfig(projectRoot: string, partial: Partial<WomboConfig>): 
   }
 
   const merged = deepMerge(existing as WomboConfig, partial);
+  // Replaced keys take the new value wholesale (deepMerge cannot delete entries);
+  // an undefined value removes the key.
+  for (const key of opts.replace ?? []) {
+    if (partial[key] === undefined) delete merged[key];
+    else (merged as unknown as Record<string, unknown>)[key] = partial[key];
+  }
   writeFileSync(configPath, JSON.stringify(merged, null, 2) + "\n", "utf-8");
 }

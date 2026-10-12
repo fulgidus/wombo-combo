@@ -1,0 +1,38 @@
+id: obs-docs-reference
+title: Update Architecture And Reference Docs
+description: |
+  Update existing docs: (1) docs/src/content/docs/architecture/overview.md: add a short
+  supervision observability section (observer, events, client flow). (2)
+  docs/src/content/docs/reference/commands/daemon.md: document `daemon tree` (flags, text and
+  json output). Check whether the reference commands pages are generated from COMMAND_REGISTRY;
+  if so, regenerate with the existing script rather than hand-editing. (3)
+  docs/src/content/docs/reference/config.md: document any observability-related config. If no
+  such config key exists in src/config.ts, add a brief note that restart intensity, backoff and
+  escalation policy config is owned by the supervision quests and link to the new guide, rather
+  than inventing keys.
+  Confirm the docs build.
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - obs-cli-daemon-tree
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Docs must build
+  - Do not document config keys that do not exist in src/config.ts
+forbidden:
+  - Do not create or edit guides/supervision-observability.md
+  - Do not add AI attribution
+references:
+  - docs/src/content/docs/architecture/overview.md
+  - docs/src/content/docs/reference/commands/daemon.md
+  - docs/src/content/docs/reference/config.md
+  - src/config.ts
+  - src/lib/schema.ts
+notes: []
+subtasks: []
+quest: supervision-observability
+paths: []

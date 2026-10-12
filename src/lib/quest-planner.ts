@@ -23,7 +23,11 @@ import { createBlankTask, saveTaskToStore } from "./tasks";
 import { loadTasksFromStore } from "./task-store";
 import { loadQuestKnowledge, saveQuest, saveQuestKnowledge } from "./quest-store";
 import { buildScoutIndex, formatScoutTree } from "./subagents/scout";
-import { type OpenCodeEvent, extractActivity } from "./monitor";
+import {
+  createPlannerTelemetry,
+  formatPlannerTelemetry,
+  type PlannerTelemetrySnapshot,
+} from "./planner-telemetry";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -602,6 +606,8 @@ export async function runQuestPlanner(
     model?: string;
     /** Callback for progress updates */
     onProgress?: (message: string) => void;
+    /** Structured telemetry (model, tokens, provider cost) for aggregate views */
+    onTelemetry?: (snapshot: PlannerTelemetrySnapshot) => void;
   }
 ): Promise<PlanResult> {
   const onProgress = opts?.onProgress ?? (() => {});
@@ -648,51 +654,20 @@ export async function runQuestPlanner(
   const chunks: Buffer[] = [];
   let stderrText = "";
 
-  // Live observability state, updated per parsed event line
-  let tokIn = 0;
-  let tokOut = 0;
-  let lastActivity = "";
-  let lineBuf = "";
-
-  const fmtTok = (n: number): string =>
-    n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`;
-
-  /** Parse one NDJSON event line; update token totals + last activity; emit live status. */
-  const handleEventLine = (line: string): void => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    let events: OpenCodeEvent[];
-    try {
-      events = launch.result.normalize ? launch.result.normalize(trimmed) : [JSON.parse(trimmed) as OpenCodeEvent];
-    } catch {
-      return; // not a JSON event line
-    }
-    for (const event of events) ingestEvent(event);
-  };
-
-  const ingestEvent = (event: OpenCodeEvent): void => {
-    // Accumulate token usage per completed step
-    if (event.type === "step_finish" && event.part?.tokens) {
-      tokIn += event.part.tokens.input ?? 0;
-      tokOut += event.part.tokens.output ?? 0;
-    }
-    // Track the latest activity (tool calls with args, thinking, …)
-    const activity = extractActivity(event);
-    if (activity) lastActivity = activity;
-    // Compose the live status line: token feed + latest activity
-    const parts: string[] = [];
-    if (tokIn || tokOut) parts.push(`↑${fmtTok(tokIn)} ↓${fmtTok(tokOut)}`);
-    if (lastActivity) parts.push(lastActivity);
-    if (parts.length > 0) onProgress(parts.join(" · "));
-  };
+  // Shared stream parser: model, tokens, provider cost, latest activity
+  const telemetry = createPlannerTelemetry({
+    model: launch.result.route.model,
+    normalize: launch.result.normalize,
+    onUpdate: (snap) => {
+      opts?.onTelemetry?.(snap);
+      const text = formatPlannerTelemetry(snap);
+      if (text) onProgress(text);
+    },
+  });
 
   child.stdout?.on("data", (chunk: Buffer) => {
     chunks.push(chunk);
-    // Incremental NDJSON line parsing (chunks can split lines mid-event)
-    lineBuf += chunk.toString("utf-8");
-    const lines = lineBuf.split("\n");
-    lineBuf = lines.pop() ?? "";
-    for (const line of lines) handleEventLine(line);
+    telemetry.feed(chunk);
   });
 
   child.stderr?.on("data", (chunk: Buffer) => {
@@ -737,7 +712,7 @@ export async function runQuestPlanner(
   const rawOutput = Buffer.concat(chunks).toString("utf-8");
 
   // Flush the final partial line through the live feed
-  handleEventLine(lineBuf);
+  telemetry.flush();
 
   // Persist the full transcript for post-mortem (single write — per-chunk
   // appendSync with an fd silently fails in Bun)

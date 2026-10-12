@@ -1,0 +1,34 @@
+id: otp-supervision-guide-stub
+title: Add Supervision Guide Stub
+description: |
+  Add docs/src/content/docs/guides/supervision.md, a short Starlight guide stub (frontmatter with
+  title and description, matching sibling guides such as guides/tdd-baseline.md). Content: a few
+  paragraphs on what supervision means for wombo agents, a compact OTP-term to daemon-term table
+  taken from the ADR, the go / no-go outcome in one sentence, a link to the ADR file on GitHub
+  (docs/adr/0001-otp-supervision.md), and a "Status: design spike, no behaviour change yet" note.
+  The guides sidebar autogenerates, so no config edit is needed.
+status: planned
+completion: 0
+difficulty: trivial
+priority: low
+depends_on:
+  - otp-adr-decision
+effort: PT20M
+started_at: null
+ended_at: null
+constraints:
+  - Match the frontmatter and tone of existing guides
+  - Keep it under about 60 lines
+  - No AI attribution
+forbidden:
+  - Do not edit docs/astro.config.mjs
+  - Do not edit any file under src/
+references:
+  - docs/src/content/docs/guides/tdd-baseline.md
+  - docs/src/content/docs/guides/running-agents.md
+  - docs/adr/0001-otp-supervision.md
+notes:
+  - If the ADR says no-go, the stub should say supervision stays as-is and point to the ADR for why
+subtasks: []
+quest: otp-supervision-spike
+paths: []

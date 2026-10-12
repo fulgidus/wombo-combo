@@ -1,0 +1,47 @@
+id: resilience-strategy-coverage-guard
+title: Strategy Coverage Guard Test
+description: |
+  Add tests/resilience/strategy-coverage.test.ts enforcing the acceptance criterion
+  "covers every restart strategy used by the tree".
+    - Enumerate the restart strategies and restart types in use: import the
+      strategy/restart-type enums or constants from the supervision library and read the
+      per-level strategy table from the tree builder / defaults config.
+    - Maintain a registry in tests/resilience/coverage-registry.ts mapping each
+      (level, strategy, restartType) combination to the test names that cover it. Each
+      resilience test file registers its coverage via an exported constant (for example
+      `export const COVERS = [...]`) that this guard imports.
+    - The guard fails with a clear message when the tree gains a strategy or level
+      combination that no resilience test declares, and when a declared coverage entry
+      refers to a strategy that no longer exists.
+    - Also assert that the suite has no fixed-sleep calls: scan tests/resilience/**
+      and tests/helpers/resilience-harness.ts for `Bun.sleep(`, `setTimeout(` with a
+      literal delay used for waiting (allow the poll interval in tests/helpers/wait-for.ts)
+      and fail on a match.
+    - Edit the other resilience test files only by appending a one-line COVERS export
+      if they are already merged; if they are not yet merged, document the convention
+      in the registry file header and in the harness README comment so they follow it.
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - resilience-restart-strategies
+  - resilience-intensity-escalation
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Guard must be deterministic and read only from source, not from timing
+forbidden:
+  - Do not modify supervision source code
+  - Do not weaken the no-sleep scan to make it pass; fix the offender or file a task
+references:
+  - tests/resilience/restart-strategies.test.ts
+  - tests/resilience/intensity-escalation.test.ts
+  - tests/helpers/resilience-harness.ts
+  - tests/helpers/wait-for.ts
+notes:
+  - Keeps the 'covers every restart strategy' acceptance criterion from silently rotting when someone adds a strategy
+subtasks: []
+quest: supervision-fault-injection
+paths: []

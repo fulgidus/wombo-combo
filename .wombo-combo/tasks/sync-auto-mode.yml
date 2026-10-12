@@ -1,0 +1,30 @@
+id: sync-auto-mode
+title: "Auto-sync: config, write-through hooks, daemon and watch loops, sync pull/run/watch"
+description: "Config block sync.github {enabled (default false), mode manual|auto (default manual), repo,
+  intervalSeconds (default 60, min 15), pushOnWrite (true), pull (true)} with normalize/validation/schema/docs:gen. CLI:
+  add 'sync pull', 'sync run' (pull then push once) and 'sync watch' (loop with interval, graceful shutdown, jitter,
+  backoff on errors). Auto mode: write-through hook after tasks add/set-status/set-*, quest changes and 'comment add'
+  that triggers a debounced best-effort push of just that item in the background (never delays or fails the command;
+  failures are logged to stderr as warnings and retried by the next cycle); daemon loop in src/daemon/daemon.ts that
+  runs pull+push every intervalSeconds when mode=auto. Loop prevention (own writes are recognised by markers and
+  hashes). Cloud-session behaviour: when no token/gh is available, mode auto degrades to a single warning per run. Tests
+  with the fake server and fake timers; i18n en+it."
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - sync-push
+  - sync-pull
+effort: PT4H
+started_at: null
+ended_at: 2026-10-11T23:05:58.357Z
+constraints:
+  - A sync failure must never fail a woco command
+  - "Single-flight: only one sync cycle per process at a time"
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

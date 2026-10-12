@@ -1,0 +1,41 @@
+id: obs-daemon-observer
+title: Daemon Supervision Observer
+description: |
+  Add src/daemon/supervision-observer.ts: a SupervisionObserver class that holds the current
+  SupervisionTreeSnapshot (via applySupervisionEvent), exposes
+  `record(event)` for the four supervision events, `getTree()`, and `onEvent(listener)`
+  (used later by analytics and replay). Wire it into src/daemon/daemon.ts:
+    - a public hook (e.g. daemon.supervision.record(...)) that supervisor code will call. The
+      supervisor library does not exist yet (sibling quests); expose only the hook, do not build a supervisor.
+    - broadcast each recorded event to connected clients using the existing broadcast mechanism.
+    - handle "cmd:get-supervision-tree" by replying with "evt:supervision-tree".
+    - include nothing in "evt:state-snapshot" (its shape must not change).
+  Optionally persist nothing; the tree is rebuilt by the supervisor on startup.
+  Tests: tests/daemon-supervision-observer.test.ts covering record, listener fan-out, tree reply,
+  and that an unsupervised daemon replies with an empty tree (root null).
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-tree-model
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - New protocol messages are optional for older clients
+  - An unsupervised daemon must behave exactly as before and answer get-supervision-tree with root null
+forbidden:
+  - Do not change existing Evt*/Cmd* shapes
+  - Do not implement a supervisor or restart logic
+  - Do not touch analytics-tracker.ts or replay-recorder.ts
+references:
+  - src/daemon/daemon.ts
+  - src/daemon/state.ts
+  - src/daemon/protocol.ts
+  - src/lib/supervision-tree.ts
+notes:
+  - Look at how daemon.ts dispatches cmd:get-state to model the new command handler.
+subtasks: []
+quest: supervision-observability
+paths: []

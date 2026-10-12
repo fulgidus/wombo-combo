@@ -73,6 +73,7 @@ export const AGENT_STATUS_COLORS: Record<AgentStatus, string> = {
   merged: "magenta",
   retry: "yellow",
   resolving_conflict: "cyan",
+  in_review: "cyan",
 };
 
 /** Unicode icons for agent statuses. */
@@ -86,6 +87,7 @@ export const AGENT_STATUS_ICONS: Record<AgentStatus, string> = {
   merged: "◆",
   retry: "↻",
   resolving_conflict: "⚡",
+  in_review: "◎",
 };
 
 // ---------------------------------------------------------------------------

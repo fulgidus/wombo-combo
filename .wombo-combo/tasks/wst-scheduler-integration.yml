@@ -1,0 +1,62 @@
+id: wst-scheduler-integration
+title: Route Scheduler Launches Through Tree
+description: |
+  Integrate the tree into src/daemon/scheduler.ts. Add an optional
+  `supervisor` entry to SchedulerDeps with a narrow interface
+  (`SchedulerSupervisor`: canStart(agentId) and registerAgent({agentId,
+  questId}) from the tree model). When it is absent the scheduler behaves
+  exactly as today.
+
+  When present:
+  - `submitNewTask` registers the agent under its wave/quest supervisor and
+    starts it as a supervised child: the call to `runner.submitTask` and the
+    queued `runner.launchAgent` calls in `tick` go through a single private
+    `startChild()` helper that asks the supervisor `canStart` first.
+  - Halted/paused candidates are skipped AFTER readiness and priority have
+    been computed (filter the already-ordered list). A skipped candidate stays
+    un-submitted (do not add it to submittedTasks) so it is picked up once the
+    quest is resumed. The scheduler must wake on `quest_resumed` the same way
+    wakeOnAgentOutcome does.
+  - If the wave is aborted, tick stops picking new work, moves to
+    `draining` as `stop()` does, and kills nothing itself (killing is the
+    escalation handler's job in wst-daemon-wiring).
+  Concurrency pinning must remain exactly as in
+  openspec/specs/scheduler-concurrency-pinning and
+  scheduler-concurrency-rebuild-preservation: do not touch start()'s
+  pinning branches, SchedulerConfig.initialMaxConcurrent, or the slot
+  arithmetic in tick.
+  Extend tests/daemon-scheduler.test.ts (add new cases; do not edit existing
+  ones): without a supervisor behaviour is identical; with a paused quest
+  its ready tasks are not submitted but other quests' tasks are; resuming
+  submits them; an aborted wave submits nothing; pinned concurrency tests
+  still pass.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - wst-tree-model
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Do not change DAG readiness or priority semantics (getCandidateTasks / prioritize / dep-satisfied logic)
+  - Existing scheduler specs for pinned concurrency, accounting and launch stagger must pass unchanged
+  - Supervisor dependency is optional; omitted = today's behaviour byte-for-byte
+forbidden:
+  - Do not modify existing test cases in tests/daemon-scheduler.test.ts
+  - Do not modify agent-runner.ts, state.ts or daemon.ts
+references:
+  - src/daemon/scheduler.ts
+  - tests/daemon-scheduler.test.ts
+  - openspec/specs/scheduler-concurrency-pinning/spec.md
+  - openspec/specs/scheduler-concurrency-rebuild-preservation/spec.md
+  - openspec/specs/scheduler-concurrency-accounting/spec.md
+  - src/daemon/supervision-tree.ts
+notes:
+  - Read the archived change fix-scheduler-launch-and-concurrency under openspec/changes/archive before editing
+  - The scheduler is rebuilt on cmd:start; the supervisor lives on the daemon and is passed in, so it survives scheduler
+    reconstruction
+subtasks: []
+quest: wave-supervision-tree
+paths: []

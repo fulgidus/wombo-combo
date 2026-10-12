@@ -119,6 +119,7 @@ const STATUS_COLOR: Partial<Record<AgentStatus, string>> = {
   merged: "magenta",
   retry: "yellow",
   resolving_conflict: "cyan",
+  in_review: "cyan",
 };
 
 const STATUS_ICON: Partial<Record<AgentStatus, string>> = {
@@ -131,6 +132,7 @@ const STATUS_ICON: Partial<Record<AgentStatus, string>> = {
   merged: "◆",
   retry: "↻",
   resolving_conflict: "⚡",
+  in_review: "◎",
 };
 
 export interface DashboardAgentRowProps {
@@ -173,7 +175,7 @@ export interface DashboardScreenProps {
  * a DashboardMetricsProvider.
  */
 function LegacyDashboard(): React.ReactElement {
-  const t = defaultT;
+  const t = useI18n();
   const store = useDashboardStore();
 
   if (store.agents.length === 0) {
@@ -181,7 +183,7 @@ function LegacyDashboard(): React.ReactElement {
       <Box flexDirection="column" paddingX={2} paddingY={1} flexGrow={1}>
         <Text dimColor>{t("wave.noWave")}</Text>
         <Box marginTop={1}>
-          <Text dimColor>Press ESC to open the menu.</Text>
+          <Text dimColor>{t("dashboard.pressEsc")}</Text>
         </Box>
       </Box>
     );
@@ -214,7 +216,7 @@ function LegacyDashboard(): React.ReactElement {
 
       {/* Footer */}
       <Box marginTop={1}>
-        <Text dimColor>ESC menu  q quit</Text>
+        <Text dimColor>{t("dashboard.footerHints")}</Text>
       </Box>
     </Box>
   );

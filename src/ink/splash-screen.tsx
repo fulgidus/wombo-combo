@@ -20,6 +20,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Box, Text } from "ink";
+import { Spinner } from "./spinner";
 import { useTerminalSize } from "./use-terminal-size";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -28,25 +29,41 @@ import type { WomboConfig } from "../config";
 import { loadTasks } from "../lib/tasks";
 import { fetchNpmLatest, getLocalVersion, compareSemver } from "../commands/upgrade";
 import { useScreenInput } from "./esc-menu";
+import { useI18n, EN_STRINGS } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Splash texts
 // ---------------------------------------------------------------------------
 
-export const SPLASH_TEXTS: string[] = [
-  "Now with 100% fewer merge conflicts!",
-  "Parallel AI, orchestrated.",
-  "Agents working while you sleep.",
-  "Git worktrees: not just for power users anymore.",
-  "Zero context switches.",
-  "Automated. Verified. Merged.",
-  "Your backlog fears us.",
-  "Built with Bun. 🐰",
-  "The future of parallel development.",
-  "When one AI just isn't enough.",
-  "Press any key to feel important.",
-  "Wombo combo, indeed.",
+/** Locale keys of the rotating taglines. */
+export const SPLASH_TEXT_KEYS: string[] = [
+  "splash.text.nowFewerConflicts",
+  "splash.text.parallel",
+  "splash.text.whileYouSleep",
+  "splash.text.worktrees",
+  "splash.text.zeroSwitches",
+  "splash.text.automated",
+  "splash.text.backlogFears",
+  "splash.text.builtWithBun",
+  "splash.text.future",
+  "splash.text.oneAiNotEnough",
+  "splash.text.feelImportant",
+  "splash.text.womboCombo",
 ];
+
+/** English taglines (kept for tests and direct consumers). */
+export const SPLASH_TEXTS: string[] = SPLASH_TEXT_KEYS.map((k) => EN_STRINGS[k]);
+
+/** Preflight check id -> label key. */
+const CHECK_LABEL_KEYS: Record<string, string> = {
+  bun: "splash.check.bun",
+  git: "splash.check.git",
+  config: "splash.check.config",
+  tasks: "splash.check.tasks",
+  sanity: "splash.check.sanity",
+  daemon: "splash.check.daemon",
+  updates: "splash.check.updates",
+};
 
 // ---------------------------------------------------------------------------
 // Logo — WOMBO / COMBO split (ANSI Shadow style)
@@ -132,12 +149,6 @@ function getLogoCharColor(
 }
 
 // ---------------------------------------------------------------------------
-// Spinner
-// ---------------------------------------------------------------------------
-
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-// ---------------------------------------------------------------------------
 // Preflight check types
 // ---------------------------------------------------------------------------
 
@@ -205,6 +216,7 @@ export function SplashScreen({
   splashTextIndex,
   version,
 }: SplashScreenProps): React.ReactElement {
+  const t = useI18n();
   const { rows } = useTerminalSize();
   const doneRef = useRef(false);
 
@@ -237,9 +249,9 @@ export function SplashScreen({
   const [installing, setInstalling] = useState(false);
 
   const [textIdx] = useState(
-    () => splashTextIndex ?? Math.floor(Math.random() * SPLASH_TEXTS.length)
+    () => splashTextIndex ?? Math.floor(Math.random() * SPLASH_TEXT_KEYS.length)
   );
-  const splashText = SPLASH_TEXTS[textIdx];
+  const splashText = t(SPLASH_TEXT_KEYS[textIdx]);
 
   const dismiss = () => {
     if (!doneRef.current) {
@@ -285,30 +297,30 @@ export function SplashScreen({
         const v = (process.versions as Record<string, string>).bun;
         return v
           ? { status: "pass", detail: `v${v}` }
-          : { status: "warn", detail: "not detected" };
+          : { status: "warn", detail: t("splash.detail.notDetected") };
       },
       git: async () => {
         const root = projectRoot ?? process.cwd();
         return existsSync(resolve(root, ".git"))
-          ? { status: "pass", detail: "found" }
-          : { status: "warn", detail: "no .git dir" };
+          ? { status: "pass", detail: t("splash.detail.found") }
+          : { status: "warn", detail: t("splash.detail.noGitDir") };
       },
       config: async () => {
-        if (!config) return { status: "warn", detail: "no config" };
+        if (!config) return { status: "warn", detail: t("splash.detail.noConfig") };
         const root = projectRoot ?? process.cwd();
         return existsSync(resolve(root, WOMBO_DIR, "config.json"))
-          ? { status: "pass", detail: "loaded" }
-          : { status: "warn", detail: "using defaults" };
+          ? { status: "pass", detail: t("splash.detail.loaded") }
+          : { status: "warn", detail: t("splash.detail.usingDefaults") };
       },
       tasks: async () => {
-        if (!config || !projectRoot) return { status: "warn", detail: "skipped" };
+        if (!config || !projectRoot) return { status: "warn", detail: t("splash.detail.skipped") };
         const dir = resolve(projectRoot, WOMBO_DIR, config.tasksDir ?? "tasks");
         return existsSync(dir)
-          ? { status: "pass", detail: "ready" }
-          : { status: "warn", detail: "not initialised" };
+          ? { status: "pass", detail: t("splash.detail.ready") }
+          : { status: "warn", detail: t("splash.detail.notInitialised") };
       },
       sanity: async () => {
-        if (!config || !projectRoot) return { status: "warn", detail: "skipped" };
+        if (!config || !projectRoot) return { status: "warn", detail: t("splash.detail.skipped") };
         try {
           const { tasks } = loadTasks(projectRoot, config);
 
@@ -349,12 +361,12 @@ export function SplashScreen({
 
           if (brokenDeps > 0 || duplicates > 0) {
             const parts: string[] = [];
-            if (brokenDeps > 0) parts.push(`${brokenDeps} broken dep${brokenDeps > 1 ? "s" : ""}`);
-            if (duplicates > 0) parts.push(`${duplicates} dup ID${duplicates > 1 ? "s" : ""}`);
+            if (brokenDeps > 0) parts.push(t("splash.detail.brokenDeps", { count: brokenDeps }));
+            if (duplicates > 0) parts.push(t("splash.detail.dupIds", { count: duplicates }));
             return { status: "warn", detail: parts.join(", ") };
           }
 
-          return { status: "pass", detail: `${allTasks.length} tasks OK` };
+          return { status: "pass", detail: t("splash.detail.tasksOk", { count: allTasks.length }) };
         } catch (err) {
           return { status: "fail", detail: String(err).slice(0, 50) };
         }
@@ -362,38 +374,38 @@ export function SplashScreen({
       daemon: async () => {
         const root = projectRoot ?? process.cwd();
         const stateFile = resolve(root, WOMBO_DIR, "daemon-state.json");
-        if (!existsSync(stateFile)) return { status: "warn", detail: "not started" };
+        if (!existsSync(stateFile)) return { status: "warn", detail: t("splash.detail.notStarted") };
         try {
           const raw = await Bun.file(stateFile).text();
           const state = JSON.parse(raw);
           const s = state?.scheduler?.status ?? "unknown";
-          if (s === "running") return { status: "pass", detail: "running" };
+          if (s === "running") return { status: "pass", detail: t("splash.detail.running") };
           if (s === "idle" || s === "shutdown") return { status: "warn", detail: s };
           return { status: "pass", detail: s };
         } catch {
-          return { status: "warn", detail: "unreadable" };
+          return { status: "warn", detail: t("splash.detail.unreadable") };
         }
       },
       updates: async () => {
         if (!config?.tui?.checkForUpdates) {
-          return { status: "warn", detail: "disabled" };
+          return { status: "warn", detail: t("splash.detail.disabled") };
         }
         try {
           const [local, latest] = await Promise.all([
             Promise.resolve(getLocalVersion()),
             fetchNpmLatest(),
           ]);
-          if (!latest) return { status: "warn", detail: "unreachable" };
+          if (!latest) return { status: "warn", detail: t("splash.detail.unreachable") };
           if (compareSemver(local, latest) < 0) {
             newVersionRef.current = latest;
             const hint = config?.tui?.autoInstallUpdates
-              ? `v${latest} available (auto-installing)`
-              : `v${latest} available (press U to update)`;
+              ? t("splash.detail.updateAutoInstalling", { version: latest })
+              : t("splash.detail.updateAvailable", { version: latest });
             return { status: "warn", detail: hint };
           }
-          return { status: "pass", detail: `v${local} is latest` };
+          return { status: "pass", detail: t("splash.detail.latest", { version: local }) };
         } catch {
-          return { status: "warn", detail: "check failed" };
+          return { status: "warn", detail: t("splash.detail.checkFailed") };
         }
       },
     };
@@ -499,15 +511,14 @@ export function SplashScreen({
   }
 
   function renderCheck(check: PreflightCheck, i: number): React.ReactElement {
-    const spinnerFrame = tick % SPINNER_FRAMES.length;
-    const icon = check.status === "running" ? SPINNER_FRAMES[spinnerFrame] : statusIcon(check.status);
-    const color = check.status === "running" ? "cyan" : statusColor(check.status);
+    const running = check.status === "running";
+    const color = running ? "cyan" : statusColor(check.status);
     const timing = check.durationMs !== undefined ? ` ${check.durationMs}ms` : "";
 
     return (
       <Box key={i} flexDirection="row" gap={1}>
-        <Text color={color}>{icon}</Text>
-        <Text color={check.status === "pending" ? "gray" : undefined}>{check.label}</Text>
+        {running ? <Spinner frame={tick} color={color} /> : <Text color={color}>{statusIcon(check.status)}</Text>}
+        <Text color={check.status === "pending" ? "gray" : undefined}>{CHECK_LABEL_KEYS[check.id] ? t(CHECK_LABEL_KEYS[check.id]) : check.label}</Text>
         {check.status !== "pending" && (
           <Text dimColor>{check.detail}{timing}</Text>
         )}
@@ -554,13 +565,13 @@ export function SplashScreen({
           )}
           <Box marginTop={1}>
             {installing ? (
-              <Text color="cyan">Installing update…</Text>
+              <Text color="cyan">{t("splash.installingUpdate")}</Text>
             ) : anyFail ? (
-              <Text color="yellow">⚠ some checks failed — press any key to continue anyway</Text>
+              <Text color="yellow">⚠ {t("splash.checksFailed")}</Text>
             ) : updateAvailable && !autoInstall ? (
-              <Text color="cyan">▶ Press U to install update and continue  |  any other key to skip</Text>
+              <Text color="cyan">▶ {t("splash.pressUpdate")}</Text>
             ) : (
-              <Text color="cyan">▶ Press any key to continue</Text>
+              <Text color="cyan">▶ {t("splash.pressAnyKey")}</Text>
             )}
           </Box>
         </>

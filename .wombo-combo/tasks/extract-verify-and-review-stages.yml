@@ -1,0 +1,41 @@
+id: extract-verify-and-review-stages
+title: Extract Verify and Review Stages
+description: |
+  Move build verification and the review gate out of agent-runner.ts:
+  - src/daemon/runner/verify-stage.ts: handleBuildVerification, trackedBuild,
+    hasChainSuccessor (approx. L759-907, L1006-1023).
+  - Review gate: runReviewGate and launchAndCollectReviewer (approx. L908-1005)
+    into the existing src/daemon/review-stage.ts if it stays under ~500 lines,
+    otherwise src/daemon/runner/review-gate.ts.
+  The build-failure retry branch (~L868) must stay textually the same for
+  now but be isolated behind one clearly named function
+  (e.g. onVerifyFailed(featureId, summary)) so the next tasks can swap in the
+  restart policy in one place. Likewise keep the review-feedback handoff
+  (reviewFeedback map) accessible via a small FeedbackStore object owned by
+  the runner and passed in, rather than a raw map.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - extract-merge-stage
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Behaviour-preserving; existing and characterization tests pass unchanged
+  - FeedbackStore keeps the same one-shot semantics (get-and-clear)
+forbidden:
+  - Do not change build, TDD gate or review semantics
+  - Do not change protocol events (evt:build-result etc.)
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/review-stage.ts
+  - src/lib/verifier.ts
+  - src/lib/tdd-verifier.ts
+  - tests/daemon-agent-runner-review.test.ts
+notes:
+  - reviewFeedback is set at ~L947 and consumed in handleRetry at ~L1978
+subtasks: []
+quest: agent-process-supervision
+paths: []

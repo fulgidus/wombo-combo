@@ -27,6 +27,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text } from "ink";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +72,7 @@ export function SelectInput<V = string>({
   initialIndex = 0,
   focus = true,
 }: SelectInputProps<V>): React.ReactElement {
+  const t = useI18n();
   const [highlightedIndex, setHighlightedIndex] = useState(
     Math.min(Math.max(0, initialIndex), Math.max(0, items.length - 1))
   );
@@ -122,7 +124,7 @@ export function SelectInput<V = string>({
   if (items.length === 0) {
     return (
       <Box>
-        <Text dimColor>No items</Text>
+        <Text dimColor>{t("ui.noItems")}</Text>
       </Box>
     );
   }

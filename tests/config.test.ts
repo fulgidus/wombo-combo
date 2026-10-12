@@ -22,6 +22,11 @@ import {
   WOMBO_DIR,
   generateDefaultConfig,
   normalizePostMergeConfig,
+  normalizeReplayConfig,
+  normalizeReviewConfig,
+  normalizeSyncGithubConfig,
+  isSyncAuto,
+  replayRetentionOptions,
   resolveAgentBin,
 } from "../src/config";
 import type { WomboConfig } from "../src/config";
@@ -595,5 +600,163 @@ describe("agentProfiles and routing", () => {
     expect(() =>
       validateConfig(withProfiles({ agentProfiles: profiles, routing: { fallbacks: { a: ["b"], b: ["a"] } } }))
     ).toThrow(/cycle: a -> b -> a/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// replay retention
+// ---------------------------------------------------------------------------
+
+describe("replay retention config", () => {
+  function fresh(): WomboConfig {
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as WomboConfig;
+  }
+
+  test("defaults keep 20 per task with no age or size limit", () => {
+    expect(DEFAULT_CONFIG.replay).toEqual({ keepPerTask: 20, maxAgeDays: null, maxTotalMB: null });
+  });
+
+  test("loadConfig deep-merges a partial replay block", () => {
+    writeConfig(tmpDir, { replay: { maxAgeDays: 7 } });
+    expect(loadConfig(tmpDir).replay).toEqual({ keepPerTask: 20, maxAgeDays: 7, maxTotalMB: null });
+  });
+
+  test("normalizeReplayConfig tolerates undefined and partial blocks", () => {
+    expect(normalizeReplayConfig(undefined)).toEqual({ keepPerTask: 20, maxAgeDays: null, maxTotalMB: null });
+    expect(normalizeReplayConfig(null as any).keepPerTask).toBe(20);
+    expect(normalizeReplayConfig({ keepPerTask: 3 })).toEqual({ keepPerTask: 3, maxAgeDays: null, maxTotalMB: null });
+  });
+
+  test("replayRetentionOptions converts days and MB to ms and bytes", () => {
+    expect(replayRetentionOptions({ keepPerTask: 5, maxAgeDays: 2, maxTotalMB: 1.5 })).toEqual({
+      keepPerFeature: 5,
+      maxAgeMs: 2 * 86_400_000,
+      maxTotalBytes: 1.5 * 1024 * 1024,
+    });
+    expect(replayRetentionOptions(undefined)).toEqual({ keepPerFeature: 20 });
+  });
+
+  test("validateConfig accepts valid values", () => {
+    const c = fresh();
+    c.replay = { keepPerTask: 0, maxAgeDays: 30, maxTotalMB: 100 };
+    expect(() => validateConfig(c)).not.toThrow();
+  });
+
+  test("validateConfig rejects bad values", () => {
+    for (const bad of [
+      { keepPerTask: -1 },
+      { keepPerTask: 1.5 },
+      { keepPerTask: "3" },
+      { maxAgeDays: 0 },
+      { maxAgeDays: -2 },
+      { maxTotalMB: 0 },
+      { maxTotalMB: "big" },
+    ]) {
+      const c = fresh();
+      c.replay = { ...c.replay!, ...(bad as any) };
+      expect(() => validateConfig(c)).toThrow("config.replay");
+    }
+  });
+});
+
+describe("sync.github config", () => {
+  const base = () => ({ ...DEFAULT_CONFIG }) as WomboConfig;
+
+  test("defaults: disabled, manual, 60s, pushOnWrite and pull on, no repo", () => {
+    expect(normalizeSyncGithubConfig(undefined)).toEqual({
+      enabled: false, mode: "manual", intervalSeconds: 60, pushOnWrite: true, pull: true, includeFinished: false,
+    });
+    expect(normalizeSyncGithubConfig(DEFAULT_CONFIG.sync)).toEqual(normalizeSyncGithubConfig(null));
+  });
+
+  test("normalize clamps the interval, drops junk and keeps repo forms", () => {
+    const n = normalizeSyncGithubConfig({ github: { enabled: true, mode: "auto", intervalSeconds: 5, repo: " a/b " } });
+    expect(n.intervalSeconds).toBe(15);
+    expect(n.repo).toBe("a/b");
+    expect(isSyncAuto(n)).toBe(true);
+    expect(isSyncAuto(normalizeSyncGithubConfig({ github: { mode: "auto" } }))).toBe(false);
+    expect(normalizeSyncGithubConfig({ github: { mode: "weird" as any } }).mode).toBe("manual");
+    expect(normalizeSyncGithubConfig({ github: { repo: { owner: "o", name: "n", host: "h" } } }).repo).toEqual({ owner: "o", name: "n", host: "h" });
+  });
+
+  test("includeFinished defaults to false, honours booleans, ignores junk", () => {
+    expect(normalizeSyncGithubConfig(undefined).includeFinished).toBe(false);
+    expect(normalizeSyncGithubConfig({ github: { includeFinished: true } }).includeFinished).toBe(true);
+    expect(normalizeSyncGithubConfig({ github: { includeFinished: "yes" as any } }).includeFinished).toBe(false);
+  });
+
+  test("loadConfig deep-merges a partial block", () => {
+    mkdirSync(join(tmpDir, WOMBO_DIR), { recursive: true });
+    writeFileSync(join(tmpDir, CONFIG_FILE), JSON.stringify({ sync: { github: { mode: "auto", enabled: true } } }));
+    const cfg = loadConfig(tmpDir);
+    expect(cfg.sync!.github!.mode).toBe("auto");
+    expect(cfg.sync!.github!.intervalSeconds).toBe(60);
+    expect(() => validateConfig(cfg)).not.toThrow();
+  });
+
+  test("validate rejects bad values", () => {
+    const bad = (github: unknown) => {
+      const c = base();
+      (c as any).sync = { github };
+      return () => validateConfig(c);
+    };
+    expect(bad({ mode: "sometimes" })).toThrow("config.sync.github.mode");
+    expect(bad({ enabled: "yes" })).toThrow("config.sync.github.enabled");
+    expect(bad({ pushOnWrite: 1 })).toThrow("config.sync.github.pushOnWrite");
+    expect(bad({ pull: "no" })).toThrow("config.sync.github.pull");
+    expect(bad({ includeFinished: "no" })).toThrow("config.sync.github.includeFinished");
+    expect(bad({ intervalSeconds: 10 })).toThrow("config.sync.github.intervalSeconds");
+    expect(bad({ intervalSeconds: "60" })).toThrow("config.sync.github.intervalSeconds");
+    expect(bad({ repo: 5 })).toThrow("config.sync.github.repo");
+    expect(bad({ repo: "" })).toThrow("config.sync.github.repo");
+    expect(bad({ repo: "a/b", intervalSeconds: 15 })).not.toThrow();
+  });
+});
+
+describe("review config", () => {
+  const base = () => ({ ...DEFAULT_CONFIG }) as WomboConfig;
+
+  test("defaults: disabled, blockOn blocking, 2 rounds, 60000 chars", () => {
+    expect(DEFAULT_CONFIG.review).toEqual({ enabled: false, blockOn: "blocking", maxRounds: 2, maxDiffChars: 60000 });
+    expect(normalizeReviewConfig(undefined)).toEqual(DEFAULT_CONFIG.review!);
+    expect(normalizeReviewConfig(null)).toEqual(DEFAULT_CONFIG.review!);
+  });
+
+  test("normalize keeps valid values and falls back on junk", () => {
+    expect(normalizeReviewConfig({ enabled: true, blockOn: "major", maxRounds: 4, maxDiffChars: 100 })).toEqual({
+      enabled: true, blockOn: "major", maxRounds: 4, maxDiffChars: 100,
+    });
+    const junk = normalizeReviewConfig({ blockOn: "nit" as any, maxRounds: 99, maxDiffChars: -1 });
+    expect(junk.blockOn).toBe("blocking");
+    expect(junk.maxRounds).toBe(5);
+    expect(junk.maxDiffChars).toBe(60000);
+    expect(normalizeReviewConfig({ maxRounds: 0 }).maxRounds).toBe(1);
+  });
+
+  test("loadConfig deep-merges a partial review block", () => {
+    const dir = mkdtempSync(join(tmpdir(), "review-cfg-"));
+    try {
+      mkdirSync(join(dir, WOMBO_DIR), { recursive: true });
+      writeFileSync(join(dir, CONFIG_FILE), JSON.stringify({ review: { enabled: true } }));
+      expect(loadConfig(dir).review).toEqual({ enabled: true, blockOn: "blocking", maxRounds: 2, maxDiffChars: 60000 });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("validate rejects bad values", () => {
+    const bad = (review: unknown) => {
+      const c = base();
+      (c as any).review = review;
+      return () => validateConfig(c);
+    };
+    expect(bad(5)).toThrow("config.review");
+    expect(bad({ enabled: "yes" })).toThrow("config.review.enabled");
+    expect(bad({ blockOn: "nit" })).toThrow("config.review.blockOn");
+    expect(bad({ maxRounds: 0 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxRounds: 6 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxRounds: 1.5 })).toThrow("config.review.maxRounds");
+    expect(bad({ maxDiffChars: 0 })).toThrow("config.review.maxDiffChars");
+    expect(bad({ enabled: true, blockOn: "major", maxRounds: 5, maxDiffChars: 1 })).not.toThrow();
   });
 });

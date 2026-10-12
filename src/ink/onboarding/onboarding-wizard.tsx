@@ -33,6 +33,7 @@ import { StepWizard } from "./step-wizard";
 import { SectionPicker } from "./section-picker";
 import { FieldEditor } from "./field-editor";
 import { ProfileReview } from "./profile-review";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,6 +94,7 @@ export function OnboardingWizard({
   onScoutRequest,
   onResynthesizeRequest,
 }: OnboardingWizardProps): React.ReactElement {
+  const t = useI18n();
   // -------------------------------------------------------------------------
   // Create mode state
   // -------------------------------------------------------------------------
@@ -200,7 +202,7 @@ export function OnboardingWizard({
         if (!draftProfile) {
           return (
             <Box padding={1}>
-              <Text color="red">Error: no draft profile available.</Text>
+              <Text color="red">{t("onboarding.error.noDraft")}</Text>
             </Box>
           );
         }
@@ -216,7 +218,7 @@ export function OnboardingWizard({
         return (
           <Box padding={1}>
             <Text color="green" bold>
-              ✔ Profile approved!
+              {t("onboarding.wizard.approved")}
             </Text>
           </Box>
         );
@@ -240,7 +242,7 @@ export function OnboardingWizard({
         if (!editingSection) {
           return (
             <Box padding={1}>
-              <Text color="red">Error: no section selected for editing.</Text>
+              <Text color="red">{t("onboarding.error.noSection")}</Text>
             </Box>
           );
         }
@@ -259,7 +261,12 @@ export function OnboardingWizard({
   return (
     <Box padding={1}>
       <Text color="red">
-        Error: invalid state (mode={mode}, profile={editProfile ? "yes" : "no"})
+        {t("onboarding.error.invalidStateProfile", {
+          mode,
+          profile: editProfile
+            ? t("onboarding.common.yesLower")
+            : t("onboarding.common.noLower"),
+        })}
       </Text>
     </Box>
   );

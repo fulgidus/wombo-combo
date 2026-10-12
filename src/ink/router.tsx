@@ -33,6 +33,7 @@ import React, {
   type ComponentType,
 } from "react";
 import { Text } from "ink";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -146,6 +147,7 @@ export function ScreenRouter({
   children,
   onScreenChange,
 }: ScreenRouterProps): React.ReactElement {
+  const t = useI18n();
   const [stack, setStack] = useState<StackEntry[]>([
     { key: initialScreen, props: initialProps },
   ]);
@@ -204,7 +206,7 @@ export function ScreenRouter({
       {ScreenComponent ? (
         <ScreenComponent {...top.props} />
       ) : (
-        <Text color="red">Unknown screen: {top.key}</Text>
+        <Text color="red">{t("router.unknownScreen", { key: top.key })}</Text>
       )}
       {children}
     </NavigationContext.Provider>

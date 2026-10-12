@@ -27,6 +27,7 @@ import {
 } from "../lib/eval-score";
 import { output, outputError, type OutputFormat } from "../lib/output";
 import { renderEval } from "../lib/toon";
+import { msg, t } from "../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,7 +63,7 @@ function scoreColor(score: number | null): string {
 }
 
 function formatScore(score: number | null): string {
-  return score === null ? "n/a" : `${score}`;
+  return score === null ? t("cli.eval.na") : `${score}`;
 }
 
 function renderScorecard(report: ScoreReport, savedPath: string): void {
@@ -70,52 +71,52 @@ function renderScorecard(report: ScoreReport, savedPath: string): void {
     s.length >= w ? s.slice(0, w) : s + " ".repeat(w - s.length);
 
   console.log("");
-  console.log(`${BOLD}Eval Report — ${report.wave_id}${RESET}`);
-  console.log(`${DIM}schema ${report.schema}, evaluated ${report.evaluated_at}${RESET}`);
+  console.log(`${BOLD}${t("cli.eval.title", { wave: report.wave_id })}${RESET}`);
+  console.log(`${DIM}${t("cli.eval.schema", { schema: report.schema, at: report.evaluated_at })}${RESET}`);
   console.log("");
 
   // Weighting
   const w = report.weighting;
   console.log(
-    `  ${pad("weighting", 12)} ${scoreColor(w.score)}${formatScore(w.score)}${RESET}` +
-    `  (${w.concordant_pairs}/${w.comparable_pairs} concordant weight→duration pairs, n/a = not comparable)`
+    `  ${pad(t("cli.eval.label.weighting"), 12)} ${scoreColor(w.score)}${formatScore(w.score)}${RESET}` +
+    `  (${t("cli.eval.weighting", { concordant: w.concordant_pairs, comparable: w.comparable_pairs })})`
   );
 
   // Routing
   const r = report.routing;
   console.log(
-    `  ${pad("routing", 12)} ${scoreColor(r.score)}${formatScore(r.score)}${RESET}` +
-    `  (${r.routed}/${r.total} agents model-routed, ${r.mismatches.length} mismatch(es))`
+    `  ${pad(t("cli.eval.label.routing"), 12)} ${scoreColor(r.score)}${formatScore(r.score)}${RESET}` +
+    `  (${t("cli.eval.routing", { routed: r.routed, total: r.total, mismatches: r.mismatches.length })})`
   );
   for (const m of r.mismatches.slice(0, 10)) {
     console.log(
-      `    ${FG.gray}mismatch:${RESET} ${m.feature_id} (${m.weight}) expected=${m.expected_model ?? "null"} actual=${m.actual_model ?? "null"}`
+      `    ${FG.gray}${t("cli.eval.mismatch")}${RESET} ${t("cli.eval.mismatchDetail", { id: m.feature_id, weight: m.weight, expected: m.expected_model ?? "null", actual: m.actual_model ?? "null" })}`
     );
   }
 
   // Steering
   const s = report.steering;
   console.log(
-    `  ${pad("steering", 12)} ${scoreColor(s.score)}${formatScore(s.score)}${RESET}` +
-    `  (${s.scoped_tasks} scoped task(s), ${s.violations.length} overlap violation(s), ${s.conflicts} conflict(s))`
+    `  ${pad(t("cli.eval.label.steering"), 12)} ${scoreColor(s.score)}${formatScore(s.score)}${RESET}` +
+    `  (${t("cli.eval.steering", { scoped: s.scoped_tasks, violations: s.violations.length, conflicts: s.conflicts })})`
   );
   for (const v of s.violations.slice(0, 10)) {
-    console.log(`    ${FG.red}overlap:${RESET} ${v.a} ↔ ${v.b} share "${v.path}"`);
+    console.log(`    ${FG.red}${t("cli.eval.overlap")}${RESET} ${t("cli.eval.overlapDetail", { a: v.a, b: v.b, path: v.path })}`);
   }
 
   // Flow
   const f = report.flow;
   console.log(
-    `  ${pad("flow", 12)} ${scoreColor(f.score)}${formatScore(f.score)}${RESET}` +
-    `  (${f.succeeded}/${f.total} succeeded, ${f.failed} failed, ${f.total_retries} retries, peak concurrency ${f.max_concurrent_observed})`
+    `  ${pad(t("cli.eval.label.flow"), 12)} ${scoreColor(f.score)}${formatScore(f.score)}${RESET}` +
+    `  (${t("cli.eval.flow", { succeeded: f.succeeded, total: f.total, failed: f.failed, retries: f.total_retries, peak: f.max_concurrent_observed })})`
   );
 
   // Overall
   const oc = scoreColor(report.overall);
   console.log("");
-  console.log(`  ${pad("overall", 12)} ${oc}${BOLD}${formatScore(report.overall)}${RESET}`);
+  console.log(`  ${pad(t("cli.eval.label.overall"), 12)} ${oc}${BOLD}${formatScore(report.overall)}${RESET}`);
   console.log("");
-  console.log(`${DIM}Report saved to ${savedPath}${RESET}`);
+  console.log(`${DIM}${t("cli.eval.saved", { path: savedPath })}${RESET}`);
   console.log("");
 }
 
@@ -131,7 +132,7 @@ export async function cmdEval(opts: EvalCommandOptions): Promise<void> {
   if (opts.waveId) {
     record = loadHistory(projectRoot, opts.waveId);
     if (!record) {
-      outputError(outputFmt, `No history record found for wave "${opts.waveId}".`);
+      outputError(outputFmt, msg("cli.eval.noRecord", { wave: opts.waveId }));
       return;
     }
   } else {
@@ -146,7 +147,7 @@ export async function cmdEval(opts: EvalCommandOptions): Promise<void> {
     if (!record) {
       outputError(
         outputFmt,
-        "No wave history found. History is auto-exported when a daemon session completes."
+        msg("cli.eval.noHistory")
       );
       return;
     }
@@ -156,8 +157,8 @@ export async function cmdEval(opts: EvalCommandOptions): Promise<void> {
   const tasksById = new Map<string, Task>();
   try {
     const data = loadFeatures(projectRoot, config);
-    for (const t of [...data.tasks, ...data.archive]) {
-      if (!tasksById.has(t.id)) tasksById.set(t.id, t);
+    for (const task of [...data.tasks, ...data.archive]) {
+      if (!tasksById.has(task.id)) tasksById.set(task.id, task);
     }
   } catch {
     // No task store — weighting/steering degrade to n/a, flow still scores

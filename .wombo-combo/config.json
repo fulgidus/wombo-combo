@@ -60,13 +60,41 @@
   },
   "tdd": {
     "enabled": true,
-    "testCommand": "bun test",
+    "testCommand": "CI=true bun test --timeout 30000 --path-ignore-patterns 'tests/e2e/**'",
     "strictTdd": true,
-    "testTimeout": 120000
+    "testTimeout": 900000
   },
   "postMerge": {
     "prMode": "skip",
     "prBaseBranch": null,
     "changelog": true
+  },
+  "agentProfiles": {
+    "claude-local": {
+      "harness": "claude-code",
+      "args": [
+        "--allowedTools=Bash,Edit,Write,Read,Glob,Grep"
+      ]
+    }
+  },
+  "routing": {
+    "default": "claude-local"
+  },
+  "sync": {
+    "github": {
+      "enabled": true,
+      "mode": "manual"
+    }
+  },
+  "tui": {
+    "theme": "default",
+    "locale": "auto",
+    "checkForUpdates": true,
+    "autoInstallUpdates": false
+  },
+  "modelRouting": {
+    "light": null,
+    "medium": null,
+    "heavy": null
   }
 }

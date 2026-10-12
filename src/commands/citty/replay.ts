@@ -11,13 +11,11 @@ import { resolve } from "node:path";
 import { isProjectInitialized, WOMBO_DIR } from "../../config";
 import { resolveOutputFormat } from "../../lib/output";
 import { cmdReplayList, cmdReplayShow } from "../replay";
+import { t } from "../../lib/i18n";
 
 function ensureInitialized(projectRoot: string): void {
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-        `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`,
-    );
+    console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
 }

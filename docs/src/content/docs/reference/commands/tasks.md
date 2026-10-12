@@ -41,7 +41,8 @@ Read-only.
 | `--status` |  | string |  | Filter by status. Values: `backlog`, `planned`, `in_progress`, `blocked`, `in_review`, `done`, `cancelled`. |
 | `--priority` |  | string |  | Filter by priority. Values: `critical`, `high`, `medium`, `low`, `wishlist`. |
 | `--difficulty` |  | string |  | Filter by difficulty. Values: `trivial`, `easy`, `medium`, `hard`, `very_hard`. |
-| `--ready` |  | boolean | `false` | Show only ready tasks (backlog + deps met) |
+| `--quest` |  | string |  | Filter by quest ID |
+| `--ready` |  | boolean | `false` | Show only ready tasks (planned + deps met; what launch --all-ready starts) |
 | `--include-archive` |  | boolean | `false` | Include archived tasks |
 | `--fields` |  | string |  | Comma-separated list of fields to include in output |
 
@@ -237,6 +238,8 @@ Read-only.
 
 | Flag | Alias | Type | Default | Description |
 | --- | --- | --- | --- | --- |
+| `--mirror` |  | boolean |  | Also report GitHub mirror drift (offline, warnings) |
+| `--strict` |  | boolean |  | With --mirror: treat mirror findings as errors |
 | `--output` |  | string | `"text"` | Output format: text (default), json, or toon |
 
 ### Global flags

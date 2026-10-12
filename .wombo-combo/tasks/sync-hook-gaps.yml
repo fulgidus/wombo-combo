@@ -1,0 +1,20 @@
+id: sync-hook-gaps
+title: Hook remaining mutating commands into auto-sync; retry failed notices
+description: Auto-sync write-through hooks miss tasks archive, comment link, quest plan status changes and
+  daemon/agent-made changes (the periodic cycle covers them eventually). Hook the CLI ones; also retry conflict notices
+  that failed to post, and document the rare CLI+daemon simultaneous-push race (marker lookup limits duplicates).
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-10-11T23:15:21.039Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

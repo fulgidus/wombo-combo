@@ -22,6 +22,7 @@ import { useTheme } from "./theme";
 import { formatTokenCount, formatCost } from "./usage-overlay";
 import type { AggregateMetrics, AnalyticsGroupBy, AnalyticsSummary } from "../lib/analytics-summary";
 import { useScreenInput } from "./esc-menu";
+import { useI18n, t as defaultT, type TFunction } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers (exported for testing and adapters)
@@ -30,12 +31,12 @@ import { useScreenInput } from "./esc-menu";
 /** Grouping order used when cycling with Tab. */
 export const ANALYTICS_GROUPINGS: readonly AnalyticsGroupBy[] = ["task", "quest", "wave", "agent", "model"];
 
-const GROUPING_LABELS: Record<AnalyticsGroupBy, string> = {
-  task: "Task",
-  quest: "Quest",
-  wave: "Wave",
-  agent: "Agent",
-  model: "Model",
+const GROUPING_LABEL_KEYS: Record<AnalyticsGroupBy, string> = {
+  task: "usage.group.task",
+  quest: "usage.group.quest",
+  wave: "analytics.group.wave",
+  agent: "analytics.group.agent",
+  model: "usage.group.model",
 };
 
 /** Default number of group rows rendered at once. */
@@ -66,8 +67,8 @@ function truncate(text: string, width: number): string {
   return text.length > width ? text.slice(0, width - 1) + "…" : text.padEnd(width);
 }
 
-function keyLabel(key: string | null): string {
-  return key === null ? "(none)" : key;
+function keyLabel(key: string | null, t: TFunction = defaultT): string {
+  return key === null ? t("analytics.none") : key;
 }
 
 /** Visible window [start, end) of `total` rows keeping `selected` in view. */
@@ -79,10 +80,10 @@ export function visibleWindow(total: number, selected: number, maxRows: number):
 }
 
 /** Human-readable coverage warning, or null when usage coverage is complete. */
-export function coverageWarning(m: AggregateMetrics): string | null {
+export function coverageWarning(m: AggregateMetrics, t: TFunction = defaultT): string | null {
   const parts: string[] = [];
-  if (m.usage.coverage.partial > 0) parts.push(`${m.usage.coverage.partial} partial`);
-  if (m.usage.missing > 0) parts.push(`${m.usage.missing} without usage`);
+  if (m.usage.coverage.partial > 0) parts.push(t("analytics.coveragePartial", { count: m.usage.coverage.partial }));
+  if (m.usage.missing > 0) parts.push(t("analytics.coverageMissing", { count: m.usage.missing }));
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
@@ -111,54 +112,61 @@ export interface AnalyticsOverlayViewProps {
 // ---------------------------------------------------------------------------
 
 function MetricsBlock({ m, heading }: { m: AggregateMetrics; heading: string }): React.ReactElement {
+  const t = useI18n();
   const theme = useTheme();
   const col = (c: string) => c || undefined;
   const u = m.usage.totals;
-  const warning = coverageWarning(m);
+  const warning = coverageWarning(m, t);
   return (
     <Box flexDirection="column">
       <Text bold color="yellow">{heading}</Text>
       <Box>
-        <Text>  Executions: {m.executions} </Text>
-        <Text color={col(theme.statusColors.verified)}>{m.outcomes.succeeded} ok</Text>
+        <Text>  {t("analytics.executions", { count: m.executions })} </Text>
+        <Text color={col(theme.statusColors.verified)}>{t("analytics.outcome.ok", { count: m.outcomes.succeeded })}</Text>
         <Text> </Text>
-        <Text color={col(theme.statusColors.failed)}>{m.outcomes.failed} failed</Text>
+        <Text color={col(theme.statusColors.failed)}>{t("analytics.outcome.failed", { count: m.outcomes.failed })}</Text>
         <Text> </Text>
-        <Text color={col(theme.statusColors.retry)}>{m.outcomes.stopped} stopped</Text>
-        <Text> {m.outcomes.running} running</Text>
+        <Text color={col(theme.statusColors.retry)}>{t("analytics.outcome.stopped", { count: m.outcomes.stopped })}</Text>
+        <Text> {t("analytics.outcome.running", { count: m.outcomes.running })}</Text>
       </Box>
       <Text>
-        {"  "}Completion:{" "}
+        {"  "}{t("analytics.completion")}{" "}
         {m.duration.samples > 0
-          ? `mean ${formatAnalyticsDuration(m.duration.mean_ms)}, total ${formatAnalyticsDuration(m.duration.total_ms)} (${m.duration.samples} successful)`
-          : `${NA} (no successful runs)`}
-        {"  "}Retries: {m.retries.total}
+          ? t("analytics.completionValue", { mean: formatAnalyticsDuration(m.duration.mean_ms), total: formatAnalyticsDuration(m.duration.total_ms), samples: m.duration.samples })
+          : t("analytics.completionNone", { na: NA })}
+        {"  "}{t("analytics.retries", { count: m.retries.total })}
       </Text>
       <Text>
-        {"  "}Tokens:{" "}
+        {"  "}{t("analytics.tokens")}{" "}
         {m.usage.samples > 0
-          ? `${formatTokenCount(u.total_tokens)} total  ${formatCost(u.total_cost)}  [${m.usage.samples}/${m.executions} with usage]`
-          : `${NA} (no usage data)`}
+          ? t("analytics.tokensValue", { total: formatTokenCount(u.total_tokens), cost: formatCost(u.total_cost), samples: m.usage.samples, executions: m.executions })
+          : t("analytics.tokensNone", { na: NA })}
       </Text>
       {m.usage.samples > 0 && (
         <Text dimColor>
-          {"    "}in {formatTokenCount(u.input_tokens)}  out {formatTokenCount(u.output_tokens)}  cache {formatTokenCount(u.cache_read)}/
-          {formatTokenCount(u.cache_write)}  reasoning {formatTokenCount(u.reasoning_tokens)}
+          {"    "}{t("analytics.tokenBreakdown", { input: formatTokenCount(u.input_tokens), output: formatTokenCount(u.output_tokens), cacheRead: formatTokenCount(u.cache_read), cacheWrite: formatTokenCount(u.cache_write), reasoning: formatTokenCount(u.reasoning_tokens) })}
         </Text>
       )}
       <Text>
-        {"  "}Build pass rate:{" "}
+        {"  "}{t("analytics.buildPassRate")}{" "}
         {m.builds.attempts > 0
-          ? `${formatAnalyticsRate(m.builds.pass_rate)} (${m.builds.passes}/${m.builds.attempts} builds)`
-          : `${NA} (no builds)`}
-        {"  "}Lines:{" "}
+          ? t("analytics.buildsValue", { rate: formatAnalyticsRate(m.builds.pass_rate), passes: m.builds.passes, attempts: m.builds.attempts })
+          : t("analytics.buildsNone", { na: NA })}
+        {"  "}{t("analytics.lines")}{" "}
         {m.lines.samples > 0
-          ? `+${m.lines.additions} / -${m.lines.deletions} (${m.lines.changed} changed) [${m.lines.samples}/${m.executions}]`
-          : `${NA} (no measurements)`}
+          ? t("analytics.linesValue", { additions: m.lines.additions, deletions: m.lines.deletions, changed: m.lines.changed, samples: m.lines.samples, executions: m.executions })
+          : t("analytics.linesNone", { na: NA })}
       </Text>
-      {warning && <Text color="yellow">  Usage coverage: {warning}; totals may be incomplete</Text>}
+      {warning && <Text color="yellow">  {t("analytics.coverageWarning", { warning })}</Text>}
     </Box>
   );
+}
+
+/** "Models: a, b" — which models produced these numbers. */
+function ModelsLine({ models, dim }: { models: string[]; dim?: boolean }): React.ReactElement {
+  const t = useI18n();
+  const text = models.length > 0 ? t("analytics.models", { list: models.join(", ") }) : t("analytics.modelsNone");
+  return <Text dimColor={dim}>  {text}</Text>;
 }
 
 function GroupRow({
@@ -170,12 +178,13 @@ function GroupRow({
   m: AggregateMetrics;
   isSelected: boolean;
 }): React.ReactElement {
-  const cov = coverageWarning(m);
+  const t = useI18n();
+  const cov = coverageWarning(m, t);
   return (
     <Box>
       <Text color={isSelected ? "blue" : undefined} bold={isSelected}>
         {isSelected ? "▸ " : "  "}
-        {truncate(keyLabel(label), KEY_WIDTH)}
+        {truncate(keyLabel(label, t), KEY_WIDTH)}
       </Text>
       <Text> {String(m.executions).padStart(3)}x </Text>
       <Text color="cyan">{formatAnalyticsDuration(m.duration.mean_ms).padStart(7)}</Text>
@@ -201,6 +210,7 @@ export function AnalyticsOverlayView({
   onCycleGrouping,
   onSelectIndex,
 }: AnalyticsOverlayViewProps): React.ReactElement {
+  const t = useI18n();
   const groups = summary?.groups ?? [];
 
   useScreenInput((input, key) => {
@@ -221,7 +231,7 @@ export function AnalyticsOverlayView({
     }
   });
 
-  const nextLabel = GROUPING_LABELS[nextAnalyticsGrouping(groupBy)];
+  const nextLabel = t(GROUPING_LABEL_KEYS[nextAnalyticsGrouping(groupBy)]);
   const total = summary?.total ?? null;
   const hasData = total !== null && total.executions > 0;
   const safeSelected = Math.min(Math.max(selectedIndex, 0), Math.max(groups.length - 1, 0));
@@ -230,50 +240,57 @@ export function AnalyticsOverlayView({
 
   return (
     <Modal
-      title={hasData ? `Agent Analytics  ${total!.executions} executions` : "Agent Analytics"}
+      title={hasData ? t("analytics.titleWithCount", { count: total!.executions }) : t("analytics.title")}
       borderColor="yellow"
       footer={
         <Box>
           <Text dimColor>Tab</Text>
-          <Text> group by {nextLabel}  </Text>
+          <Text> {t("usage.groupBy", { label: nextLabel })}  </Text>
           <Text dimColor>↑↓/jk</Text>
-          <Text> select  </Text>
+          <Text> {t("questPicker.key.select")}  </Text>
           <Text dimColor>Esc/U</Text>
-          <Text> close  </Text>
-          <Text dimColor>|  Grouped by: </Text>
-          <Text color="yellow">{GROUPING_LABELS[groupBy]}</Text>
+          <Text> {t("questionPopup.close")}  </Text>
+          <Text dimColor>|  {t("usage.groupedBy")} </Text>
+          <Text color="yellow">{t(GROUPING_LABEL_KEYS[groupBy])}</Text>
         </Box>
       }
     >
       {!hasData ? (
         <Box flexDirection="column">
-          <Text dimColor>No analytics data found.</Text>
-          <Text dimColor>Analytics are recorded per execution when agents run via the daemon.</Text>
-          <Text dimColor>Earlier usage/history is not backfilled.</Text>
+          <Text dimColor>{t("analytics.noData")}</Text>
+          <Text dimColor>{t("analytics.noDataHint1")}</Text>
+          <Text dimColor>{t("analytics.noDataHint2")}</Text>
         </Box>
       ) : (
         <>
-          <MetricsBlock m={total!} heading="Total:" />
+          <MetricsBlock m={total!} heading={t("usage.total")} />
+          <ModelsLine models={summary?.models ?? []} />
 
           {groups.length > 0 && (
             <Box flexDirection="column" marginTop={1}>
-              <Text bold dimColor>By {GROUPING_LABELS[groupBy]}:</Text>
-              {start > 0 && <Text dimColor>  ↑ {start} more</Text>}
+              <Text bold dimColor>{t("usage.byGroup", { label: t(GROUPING_LABEL_KEYS[groupBy]) })}</Text>
+              {start > 0 && <Text dimColor>  ↑ {t("analytics.more", { count: start })}</Text>}
               {groups.slice(start, end).map((g, i) => (
                 <GroupRow key={`${g.key ?? "∅"}-${start + i}`} label={g.key} m={g.metrics} isSelected={start + i === safeSelected} />
               ))}
-              {end < groups.length && <Text dimColor>  ↓ {groups.length - end} more</Text>}
+              {end < groups.length && <Text dimColor>  ↓ {t("analytics.more", { count: groups.length - end })}</Text>}
             </Box>
           )}
 
           {selectedGroup && (
-            <Box marginTop={1}>
+            <Box marginTop={1} flexDirection="column">
               <Text dimColor>
-                Selected {truncate(keyLabel(selectedGroup.key), 30).trimEnd()}: {selectedGroup.metrics.executions} exec, retries{" "}
-                {selectedGroup.metrics.retries.total}, in {formatTokenCount(selectedGroup.metrics.usage.totals.input_tokens)} out{" "}
-                {formatTokenCount(selectedGroup.metrics.usage.totals.output_tokens)}, {selectedGroup.metrics.builds.passes}/
-                {selectedGroup.metrics.builds.attempts} builds
+                {t("analytics.selectedSummary", {
+                  label: truncate(keyLabel(selectedGroup.key, t), 30).trimEnd(),
+                  executions: selectedGroup.metrics.executions,
+                  retries: selectedGroup.metrics.retries.total,
+                  input: formatTokenCount(selectedGroup.metrics.usage.totals.input_tokens),
+                  output: formatTokenCount(selectedGroup.metrics.usage.totals.output_tokens),
+                  passes: selectedGroup.metrics.builds.passes,
+                  attempts: selectedGroup.metrics.builds.attempts,
+                })}
               </Text>
+              {groupBy !== "model" && <ModelsLine models={selectedGroup.models} dim />}
             </Box>
           )}
         </>
@@ -281,11 +298,11 @@ export function AnalyticsOverlayView({
 
       {diagnostics.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
-          <Text color="red">Storage issues ({diagnostics.length}):</Text>
+          <Text color="red">{t("analytics.storageIssues", { count: diagnostics.length })}</Text>
           {diagnostics.slice(0, 3).map((d, i) => (
             <Text key={i} dimColor>  {d.length > 70 ? d.slice(0, 69) + "…" : d}</Text>
           ))}
-          {diagnostics.length > 3 && <Text dimColor>  … and {diagnostics.length - 3} more</Text>}
+          {diagnostics.length > 3 && <Text dimColor>  … {t("analytics.andMore", { count: diagnostics.length - 3 })}</Text>}
         </Box>
       )}
     </Modal>

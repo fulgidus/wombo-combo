@@ -1,0 +1,43 @@
+id: extract-conflict-resolution
+title: Extract Conflict Resolution Module
+description: |
+  Move the tiered conflict-resolution code out of src/daemon/agent-runner.ts
+  into src/daemon/runner/conflict-resolution.ts: handleMergeConflict,
+  escalatingConflictResolution, runTier3, runTier35, runTier4,
+  getConflictDiffs, isTierAllowed, runSafeCmd and the helpers only they use
+  (approx. L136-185 and L1377-1888).
+
+  Pure behaviour-preserving move. Design the module as functions (or a small
+  class) taking an explicit context object (projectRoot, config, state,
+  monitor, analytics, replay, selectRoute/conflictRoute callbacks, log) so
+  AgentRunner delegates to it. AgentRunner keeps thin private wrappers where
+  tests call or spy on them (check tests/daemon-agent-runner*.ts and
+  tests/daemon-*.test.ts for private-member access via `as any`). No
+  change to tier ordering, status transitions (resolving_conflict etc.),
+  prompts or events.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - characterize-retry-behaviour
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - "Behaviour-preserving: all existing tests pass unchanged, plus the characterization suite"
+  - Keep new module under ~500 lines (split runTier* into a second file if needed)
+  - Use extensionless relative imports
+forbidden:
+  - Do not change tier escalation logic, status transitions or protocol events
+  - Do not drop any tier (tier3, tier3.5, tier4)
+  - Do not edit existing test files except import-path fixes if a spied private moved (prefer keeping a wrapper instead)
+references:
+  - src/daemon/agent-runner.ts
+  - tests/daemon-agent-runner.test.ts
+notes:
+  - Run bun run typecheck, bun test and bun run build before finishing
+  - Conflict resolution mutates shared git state; it must continue to run under the existing merge serialization
+subtasks: []
+quest: agent-process-supervision
+paths: []

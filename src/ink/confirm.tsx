@@ -21,13 +21,14 @@ import React from "react";
 import { Box, Text } from "ink";
 import { Modal } from "./modal";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 export interface ConfirmDialogProps {
   /** Title displayed in the modal header. */
   title: string;
   /** The confirmation message/question. */
   message: string;
-  /** Called with true (Y) or false (N/Escape). */
+  /** Called with true (y/→) or false (N/Escape). */
   onConfirm: (confirmed: boolean) => void;
 }
 
@@ -39,10 +40,11 @@ export function ConfirmDialog({
   message,
   onConfirm,
 }: ConfirmDialogProps): React.ReactElement {
+  const t = useI18n();
   useScreenInput((input, key) => {
-    if (input === "y" || input === "Y") {
+    if (input === "y" || input === "Y" || key.rightArrow) {
       onConfirm(true);
-    } else if (input === "n" || input === "N" || key.escape) {
+    } else if (input === "n" || input === "N" || key.escape || key.leftArrow) {
       onConfirm(false);
     }
   });
@@ -53,12 +55,12 @@ export function ConfirmDialog({
       borderColor="yellow"
       footer={
         <Box>
-          <Text color="green" bold>Y</Text>
-          <Text dimColor> Yes    </Text>
-          <Text color="red" bold>N</Text>
-          <Text dimColor> No    </Text>
-          <Text dimColor>Esc</Text>
-          <Text dimColor> Cancel</Text>
+          <Text color="green" bold>y →</Text>
+          <Text dimColor> {t("ui.yes")}    </Text>
+          <Text color="red" bold>n ←</Text>
+          <Text dimColor> {t("ui.no")}    </Text>
+          <Text dimColor>esc</Text>
+          <Text dimColor> {t("ui.cancel")}</Text>
         </Box>
       }
     >

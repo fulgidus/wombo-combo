@@ -31,6 +31,7 @@ import type { WishlistItem } from "../lib/wishlist-store";
 import { useWishlistStore } from "./use-wishlist-store";
 import { formatDate, truncateText } from "./wishlist-helpers";
 import { useScreenInput } from "./esc-menu";
+import { useI18n } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +60,7 @@ export interface WishlistPickerProps {
  * Header — displays app name, "Wishlist" label, and item count.
  */
 function Header({ itemCount }: { itemCount: number }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" marginBottom={0}>
       <Box>
@@ -67,14 +69,13 @@ function Header({ itemCount }: { itemCount: number }): React.ReactElement {
         </Text>
         <Text> </Text>
         <Text bold color="yellow">
-          Wishlist
+          {t("wishlist.picker.title")}
         </Text>
         <Text dimColor> | </Text>
-        <Text>{itemCount}</Text>
-        <Text> item{itemCount !== 1 ? "s" : ""}</Text>
+        <Text>{t("wishlist.picker.items", { count: itemCount })}</Text>
       </Box>
       <Text dimColor>
-        Promote items to errands, quests, or genesis
+        {t("wishlist.picker.subtitle")}
       </Text>
     </Box>
   );
@@ -90,10 +91,11 @@ function ItemList({
   items: WishlistItem[];
   selectedIndex: number;
 }): React.ReactElement {
+  const t = useI18n();
   if (items.length === 0) {
     return (
       <Box flexDirection="column" width="50%">
-        <Text dimColor>No wishlist items</Text>
+        <Text dimColor>{t("wishlist.picker.noItems")}</Text>
       </Box>
     );
   }
@@ -142,27 +144,28 @@ function DetailPane({
   index: number;
   totalCount: number;
 }): React.ReactElement {
+  const t = useI18n();
   if (!item) {
     return (
       <Box flexDirection="column" width="50%" paddingLeft={2}>
         <Text bold color="yellow">
-          No wishlist items
+          {t("wishlist.picker.noItems")}
         </Text>
         <Text> </Text>
-        <Text>Your wishlist is empty.</Text>
+        <Text>{t("wishlist.picker.emptyLine")}</Text>
         <Text> </Text>
-        <Text bold>Add ideas from the CLI:</Text>
+        <Text bold>{t("wishlist.picker.addFromCli")}</Text>
         <Text color="cyan">{'woco wishlist add "your idea"'}</Text>
         <Text> </Text>
-        <Text bold>Or from the Task Browser:</Text>
+        <Text bold>{t("wishlist.picker.orFromBrowser")}</Text>
         <Text>
-          Press <Text color="yellow">W</Text> to open the wishlist overlay,
+          {t("wishlist.picker.pressW")}
         </Text>
         <Text>
-          then press <Text color="yellow">A</Text> to add an item.
+          {t("wishlist.picker.pressA")}
         </Text>
         <Text> </Text>
-        <Text dimColor>Press Esc to go back.</Text>
+        <Text dimColor>{t("wishlist.picker.escBack")}</Text>
       </Box>
     );
   }
@@ -170,19 +173,19 @@ function DetailPane({
   return (
     <Box flexDirection="column" width="50%" paddingLeft={2}>
       <Text dimColor>
-        {`Item ${index + 1}/${totalCount}`}
+        {t("wishlist.picker.itemOf", { n: index + 1, total: totalCount })}
       </Text>
       <Text> </Text>
 
       {/* Description */}
-      <Text bold>Description:</Text>
+      <Text bold>{t("taskBrowser.detail.description")}</Text>
       <Text> {item.text}</Text>
       <Text> </Text>
 
       {/* Tags */}
       {item.tags.length > 0 && (
         <>
-          <Text bold>Tags:</Text>
+          <Text bold>{t("wishlist.picker.tags")}</Text>
           <Box>
             <Text>{"  "}</Text>
             {item.tags.map((tag, i) => (
@@ -197,7 +200,7 @@ function DetailPane({
       )}
 
       {/* Created */}
-      <Text bold>Created:</Text>
+      <Text bold>{t("wishlist.picker.created")}</Text>
       <Text>
         {"  "}
         {item.created_at.slice(0, 10)} {item.created_at.slice(11, 19)}
@@ -205,26 +208,26 @@ function DetailPane({
       <Text> </Text>
 
       {/* ID */}
-      <Text bold>ID:</Text>
+      <Text bold>{t("wishlist.picker.id")}</Text>
       <Text dimColor>{"  "}{item.id}</Text>
       <Text> </Text>
 
       {/* Promote hints */}
-      <Text bold>Promote:</Text>
+      <Text bold>{t("wishlist.picker.promote")}</Text>
       <Text>
         {"  "}
         <Text color="green">E</Text>
-        {" \u2192 Create errand from this item"}
+        {` \u2192 ${t("wishlist.picker.promoteErrand")}`}
       </Text>
       <Text>
         {"  "}
         <Text color="cyan">P</Text>
-        {" \u2192 Create quest (goal pre-filled)"}
+        {` \u2192 ${t("wishlist.picker.promoteQuest")}`}
       </Text>
       <Text>
         {"  "}
         <Text color="magenta">G</Text>
-        {" \u2192 Use as genesis vision"}
+        {` \u2192 ${t("wishlist.picker.promoteGenesis")}`}
       </Text>
     </Box>
   );
@@ -238,31 +241,32 @@ function StatusBar({
 }: {
   selectedItem: WishlistItem | null;
 }): React.ReactElement {
+  const t = useI18n();
   return (
     <Box flexDirection="column" marginTop={0}>
       <Box>
-        <Text bold>Keys: </Text>
-        <Text dimColor>E</Text>
-        <Text> errand  </Text>
-        <Text dimColor>P</Text>
-        <Text> quest  </Text>
-        <Text dimColor>G</Text>
-        <Text> genesis  </Text>
-        <Text dimColor>D</Text>
-        <Text> delete  </Text>
+        <Text bold>{t("waveMonitor.keys")} </Text>
+        <Text dimColor>e</Text>
+        <Text> {t("taskBrowser.key.errand")}  </Text>
+        <Text dimColor>p</Text>
+        <Text> {t("wishlist.picker.keyQuest")}  </Text>
+        <Text dimColor>g</Text>
+        <Text> {t("questPicker.key.genesis")}  </Text>
+        <Text dimColor>d</Text>
+        <Text> {t("questPicker.key.delete")}  </Text>
         <Text dimColor>S-{"\u2191"}/{"\u2193"}</Text>
-        <Text> reorder  </Text>
+        <Text> {t("reviewList.key.reorder")}  </Text>
         <Text dimColor>Esc</Text>
-        <Text> back  </Text>
-        <Text dimColor>Q</Text>
-        <Text> quit</Text>
+        <Text> {t("taskBrowser.key.back")}  </Text>
+        <Text dimColor>q</Text>
+        <Text> {t("waveMonitor.quit")}</Text>
       </Box>
       <Box>
         {selectedItem ? (
           <Text>{truncateText(selectedItem.text, 60)}</Text>
         ) : (
           <Text dimColor>
-            {'Add items with: woco wishlist add "your idea"'}
+            {t("wishlist.picker.addHint")}
           </Text>
         )}
       </Box>

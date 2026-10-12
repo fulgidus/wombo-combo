@@ -17,6 +17,7 @@
 import type { WomboConfig } from "../config";
 import { loadUsageRecords, totalUsage } from "../lib/token-usage";
 import { output, type OutputFormat } from "../lib/output";
+import { getFixedT, t, type TFunction } from "../lib/i18n";
 import { resolve } from "node:path";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 
@@ -245,7 +246,7 @@ function formatPercent(n: number, total: number): string {
   return `${((n / total) * 100).toFixed(1)}%`;
 }
 
-function formatStatsTable(stats: PeriodStats, showTrend: boolean = false): string {
+function formatStatsTable(stats: PeriodStats, showTrend: boolean = false, tr: TFunction = t): string {
   const lines: string[] = [];
   const BOLD = "\x1b[1m";
   const RESET = "\x1b[0m";
@@ -254,12 +255,16 @@ function formatStatsTable(stats: PeriodStats, showTrend: boolean = false): strin
   const YELLOW = "\x1b[33m";
 
   if (showTrend) {
-    lines.push(`${BOLD}Stats Trend${RESET}`);
-    lines.push(`Date       | Waves | Tasks | Success  | Retries | Conflicts | Build%  | Duration`);
+    lines.push(`${BOLD}${tr("cli.stats.trendTitle")}${RESET}`);
+    lines.push(
+      `${tr("cli.stats.colDate").padEnd(11)}| ${tr("cli.stats.colWaves").padEnd(5)} | ${tr("cli.stats.colTasks").padEnd(5)} | ` +
+      `${tr("cli.stats.colSuccess").padEnd(8)} | ${tr("cli.stats.colRetries").padEnd(7)} | ${tr("cli.stats.colConflicts").padEnd(9)} | ` +
+      `${tr("cli.stats.colBuild").padEnd(7)} | ${tr("cli.stats.colDuration")}`
+    );
     lines.push(`-----------|-------|-------|----------|---------|-----------|---------|---------`);
   } else {
-    lines.push(`${BOLD}Overall Statistics${RESET}`);
-    lines.push(`| Metric            | Value       |`);
+    lines.push(`${BOLD}${tr("cli.stats.overallTitle")}${RESET}`);
+    lines.push(`| ${tr("cli.stats.colMetric").padEnd(17)} | ${tr("cli.stats.colValue").padEnd(11)} |`);
     lines.push(`|-------------------|-------------|`);
   }
 
@@ -278,17 +283,18 @@ function formatStatsTable(stats: PeriodStats, showTrend: boolean = false): strin
       );
     } else {
       const successColor = s.totalTasks > 0 && s.succeeded / s.totalTasks > 0.7 ? GREEN : RED;
+      const lbl = (key: string) => tr(key).padEnd(17);
       lines.push(
-        `| Success Rate      | ${successColor}${successRate}${RESET}       |`
+        `| ${lbl("cli.stats.successRate")} | ${successColor}${successRate}${RESET}       |`
       );
-      lines.push(`| Retry Rate        | ${retryRate}       |`);
-      lines.push(`| Conflict Rate     | ${conflictRate}       |`);
-      lines.push(`| Build Pass Rate   | ${buildRate}       |`);
-      lines.push(`| Wave Count        | ${s.waveCount}          |`);
-      lines.push(`| Total Tasks       | ${s.totalTasks}          |`);
-      lines.push(`| Avg Duration      | ${avgDuration}        |`);
-      lines.push(`| Total Cost        | $${s.totalCost.toFixed(4)}    |`);
-      lines.push(`| Total Tokens      | ${s.totalTokens.toLocaleString()}   |`);
+      lines.push(`| ${lbl("cli.stats.retryRate")} | ${retryRate}       |`);
+      lines.push(`| ${lbl("cli.stats.conflictRate")} | ${conflictRate}       |`);
+      lines.push(`| ${lbl("cli.stats.buildPassRate")} | ${buildRate}       |`);
+      lines.push(`| ${lbl("cli.stats.waveCount")} | ${s.waveCount}          |`);
+      lines.push(`| ${lbl("cli.stats.totalTasks")} | ${s.totalTasks}          |`);
+      lines.push(`| ${lbl("cli.stats.avgDuration")} | ${avgDuration}        |`);
+      lines.push(`| ${lbl("cli.stats.totalCost")} | $${s.totalCost.toFixed(4)}    |`);
+      lines.push(`| ${lbl("cli.stats.totalTokens")} | ${s.totalTokens.toLocaleString()}   |`);
     }
   };
 
@@ -322,7 +328,7 @@ export async function cmdStats(opts: StatsOptions): Promise<void> {
       output(outputFmt, JSON.stringify(trendData, null, 2), () => console.log(JSON.stringify(trendData, null, 2)));
     } else {
       for (const s of trendData) {
-        output(outputFmt, formatStatsTable(s, true), () => console.log(formatStatsTable(s, true)));
+        output(outputFmt, formatStatsTable(s, true, getFixedT("en")), () => console.log(formatStatsTable(s, true)));
         output(outputFmt, "", () => console.log(""));
       }
     }
@@ -332,8 +338,8 @@ export async function cmdStats(opts: StatsOptions): Promise<void> {
       output(outputFmt, JSON.stringify(Array.from(byModelData.entries()), null, 2), () => console.log(JSON.stringify(Array.from(byModelData.entries()), null, 2)));
     } else {
       for (const [model, stats] of byModelData) {
-        output(outputFmt, `Model: ${model}`, () => console.log(`Model: ${model}`));
-        output(outputFmt, formatStatsTable(stats, false), () => console.log(formatStatsTable(stats, false)));
+        output(outputFmt, getFixedT("en")("cli.stats.model", { model }), () => console.log(t("cli.stats.model", { model })));
+        output(outputFmt, formatStatsTable(stats, false, getFixedT("en")), () => console.log(formatStatsTable(stats, false)));
         output(outputFmt, "", () => console.log(""));
       }
     }
@@ -342,7 +348,7 @@ export async function cmdStats(opts: StatsOptions): Promise<void> {
     if (format === "json") {
       output(outputFmt, JSON.stringify(stats, null, 2), () => console.log(JSON.stringify(stats, null, 2)));
     } else {
-      output(outputFmt, formatStatsTable(stats, false), () => console.log(formatStatsTable(stats, false)));
+      output(outputFmt, formatStatsTable(stats, false, getFixedT("en")), () => console.log(formatStatsTable(stats, false)));
     }
   }
 }

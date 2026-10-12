@@ -1,14 +1,14 @@
 id: replay-multi-harness-normalizer
 title: Add replay event normalizers for other agent harnesses once multi-cli-support lands
 description: ""
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: low
 depends_on: []
 effort: PT1H
 started_at: null
-ended_at: null
+ended_at: 2026-10-11T21:31:54.842Z
 constraints: []
 forbidden: []
 references: []

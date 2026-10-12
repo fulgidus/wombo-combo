@@ -1,0 +1,23 @@
+id: meta-updated-at-merge-conflicts
+title: Every merge conflicts on updated_at in tasks/archive _meta.yml
+description: "Found by dogfooding: every write to a task bumps meta.updated_at in .wombo-combo/tasks/_meta.yml and
+  archive/_meta.yml, so quest branches and main always conflict on those two lines (plus CHANGELOG.md) and `woco launch`
+  aborts with 'Merge conflicts between main and quest/<id>'. Stop persisting a volatile timestamp (derive it from the
+  newest task file mtime or drop it), keep schemas valid, add a regression test that two branches editing different
+  tasks merge cleanly, and make the CHANGELOG.md merge entries append-only so concurrent merges do not conflict (for
+  example a union merge attribute for CHANGELOG.md in .gitattributes)."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T04:07:16.311Z
+ended_at: 2026-10-12T04:15:35.966Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

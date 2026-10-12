@@ -1,0 +1,30 @@
+id: sync-push
+title: Push engine plus woco sync push|status|labels and comment link
+description: "src/lib/sync/push.ts pushToGitHub({projectRoot, client, dryRun}): ensure labels, then for each task and
+  quest create or update its issue (idempotent via marker lookup, only when local_hash changed), mirror every woco
+  comment lacking a GitHub id (in chronological order), set issue state/labels, write mapping files. Returns a
+  structured report (created, updated, unchanged, commented, errors). CLI: 'woco sync' citty command with subcommands
+  push, status (what would change both ways without writing), labels (ensure labels), all with --dry-run and -o
+  json|toon; plus 'woco comment link <comment-id> <github-url>' that sets github_url on an existing comment. Register in
+  router/citty-registry/COMMAND_REGISTRY/docs:gen/completion; i18n keys cli.sync.* and cli.help.sync.* (en+it) via the
+  addk.py helper. Tests with the fake GitHub server (tests/helpers/fake-github.ts) and temp-dir projects. Pull and auto
+  subcommands are added by later tasks."
+status: done
+completion: 100
+difficulty: hard
+priority: medium
+depends_on:
+  - sync-github-client
+  - sync-mapping-model
+effort: PT4H
+started_at: null
+ended_at: 2026-10-11T22:50:58.618Z
+constraints:
+  - "Never block on one failing item: collect errors and continue"
+  - "Idempotent: running push twice makes no second change"
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

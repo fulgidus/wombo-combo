@@ -1,0 +1,50 @@
+id: persist-retry-feedback
+title: Persist Retry Feedback Across Restarts
+description: |
+  Retry feedback (review findings in the FeedbackStore, and the verifier
+  findings in agent.error / agent.buildOutput) currently lives partly in an
+  in-memory map and is lost when the daemon restarts or the child is
+  restarted. Make it durable:
+  - Store pending retry feedback on the agent record (new optional internal
+    field, e.g. retryFeedback?: string) so it is written by the existing
+    atomic daemon-state persistence in src/daemon/state.ts and restored on
+    daemon start.
+  - FeedbackStore reads/writes through the state (get-and-clear stays
+    one-shot, but clears only after a relaunch succeeds so a failed launch
+    does not lose it).
+  - The restarted attempt receives the verifier findings
+    (buildErrors) and review feedback (retryMessage) even when the previous
+    process, or the whole daemon, died in between. Restart count is
+    rehydrated from agent.retries.
+  - Do not add the field to protocol Evt*/Cmd* payloads; if the agent
+    snapshot is serialized to clients, strip or leave it out so shapes are
+    unchanged (check protocol.ts and how state snapshots are broadcast).
+  Tests: set feedback, simulate daemon restart (new DaemonState loading the
+  persisted file, new AgentRunner), trigger the relaunch and assert
+  retryHeadless received the feedback; assert failed launch keeps it.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - shutdown-hook-cleanup
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Old daemon-state.json files without the field still load
+  - Protocol payload shapes byte-identical for existing fields
+  - One-shot semantics preserved when the relaunch succeeds
+forbidden:
+  - Do not change the WebSocket protocol shapes
+references:
+  - src/daemon/state.ts
+  - src/daemon/protocol.ts
+  - src/daemon/runner/verify-stage.ts
+  - src/daemon/runner/spawn-monitor.ts
+  - tests/daemon-state.test.ts
+notes:
+  - InternalAgentState is the persisted shape; the protocol has its own agent snapshot type
+subtasks: []
+quest: agent-process-supervision
+paths: []

@@ -5,7 +5,9 @@ on:
     tags:
       - "v*"
     # Continuous delivery: a version bump in package.json on main releases
-    # that version (skipped when its tag already exists).
+    # that version (skipped when its tag already exists). To retry a release
+    # that failed before its tag was created, push any edit to this file (or
+    # to package.json); the plan job releases the version if it has no tag.
     branches:
       - main
     paths:

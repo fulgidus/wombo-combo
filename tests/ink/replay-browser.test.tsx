@@ -17,21 +17,20 @@ import { ReplayStore } from "../../src/lib/replay";
 import { saveTaskToStore } from "../../src/lib/task-store";
 import { loadConfig } from "../../src/config";
 import type { Task } from "../../src/lib/tasks";
+import { setStdoutSize } from "../helpers/stdout-size";
 
 let root: string;
 const realRows = process.stdout.rows;
 const realColumns = process.stdout.columns;
 
 beforeEach(() => {
-  (process.stdout as any).rows = 60;
-  (process.stdout as any).columns = 120;
+  setStdoutSize(60, 120);
   root = mkdtempSync(join(tmpdir(), "replay-browser-"));
   mkdirSync(join(root, ".wombo-combo"), { recursive: true });
   writeFileSync(join(root, ".wombo-combo", "config.json"), "{}\n");
 });
 afterEach(() => {
-  (process.stdout as any).rows = realRows;
-  (process.stdout as any).columns = realColumns;
+  setStdoutSize(realRows, realColumns);
   rmSync(root, { recursive: true, force: true });
 });
 

@@ -508,7 +508,7 @@ function isFinished(rec: AgentAnalyticsRecord): boolean {
 }
 
 function isActive(status: AgentStatus): boolean {
-  return status === "installing" || status === "running" || status === "resolving_conflict" || status === "retry";
+  return status === "installing" || status === "running" || status === "resolving_conflict" || status === "in_review" || status === "retry";
 }
 
 function errMsg(err: unknown): string {

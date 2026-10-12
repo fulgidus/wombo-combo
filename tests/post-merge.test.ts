@@ -9,7 +9,7 @@ import {
   resumeIncompleteOperations,
   runPostMerge,
 } from "../src/lib/post-merge";
-import { enqueueMerge } from "../src/lib/merger";
+import { enqueueMerge, refreshRootCheckout } from "../src/lib/merger";
 import { operationMarker } from "../src/lib/changelog";
 import { git, gitRaw } from "./helpers/git-repo";
 import { makeFakeGh } from "./helpers/fake-gh";
@@ -112,6 +112,25 @@ describe("skip mode", () => {
     assertDirty();
     // temporary worktrees removed
     expect(git(fx.repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+  });
+
+  test("root checkout of the destination stays clean after merge plus changelog commit", async () => {
+    setup();
+    git(fx.repo, "checkout", "-q", "integration");
+    const op = fx.merge("t1", "Task one");
+    // what mergeBranch does right after the merge commit
+    expect(await refreshRootCheckout(fx.repo, "integration", op.beforeSha, op.afterSha)).toBe(true);
+    const gh = makeFakeGh();
+    const res = await runPostMerge(
+      { projectRoot: fx.repo, config: fx.config({ prMode: "skip" }), operation: op, mergeSucceeded: true },
+      { runner: gh.runner, now: NOW }
+    );
+
+    expect(res.changelog.status).toBe("written");
+    expect(git(fx.repo, "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "integration"));
+    // untracked files excluded: the runtime journal is gitignored in real repos
+    expect(git(fx.repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
+    expect(readFileSync(join(fx.repo, "CHANGELOG.md"), "utf-8")).toContain(operationMarker(op.operationId));
   });
 
   test("changelog is independent of PR mode: disabled changelog + skip does nothing", async () => {

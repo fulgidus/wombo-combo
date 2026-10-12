@@ -17,7 +17,9 @@ import {
   type Subtask,
 } from "../../lib/tasks";
 import { output, outputError, filterFields, type OutputFormat } from "../../lib/output";
+import { msg, t } from "../../lib/i18n";
 import { renderTaskShow } from "../../lib/toon";
+import { commentsForShow, printRecentComments } from "../comment";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +48,11 @@ const CYAN = "\x1b[36m";
 // ---------------------------------------------------------------------------
 // Display Helpers
 // ---------------------------------------------------------------------------
+
+/** "  Label:" padded so values align regardless of translation length. */
+function label(key: string): string {
+  return `  ${t(key)}:`.padEnd(15);
+}
 
 function statusColor(status: string): string {
   switch (status) {
@@ -82,7 +89,7 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId) {
-    outputError(fmt, "Usage: woco tasks show <task-id>");
+    outputError(fmt, msg("cli.tasks.show.usage"));
     return;
   }
 
@@ -90,7 +97,7 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
   const feature = findFeatureById(data, opts.featureId);
 
   if (!feature) {
-    outputError(fmt, `Task "${opts.featureId}" not found.`);
+    outputError(fmt, msg("cli.tasks.notFound", { id: opts.featureId }));
     return;
   }
 
@@ -98,10 +105,12 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
   const depsMet = areDependenciesMet(feature, doneIds);
   const effort = formatDuration(parseDurationMinutes(feature.effort));
 
+  const comments = commentsForShow(projectRoot, { kind: "task", id: feature.id });
   const fullData = {
     ...feature,
     deps_met: depsMet,
     effort_formatted: effort,
+    ...(comments.length > 0 ? { comments } : {}),
   };
 
   // If --fields is specified, emit only those fields
@@ -123,31 +132,31 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
     fmt,
     fullData,
     () => {
-      console.log(`\n${BOLD}Task: ${feature.title}${RESET}`);
-      console.log(`  ID:          ${feature.id}`);
-      console.log(`  Status:      ${statusColor(feature.status)}${feature.status}${RESET}`);
-      console.log(`  Priority:    ${feature.priority}`);
-      console.log(`  Difficulty:  ${feature.difficulty}`);
-      console.log(`  Effort:      ${effort}`);
-      console.log(`  Completion:  ${feature.completion}%`);
-      console.log(`  Deps met:    ${depsMet ? `${GREEN}yes${RESET}` : `${RED}no${RESET}`}`);
+      console.log(`\n${BOLD}${t("cli.tasks.show.task", { title: feature.title })}${RESET}`);
+      console.log(`${label("cli.tasks.show.id")}${feature.id}`);
+      console.log(`${label("cli.tasks.show.status")}${statusColor(feature.status)}${feature.status}${RESET}`);
+      console.log(`${label("cli.tasks.show.priority")}${feature.priority}`);
+      console.log(`${label("cli.tasks.show.difficulty")}${feature.difficulty}`);
+      console.log(`${label("cli.tasks.show.effort")}${effort}`);
+      console.log(`${label("cli.tasks.show.completion")}${feature.completion}%`);
+      console.log(`${label("cli.tasks.show.depsMet")}${depsMet ? `${GREEN}${t("cli.common.yes")}${RESET}` : `${RED}${t("cli.common.no")}${RESET}`}`);
 
       if (feature.started_at) {
-        console.log(`  Started:     ${feature.started_at}`);
+        console.log(`${label("cli.tasks.show.started")}${feature.started_at}`);
       }
       if (feature.ended_at) {
-        console.log(`  Ended:       ${feature.ended_at}`);
+        console.log(`${label("cli.tasks.show.ended")}${feature.ended_at}`);
       }
 
       if (feature.description) {
-        console.log(`\n  ${BOLD}Description:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.description")}${RESET}`);
         for (const line of feature.description.split("\n")) {
           console.log(`    ${line}`);
         }
       }
 
       if (feature.depends_on.length > 0) {
-        console.log(`\n  ${BOLD}Dependencies:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.dependencies")}${RESET}`);
         for (const dep of feature.depends_on) {
           const met = doneIds.has(dep);
           const icon = met ? `${GREEN}✓${RESET}` : `${RED}✗${RESET}`;
@@ -156,39 +165,41 @@ export async function cmdTasksShow(opts: TasksShowOptions): Promise<void> {
       }
 
       if (feature.constraints.length > 0) {
-        console.log(`\n  ${BOLD}Constraints:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.constraints")}${RESET}`);
         for (const c of feature.constraints) {
           console.log(`    - ${c}`);
         }
       }
 
       if (feature.forbidden.length > 0) {
-        console.log(`\n  ${BOLD}Forbidden:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.forbidden")}${RESET}`);
         for (const f of feature.forbidden) {
           console.log(`    - ${RED}${f}${RESET}`);
         }
       }
 
       if (feature.references.length > 0) {
-        console.log(`\n  ${BOLD}References:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.references")}${RESET}`);
         for (const r of feature.references) {
           console.log(`    - ${DIM}${r}${RESET}`);
         }
       }
 
       if (feature.notes.length > 0) {
-        console.log(`\n  ${BOLD}Notes:${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.notes")}${RESET}`);
         for (const n of feature.notes) {
           console.log(`    - ${n}`);
         }
       }
 
       if (feature.subtasks.length > 0) {
-        console.log(`\n  ${BOLD}Subtasks (${feature.subtasks.length}):${RESET}`);
+        console.log(`\n  ${BOLD}${t("cli.tasks.show.subtasks", { count: feature.subtasks.length })}${RESET}`);
         for (const st of feature.subtasks) {
           renderSubtask(st, 2);
         }
       }
+
+      printRecentComments(projectRoot, { kind: "task", id: feature.id });
 
       console.log("");
     },

@@ -1,0 +1,41 @@
+id: otp-prototype-demo
+title: Prototype Demo And Tests
+description: |
+  On top of spikes/otp-supervision/supervisor.ts, add spikes/otp-supervision/demo.ts and
+  spikes/otp-supervision/supervisor.test.ts.
+
+  The demo supervises fake agents (use src/lib/fake-agent-runner.ts for behaviour where it fits, or
+  small stub children that mimic it) and prints a readable timeline showing:
+  1. crash isolation: agent A crashes under one_for_one and restarts while B and C keep running
+  2. rest_for_one: a crash in a task that others depend on restarts only the later children
+  3. restart-intensity escalation: a crash-looping child exceeds maxRestarts in periodMs, the
+     supervisor stops and escalates to its parent, which applies its own policy
+  4. transient vs temporary vs permanent behaviour on normal exit
+  Tests (bun test, deterministic clock) assert each of these four scenarios plus shutdown order and
+  shutdown timeout. Run with `bun spikes/otp-supervision/demo.ts` and add the command to the README.
+  Report the output of one demo run in the README under "Observed behaviour".
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - otp-supervisor-prototype
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Tests must pass under `bun test`
+  - Must not change daemon behaviour; spikes only
+  - No new dependencies
+forbidden:
+  - Do not modify any file under src/
+  - Do not rewrite supervisor.ts beyond small bug fixes; note any such fix in the README
+references:
+  - spikes/otp-supervision/supervisor.ts
+  - src/lib/fake-agent-runner.ts
+notes:
+  - If the supervisor shows a bug, fix it in supervisor.ts and record it in the README; it is a spike, not production
+    code
+subtasks: []
+quest: otp-supervision-spike
+paths: []

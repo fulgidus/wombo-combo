@@ -43,6 +43,7 @@ import { SectionPicker } from "./section-picker";
 import { FieldEditor } from "./field-editor";
 import { ConfirmDialog } from "./confirm-dialog";
 import { ProgressView, type ProgressResult } from "./progress-view";
+import { useI18n } from "../i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -135,6 +136,7 @@ export function OnboardingApp({
   saveFn,
   onQuit,
 }: OnboardingAppProps): React.ReactElement {
+  const t = useI18n();
   // =========================================================================
   // Shared progress state
   // =========================================================================
@@ -170,9 +172,9 @@ export function OnboardingApp({
       // If brownfield and scout function available, run scout
       if (profile.type === "brownfield" && scoutFn) {
         setCreatePhase("scouting");
-        setProgressTitle("Codebase Scout");
+        setProgressTitle(t("onboarding.app.scout.title"));
         setProgressSubtitle(projectRoot);
-        setProgressStatus("Scanning codebase structure...");
+        setProgressStatus(t("onboarding.app.scout.status"));
         setProgressResult(undefined);
 
         scoutFn(projectRoot).then((summary) => {
@@ -182,12 +184,12 @@ export function OnboardingApp({
             const lineCount = summary.split("\n").length;
             setProgressResult({
               type: "success",
-              message: `Scout complete — ${lineCount} lines of structure.`,
+              message: t("onboarding.app.scout.complete", { lines: lineCount }),
             });
           } else {
             setProgressResult({
               type: "info",
-              message: "Scout found no codebase structure.",
+              message: t("onboarding.app.scout.none"),
             });
           }
           setDraftProfile(updatedProfile);
@@ -203,7 +205,7 @@ export function OnboardingApp({
       // No scout needed — go to LLM confirm
       setCreatePhase("confirm-llm");
     },
-    [projectRoot, scoutFn],
+    [projectRoot, scoutFn, t],
   );
 
   const handleInputsCancel = useCallback(() => {
@@ -222,9 +224,9 @@ export function OnboardingApp({
     }
 
     setCreatePhase("synthesizing");
-    setProgressTitle("LLM Synthesis");
+    setProgressTitle(t("onboarding.app.llm.title"));
     setProgressSubtitle(draftProfile.name || projectRoot);
-    setProgressStatus("Enhancing profile with AI...");
+    setProgressStatus(t("onboarding.app.llm.status"));
     setProgressResult(undefined);
 
     synthesisFn(draftProfile, config, projectRoot, (msg) => {
@@ -233,14 +235,14 @@ export function OnboardingApp({
       setDraftProfile(enhanced);
       setProgressResult({
         type: "success",
-        message: "LLM synthesis complete.",
+        message: t("onboarding.app.llm.complete"),
       });
 
       setTimeout(() => {
         setCreatePhase("reviewing");
       }, 1500);
     });
-  }, [draftProfile, synthesisFn, config, projectRoot]);
+  }, [draftProfile, synthesisFn, config, projectRoot, t]);
 
   const handleLlmDecline = useCallback(() => {
     // Skip LLM — go to review
@@ -262,15 +264,17 @@ export function OnboardingApp({
 
       // Show success
       setCreatePhase("saving");
-      setProgressTitle("Onboarding Complete");
+      setProgressTitle(t("onboarding.app.saved.title"));
       setProgressSubtitle(undefined);
       setProgressStatus("");
       setProgressResult({
         type: "success",
-        message: `Project profile saved for "${approvedProfile.name || "(unnamed)"}"`,
+        message: t("onboarding.app.saved.message", {
+          name: approvedProfile.name || t("onboarding.app.unnamed"),
+        }),
       });
     },
-    [saveFn, projectRoot],
+    [saveFn, projectRoot, t],
   );
 
   // Auto-advance from saving to genesis confirm
@@ -312,9 +316,9 @@ export function OnboardingApp({
     if (!editProfile || !synthesisFn || !config) return;
 
     setEditPhase("synthesizing");
-    setProgressTitle("LLM Synthesis");
+    setProgressTitle(t("onboarding.app.llm.title"));
     setProgressSubtitle(editProfile.name || projectRoot);
-    setProgressStatus("Enhancing profile with AI...");
+    setProgressStatus(t("onboarding.app.llm.status"));
     setProgressResult(undefined);
 
     synthesisFn(editProfile, config, projectRoot, (msg) => {
@@ -328,14 +332,14 @@ export function OnboardingApp({
 
       setProgressResult({
         type: "success",
-        message: "LLM synthesis complete.",
+        message: t("onboarding.app.llm.complete"),
       });
 
       setTimeout(() => {
         setEditPhase("picking");
       }, 1500);
     });
-  }, [editProfile, synthesisFn, config, projectRoot, saveFn]);
+  }, [editProfile, synthesisFn, config, projectRoot, saveFn, t]);
 
   const handleEditBack = useCallback(() => {
     onDone(editProfile);
@@ -390,8 +394,8 @@ export function OnboardingApp({
       case "confirm-llm":
         return (
           <ConfirmDialog
-            title="LLM Synthesis"
-            message="Enhance profile with AI?"
+            title={t("onboarding.app.llm.title")}
+            message={t("onboarding.app.llm.confirm")}
             onConfirm={handleLlmConfirm}
             onCancel={handleLlmDecline}
           />
@@ -401,7 +405,7 @@ export function OnboardingApp({
         if (!draftProfile) {
           return (
             <Box padding={1}>
-              <Text color="red">Error: no draft profile available.</Text>
+              <Text color="red">{t("onboarding.error.noDraft")}</Text>
             </Box>
           );
         }
@@ -416,8 +420,8 @@ export function OnboardingApp({
       case "confirm-genesis":
         return (
           <ConfirmDialog
-            title="Genesis Planner"
-            message="Run genesis planner to create initial quests?"
+            title={t("onboarding.app.genesis.title")}
+            message={t("onboarding.app.genesis.confirm")}
             onConfirm={handleGenesisConfirm}
             onCancel={handleGenesisDecline}
           />
@@ -427,7 +431,7 @@ export function OnboardingApp({
         return (
           <Box padding={1}>
             <Text color="green" bold>
-              ✔ Onboarding complete!
+              {t("onboarding.app.done")}
             </Text>
           </Box>
         );
@@ -441,7 +445,7 @@ export function OnboardingApp({
         if (!editProfile) {
           return (
             <Box padding={1}>
-              <Text color="red">Error: no profile for editing.</Text>
+              <Text color="red">{t("onboarding.error.noProfile")}</Text>
             </Box>
           );
         }
@@ -458,7 +462,7 @@ export function OnboardingApp({
         if (!editProfile || !editingSection) {
           return (
             <Box padding={1}>
-              <Text color="red">Error: no section selected for editing.</Text>
+              <Text color="red">{t("onboarding.error.noSection")}</Text>
             </Box>
           );
         }
@@ -485,7 +489,7 @@ export function OnboardingApp({
         return (
           <Box padding={1}>
             <Text color="green" bold>
-              ✔ Profile updated!
+              {t("onboarding.app.updated")}
             </Text>
           </Box>
         );
@@ -496,7 +500,7 @@ export function OnboardingApp({
   return (
     <Box padding={1}>
       <Text color="red">
-        Error: invalid state (mode={mode})
+        {t("onboarding.error.invalidState", { mode })}
       </Text>
     </Box>
   );

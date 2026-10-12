@@ -1,0 +1,36 @@
+id: obs-docs-guide
+title: Write Supervision Observability Guide
+description: |
+  Add docs/src/content/docs/guides/supervision-observability.md (Starlight frontmatter like
+  guides/review-gate.md). Cover: what the tree shows, the new protocol events and command (table
+  of names and payload fields), the TUI screen and how to reach it from the ESC menu, the
+  `woco daemon tree` command with a --output json example, and how restarts and escalations
+  appear in analytics and replays. Add the page to the docs sidebar if astro.config.mjs lists
+  guides explicitly. Plain, short sentences.
+  Verify with `cd docs && bun install --frozen-lockfile && bun run build` (or the docs build
+  command in docs/package.json).
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - obs-cli-daemon-tree
+  - obs-tui-tree-view
+  - obs-analytics-replay
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Docs must build
+  - Examples must match the actual JSON output of the implemented command
+forbidden:
+  - Do not edit architecture/overview.md, reference/config.md or reference/commands/daemon.md
+  - Do not add AI attribution
+references:
+  - docs/src/content/docs/guides/review-gate.md
+  - docs/astro.config.mjs
+  - src/commands/citty/daemon.ts
+notes: []
+subtasks: []
+quest: supervision-observability
+paths: []

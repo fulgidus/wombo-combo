@@ -8,6 +8,7 @@
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
 import { loadConfig, validateConfig, isProjectInitialized } from "../../config";
+import { t } from "../../lib/i18n";
 import { resolveOutputFormat, output } from "../../lib/output";
 import {
   startDaemon,
@@ -48,7 +49,7 @@ const startCommand = defineCommand({
   async run({ args }) {
     const projectRoot = resolve(process.cwd());
     if (!isProjectInitialized(projectRoot)) {
-      console.error("Project not initialized. Run 'woco init' first.");
+      console.error(t("cli.daemon.notInitialized"));
       process.exit(1);
     }
     loadConfig(projectRoot); // Validate config exists
@@ -64,10 +65,10 @@ const startCommand = defineCommand({
       });
 
       output(fmt, { pid, port: port ?? DEFAULT_WS_PORT, status: "started" }, () => {
-        console.log(`Daemon started (pid=${pid}, port=${port ?? DEFAULT_WS_PORT})`);
+        console.log(t("cli.daemon.started", { pid, port: port ?? DEFAULT_WS_PORT }));
       });
     } catch (err: any) {
-      console.error(`Failed to start daemon: ${err.message}`);
+      console.error(t("cli.daemon.startFailed", { error: err.message }));
       process.exit(1);
     }
   },
@@ -107,9 +108,9 @@ const stopCommand = defineCommand({
 
     output(fmt, { stopped }, () => {
       if (stopped) {
-        console.log("Daemon stopped.");
+        console.log(t("cli.daemon.stopped"));
       } else {
-        console.log("No daemon running.");
+        console.log(t("cli.daemon.noneRunning"));
       }
     });
   },
@@ -143,17 +144,17 @@ const statusCommand = defineCommand({
 
     output(fmt, status, () => {
       if (status.running) {
-        console.log(`Daemon running (pid=${status.pid}, port=${status.port})`);
+        console.log(t("cli.daemon.running", { pid: status.pid ?? "", port: status.port }));
         if (status.health) {
           const uptimeSec = Math.floor(status.health.uptime / 1000);
-          console.log(`  Uptime:     ${uptimeSec}s`);
-          console.log(`  Clients:    ${status.health.clients}`);
-          console.log(`  Scheduler:  ${status.health.schedulerStatus}`);
-          const max = status.health.maxConcurrent === 0 ? "unlimited" : String(status.health.maxConcurrent);
-          console.log(`  Concurrency: ${status.health.activeAgents} active + ${status.health.queuedReadyAgents} queued-ready / ${max} max (${status.health.availableSlots} slots free)`);
+          console.log(t("cli.daemon.uptime", { seconds: uptimeSec }));
+          console.log(t("cli.daemon.clients", { count: status.health.clients }));
+          console.log(t("cli.daemon.scheduler", { status: status.health.schedulerStatus }));
+          const max = status.health.maxConcurrent === 0 ? t("cli.daemon.unlimited") : String(status.health.maxConcurrent);
+          console.log(t("cli.daemon.concurrency", { active: status.health.activeAgents, queued: status.health.queuedReadyAgents, max, free: status.health.availableSlots }));
         }
       } else {
-        console.log("Daemon is not running.");
+        console.log(t("cli.daemon.notRunning"));
       }
     });
   },

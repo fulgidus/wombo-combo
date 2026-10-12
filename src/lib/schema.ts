@@ -22,6 +22,7 @@ export { GLOBAL_FLAGS } from "./schema-types";
 
 import type { CommandDef, FlagDef } from "./schema-types";
 import { GLOBAL_FLAGS } from "./schema-types";
+import { getLocale, hasKey, t } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Dynamic version reader
@@ -222,6 +223,43 @@ export function allCommandSchemas(): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Help text localization (render time only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registry text (summary, description, flag and positional descriptions) is
+ * always English: `woco describe`, generated docs and completions read it
+ * as-is. Only the human help renderers below translate, looking up
+ * `cli.help.<command path>.<summary|description|pos.X|flag.X>` for the active
+ * locale and falling back to the registry text. English never goes through
+ * the catalog, so it stays byte-identical to the registry.
+ */
+function helpText(key: string, english: string): string {
+  const locale = getLocale();
+  if (locale === "en" || !hasKey(locale, key)) return english;
+  return t(key);
+}
+
+/** Static help chrome ("Options:", etc.); en catalog entries equal the old literals. */
+const label = (name: string, vars?: Record<string, string>): string =>
+  t(`cli.help.label.${name}`, vars as any);
+
+const HELP_PREFIX = ["cli", "help"].join("."); // dynamic keys: cli.help.<command>.<part>
+const helpKeyBase = (cmd: CommandDef): string => `${HELP_PREFIX}.${cmd.name.replace(/ /g, ".")}`;
+const flagKeyName = (f: FlagDef): string => f.name.replace(/^--/, "");
+
+function summaryOf(cmd: CommandDef): string {
+  return helpText(`${helpKeyBase(cmd)}.summary`, cmd.summary);
+}
+function descriptionOf(cmd: CommandDef): string | undefined {
+  return cmd.description ? helpText(`${helpKeyBase(cmd)}.description`, cmd.description) : undefined;
+}
+function flagDescriptionOf(cmd: CommandDef, f: FlagDef): string {
+  const own = cmd.flags.includes(f);
+  return helpText(`${own ? helpKeyBase(cmd) : `${HELP_PREFIX}.global`}.flag.${flagKeyName(f)}`, f.description);
+}
+
+// ---------------------------------------------------------------------------
 // Global help renderer (for `woco help` / `woco -h`)
 // ---------------------------------------------------------------------------
 
@@ -233,9 +271,9 @@ export function renderGlobalHelp(): string {
   const lines: string[] = [];
 
   lines.push("");
-  lines.push("wombo-combo — AI Agent Orchestration System");
+  lines.push(`wombo-combo — ${label("tagline")}`);
   lines.push("");
-  lines.push("  WOMBO COMBO! Parallel feature development with AI agents.");
+  lines.push(`  ${label("slogan")}`);
   lines.push("");
 
   // Build display entries: name, alias hint, summary
@@ -247,15 +285,16 @@ export function renderGlobalHelp(): string {
         const short = sc.name.includes(" ") ? sc.name.split(" ").pop()! : sc.name;
         return short;
       });
-      extra = ` (subtopics: ${scNames.join(", ")})`;
+      extra = label("subtopics", { names: scNames.join(", ") });
     }
-    return { name: cmd.name, hint, summary: cmd.summary + extra };
+    return { name: cmd.name, hint, summary: summaryOf(cmd) + extra };
   });
 
   const maxNameLen = Math.max(...entries.map((e) => e.name.length));
   const maxHintLen = Math.max(...entries.map((e) => e.hint.length));
 
-  lines.push(`Commands:${" ".repeat(maxNameLen + maxHintLen - 3)}(alias)`);
+  const commandsLabel = label("commands");
+  lines.push(`${commandsLabel}${" ".repeat(Math.max(1, maxNameLen + maxHintLen + 6 - commandsLabel.length))}(alias)`);
 
   for (const e of entries) {
     const paddedName = e.name.padEnd(maxNameLen + 2);
@@ -264,7 +303,7 @@ export function renderGlobalHelp(): string {
   }
 
   lines.push("");
-  lines.push("Run 'woco <command> -h' for details on a specific command.");
+  lines.push(label("runCommandHelp"));
   lines.push("");
 
   return lines.join("\n");
@@ -307,14 +346,15 @@ function renderParentHelp(cmd: CommandDef): string {
 
   const parentHint = aliasHint(cmd);
   lines.push("");
-  lines.push(`woco ${cmd.name}${parentHint ? ` ${parentHint}` : ""} — ${cmd.summary}`);
-  if (cmd.description) {
+  lines.push(`woco ${cmd.name}${parentHint ? ` ${parentHint}` : ""} — ${summaryOf(cmd)}`);
+  const parentDescription = descriptionOf(cmd);
+  if (parentDescription) {
     lines.push("");
-    lines.push(`  ${cmd.description}`);
+    lines.push(`  ${parentDescription}`);
   }
 
   lines.push("");
-  lines.push("Subcommands:");
+  lines.push(label("subcommands"));
 
   // Extract the short name from compound names ("tasks list" -> "list")
   const shortName = (sc: CommandDef) => {
@@ -326,7 +366,7 @@ function renderParentHelp(cmd: CommandDef): string {
   const entries = cmd.subcommands!.map((sc) => {
     const name = shortName(sc);
     const hint = aliasHint(sc);
-    return { name, hint, summary: sc.summary };
+    return { name, hint, summary: summaryOf(sc) };
   });
 
   const maxNameLen = Math.max(...entries.map((e) => e.name.length));
@@ -339,7 +379,7 @@ function renderParentHelp(cmd: CommandDef): string {
   }
 
   lines.push("");
-  lines.push(`Run 'woco ${cmd.name} <subcommand> -h' for details on a subcommand.`);
+  lines.push(label("runSubHelp", { name: cmd.name }));
   lines.push("");
 
   return lines.join("\n");
@@ -357,20 +397,21 @@ function renderSingleCommandHelp(cmd: CommandDef): string {
   lines.push("");
   lines.push(`woco ${cmd.name}${hint ? ` ${hint}` : ""}${positionalStr ? " " + positionalStr : ""}${flagHint}`);
   lines.push("");
-  lines.push(`  ${cmd.summary}`);
-  if (cmd.description) {
-    lines.push(`  ${cmd.description}`);
+  lines.push(`  ${summaryOf(cmd)}`);
+  const description = descriptionOf(cmd);
+  if (description) {
+    lines.push(`  ${description}`);
   }
 
   // Positionals
   if (cmd.positionals.length > 0) {
     lines.push("");
-    lines.push("Arguments:");
+    lines.push(label("arguments"));
     const maxPosLen = Math.max(...cmd.positionals.map((p) => p.name.length));
     for (const p of cmd.positionals) {
-      const req = p.required ? " (required)" : "";
+      const req = p.required ? label("required") : "";
       const padded = p.name.padEnd(maxPosLen + 2);
-      lines.push(`  ${padded}${p.description}${req}`);
+      lines.push(`  ${padded}${helpText(`${helpKeyBase(cmd)}.pos.${p.name}`, p.description)}${req}`);
     }
   }
 
@@ -379,7 +420,7 @@ function renderSingleCommandHelp(cmd: CommandDef): string {
   const allFlags = [...cmd.flags, ...GLOBAL_FLAGS.filter((f) => !seenFlags.has(f.name))];
   if (allFlags.length > 0) {
     lines.push("");
-    lines.push("Options:");
+    lines.push(label("options"));
     const maxFlagLen = Math.max(
       ...allFlags.map((f) => {
         const aliasStr = f.alias ? `, ${f.alias}` : "";
@@ -393,8 +434,8 @@ function renderSingleCommandHelp(cmd: CommandDef): string {
       const flagLabel = `${f.name}${aliasStr}${typeStr}`;
       const padded = flagLabel.padEnd(maxFlagLen + 2);
       const enumStr = f.enum ? ` [${f.enum.join("|")}]` : "";
-      const defaultStr = f.default !== undefined && f.default !== false ? ` (default: ${f.default})` : "";
-      lines.push(`  ${padded}${f.description}${enumStr}${defaultStr}`);
+      const defaultStr = f.default !== undefined && f.default !== false ? label("defaultValue", { value: String(f.default) }) : "";
+      lines.push(`  ${padded}${flagDescriptionOf(cmd, f)}${enumStr}${defaultStr}`);
     }
   }
 

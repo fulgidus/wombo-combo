@@ -20,6 +20,7 @@ import { PID_FILE, type DaemonAgentState } from "../daemon/protocol";
 import { DaemonState, type InternalAgentState } from "../daemon/state";
 import { enqueueMerge, mergeBranch as realMergeBranch } from "../lib/merger";
 import { output, outputError, type OutputFormat } from "../lib/output";
+import { msg, renderMsg, t, type Msg } from "../lib/i18n";
 import {
   computeOperationId,
   resumeIncompleteOperations as realResume,
@@ -84,7 +85,14 @@ export interface MergeCommandResult {
 }
 
 /** A refusal that should abort the command with an explanation (exit code 1). */
-export class MergeCommandError extends Error {}
+export class MergeCommandError extends Error {
+  /** Deferred message: rendered per output format (text = active locale, json = en). */
+  readonly input: string | Msg;
+  constructor(input: string | Msg) {
+    super(renderMsg(input, "en"));
+    this.input = input;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -207,17 +215,13 @@ function selectAgents(
     for (const id of requested) {
       const agent = byId.get(id);
       if (!agent) {
-        throw new MergeCommandError(`No persisted agent found for task "${id}". Run \`woco status\` to list agents.`);
+        throw new MergeCommandError(msg("cli.merge.noAgent", { id }));
       }
       if (agent.status !== "verified") {
-        throw new MergeCommandError(
-          `Task "${id}" is not verified (status: ${agent.status}). Only verified agents can be merged.`
-        );
+        throw new MergeCommandError(msg("cli.merge.notVerified", { id, status: agent.status }));
       }
       if (isDeferredPredecessor(agent, byId)) {
-        throw new MergeCommandError(
-          `Task "${id}" is a deferred chain predecessor; it is merged together with the chain's terminal task. Select the terminal task instead.`
-        );
+        throw new MergeCommandError(msg("cli.merge.deferredPredecessor", { id }));
       }
       selected.push(agent);
     }
@@ -229,10 +233,7 @@ function selectAgents(
 
   const destinations = [...new Set(selected.map((a) => a.baseBranch))];
   if (destinations.length > 1) {
-    throw new MergeCommandError(
-      `Selected agents target different destination branches (${destinations.join(", ")}). ` +
-        `Merge them separately with --tasks so each batch has one destination.`
-    );
+    throw new MergeCommandError(msg("cli.merge.mixedDestinations", { destinations: destinations.join(", ") }));
   }
 
   return selected.sort((a, b) => {
@@ -269,16 +270,10 @@ export async function runMerge(
   // Refuse to mutate while a daemon could be merging concurrently
   const daemon = (deps.isDaemonAlive ?? defaultIsDaemonAlive)(projectRoot);
   if (daemon.running) {
-    const detail =
-      `A wombo daemon is running (pid ${daemon.pid ?? "unknown"}) and may merge concurrently; ` +
-      `the in-process merge queue cannot protect against a separate process.`;
     if (!opts.dryRun) {
-      throw new MergeCommandError(
-        `${detail}\nStop it first with \`woco daemon stop\` (or wait for it to finish), then re-run \`woco merge\`. ` +
-          `The daemon already publishes after its own merges.`
-      );
+      throw new MergeCommandError(msg("cli.merge.daemonRunning", { pid: daemon.pid ?? "unknown" }));
     }
-    result.warnings.push(`${detail} Selection below may be stale.`);
+    result.warnings.push(renderMsg(msg("cli.merge.daemonStaleWarning", { pid: daemon.pid ?? "unknown" }), "en"));
   }
 
   const state = new DaemonState(projectRoot);
@@ -462,36 +457,41 @@ export async function runMerge(
 // ---------------------------------------------------------------------------
 
 function renderText(r: MergeCommandResult): void {
-  console.log(r.dry_run ? "\n[dry-run] woco merge" : "\nwoco merge");
-  if (r.destination) console.log(`  Destination: ${r.destination}`);
+  console.log(r.dry_run ? t("cli.merge.headingDryRun") : t("cli.merge.heading"));
+  if (r.destination) console.log(t("cli.merge.destination", { destination: r.destination }));
   for (const s of r.selected) {
     const flags = [
-      s.already_merged ? "already merged" : "",
-      s.branch_missing ? "branch missing" : "",
-      s.merges_chain.length ? `includes chain: ${s.merges_chain.join(", ")}` : "",
+      s.already_merged ? t("cli.merge.flagAlreadyMerged") : "",
+      s.branch_missing ? t("cli.merge.flagBranchMissing") : "",
+      s.merges_chain.length ? t("cli.merge.flagChain", { chain: s.merges_chain.join(", ") }) : "",
     ].filter(Boolean);
-    console.log(`  ${r.dry_run ? "would merge" : "selected"}: ${s.feature_id} — ${s.title} (${s.branch})${flags.length ? ` [${flags.join("; ")}]` : ""}`);
+    console.log(`  ${r.dry_run ? t("cli.merge.wouldMerge") : t("cli.merge.selected")}: ${s.feature_id} — ${s.title} (${s.branch})${flags.length ? ` [${flags.join("; ")}]` : ""}`);
   }
   if (r.dry_run) {
+    const changelog = t(r.plan.changelog ? "cli.common.on" : "cli.common.off");
     console.log(
-      `  Publication: PR mode ${r.plan.pr_mode}` +
-        (r.plan.pr_mode !== "skip" ? `, target ${r.plan.pr_base_branch ?? "(remote default branch)"}` : "") +
-        `, changelog ${r.plan.changelog ? "on" : "off"}`
+      r.plan.pr_mode !== "skip"
+        ? t("cli.merge.publicationTarget", {
+            mode: r.plan.pr_mode,
+            target: r.plan.pr_base_branch ?? t("cli.merge.remoteDefaultBranch"),
+            changelog,
+          })
+        : t("cli.merge.publication", { mode: r.plan.pr_mode, changelog })
     );
   }
-  for (const m of r.merged) console.log(`  merged: ${m.feature_id}${m.via ? ` (via ${m.via})` : ""}${m.commit_hash ? ` ${m.commit_hash.slice(0, 7)}` : ""}`);
-  for (const id of r.already_merged) console.log(`  already in destination: ${id}`);
-  for (const f of r.failed) console.log(`  FAILED: ${f.feature_id} — ${f.error}`);
+  for (const m of r.merged) console.log(`  ${t("cli.merge.merged")}: ${m.feature_id}${m.via ? ` (${t("cli.merge.via", { via: m.via })})` : ""}${m.commit_hash ? ` ${m.commit_hash.slice(0, 7)}` : ""}`);
+  for (const id of r.already_merged) console.log(`  ${t("cli.merge.alreadyInDestination", { id })}`);
+  for (const f of r.failed) console.log(`  ${t("cli.merge.failed")}: ${f.feature_id} — ${f.error}`);
   if (r.publication) {
     const p = r.publication;
-    console.log(`  Changelog: ${p.changelog.status}${p.changelog.message ? ` — ${p.changelog.message}` : ""}`);
-    console.log(`  Push: ${p.push.status}${p.push.message ? ` — ${p.push.message}` : ""}`);
-    console.log(`  Pull request: ${p.pr.status}${p.pr.url ? ` ${p.pr.url}` : ""}${p.pr.message ? ` — ${p.pr.message}` : ""}`);
+    console.log(`  ${t("cli.merge.changelog")}: ${p.changelog.status}${p.changelog.message ? ` — ${p.changelog.message}` : ""}`);
+    console.log(`  ${t("cli.merge.push")}: ${p.push.status}${p.push.message ? ` — ${p.push.message}` : ""}`);
+    console.log(`  ${t("cli.merge.pullRequest")}: ${p.pr.status}${p.pr.url ? ` ${p.pr.url}` : ""}${p.pr.message ? ` — ${p.pr.message}` : ""}`);
   }
   for (const p of r.resumed) {
-    console.log(`  Resumed ${p.operationId}: push ${p.push.status}, PR ${p.pr.status}${p.pr.url ? ` ${p.pr.url}` : ""}`);
+    console.log(`  ${t("cli.merge.resumed", { id: p.operationId, push: p.push.status, pr: p.pr.status })}${p.pr.url ? ` ${p.pr.url}` : ""}`);
   }
-  for (const w of r.warnings) console.log(`  Warning: ${w}`);
+  for (const w of r.warnings) console.log(`  ${t("cli.merge.warning")}: ${w}`);
   if (r.message) console.log(`\n${r.message}`);
 }
 
@@ -502,7 +502,7 @@ export async function cmdMerge(opts: MergeCommandOptions, deps: MergeCommandDeps
     result = await runMerge(opts, deps);
   } catch (err) {
     if (err instanceof MergeCommandError) {
-      outputError(fmt, err.message);
+      outputError(fmt, err.input);
       return; // unreachable
     }
     throw err;

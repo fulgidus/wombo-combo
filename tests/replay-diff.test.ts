@@ -80,6 +80,46 @@ describe("captureWorktreeDiff", () => {
     expect(r.baseline).toBeNull();
   });
 
+  test("includes untracked files as new-file diffs", () => {
+    const { dir, base } = repo();
+    writeRepoFile(dir, "fresh/new.ts", "export const x = 1;\nexport const y = 2;\n");
+    const r = captureWorktreeDiff(dir, base);
+    expect(r.diff).toContain("diff --git a/fresh/new.ts b/fresh/new.ts");
+    expect(r.diff).toContain("new file mode");
+    expect(r.diff).toContain("+export const y = 2;");
+    expect(r.files.find((f) => f.path === "fresh/new.ts")).toMatchObject({ additions: 2, deletions: 0 });
+    expect(r.diagnostics).toEqual([]);
+  });
+
+  test("untracked files respect .gitignore and runtime exclusions", () => {
+    const { dir, base } = repo();
+    writeRepoFile(dir, ".gitignore", "ignored.txt\n");
+    commitAll(dir, "ignore");
+    writeRepoFile(dir, "ignored.txt", "secret\n");
+    writeRepoFile(dir, ".wombo-combo/logs/y.log", "noise\n");
+    writeRepoFile(dir, "kept.txt", "kept\n");
+    const r = captureWorktreeDiff(dir, base);
+    expect(r.files.map((f) => f.path).sort()).toEqual([".gitignore", "kept.txt"]);
+    expect(r.diff).not.toContain("secret");
+    expect(r.diff).not.toContain("noise");
+  });
+
+  test("untracked binary files have null counts", () => {
+    const { dir, base } = repo();
+    writeRepoFile(dir, "u.bin", "\0\1\2\0binary");
+    const r = captureWorktreeDiff(dir, base);
+    expect(r.files.find((f) => f.path === "u.bin")).toMatchObject({ additions: null, deletions: null });
+  });
+
+  test("untracked capture leaves the index untouched", () => {
+    const { dir, base } = repo();
+    writeRepoFile(dir, "new.txt", "x\n");
+    const before = git(dir, "status", "--porcelain");
+    captureWorktreeDiff(dir, base);
+    expect(git(dir, "status", "--porcelain")).toBe(before);
+    expect(before).toContain("?? new.txt");
+  });
+
   test("does not mutate the repository", () => {
     const { dir, base } = repo();
     writeRepoFile(dir, "README.md", "# changed\n");

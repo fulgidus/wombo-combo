@@ -1,0 +1,17 @@
+id: tui-arrow-confirm-cancel
+title: "Global convention: right arrow confirms, left arrow cancels"
+description: Apply across confirm dialogs, pickers, wizards and review screens, with the ESC menu and text inputs excluded.
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T08:53:16.517Z
+ended_at: 2026-10-12T09:02:57.377Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []

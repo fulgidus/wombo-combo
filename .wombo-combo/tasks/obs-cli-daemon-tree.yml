@@ -1,0 +1,48 @@
+id: obs-cli-daemon-tree
+title: Add woco daemon tree Command
+description: |
+  Add a `tree` subcommand to src/commands/citty/daemon.ts. It connects to the running daemon
+  through the existing client/launcher helpers, sends cmd:get-supervision-tree, and prints the
+  reply. Default text output uses formatSupervisionTree; `--output json` (and toon, via the
+  existing resolveOutputFormat/output helpers) prints a compact JSON object
+  {root, totalRestarts, escalations, updatedAt}. When the daemon is not running, print a localised
+  message (text) or {running:false, root:null} (json) and exit non-zero only if the existing
+  daemon status command does so for the same case.
+  Register the subcommand in src/commands/citty/router.ts if subcommands are listed there and in
+  COMMAND_REGISTRY (src/lib/schema.ts; also check src/lib/citty-registry.ts) so `woco describe`
+  lists `daemon tree` with its flags. Add CLI strings to src/locales/en/cli.json (and it/cli.json if
+  parity is required); no hardcoded text.
+  Tests: tests/daemon-tree-cli.test.ts covering JSON shape against a fake WebSocket daemon or a
+  stubbed fetch function (reuse patterns in tests/daemon-client.test.ts), the not-running case,
+  and a describe-registry assertion.
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-daemon-observer
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - CLI output must be compact and machine-parseable with --output json
+  - Use the i18next locale files for all user-facing strings
+  - Keep COMMAND_REGISTRY in sync so `woco describe` shows the new command
+forbidden:
+  - Do not change existing daemon start/stop/status behaviour or output
+  - Do not edit src/locales/*/tui.json
+references:
+  - src/commands/citty/daemon.ts
+  - src/commands/citty/router.ts
+  - src/lib/schema.ts
+  - src/lib/citty-registry.ts
+  - src/daemon/client.ts
+  - src/daemon/launcher.ts
+  - src/locales/en/cli.json
+  - tests/daemon-client.test.ts
+  - tests/i18n-cli.test.ts
+notes:
+  - tests/i18n-cli.test.ts may enforce key parity between locales; run it.
+subtasks: []
+quest: supervision-observability
+paths: []

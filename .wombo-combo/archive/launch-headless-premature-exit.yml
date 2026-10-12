@@ -1,0 +1,29 @@
+id: launch-headless-premature-exit
+title: Headless launch reports done while verification and merge are still running
+description: "Found by dogfooding (first woco launch with the claude-code harness, 3 tasks): after the agents exited,
+  'woco launch --no-tui --no-ui' printed 'Daemon completed: 0 succeeded, 0 failed out of 3 total.' and exited while the
+  daemon was still running build verification (bun test in each worktree) and had not merged anything: the agents were
+  in status 'completed', scheduler status 'idle', totalProcessed 0. The headless wait loop (src/commands/launch.ts, the
+  part that prints '[daemon] N active, M queued, K done') treats scheduler 'idle' with no active agents as finished, but
+  agents in completed/verifying/verified/merging are still in flight. Fix: the wait loop must consider an agent finished
+  only in a terminal status (merged, failed, cancelled, skipped...), and the final summary must count merged vs failed
+  from those statuses; add a test with a fake daemon state sequence (see existing launch/daemon tests). Also check the
+  TUI wait path for the same condition."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT2H
+started_at: 2026-10-12T02:14:48.664Z
+ended_at: 2026-10-12T02:22:29.610Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references:
+  - src/commands/launch.ts
+  - src/daemon/state.ts
+  - src/daemon/agent-status.ts
+notes: []
+subtasks: []
+paths: []

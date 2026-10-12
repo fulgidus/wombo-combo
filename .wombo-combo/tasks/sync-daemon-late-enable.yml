@@ -1,0 +1,20 @@
+id: sync-daemon-late-enable
+title: Start the daemon sync loop when auto mode is enabled after daemon start
+description: AutoSyncLoop only starts if sync.github is auto at Daemon.start(); switching to auto later does nothing
+  until restart. Start the loop unconditionally (it already re-reads config each tick and idles when disabled), with a
+  test.
+status: done
+completion: 100
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-10-11T23:15:19.877Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: github-sync
+paths: []

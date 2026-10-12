@@ -20,6 +20,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { CONFIG_FILE } from "../config";
+import { t } from "../lib/i18n";
 
 export interface InitOptions {
   projectRoot: string;
@@ -34,9 +35,7 @@ export async function cmdInit(opts: InitOptions): Promise<void> {
   const configPath = resolve(opts.projectRoot, CONFIG_FILE);
 
   if (existsSync(configPath) && !opts.force) {
-    console.error(
-      `${CONFIG_FILE} already exists. Use --force to overwrite.`
-    );
+    console.error(t("cli.init.exists", { file: CONFIG_FILE }));
     process.exit(1);
   }
 

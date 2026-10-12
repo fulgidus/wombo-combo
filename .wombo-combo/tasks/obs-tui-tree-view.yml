@@ -1,0 +1,47 @@
+id: obs-tui-tree-view
+title: Supervision Tree TUI Screen
+description: |
+  Build src/ink/supervision-tree-view.tsx, a screen showing the live tree from the dashboard
+  metrics context: indentation via flattenSupervisionTree, per node label, state, restart count
+  and last exit reason, plus a header with total restarts and escalations and an empty state
+  ("no supervised processes") when root is null. Reuse existing Ink primitives and theme.ts;
+  no new TUI library. Esc/q returns to the previous screen, following the pattern of
+  analytics-overlay.tsx / usage-overlay.tsx.
+  Make it reachable from the global ESC menu (src/ink/esc-menu.tsx MENU_ITEMS) and register the
+  screen in src/ink/router.tsx and src/ink/run-tui-app.tsx following existing screens.
+  Add i18n keys to src/locales/en/tui.json (e.g. supervision.title, .empty, .restarts, .lastExit,
+  .state.*, .menu) and the same keys to src/locales/it/tui.json if the locale parity test requires it.
+  Do not hardcode user-facing strings. Add a compact summary line to the dashboard if it is a
+  one-line change in dashboard.tsx (optional).
+  Tests in src/ink/supervision-tree-view.test.tsx (empty state, nested tree, restart counts,
+  last exit, escalated node, key to go back) plus an esc-menu test update if item counts are asserted.
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-dashboard-metrics
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Use i18next locale files for all user-facing strings
+  - Colocate Ink tests as *.test.tsx
+  - Ink tests must be deterministic (no wall-clock, no sleeps beyond existing helpers)
+forbidden:
+  - Do not add new TUI libraries
+  - Do not edit src/lib/dashboard-metrics.ts or locale cli.json
+references:
+  - src/ink/analytics-overlay.tsx
+  - src/ink/analytics-overlay.test.tsx
+  - src/ink/esc-menu.tsx
+  - src/ink/router.tsx
+  - src/ink/run-tui-app.tsx
+  - src/ink/dashboard-metrics-context.tsx
+  - src/locales/en/tui.json
+  - src/lib/supervision-tree.ts
+notes:
+  - Check src/ink/strings/en.ts and src/ink/i18n.ts for how tui.json keys are resolved in components.
+subtasks: []
+quest: supervision-observability
+paths: []

@@ -17,6 +17,7 @@ import { loadConfig, validateConfig, isProjectInitialized, WOMBO_DIR } from "../
 import { ensureTasksFile } from "../../lib/tasks";
 import { resolveOutputFormat, outputError, type OutputFormat } from "../../lib/output";
 import { cmdRetry, type RetryCommandOptions } from "../retry";
+import { msg, t } from "../../lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Parsed retry args (intermediate representation before config merge)
@@ -92,7 +93,7 @@ export const retryCommand = defineCommand({
 
     // Validate positional arg
     if (!parsed.featureId) {
-      outputError(fmt, "Usage: woco retry <feature-id>");
+      outputError(fmt, msg("cli.retry.usage"));
       return;
     }
 
@@ -107,10 +108,7 @@ export const retryCommand = defineCommand({
 
     // Guard: project must be initialized
     if (!isProjectInitialized(projectRoot)) {
-      console.error(
-        `\nThis project hasn't been initialized yet.\n` +
-          `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-      );
+      console.error(t("cli.common.notInitialized", { dir: WOMBO_DIR }));
       process.exit(1);
     }
 

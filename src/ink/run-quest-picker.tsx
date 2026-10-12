@@ -16,10 +16,10 @@ import { render, Box } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import { useNavigation } from "./router";
 import { useEscMenu } from "./esc-menu";
-import { QuestPickerView, type QuestSummary } from "./quest-picker";
+import { QuestPickerView, summarizeQuest, type QuestSummary } from "./quest-picker";
 import { FakeTaskWizard, generateFakeTasks, type FakeTaskConfig } from "./fake-task-wizard";
 import type { Quest } from "../lib/quest";
-import { QUEST_STATUS_ORDER, getQuestTaskIds } from "../lib/quest";
+import { QUEST_STATUS_ORDER } from "../lib/quest";
 import { loadAllQuests, saveQuest, deleteQuest } from "../lib/quest-store";
 import { loadTasks, getDoneTaskIds, loadArchive, type Task } from "../lib/tasks";
 import { saveTaskToStore } from "../lib/task-store";
@@ -36,6 +36,7 @@ import type { TuiAppCallbacks } from "./run-tui-app";
 export type QuestPickerAction =
   | { type: "select"; questId: string | null }
   | { type: "plan"; questId: string }
+  | { type: "plan-all" }
   | { type: "genesis"; vision: string }
   | { type: "errand"; spec: ErrandSpec }
   | { type: "wishlist" }
@@ -88,13 +89,9 @@ function QuestPickerApp({
     });
 
     // Build summaries
-    const summaries: QuestSummary[] = sorted.map((quest) => {
-      const questTids = getQuestTaskIds(quest.id, tasksData.tasks);
-      const totalTasks = questTids.length;
-      const doneTasks = questTids.filter((id) => doneIds.has(id)).length;
-      const completionPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-      return { quest, totalTasks, doneTasks, completionPct };
-    });
+    const summaries: QuestSummary[] = sorted.map((quest) =>
+      summarizeQuest(quest, tasksData.tasks, archiveData.tasks, doneIds),
+    );
 
     setQuests(summaries);
 
@@ -131,6 +128,10 @@ function QuestPickerApp({
     const summary = quests[selectedIndex - 2];
     onAction({ type: "plan", questId: summary.quest.id });
   }, [selectedIndex, quests, onAction]);
+
+  const handlePlanAll = useCallback(() => {
+    onAction({ type: "plan-all" });
+  }, [onAction]);
 
   const handleGenesis = useCallback(() => {
     // Signal "genesis"; the parent (tui.ts) handles
@@ -262,6 +263,7 @@ function QuestPickerApp({
         onCreate={handleCreate}
         onToggleActive={handleToggleActive}
         onPlan={handlePlan}
+        onPlanAll={handlePlanAll}
         onGenesis={handleGenesis}
         onErrand={handleErrand}
         onWishlist={handleWishlist}
@@ -359,6 +361,16 @@ export function QuestPickerScreen({
               callbacks: callbacks as unknown,
             } as Record<string, unknown>);
           }
+          break;
+        case "plan-all":
+          callbacks?.onPlanAll?.().then(() => {
+            nav.replace("quest-picker", {
+              projectRoot,
+              config: config as unknown,
+              onExit,
+              callbacks: callbacks as unknown,
+            } as Record<string, unknown>);
+          });
           break;
         case "genesis":
           if (callbacks?.onGenesis) {

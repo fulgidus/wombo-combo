@@ -3,6 +3,7 @@
  *
  * Usage:
  *   woco tasks check
+ *   woco tasks check --mirror [--strict]   # also report GitHub mirror drift (offline)
  *
  * Checks:
  *   - Required fields present on every task
@@ -30,7 +31,23 @@ import {
   type SchemaIssue,
 } from "../../lib/task-schema";
 import { output, type OutputFormat } from "../../lib/output";
+import { t } from "../../lib/i18n";
 import { renderTasksCheck } from "../../lib/toon";
+import { checkMirror, type MirrorFinding } from "../../lib/sync/mirror-check";
+
+function mirrorMessage(f: MirrorFinding): string {
+  const ref = f.ref;
+  switch (f.kind) {
+    case "unmapped":
+      return t("cli.tasks.check.mirror.unmapped", { ref });
+    case "orphan-mapping":
+      return t("cli.tasks.check.mirror.orphan", { ref, issue: f.issue ?? 0 });
+    case "comment-no-id":
+      return t("cli.tasks.check.mirror.commentNoId", { ref, comment: f.comment ?? "" });
+    case "hash-differs":
+      return t("cli.tasks.check.mirror.hashDiffers", { ref, issue: f.issue ?? 0 });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +57,10 @@ export interface TasksCheckOptions {
   projectRoot: string;
   config: WomboConfig;
   outputFmt?: OutputFormat;
+  /** Also report GitHub mirror inconsistencies (offline, warnings) */
+  mirror?: boolean;
+  /** With mirror: findings count as errors (exit code 1) */
+  strict?: boolean;
 }
 
 interface CheckResult {
@@ -182,6 +203,14 @@ export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
   const result = checkTasks(data);
   mergeSchemaIssues(result, schemaIssues);
 
+  // Mirror findings are warnings (errors with --strict); they never call the network.
+  let mirror: Array<MirrorFinding & { message: string }> = [];
+  if (opts.mirror) {
+    mirror = checkMirror(projectRoot, config).map((f) => ({ ...f, message: mirrorMessage(f) }));
+    const bucket = opts.strict ? result.errors : result.warnings;
+    for (const f of mirror) bucket.push(f.message);
+  }
+
   const allItems = collectAllItems(data);
   const issues = [
     ...result.errors.map((msg) => ({ level: "error" as const, message: msg })),
@@ -193,21 +222,22 @@ export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
     ok,
     issues,
     items_checked: allItems.length,
+    ...(opts.mirror ? { mirror } : {}),
   };
 
   output(
     fmt,
     checkData,
     () => {
-      console.log(`\nChecking ${config.tasksDir}/ (${allItems.length} items)...\n`);
+      console.log(t("cli.tasks.check.heading", { dir: config.tasksDir, count: allItems.length }));
 
       if (result.errors.length === 0 && result.warnings.length === 0) {
-        console.log("  All checks passed. No issues found.");
+        console.log(t("cli.tasks.check.passed"));
         return;
       }
 
       if (result.errors.length > 0) {
-        console.log(`  ERRORS (${result.errors.length}):`);
+        console.log(t("cli.tasks.check.errors", { count: result.errors.length }));
         for (const e of result.errors) {
           console.log(`    \x1b[31m✗\x1b[0m ${e}`);
         }
@@ -215,7 +245,7 @@ export async function cmdTasksCheck(opts: TasksCheckOptions): Promise<void> {
       }
 
       if (result.warnings.length > 0) {
-        console.log(`  WARNINGS (${result.warnings.length}):`);
+        console.log(t("cli.tasks.check.warnings", { count: result.warnings.length }));
         for (const w of result.warnings) {
           console.log(`    \x1b[33m⚠\x1b[0m ${w}`);
         }

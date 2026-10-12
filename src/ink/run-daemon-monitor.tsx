@@ -65,10 +65,12 @@ import { createIsolatedStdout } from "./bun-stdin";
 import { ScreenRouter, useNavigation, type NavigationState } from "./router";
 import { ChromeLayout } from "./chrome";
 import { EscMenuProvider } from "./esc-menu";
+import { ReplayScreen } from "./replay-screen";
 import { SplashScreen } from "./splash-screen";
 import { SettingsScreen, type SettingsScreenConfig } from "./settings-screen";
 import { ThemeContext, getTheme } from "./theme";
-import { I18nContext, getLocaleT } from "./i18n";
+import { I18nContext, getLocaleT, t as defaultT } from "./i18n";
+import { initI18n } from "../lib/i18n";
 import {
   DashboardStoreContext,
   useDashboardStore,
@@ -136,7 +138,8 @@ function createEmptyStore(): DaemonStore {
   };
 }
 
-const TERMINAL_STATUSES: AgentStatus[] = ["completed", "verified", "failed", "merged"];
+// "completed" and "verified" are in flight: build verification and merge still run.
+const TERMINAL_STATUSES: AgentStatus[] = ["failed", "merged"];
 
 // ---------------------------------------------------------------------------
 // Helper: build DashboardStore from DaemonStore
@@ -307,7 +310,12 @@ export function DaemonMonitorShell({
   skipSplash = false,
 }: DaemonMonitorShellProps): React.ReactElement {
   const theme = getTheme(config.tui?.theme ?? "default");
-  const tFn = getLocaleT(config.tui?.locale ?? "en");
+  // Resolve once per render: config > env > en. Also syncs the global t().
+  const activeLocale = React.useMemo(
+    () => initI18n({ configLocale: config.tui?.locale, devMode: config.devMode }),
+    [config.tui?.locale, config.devMode],
+  );
+  const tFn = getLocaleT(activeLocale);
 
   // Use provided store or create an empty one
   const store = storeProp ?? createEmptyStore();
@@ -329,7 +337,13 @@ export function DaemonMonitorShell({
   // Chrome title follows the active screen (monitor/splash keep "Wave Monitor").
   const [screenKey, setScreenKey] = useState<string>(skipSplash ? "monitor" : "splash");
   const chromeTitle =
-    screenKey === "dashboard" ? "Dashboard" : screenKey === "settings" ? "Settings" : "Wave Monitor";
+    screenKey === "dashboard"
+      ? tFn("screen.dashboard")
+      : screenKey === "settings"
+        ? tFn("screen.settings")
+        : screenKey === "replays"
+          ? tFn("screen.replays")
+          : tFn("screen.waveMonitor");
 
   // Dashboard entry from the ESC menu: push once (never stack duplicates; the
   // splash owns a pending replace()) and return with pop().
@@ -339,6 +353,14 @@ export function DaemonMonitorShell({
     if (nav.currentScreen === "dashboard" || nav.currentScreen === "splash") return;
     nav.push("dashboard", { onBack: () => navRef.current?.pop() });
   }, []);
+
+  // Session replays entry from the ESC menu (task picker, then the viewer).
+  const handleOpenReplays = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (nav.currentScreen === "replays" || nav.currentScreen === "splash") return;
+    nav.push("replays", { projectRoot, onBack: () => navRef.current?.pop() });
+  }, [projectRoot]);
 
   // Wire up the notify callback
   useEffect(() => {
@@ -405,6 +427,7 @@ export function DaemonMonitorShell({
     monitor: DaemonMonitorScreen,
     settings: SettingsScreen,
     dashboard: DashboardScreen,
+    replays: ReplayScreen,
   };
 
   const initialScreen = skipSplash ? "monitor" : "splash";
@@ -417,12 +440,12 @@ export function DaemonMonitorShell({
       <I18nContext.Provider value={tFn}>
         <DashboardStoreContext.Provider value={dashStore}>
           <DashboardMetricsProvider projectRoot={projectRoot} daemonClient={client}>
-            <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard}>
+            <EscMenuProvider onNavigate={handleEscNavigate} onOpenDashboard={handleOpenDashboard} onOpenReplays={handleOpenReplays}>
               <ChromeLayout
                 screenName={chromeTitle}
                 daemonConnected={true}
                 waveSummary={waveSummary}
-                locale={config.tui?.locale ?? "en"}
+                locale={activeLocale}
                 dashboardAvailable
               >
                 <ScreenRouter
@@ -536,6 +559,7 @@ function DaemonMonitorAdapter({
     merged: 0,
     retry: 0,
     resolving_conflict: 0,
+    in_review: 0,
   };
   for (const a of liveInfos) {
     counts[a.status] = (counts[a.status] ?? 0) + 1;
@@ -614,10 +638,10 @@ function DaemonMonitorAdapter({
     try {
       content = readFileSync(logPath, "utf-8");
       if (!content.trim()) {
-        content = "Log file is empty. Agent may not have started producing output yet.";
+        content = defaultT("daemonMonitor.log.empty");
       }
     } catch {
-      content = `No log file found at ${logPath}`;
+      content = defaultT("daemonMonitor.log.missing", { path: logPath });
     }
     const lines = content.split("\n");
     const truncated = lines.length > 200 ? lines.slice(-200).join("\n") : content;

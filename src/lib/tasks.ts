@@ -15,6 +15,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import type { WomboConfig } from "../config";
 import { WOMBO_DIR, isProjectInitialized } from "../config";
+import { t } from "./i18n";
 import type { SchemaIssue } from "./task-schema";
 import {
   loadTasksFromStore,
@@ -237,18 +238,15 @@ export async function ensureTasksFile(
 
   // Project not initialized at all — tell the user to run init
   if (!isProjectInitialized(projectRoot)) {
-    console.error(
-      `\nThis project hasn't been initialized yet.\n` +
-      `Run \`woco init\` to set up ${WOMBO_DIR}/ with config, tasks, and archive stores.\n`
-    );
+    console.error(t("cli.tasksCmd.notInitialized", { dir: WOMBO_DIR }));
     process.exit(1);
   }
 
   // Project IS initialized (config.json exists) but tasks store is missing.
   // Auto-create it — this is a partial state, not a "never initialized" state.
   // Notices go to stderr so `--output json` keeps stdout machine-readable.
-  console.error(`\nTasks store not found: ${WOMBO_DIR}/${config.tasksDir}/`);
-  console.error(`Creating empty tasks store...`);
+  console.error(t("cli.tasks.store.missing", { path: `${WOMBO_DIR}/${config.tasksDir}` }));
+  console.error(t("cli.tasks.store.creating"));
 
   ensureWomboDir(projectRoot);
 
@@ -263,7 +261,7 @@ export async function ensureTasksFile(
       maintainer: "unknown",
     },
   });
-  console.error(`Created ${WOMBO_DIR}/${config.tasksDir}/ with empty task store.`);
+  console.error(t("cli.tasks.store.created", { path: `${WOMBO_DIR}/${config.tasksDir}` }));
 
   // Also create empty archive store if missing
   const archivePath = resolve(projectRoot, WOMBO_DIR, config.archiveDir);
@@ -278,7 +276,7 @@ export async function ensureTasksFile(
         maintainer: "unknown",
       },
     });
-    console.error(`Created ${WOMBO_DIR}/${config.archiveDir}/.`);
+    console.error(t("cli.tasks.store.archiveCreated", { path: `${WOMBO_DIR}/${config.archiveDir}` }));
   }
   console.error(); // trailing blank line
 }
@@ -496,11 +494,15 @@ export function selectTasks(
       const doneIds = getDoneIds(data.tasks, archive ?? []);
       for (const m of missing) {
         if (!allIds.includes(m)) {
-          console.error(`  Task "${m}" does not exist in the tasks file`);
+          console.error(t("cli.tasks.select.missing", { id: m }));
         } else {
           const task = data.tasks.find((t) => t.id === m)!;
           console.error(
-            `  Task "${m}" is not ready (status: ${task.status}, deps met: ${areDependenciesMet(task, doneIds)})`
+            t("cli.tasks.select.notReady", {
+              id: m,
+              status: task.status,
+              deps: String(areDependenciesMet(task, doneIds)),
+            })
           );
         }
       }

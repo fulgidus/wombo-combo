@@ -1,0 +1,9 @@
+id: 2026-10-11T23-52-49.238Z-fulgidus-b7rb
+ref_kind: task
+ref_id: sync-live-smoke-test
+author: fulgidus
+role: human
+created_at: 2026-10-11T23:52:49.238Z
+body: "Reverse-direction smoke test: this comment was written on GitHub and
+  should be pulled into woco as a comment on task sync-live-smoke-test."
+github_url: https://github.com/fulgidus/wombo-combo/issues/4#issuecomment-6115302342

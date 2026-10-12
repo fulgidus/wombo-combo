@@ -33,6 +33,11 @@ so they always match the CLI. Run `woco <command> --help` for the same informati
 | [`genesis`](./genesis/) | Decompose a project vision into quests |
 | [`wishlist`](./wishlist/) | Quick-capture ideas for later |
 | [`replay`](./replay/) | List and show recorded agent sessions from .wombo-combo/replays/ |
+| [`team`](./team/) | Multi-developer task claims: claim, release, status |
+| [`triage`](./triage/) | Triage tasks: list, show, set, brief |
+| [`retro`](./retro/) | Suggest environment improvements from replays, analytics, evals and comments |
+| [`comment`](./comment/) | Comments on tasks and quests: add, list, show, link |
+| [`sync`](./sync/) | Sync tasks and quests with GitHub issues: push, pull, run, watch, status, labels |
 | [`completion`](./completion/) | Shell completions (install, uninstall, or emit script) |
 | [`daemon`](./daemon/) | Manage the persistent background daemon |
 

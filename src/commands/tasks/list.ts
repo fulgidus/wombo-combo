@@ -5,7 +5,8 @@
  *   woco tasks list                     # list all tasks
  *   woco tasks list --status backlog    # filter by status
  *   woco tasks list --priority high     # filter by priority
- *   woco tasks list --ready             # show only ready tasks
+ *   woco tasks list --quest <id>        # only tasks of one quest
+ *   woco tasks list --ready             # show only ready tasks (planned + deps met)
  *   woco tasks list --archive           # include archived tasks
  */
 
@@ -22,9 +23,10 @@ import {
   type Difficulty,
   type FeaturesFile,
 } from "../../lib/tasks";
-import { output, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output";
+import { output, outputError, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output";
+import { t, msg } from "../../lib/i18n";
 import { renderTasksList } from "../../lib/toon";
-import { loadAllQuests } from "../../lib/quest-store";
+import { loadAllQuests, loadQuest } from "../../lib/quest-store";
 import type { Quest } from "../../lib/quest";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +39,7 @@ export interface TasksListOptions {
   status?: FeatureStatus;
   priority?: Priority;
   difficulty?: Difficulty;
+  quest?: string;
   ready?: boolean;
   includeArchive?: boolean;
   outputFmt?: OutputFormat;
@@ -144,6 +147,10 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
   const { projectRoot, config } = opts;
   const data = loadFeatures(projectRoot, config);
 
+  if (opts.quest && !loadQuest(projectRoot, opts.quest)) {
+    outputError(opts.outputFmt ?? "text", msg("cli.tasks.list.questNotFound", { id: opts.quest }));
+  }
+
   let features: Feature[] = [...data.tasks];
 
   // Include archive if requested
@@ -166,6 +173,11 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
     features = features.filter((f) => f.difficulty === opts.difficulty);
   }
 
+  // Filter by quest
+  if (opts.quest) {
+    features = features.filter((f) => f.quest === opts.quest);
+  }
+
   // Filter to ready-only
   if (opts.ready) {
     const readyFeatures = getReadyFeatures(data);
@@ -175,7 +187,7 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
 
   if (features.length === 0) {
     output(opts.outputFmt ?? "text", { features: [], total: 0, effort: "0m" }, () => {
-      console.log("No tasks match the given filters.");
+      console.log(t("cli.tasks.list.noMatch"));
     }, () => {
       // TOON: emit empty result
       console.log(renderTasksList([]));
@@ -250,7 +262,7 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
       effort: formatDuration(totalEffort),
     },
     () => {
-      console.log(`\n${BOLD}Tasks (${features.length} total, ~${formatDuration(totalEffort)} effort)${RESET}\n`);
+      console.log(`\n${BOLD}${t("cli.tasks.list.heading", { count: features.length, effort: formatDuration(totalEffort) })}${RESET}\n`);
 
       // Render quest-grouped sections (quests first, standalone last)
       const questIds = [...questInfoMap.keys()].sort();
@@ -260,14 +272,14 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
         const qi = questInfoMap.get(qid)!;
         const tasks = byQuest.get(qid)!;
         const questEffort = tasks.reduce((s, f) => s + parseDurationMinutes(f.effort), 0);
-        console.log(`  ${BOLD}${qi.title}${RESET} ${DIM}[${qi.id}]${RESET} (${tasks.length} tasks, ~${formatDuration(questEffort)})`);
+        console.log(`  ${BOLD}${qi.title}${RESET} ${DIM}[${qi.id}]${RESET} (${t("cli.tasks.list.questSummary", { count: tasks.length, effort: formatDuration(questEffort) })})`);
         renderStatusGroups(tasks, "    ");
       }
 
       if (standalone?.length) {
         if (questIds.length > 0) {
           // Only show header if there are also quest-grouped tasks
-          console.log(`  ${BOLD}Standalone${RESET} (${standalone.length} tasks)`);
+          console.log(`  ${BOLD}${t("cli.tasks.list.standalone")}${RESET} (${t("cli.tasks.list.standaloneCount", { count: standalone.length })})`);
         }
         renderStatusGroups(standalone, questIds.length > 0 ? "    " : "  ");
       }

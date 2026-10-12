@@ -32,6 +32,7 @@ import { ReplayStore, type LoadedReplay, type ReplaySummary } from "../lib/repla
 import { summarizeAnalytics, type AnalyticsFilter, type AnalyticsGroupBy } from "../lib/analytics-summary";
 import type { WomboConfig, } from "../config";
 import { WOMBO_DIR } from "../config";
+import { recentComments } from "../lib/comments";
 import type { DaemonAgentState } from "../daemon/protocol";
 import type { ErrandSpec } from "../lib/errand-planner";
 import type { TuiAppCallbacks } from "./run-tui-app";
@@ -571,6 +572,11 @@ function TaskBrowserApp({
     setShowEditor(false);
   }, []);
 
+  const loadTaskComments = useCallback(
+    (taskId: string) => recentComments(projectRoot, { kind: "task", id: taskId }, 5),
+    [projectRoot],
+  );
+
   const { columns, rows } = useTerminalSize();
   const editNode = showEditor ? displayNodes[selectedIndex] : null;
 
@@ -589,6 +595,7 @@ function TaskBrowserApp({
       taskUsage={taskUsage}
       questTitle={questTitle}
       hasRunningWave={hasRunningWave}
+      loadComments={loadTaskComments}
       agentStates={agentStates}
       onSelectionChange={setSelectedIndex}
       onToggle={handleToggle}

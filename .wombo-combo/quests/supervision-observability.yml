@@ -1,0 +1,45 @@
+id: supervision-observability
+title: Supervision Tree Observability
+goal: |
+  Make supervision visible to humans and agents.
+  - Add protocol events (supervisor started, child restarted, intensity
+    exceeded, escalation) and a tree snapshot to src/daemon/protocol.ts.
+    These are additive and backward compatible.
+  - Show a live supervision tree view in the Ink TUI, including restart
+    counts and the last exit reason. Add a section to the dashboard or a
+    screen reachable from the ESC menu.
+  - Add a CLI surface such as `woco daemon tree` with --output json for LLM
+    agents. Register it in the citty router and in COMMAND_REGISTRY
+    (src/lib/schema.ts).
+  - Feed restart and escalation records into analytics snapshots and the
+    replay recorder.
+  - Write docs: a guide under docs/src/content/docs/guides/ and updates to
+    the architecture overview and the config reference.
+  - Add i18n strings via src/locales, not hardcoded.
+  Acceptance: Ink component tests for the tree view, a CLI test for the
+  JSON output, and the docs pages build.
+status: paused
+priority: low
+difficulty: medium
+depends_on:
+  - wave-supervision-tree
+branch: quest/supervision-observability
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add:
+    - New protocol messages are optional for older clients
+    - CLI output must be compact and machine-parseable with --output json
+    - Use the i18next locale files for all user-facing strings
+    - Colocate Ink tests as *.test.tsx
+  ban:
+    - Do not remove or change existing Evt*/Cmd* message shapes
+    - Do not add new TUI libraries
+  override: {}
+created_at: 2026-10-12T08:40:26.210Z
+updated_at: 2026-10-12T15:56:40.979Z
+started_at: 2026-10-12T15:56:32.519Z
+ended_at: null
+notes:
+  - Extend dashboard-metrics applySnapshot/applyDashboardEvent for the new events
+  - Keep `woco describe` output in sync by updating COMMAND_REGISTRY

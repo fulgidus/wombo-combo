@@ -37,6 +37,11 @@ import { wishlistCommand } from "./wishlist";
 import { tuiCommand } from "./tui";
 import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
+import { teamCommand } from "./team";
+import { triageCommand } from "./triage";
+import { retroCommand } from "./retro";
+import { commentCommand } from "./comment";
+import { syncCommand } from "./sync";
 
 /**
  * Set of all command names / aliases that are handled by citty.
@@ -103,6 +108,16 @@ const CITTY_COMMANDS = new Set([
     // --- Session replays ---
     "replay",
     "rp",         // alias for replay
+    // --- Team task claims ---
+    "team",
+    // --- Triage
+    "triage",
+    // --- Retro suggestions from failure signals ---
+    "retro",
+    // --- Comments on tasks and quests ---
+    "comment",
+    // --- GitHub issue sync ---
+    "sync",
 ]);
 
 /**
@@ -182,6 +197,8 @@ const DEFAULT_SUBCOMMAND: Record<string, string> = {
     wishlist: "list",
     daemon: "status",
     replay: "list",
+    team: "status",
+    triage: "list",
 };
 
 /**
@@ -330,6 +347,26 @@ export async function runCittyCommand(
         case "replay":
         case "rp":
             await runCommand(replayCommand, { rawArgs: injectDefaultSubcommand("replay", rawArgs) });
+            break;
+
+        case "team":
+            await runCommand(teamCommand, { rawArgs: injectDefaultSubcommand("team", rawArgs) });
+            break;
+
+        case "triage":
+            await runCommand(triageCommand, { rawArgs: injectDefaultSubcommand("triage", rawArgs) });
+            break;
+
+        case "retro":
+            await runCommand(retroCommand, { rawArgs });
+            break;
+
+        case "comment":
+            await runCommand(commentCommand, { rawArgs });
+            break;
+
+        case "sync":
+            await runCommand(syncCommand, { rawArgs });
             break;
 
         default:

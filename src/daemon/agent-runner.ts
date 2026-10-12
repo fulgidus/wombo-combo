@@ -15,15 +15,15 @@
  * - Dead process reaping
  */
 
-import { execSync } from "node:child_process";
-import { normalizePostMergeConfig, type WomboConfig, type MaxEscalationTier } from "../config";
+import { execSync, spawnSync } from "node:child_process";
+import { normalizeCommentsConfig, normalizePostMergeConfig, normalizeReviewConfig, type ReviewConfig, replayRetentionOptions, type WomboConfig, type MaxEscalationTier } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
 import { resolveRoute, selectAvailableRoute, RouteError, type ResolvedRoute, type RouteSelection } from "../lib/harness/routing";
 import { saveTaskToStore } from "../lib/task-store";
 import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree, worktreeExists } from "../lib/worktree";
-import { launchHeadless, retryHeadless, launchConflictResolver, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
+import { launchHeadless, retryHeadless, launchConflictResolver, launchReviewer, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
 import type { LaunchResult } from "../lib/launcher";
 import { ProcessMonitor } from "../lib/monitor";
 import type { MonitorCallbacks } from "../lib/monitor";
@@ -74,12 +74,25 @@ import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
 import { ReplayRecorder } from "./replay-recorder";
-import { normalizeOpenCodeEvent } from "../lib/replay";
+import { normalizeHarnessEvent } from "../lib/replay";
+import { addComment, recentComments } from "../lib/comments";
+import { loadStandards } from "../lib/review";
+import { collectReviewerOutput, REVIEWER_TIMEOUT_MS, type ReviewerOutput } from "../lib/review-runner";
+import { captureWorktreeDiff } from "../lib/replay-diff";
+import { reviewTask, formatReviewFeedback, type ReviewStageDeps } from "./review-stage";
+import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
 import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** Diff of the worktree against its merge base with the task's base branch. */
+function defaultCaptureReviewDiff(worktree: string, baseBranch: string): string {
+  const mb = spawnSync("git", ["merge-base", "HEAD", baseBranch], { cwd: worktree, encoding: "utf-8" });
+  const base = mb.status === 0 ? (mb.stdout ?? "").trim() : baseBranch;
+  return captureWorktreeDiff(worktree, base || null).diff;
+}
 
 export interface AgentRunnerConfig {
   projectRoot: string;
@@ -90,6 +103,10 @@ export interface AgentRunnerConfig {
   overrides?: {
     runPostMerge?: typeof runPostMerge;
     pushBaseBranch?: typeof pushBaseBranch;
+    /** Run the reviewer agent for a prompt (default: launch through the "review" route) */
+    runReviewer?: (prompt: string, featureId: string) => Promise<ReviewerOutput>;
+    /** Task diff against its base for review (default: git diff from the merge base) */
+    captureReviewDiff?: ReviewStageDeps["captureDiff"];
   };
   /**
    * Daemon session id (also the history wave_id). Newly submitted executions
@@ -193,6 +210,13 @@ export class AgentRunner {
   /** Destination-branch tip captured just before each merge, keyed by feature ID. */
   private mergeBefore = new Map<string, string | null>();
 
+  /** Review rounds already started per task (review gate) */
+  private reviewRounds = new Map<string, number>();
+  /** Findings to hand to the implementing agent on its next retry */
+  private reviewFeedback = new Map<string, string>();
+  private readonly runReviewerFn?: (prompt: string, featureId: string) => Promise<ReviewerOutput>;
+  private readonly captureReviewDiffFn: ReviewStageDeps["captureDiff"];
+
   /** Stagger delay between concurrent launch starts (ms). */
   private static readonly LAUNCH_STAGGER_MS = 250;
 
@@ -207,6 +231,8 @@ export class AgentRunner {
     this.postMergeDeps = opts.postMergeDeps;
     this.runPostMergeFn = opts.overrides?.runPostMerge ?? runPostMerge;
     this.pushBaseFn = opts.overrides?.pushBaseBranch ?? pushBaseBranch;
+    this.runReviewerFn = opts.overrides?.runReviewer;
+    this.captureReviewDiffFn = opts.overrides?.captureReviewDiff ?? defaultCaptureReviewDiff;
 
     this.analytics = new AnalyticsTracker({
       projectRoot: this.projectRoot,
@@ -219,12 +245,93 @@ export class AgentRunner {
     this.replay = new ReplayRecorder({
       projectRoot: this.projectRoot,
       state,
+      retention: replayRetentionOptions(this.config.replay),
       onDiagnostic: (message) =>
         state.emit("evt:log", { level: "warn", message: `[replay] ${message}` }),
     });
 
+    // Team mode: claim a task when its agent starts, release when it ends
+    state.observeStatus((agent, previous, next) => this.syncClaim(agent.featureId, previous, next));
+
+    // Comments: optional system comments on lifecycle events
+    state.observeStatus((agent, previous, next, detail) =>
+      this.postLifecycleComment(agent.featureId, previous, next, detail ?? agent.error ?? undefined)
+    );
+
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
+  }
+
+  /**
+   * Keep the task claim in step with the agent lifecycle (no-op unless
+   * team.enabled). Claim when launch starts, release once merged or failed.
+   * Claim errors never break the pipeline.
+   */
+  private syncClaim(featureId: string, previous: string, next: string): void {
+    if (!isTeamEnabled(this.config)) return;
+    try {
+      if (next === "installing" && previous !== "installing") {
+        const res = claimTask(this.projectRoot, this.config, featureId);
+        if (!res.ok) {
+          this.state.emit("evt:log", {
+            level: "warn",
+            message: `[team] ${featureId} is claimed by ${res.claim.owner}; launching anyway`,
+          });
+        }
+      } else if (next === "merged" || next === "failed") {
+        releaseTask(this.projectRoot, this.config, featureId);
+      }
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[team] claim sync failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  /**
+   * Post a role=system comment (author "woco") on started, failed, merged and
+   * retried (no-op unless comments.enabled && comments.autoLifecycle).
+   * Comment errors only log a warning.
+   */
+  private postLifecycleComment(featureId: string, previous: string, next: string, detail?: string): void {
+    const cfg = normalizeCommentsConfig(this.config.comments);
+    if (!cfg.enabled || !cfg.autoLifecycle) return;
+    let body: string | null = null;
+    if (next === "installing" && previous !== "installing") body = "Agent started.";
+    else if (next === "merged") body = "Merged into the base branch.";
+    else if (next === "retry") body = `Retrying${detail ? `: ${detail}` : "."}`;
+    else if (next === "failed") {
+      const reason = (detail ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+      body = `Failed${reason ? `: ${reason}` : "."}`;
+    }
+    if (!body) return;
+    try {
+      addComment(this.projectRoot, { kind: "task", id: featureId }, { body, author: "woco", role: "system" });
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[comments] lifecycle comment failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  /** Recent task and quest comments for the agent prompt (empty when disabled). */
+  private loadPromptComments(featureId: string, questId?: string | null) {
+    const cfg = normalizeCommentsConfig(this.config.comments);
+    if (!cfg.enabled) return null;
+    try {
+      return {
+        task: recentComments(this.projectRoot, { kind: "task", id: featureId }, cfg.promptMaxItems),
+        quest: questId ? recentComments(this.projectRoot, { kind: "quest", id: questId }, cfg.promptMaxItems) : [],
+      };
+    } catch (err) {
+      this.state.emit("evt:log", {
+        level: "warn",
+        message: `[comments] could not load comments for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      return null;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -287,7 +394,7 @@ export class AgentRunner {
       onEvent: (featureId, event) => {
         // Harness-specific normalization happens here only; the recorder
         // stores harness-neutral events.
-        const normalized = normalizeOpenCodeEvent(event);
+        const normalized = normalizeHarnessEvent(this.state.getAgent(featureId)?.harness, event);
         if (normalized) this.replay.recordEvent(featureId, normalized);
       },
 
@@ -574,7 +681,8 @@ export class AgentRunner {
         promptConfig,
         questContext,
         hitlMode as any,
-        loadProjectContext(this.projectRoot)
+        loadProjectContext(this.projectRoot),
+        this.loadPromptComments(featureId, task.quest)
       );
 
       // Capture the immutable analytics baseline after worktree preparation
@@ -723,6 +831,8 @@ export class AgentRunner {
       this.analytics.recordBuild(featureId, result.build.passed);
 
       if (result.overallPassed) {
+        const reviewConfig = normalizeReviewConfig(verifyConfig.review);
+        if (reviewConfig.enabled && !(await this.runReviewGate(featureId, reviewConfig, questScope?.quest))) return;
         agent.buildPassed = true;
         agent.buildOutput = result.combinedErrorSummary || null;
         // Measure committed changes before "verified" is emitted: successors
@@ -782,6 +892,109 @@ export class AgentRunner {
       this.state.updateAgentStatus(featureId, "failed", `Verification error: ${msg}`);
       this.state.updateAgent(featureId, { error: msg });
       this.rescueChainPredecessors(featureId);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Review gate
+  // -------------------------------------------------------------------------
+
+  /**
+   * Review a verified task before merge (only called when review.enabled).
+   * Returns true when the task may continue to "verified" and merge. Returns
+   * false when it has been sent back to the implementing agent (the next
+   * completion re-verifies and re-reviews) or failed.
+   */
+  private async runReviewGate(featureId: string, reviewConfig: ReviewConfig, quest?: Quest): Promise<boolean> {
+    const agent = this.state.getAgent(featureId);
+    const task = this.loadTask(featureId);
+    if (!agent) return false;
+    if (!task) {
+      this.state.emit("evt:log", { level: "warn", message: `[review] ${featureId}: task file not found, skipping review` });
+      return true;
+    }
+
+    const round = (this.reviewRounds.get(featureId) ?? 0) + 1;
+    this.reviewRounds.set(featureId, round);
+    this.state.updateAgentStatus(featureId, "in_review", `Review round ${round}/${reviewConfig.maxRounds}`);
+    this.state.updateAgentActivity(featureId, `Reviewing (round ${round}/${reviewConfig.maxRounds})...`);
+
+    const outcome = await reviewTask(
+      {
+        task,
+        worktree: agent.worktree,
+        baseBranch: agent.baseBranch,
+        config: reviewConfig,
+        standards: loadStandards(this.projectRoot),
+        quest: quest ? { id: quest.id, goal: quest.goal } : undefined,
+      },
+      {
+        captureDiff: this.captureReviewDiffFn,
+        runReviewer: (prompt) => (this.runReviewerFn ?? ((p, id) => this.launchAndCollectReviewer(p, id, task)))(prompt, featureId),
+        addComment: (c) => { addComment(this.projectRoot, { kind: "task", id: featureId }, c); },
+        log: (level, message) => this.state.emit("evt:log", { level, message }),
+      },
+    );
+
+    if (outcome.kind === "pass") {
+      this.reviewRounds.delete(featureId);
+      this.reviewFeedback.delete(featureId);
+      return true;
+    }
+
+    if (outcome.kind === "blocked" && round < reviewConfig.maxRounds) {
+      const feedback = formatReviewFeedback(outcome.blocking, round, reviewConfig.maxRounds);
+      this.reviewFeedback.set(featureId, feedback);
+      this.state.updateAgent(featureId, { error: feedback });
+      this.state.updateAgentStatus(
+        featureId,
+        "retry",
+        `Review found ${outcome.blocking.length} blocking finding(s), sending back (round ${round}/${reviewConfig.maxRounds})`,
+      );
+      this.handleRetry(featureId);
+      return false;
+    }
+
+    const reason =
+      outcome.kind === "blocked"
+        ? `Review blocked after ${round} round(s): ${outcome.blocking.length} blocking finding(s) remain`
+        : `Review failed: ${outcome.error}`;
+    this.reviewRounds.delete(featureId);
+    this.reviewFeedback.delete(featureId);
+    try {
+      addComment(this.projectRoot, { kind: "task", id: featureId }, { body: reason, author: "woco", role: "system" });
+    } catch (err) {
+      this.state.emit("evt:log", { level: "warn", message: `[review] summary comment failed for ${featureId}: ${err instanceof Error ? err.message : String(err)}` });
+    }
+    this.state.updateAgentStatus(featureId, "failed", reason);
+    this.state.updateAgent(featureId, { error: reason });
+    this.state.cancelDownstream(featureId);
+    this.rescueChainPredecessors(featureId);
+    return false;
+  }
+
+  /** Launch the reviewer through the "review" route and collect its answer. */
+  private async launchAndCollectReviewer(prompt: string, featureId: string, task: Task): Promise<ReviewerOutput> {
+    const agent = this.state.getAgent(featureId);
+    if (!agent) return { ok: false, error: "agent state not found" };
+    let route: ResolvedRoute | undefined;
+    try {
+      route = this.selectRoute("review", featureId, task, null).route;
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+    try {
+      const launch = launchReviewer({
+        worktreePath: agent.worktree,
+        featureId,
+        prompt,
+        model: agent.model ?? this.state.getModel() ?? undefined,
+        config: this.config,
+        route,
+      });
+      return await collectReviewerOutput(launch, { timeoutMs: REVIEWER_TIMEOUT_MS });
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   }
 
@@ -1762,11 +1975,14 @@ export class AgentRunner {
         agent.agentName === FAKE_AGENT_SENTINEL
           ? undefined
           : this.resolveAgentRoute("code", featureId, this.loadTask(featureId));
+      const reviewFeedback = this.reviewFeedback.get(featureId);
+      this.reviewFeedback.delete(featureId);
       const result = retryHeadless({
         worktreePath: agent.worktree,
         featureId,
         sessionId: agent.sessionId,
         buildErrors: agent.error ?? "Previous attempt failed",
+        retryMessage: reviewFeedback,
         model: agent.model ?? this.state.getModel() ?? undefined,
         config: this.config,
         agentName: agent.agentName ?? undefined,
@@ -1851,7 +2067,7 @@ export class AgentRunner {
    * profile; "default" (the synthesized legacy profile) is never forced.
    */
   private resolveAgentRoute(
-    operation: "code" | "conflict",
+    operation: "code" | "conflict" | "review",
     featureId: string,
     task: Task | null | undefined,
     sessionModel?: string | null,
@@ -1867,7 +2083,7 @@ export class AgentRunner {
   }
 
   /** Resolve the route and walk its fallback chain; legacy routes are not probed. */
-  private selectRoute(operation: "code" | "conflict", featureId: string, task: Task | null, sessionModel?: string | null): RouteSelection {
+  private selectRoute(operation: "code" | "conflict" | "review", featureId: string, task: Task | null, sessionModel?: string | null): RouteSelection {
     const route = this.resolveAgentRoute(operation, featureId, task, sessionModel);
     if (route.legacy) return { route, skipped: [] };
     const agent = this.state.getAgent(featureId);
@@ -1998,7 +2214,7 @@ export class AgentRunner {
 
   /**
    * On daemon startup, re-trigger the merge pipeline for any agents that were
-   * left in "verified" state by a previous daemon run.
+   * left in "completed" or "verified" state by a previous daemon run.
    *
    * Agents in "verified" state have completed their work and passed the build
    * verification, but the merge has not yet landed (e.g. the daemon was killed
@@ -2013,6 +2229,23 @@ export class AgentRunner {
    * their downstream dependents indefinitely.
    */
   reconcileVerifiedAgents(): void {
+    // Agents left in "completed" (process exited, verification and merge
+    // pending) have no running pipeline after a restart.  Re-run verification
+    // -> merge; handleBuildVerification applies the normal retry bounds.
+    for (const agent of this.state.getAgentsByStatus("completed")) {
+      this.state.emit("evt:log", {
+        level: "info",
+        message: `Reconciling completed agent ${agent.featureId} — re-running verification`,
+      });
+      this.state.updateAgentActivity(agent.featureId, "Resumed after daemon restart — re-running verification");
+      this.handleBuildVerification(agent.featureId).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.state.updateAgentStatus(agent.featureId, "failed", `Verification error: ${msg}`);
+        this.state.updateAgent(agent.featureId, { error: msg });
+        this.rescueChainPredecessors(agent.featureId);
+      });
+    }
+
     const verifiedAgents = this.state.getAgentsByStatus("verified");
     for (const agent of verifiedAgents) {
       this.state.emit("evt:log", {

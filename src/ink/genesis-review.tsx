@@ -21,6 +21,7 @@ import type {
 } from "./review-list-types";
 import { HITL_COLORS } from "./review-list-types";
 import { ReviewList } from "./review-list";
+import { t as defaultT, getLocaleT, useI18n, type TFunction } from "./i18n";
 import type {
   ProposedQuest,
   GenesisResult,
@@ -39,51 +40,53 @@ const HITL_MODES = ["yolo", "cautious", "supervised"];
 // Edit Field Definitions
 // ---------------------------------------------------------------------------
 
-/** Edit fields for genesis review (quest editing). */
-export const GENESIS_EDIT_FIELDS: EditFieldDef[] = [
-  {
-    key: "title",
-    label: "Title",
-    type: "text",
-    hint: "Quest title",
-  },
-  {
-    key: "priority",
-    label: "Priority",
-    type: "select",
-    options: PRIORITIES.map((p) => ({ label: p, value: p })),
-    hint: "Select priority level",
-  },
-  {
-    key: "difficulty",
-    label: "Difficulty",
-    type: "select",
-    options: DIFFICULTIES.map((d) => ({ label: d, value: d })),
-    hint: "Select difficulty level",
-  },
-  {
-    key: "hitl_mode",
-    label: "HITL Mode",
-    type: "select",
-    options: HITL_MODES.map((h) => ({
-      label: `${h} (${h === "yolo" ? "full autonomy" : h === "cautious" ? "agent blocks on questions" : "agent asks before major decisions"})`,
-      value: h,
-    })),
-    hint: "Select human-in-the-loop mode",
-  },
-  {
-    key: "depends_on",
-    label: "Dependencies",
-    type: "text",
-    hint: "Comma-separated quest IDs",
-  },
-  {
-    key: "goal",
-    label: "Goal",
-    type: "textarea",
-    hint: "Quest goal description",
-  },
-];
+/** Edit fields for genesis review (quest editing), labelled for the given locale. */
+export function buildGenesisEditFields(t: TFunction = defaultT): EditFieldDef[] {
+  return [
+    {
+      key: "title",
+      label: t("reviewField.title"),
+      type: "text",
+      hint: t("genesisReview.hint.title"),
+    },
+    {
+      key: "priority",
+      label: t("reviewField.priority"),
+      type: "select",
+      options: PRIORITIES.map((p) => ({ label: p, value: p })),
+      hint: t("reviewField.hint.priority"),
+    },
+    {
+      key: "difficulty",
+      label: t("reviewField.difficulty"),
+      type: "select",
+      options: DIFFICULTIES.map((d) => ({ label: d, value: d })),
+      hint: t("reviewField.hint.difficulty"),
+    },
+    {
+      key: "hitl_mode",
+      label: t("genesisReview.field.hitlMode"),
+      type: "select",
+      options: HITL_MODES.map((h) => ({ label: t(`genesisReview.hitlOption.${h}`), value: h })),
+      hint: t("genesisReview.hint.hitlMode"),
+    },
+    {
+      key: "depends_on",
+      label: t("reviewField.dependencies"),
+      type: "text",
+      hint: t("genesisReview.hint.dependsOn"),
+    },
+    {
+      key: "goal",
+      label: t("genesisReview.field.goal"),
+      type: "textarea",
+      hint: t("genesisReview.hint.goal"),
+    },
+  ];
+}
+
+/** English edit fields, kept for backward compatibility (the UI builds them per locale). */
+export const GENESIS_EDIT_FIELDS: EditFieldDef[] = buildGenesisEditFields(getLocaleT("en"));
 
 // ---------------------------------------------------------------------------
 // Quest ↔ ReviewItem mapping
@@ -97,7 +100,7 @@ export const GENESIS_EDIT_FIELDS: EditFieldDef[] = [
 const questStash = new WeakMap<ReviewItem, ProposedQuest>();
 
 /** Convert a ProposedQuest to a ReviewItem for the shared component. */
-export function questToReviewItem(quest: ProposedQuest): ReviewItem {
+export function questToReviewItem(quest: ProposedQuest, t: TFunction = defaultT): ReviewItem {
   const hColor = HITL_COLORS[quest.hitl_mode] ?? "white";
 
   const item: ReviewItem = {
@@ -108,25 +111,29 @@ export function questToReviewItem(quest: ProposedQuest): ReviewItem {
     dependsOn: [...quest.depends_on],
     accepted: true,
     detailFields: [
-      { label: "HITL Mode:", value: quest.hitl_mode, color: hColor },
+      { id: "hitl", label: t("genesisReview.detail.hitl"), value: quest.hitl_mode, color: hColor },
     ],
     detailSections: [
       {
-        label: "Goal",
+        id: "goal",
+        label: t("reviewDetail.goal"),
         items: quest.goal ? [quest.goal] : [],
       },
       {
-        label: "Constraints",
+        id: "constraints",
+        label: t("reviewDetail.constraints"),
         items: [...quest.constraints.add],
         prefix: "+",
       },
       {
-        label: "Forbidden",
+        id: "forbidden",
+        label: t("reviewDetail.forbidden"),
         items: [...quest.constraints.ban],
         prefix: "-",
       },
       {
-        label: "Notes",
+        id: "notes",
+        label: t("reviewDetail.notes"),
         items: [...quest.notes],
       },
     ],
@@ -168,7 +175,8 @@ export function reviewItemToQuest(
 export function buildGenesisConfig(
   genesisResult: GenesisResult,
   onApprove: (quests: ProposedQuest[], knowledge: string | null) => void,
-  onCancel: () => void
+  onCancel: () => void,
+  t: TFunction = defaultT
 ): ReviewListConfig {
   // Map genesis validation issues to generic review issues
   const issues: ReviewValidationIssue[] = genesisResult.issues.map(
@@ -186,13 +194,13 @@ export function buildGenesisConfig(
   }
 
   return {
-    title: "Genesis Review",
-    subtitle: "Genesis: Project Decomposition",
-    itemLabel: "quest",
-    itemLabelPlural: "quests",
-    listLabel: "Proposed Quests",
+    title: t("genesisReview.title"),
+    subtitle: t("genesisReview.subtitle"),
+    itemLabel: t("genesisReview.itemLabel"),
+    itemLabelPlural: t("genesisReview.itemLabelPlural"),
+    listLabel: t("genesisReview.listLabel"),
     issues,
-    editFields: GENESIS_EDIT_FIELDS,
+    editFields: buildGenesisEditFields(t),
     knowledge: genesisResult.knowledge,
 
     getEditFieldValue: (item: ReviewItem, fieldKey: string): string => {
@@ -244,7 +252,7 @@ export function buildGenesisConfig(
           if (updatedQuest) updatedQuest.hitl_mode = value as ProposedQuest["hitl_mode"];
           // Update HITL detail field
           updatedItem.detailFields = updatedItem.detailFields.map((f) =>
-            f.label.includes("HITL")
+            f.id === "hitl"
               ? { ...f, value, color: HITL_COLORS[value] ?? "white" }
               : f
           );
@@ -259,7 +267,7 @@ export function buildGenesisConfig(
           if (updatedQuest) updatedQuest.goal = value;
           // Update goal section
           updatedItem.detailSections = updatedItem.detailSections.map((s) =>
-            s.label === "Goal" ? { ...s, items: value ? [value] : [] } : s
+            s.id === "goal" ? { ...s, items: value ? [value] : [] } : s
           );
           break;
       }
@@ -272,14 +280,9 @@ export function buildGenesisConfig(
       return updatedItem;
     },
 
-    approveTitle: "Approve Genesis Plan",
+    approveTitle: t("genesisReview.approveTitle"),
     approveBody: (acceptedCount: number) =>
-      `Create ${acceptedCount} quest${acceptedCount !== 1 ? "s" : ""}?\n\n` +
-      "This will:\n" +
-      "  - Create quest files in the quest store\n" +
-      "  - Set all quests to 'draft' status\n" +
-      "  - Save any genesis knowledge\n\n" +
-      "You can then activate and plan each quest individually.",
+      `${t("genesisReview.approveCreate", { count: acceptedCount })}\n\n${t("genesisReview.approveDetails")}`,
 
     onApprove: (items: ReviewItem[]) => {
       const quests = items.map((item) => {
@@ -316,8 +319,9 @@ export function GenesisReviewApp({
   onApprove,
   onCancel,
 }: GenesisReviewAppProps): React.ReactElement {
-  const items = genesisResult.quests.map(questToReviewItem);
-  const config = buildGenesisConfig(genesisResult, onApprove, onCancel);
+  const t = useI18n();
+  const items = genesisResult.quests.map((q) => questToReviewItem(q, t));
+  const config = buildGenesisConfig(genesisResult, onApprove, onCancel, t);
 
   return <ReviewList items={items} config={config} />;
 }

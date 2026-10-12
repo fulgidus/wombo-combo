@@ -1,0 +1,34 @@
+id: retro-collect
+title: Retro signal collectors
+description: "Create src/lib/retro.ts (pure collectors over files, no network). collectRetroInput({projectRoot,
+  scope:{task?, quest?, sinceDays?}}) gathers: failed or retried executions and their reasons from analytics snapshots
+  (src/lib/analytics.ts), replay events from ReplayStore (src/lib/replay.ts: tool errors, repeated failing commands,
+  number of Read/Grep/Glob calls before the first edit, very large tool outputs, build/test failures), eval scores
+  (src/lib/eval-score.ts, .wombo-combo/evals), task and quest comments (blockers, reviewer findings if present), and
+  verification failures. deriveCandidates(input) turns signals into candidates grouped by the categories of
+  .claude/skills/retro/SKILL.md (navigation, automated checks, coding standards, steering files, tool economy,
+  information access) each with severity (high|medium|low), evidence (task id, execution id, short quote), and a
+  concrete suggested change (for example 'add a navigation pointer from AGENTS.md to docs/x.md because 3 agents spent N
+  reads finding it'). Deterministic, thresholds as named constants. Fixture-driven tests in tests/retro.test.ts with
+  synthetic analytics/replay data written into a temp project."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT4H
+started_at: 2026-10-12T03:04:35.415Z
+ended_at: 2026-10-12T04:07:11.775Z
+constraints:
+  - Deterministic and offline
+  - Missing data sources are skipped, never errors
+forbidden: []
+references:
+  - .claude/skills/retro/SKILL.md
+  - src/lib/replay.ts
+  - src/lib/analytics.ts
+  - src/lib/eval-score.ts
+notes: []
+subtasks: []
+quest: woco-retro
+paths: []

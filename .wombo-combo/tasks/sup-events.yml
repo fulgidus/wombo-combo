@@ -1,0 +1,32 @@
+id: sup-events
+title: Typed Supervisor Event Emitter
+description: >
+  Create src/lib/supervision/events.ts: a tiny dependency-free typed emitter.
+    - class TypedEmitter<M extends Record<string, unknown>> with on<K>(event, listener): () => void (returns unsubscribe), once<K>(...), off<K>(...), emit<K>(event, payload): void, listenerCount(event).
+    - A listener that throws must not break other listeners or the emitter: catch the error and continue (collect and ignore; optionally accept an onListenerError callback in the constructor).
+    - Listeners removed during emit must not be skipped or double-called (iterate over a copy).
+    - export type SupervisorEmitter = TypedEmitter<SupervisorEvents> (SupervisorEvents from ./types).
+  Add tests/supervision-events.test.ts: subscribe/unsubscribe, once, throwing listener isolation, removal during emit,
+  payload typing (use satisfies / type assertions compiled by typecheck).
+status: planned
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - sup-types
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - Pure TypeScript, no node:events
+  - Typed so that emit('child_started', wrongPayload) fails typecheck
+forbidden:
+  - Do not modify types.ts
+  - Do not add dependencies
+references:
+  - src/lib/supervision/types.ts
+notes:
+  - Do not create or touch src/lib/supervision/index.ts; a later task owns the barrel file.
+subtasks: []
+quest: supervisor-core
+paths: []

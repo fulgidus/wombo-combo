@@ -1,0 +1,22 @@
+id: comments-tui-and-docs
+title: Show comments in the TUI task browser; docs and skills mapping
+description: "TUI: task browser detail pane shows recent comments (read-only) with i18n keys (en+it). Docs: guide
+  docs/src/content/docs/guides/comments.md; update docs/agents/issue-tracker.md so 'comment on an issue' maps to 'bun
+  dev comment add <id>' (woco primary, mirror to the GitHub issue comment, record github_url), and
+  handoff/triage/wayfinder answers go through comments; update README and AGENTS.md layout list."
+status: done
+completion: 100
+difficulty: medium
+priority: low
+depends_on:
+  - comments-cli
+effort: PT2H
+started_at: null
+ended_at: 2026-10-11T22:20:58.595Z
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: inter-agent-comments
+paths: []

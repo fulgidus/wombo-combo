@@ -333,6 +333,174 @@
         }
       }
     },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Retention of recorded agent session replays (.wombo-combo/replays/), applied after each execution finishes",
+      "properties": {
+        "keepPerTask": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20,
+          "description": "Executions kept per task (newest first)"
+        },
+        "maxAgeDays": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": null,
+          "description": "Delete replays older than this many days; null = no age limit"
+        },
+        "maxTotalMB": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "default": null,
+          "description": "Total size cap of all replays in MB (oldest removed first); null = no cap"
+        }
+      }
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Multi-developer coordination: git-tracked task claims (.wombo-combo/claims/) so teammates do not work on the same task",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable task claims; the daemon skips tasks claimed by another developer"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "default": null,
+          "description": "Claim owner identity; null = git config user.email"
+        },
+        "claimTtlHours": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 24,
+          "description": "Hours until a claim expires and can be taken over"
+        }
+      }
+    },
+    "comments": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Task and quest comments (.wombo-combo/comments/): recent comments in agent prompts and optional daemon lifecycle comments",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include recent comments in agent prompts and tell agents how to leave one"
+        },
+        "promptMaxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Maximum number of recent comments per task or quest in the agent prompt"
+        },
+        "promptMaxChars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4000,
+          "description": "Maximum total characters of comment text in the agent prompt (oldest dropped first)"
+        },
+        "autoLifecycle": {
+          "type": "boolean",
+          "default": false,
+          "description": "Daemon posts system comments on task lifecycle events (started, failed, merged, retried)"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Review gate: an optional reviewer agent checks the task diff (Standards and Spec) between verification and merge",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run the review stage before merge"
+        },
+        "blockOn": {
+          "type": "string",
+          "enum": ["blocking", "major"],
+          "default": "blocking",
+          "description": "Lowest finding severity that sends the implementing agent back (major also blocks on blocking)"
+        },
+        "maxRounds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2,
+          "description": "Maximum review rounds per task"
+        },
+        "maxDiffChars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 60000,
+          "description": "Maximum diff characters shown to the reviewer; a larger diff is cut with a truncation marker"
+        }
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Integrations that sync woco data with external services",
+      "properties": {
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub issue sync (woco sync): tasks, quests and comments as issues. Manual commands always work; mode auto adds write-through pushes and periodic pull+push cycles",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Master switch for the automatic behaviour (write-through push, daemon cycle)"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["manual", "auto"],
+              "default": "manual",
+              "description": "manual: only explicit woco sync commands. auto: push changed items right after they are written, and run pull+push every intervalSeconds in the daemon"
+            },
+            "repo": {
+              "type": ["string", "object"],
+              "description": "Repository to sync with, as \"owner/name\" or { owner, name, host }. Default: the git origin remote"
+            },
+            "intervalSeconds": {
+              "type": "number",
+              "minimum": 15,
+              "default": 60,
+              "description": "Seconds between automatic pull+push cycles (daemon and woco sync watch)"
+            },
+            "pushOnWrite": {
+              "type": "boolean",
+              "default": true,
+              "description": "In auto mode, push an item in the background right after a local change to it"
+            },
+            "pull": {
+              "type": "boolean",
+              "default": true,
+              "description": "In auto mode, cycles also pull remote changes before pushing"
+            },
+            "includeFinished": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also mirror finished work that has no mapping yet (done/cancelled tasks, completed/abandoned quests, closed issues). Already-mapped items keep syncing either way"
+            }
+          }
+        }
+      }
+    },
     "devMode": {
       "type": "boolean",
       "default": false,

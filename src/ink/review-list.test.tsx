@@ -10,7 +10,8 @@
  *   - A key triggers approve flow
  *   - Q/Escape triggers cancel
  *   - R toggles all items
- *   - Shift+J/K reorders items
+ *   - u/d reorders items (no Shift needed)
+ *   - Layout fits the terminal height even with a tall detail pane
  *   - Handles empty items array
  *   - Shows validation issues count in header
  */
@@ -61,6 +62,16 @@ function renderLive(element: React.ReactElement) {
       instance.unmount();
       await instance.waitUntilExit();
     },
+  };
+}
+
+/** Set process.stdout.rows for one test and return a function that restores the exact original property. */
+function setStdoutRows(rows: number): () => void {
+  const original = Object.getOwnPropertyDescriptor(process.stdout, "rows");
+  Object.defineProperty(process.stdout, "rows", { value: rows, configurable: true, writable: true });
+  return () => {
+    if (original) Object.defineProperty(process.stdout, "rows", original);
+    else delete (process.stdout as any).rows;
   };
 }
 
@@ -324,5 +335,69 @@ describe("ReviewList (interactions)", () => {
     expect(output).toContain("REJECTED");
 
     await cleanup();
+  });
+
+  test("u/d reorder the selected item without Shift", async () => {
+    const items = [makeItem("a"), makeItem("b"), makeItem("c")];
+    let approved: string[] = [];
+    const config = makeConfig({ onApprove: (accepted) => { approved = accepted.map((i) => i.id); } });
+
+    const { stdin, cleanup } = renderLive(<ReviewList items={items} config={config} />);
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("d"); // move "a" down -> b, a, c
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("a"); // approve dialog
+    await new Promise((r) => setTimeout(r, 50));
+    stdin.write("y");
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(approved).toEqual(["b", "a", "c"]);
+    await cleanup();
+  });
+
+  test("layout fits the terminal height when the detail pane is tall", () => {
+    const restoreRows = setStdoutRows(20);
+    try {
+      const tall = makeItem("a", {
+        detailSections: [
+          { label: "Steps", items: Array.from({ length: 60 }, (_, i) => `step ${i}`) },
+        ],
+      } as any);
+      const output = renderToString(
+        <ReviewList items={[tall, makeItem("b")]} config={makeConfig()} />,
+        { columns: 120 },
+      );
+      // The status bar must stay on screen, inside the 20 rows.
+      expect(output.split("\n").length).toBeLessThanOrEqual(20);
+      expect(output).toContain("approve");
+    } finally {
+      restoreRows();
+    }
+  });
+
+  test("PgDn scrolls a clipped detail pane", async () => {
+    const restoreRows = setStdoutRows(20);
+    try {
+      const tall = makeItem("a", {
+        detailSections: [
+          { label: "Steps", items: Array.from({ length: 60 }, (_, i) => `step-${i}-end`) },
+        ],
+      } as any);
+      const { stdin, getOutput, cleanup } = renderLive(
+        <ReviewList items={[tall]} config={makeConfig()} />,
+      );
+      await new Promise((r) => setTimeout(r, 50));
+      expect(getOutput()).not.toMatch(/step-(3\d|4\d|5\d)-end/);
+      const mark = getOutput().length;
+      for (let i = 0; i < 4; i++) {
+        stdin.write("\x1b[6~");
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      await new Promise((r) => setTimeout(r, 80));
+      expect(getOutput().slice(mark)).toMatch(/step-(4\d|5\d)-end/);
+      await cleanup();
+    } finally {
+      restoreRows();
+    }
   });
 });

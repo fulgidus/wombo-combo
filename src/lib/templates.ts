@@ -18,6 +18,7 @@ import { join, dirname, resolve } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import YAML from "yaml";
 import type { WomboConfig } from "../config";
+import { t } from "./i18n";
 import { isPortlessAvailable } from "./portless";
 import { normalizeAgentFormat } from "./format-converter";
 import type { QuestHitlMode } from "./quest";
@@ -436,7 +437,7 @@ export function renderAgentTemplate(
     }
     // If the local file doesn't exist, fall back to generalist with a warning
     console.warn(
-      `\x1b[33m[WARNING]\x1b[0m Local agent definition not found: .opencode/agents/${agentName}.md — falling back to ${config.agent.name}`
+      `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentDef.localMissing", { agent: agentName, fallback: config.agent.name })}`
     );
   }
   return renderGeneralistAgent(config, projectRoot, hitlMode);
@@ -474,10 +475,10 @@ export function ensureAgentDefinition(
       const customPath = resolve(agentDir, `${agentName}.md`);
       if (!existsSync(customPath)) {
         console.warn(
-          `\x1b[33m[WARNING]\x1b[0m Custom agent definition not found: .opencode/agents/${agentName}.md`
+          `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentDef.customMissing", { agent: agentName })}`
         );
         console.warn(
-          `  Tasks specifying agent: "${agentName}" will fall back to the default agent (${config.agent.name}).\n`
+          t("cli.agentDef.customFallback", { agent: agentName, fallback: config.agent.name })
         );
       }
     }
@@ -486,37 +487,33 @@ export function ensureAgentDefinition(
 
   // Agent definition missing — reinstall from bundled template
   console.warn(
-    `\x1b[33m[WARNING]\x1b[0m Agent definition not found: .opencode/agents/${config.agent.name}.md`
+    `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentDef.missing", { agent: config.agent.name })}`
   );
-  console.warn(`  Reinstalling from bundled generalist template...`);
+  console.warn(t("cli.agentDef.reinstalling"));
 
   try {
     mkdirSync(agentDir, { recursive: true });
     const content = renderGeneralistAgent(config, projectRoot);
     writeFileSync(agentDefPath, content, "utf-8");
-    console.warn(`  Restored .opencode/agents/${config.agent.name}.md\n`);
+    console.warn(t("cli.agentDef.restored", { agent: config.agent.name }));
 
     // Also check per-task agent after restoring default
     if (agentName && agentName !== config.agent.name) {
       const customPath = resolve(agentDir, `${agentName}.md`);
       if (!existsSync(customPath)) {
         console.warn(
-          `\x1b[33m[WARNING]\x1b[0m Custom agent definition not found: .opencode/agents/${agentName}.md`
+          `\x1b[33m${t("cli.agentDef.warning")}\x1b[0m ${t("cli.agentDef.customMissing", { agent: agentName })}`
         );
         console.warn(
-          `  Tasks specifying agent: "${agentName}" will fall back to the default agent (${config.agent.name}).\n`
+          t("cli.agentDef.customFallback", { agent: agentName, fallback: config.agent.name })
         );
       }
     }
 
     return true;
   } catch (err: any) {
-    console.error(
-      `  Failed to restore agent definition: ${err.message}`
-    );
-    console.error(
-      `  Agents may launch without their definition file.\n`
-    );
+    console.error(t("cli.agentDef.restoreFailed", { error: err.message }));
+    console.error(t("cli.agentDef.mayLaunchWithout"));
     return false;
   }
 }

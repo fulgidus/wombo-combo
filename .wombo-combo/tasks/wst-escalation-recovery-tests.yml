@@ -1,0 +1,49 @@
+id: wst-escalation-recovery-tests
+title: Test Escalation and Crash Recovery
+description: |
+  Add the acceptance tests for the quest.
+  - tests/daemon-supervision-escalation.test.ts: using the real Scheduler +
+    DaemonState + tree with the fake agent runner, cover (1) quest base
+    branch failure with rest_for_one + pause_quest: failing agent and its
+    later siblings are halted, other quests keep running, a
+    quest_paused event is emitted, resumeQuest resumes work; (2) baseline
+    capture failure with degrade_wave: wave marked degraded, other quests
+    unaffected; (3) intensity exceeded with abort_wave: scheduler drains,
+    no new picks, wave_aborted event; (4) default policy: same failure
+    yields only a failed agent and no supervision escalation events;
+    (5) concurrency stays pinned across escalation and scheduler rebuild.
+  - tests/daemon-supervision-recovery.test.ts: simulate a daemon crash by
+    saving DaemonState with a paused quest, degraded wave, partially
+    consumed restart counters and agents in running/verified/
+    resolving_conflict, then construct a fresh DaemonState().load() + new
+    tree + recoverFromPersistedState; assert the tree is rebuilt
+    (paused quest still gated, counters preserved so intensity is not reset
+    by a restart), runner reconcile hooks were invoked once in order, a
+    `recovered` event was emitted, and a corrupt or missing state file yields
+    a healthy default tree.
+  Use temp project dirs like tests/daemon-state.test.ts does.
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - wst-daemon-wiring
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Tests only; fix bugs found in the smallest possible source change and track anything larger as a task
+  - "Deterministic: fake clock and fake agent runner, no real sleeps beyond ticks"
+forbidden:
+  - Do not weaken or edit existing tests
+references:
+  - tests/daemon-scheduler.test.ts
+  - tests/daemon-state.test.ts
+  - src/lib/fake-agent-runner.ts
+  - src/daemon/supervision-wiring.ts
+  - src/daemon/supervision-tree.ts
+notes:
+  - Run the whole daemon-* test group plus bun run typecheck before finishing
+subtasks: []
+quest: wave-supervision-tree
+paths: []

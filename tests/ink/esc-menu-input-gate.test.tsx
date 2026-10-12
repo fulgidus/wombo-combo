@@ -13,32 +13,13 @@ import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render } from "ink";
 import { PassThrough } from "node:stream";
+import { waitFor } from "../helpers/wait-for";
 import { EscMenuProvider, useEscMenu, type EscMenuState } from "../../src/ink/esc-menu";
 import { TaskBrowserView, type TaskBrowserViewProps, type TaskNode } from "../../src/ink/task-browser";
 import { SettingsScreen } from "../../src/ink/settings-screen";
 import type { Task } from "../../src/lib/tasks";
 import type { UsageTotals } from "../../src/lib/token-usage";
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/**
- * Polls until `cond` holds. Positive expectations use this instead of fixed
- * sleeps, so they pass as soon as Ink has flushed the update, however loaded
- * the machine is.
- */
-async function waitFor(cond: () => boolean, timeoutMs = 3000): Promise<void> {
-  const start = Date.now();
-  while (!cond()) {
-    if (Date.now() - start > timeoutMs) throw new Error("waitFor: condition not met in time");
-    await wait(5);
-  }
-}
-
-/**
- * Lets already-written keys reach the screen before asserting that they did
- * NOT. Negative checks can only pass falsely under load, never flake.
- */
-const settle = () => wait(60);
 
 function makeStreams() {
   const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
@@ -150,24 +131,23 @@ describe("task-browser input is gated by the ESC menu", () => {
     } as TaskBrowserViewProps;
 
     const h = renderWithMenu(React.createElement(TaskBrowserView, props));
-    await waitFor(() => h.getOutput().includes("Task a"));
+    await waitFor(() => h.getOutput().includes("Task a"), "task browser first render");
 
     h.menu().openMenu();
-    await waitFor(() => h.getOutput().includes("Return to app"));
+    await waitFor(() => h.menu().open && h.getOutput().includes("Return to app"), "ESC menu to open");
 
     h.stdin.write("\u001b[B"); // down arrow: moves the menu cursor only
     h.stdin.write("q"); // letter: must not quit the screen
-    await settle();
-    expect(calls).toEqual([]);
 
     h.menu().closeMenu();
-    await waitFor(() => !h.menu().open);
-    await settle(); // let the screen re-subscribe to input before writing
+    await waitFor(() => !h.menu().open, "ESC menu to close");
     h.stdin.write("\u001b[B"); // down arrow reaches the screen again
+    await waitFor(() => calls.includes("select:1"), "arrow to reach the screen after close");
     h.stdin.write("q");
-    await settle();
-    await waitFor(() => calls.length === 2);
+    await waitFor(() => calls.includes("quit"), "q to reach the screen after close");
     h.unmount();
+    // Keys sent while the menu was open produced nothing (stdin is processed in
+    // order, so the post-close keys above prove the earlier ones were consumed).
     expect(calls).toEqual(["select:1", "quit"]);
   });
 });
@@ -185,26 +165,23 @@ describe("settings-screen input is gated by the ESC menu", () => {
         },
       }),
     );
-    await waitFor(() => h.getOutput().length > 0);
+    await waitFor(() => h.getOutput().length > 0, "settings first render");
 
     h.menu().openMenu();
-    await waitFor(() => h.getOutput().includes("Return to app"));
+    await waitFor(() => h.menu().open && h.getOutput().includes("Return to app"), "ESC menu to open");
 
     h.stdin.write("\u001b[B"); // down arrow: moves the menu cursor only
-    await settle();
+
+    // Enter here activates a menu item and closes the menu.
+    // The settings screen must not also receive it.
+    h.stdin.write("\r");
+    await waitFor(() => !h.menu().open, "ESC menu to close");
     expect(saved).toEqual([]);
     expect(backs).toBe(0);
 
-    // Enter here activates the menu's "Return to app" item and closes the menu.
-    // The settings screen must not also receive it.
-    h.stdin.write("\r");
-    await waitFor(() => !h.menu().open);
-    await settle();
-    expect(saved).toEqual([]);
-
     // Menu is closed now: Enter reaches the settings screen again.
     h.stdin.write("\r");
-    await waitFor(() => saved.length > 0);
+    await waitFor(() => saved.length > 0, "Enter to save after the menu closes");
     h.unmount();
     expect(saved.length).toBeGreaterThan(0);
   });

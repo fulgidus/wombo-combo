@@ -98,6 +98,29 @@ describe("parseTestCounts — Bun format", () => {
 // parseTestCounts — Jest format
 // ---------------------------------------------------------------------------
 
+describe("parseTestCounts — stray output from tests", () => {
+  test("prefers Bun's own summary lines over nested report text printed by tests", () => {
+    const out = [
+      "tests/a.test.ts:",
+      "    Results: 10 passed, 0 failed, 0 skipped (10 total)",
+      "(fail) boom [1.00ms]",
+      "",
+      " 5 pass",
+      " 1 fail",
+      "Ran 6 tests across 1 file. [10.00ms]",
+    ].join("\n");
+    const r = parseTestCounts(out, "");
+    expect(r.passed).toBe(5);
+    expect(r.failed).toBe(1);
+  });
+
+  test("uses the last summary when the output contains several", () => {
+    const r = parseTestCounts(" 3 pass\n 0 fail\n\nsomething\n 7 pass\n 2 fail\n", "");
+    expect(r.passed).toBe(7);
+    expect(r.failed).toBe(2);
+  });
+});
+
 describe("parseTestCounts — Jest format", () => {
   test("parses Tests: X passed, Y total format", () => {
     const result = parseTestCounts("Tests:  5 passed, 5 total", "");
@@ -503,5 +526,51 @@ describe("runTests — execution metadata", () => {
     expect(result.structured?.failingTestIds).toEqual([
       "tests/nested/x.test.ts > group > bad",
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Captured-output fixtures: noise before the summary must not skew counts
+// ---------------------------------------------------------------------------
+
+const NOISY_BUN_FAILURE = [
+  "bun test v1.4.2",
+  "",
+  "tests/a.test.ts:",
+  "verify: 12 pass, 0 fail (from a nested fixture)",
+  "0 pass",
+  "0 fail",
+  "(pass) a > one [0.10ms]",
+  "tests/b.test.ts:",
+  "(fail) b > broken [1.20ms]",
+  "(fail) b > also broken [0.90ms]",
+  "",
+  " 1 pass",
+  " 2 fail",
+  " 3 expect() calls",
+  "Ran 3 tests across 2 files. [50.00ms]",
+].join("\n");
+
+describe("parseTestCounts — noisy output", () => {
+  test("uses the final summary, not earlier embedded counts", () => {
+    const c = parseTestCounts("", NOISY_BUN_FAILURE);
+    expect(c.passed).toBe(1);
+    expect(c.failed).toBe(2);
+  });
+
+  test("ignores ANSI colors around summary lines", () => {
+    const c = parseTestCounts("", "\x1b[32m 4 pass\x1b[0m\n\x1b[31m 1 fail\x1b[0m");
+    expect(c.passed).toBe(4);
+    expect(c.failed).toBe(1);
+  });
+
+  test("structured results stay comparable when counts match listed failures", () => {
+    const s = parseStructuredResults("", NOISY_BUN_FAILURE, {
+      passed: false,
+      execution: { status: "completed" },
+    });
+    expect(s.failingTestIds).toHaveLength(2);
+    expect(s.comparable).toBe(true);
+    expect(s.failureKind).toBe("assertions");
   });
 });

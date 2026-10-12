@@ -26,6 +26,7 @@ import type { SchedulerConfig } from "./scheduler";
 import { AgentRunner } from "./agent-runner";
 import type { AgentRunnerConfig } from "./agent-runner";
 import { submitAnswer, getPendingQuestions } from "../lib/hitl-channel";
+import { AutoSyncLoop } from "../lib/sync/loop";
 import { exportDaemonHistory } from "../lib/history";
 import { isDaemonRunning } from "./pid-utils";
 import {
@@ -107,6 +108,8 @@ export class Daemon {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Timer for HITL question polling. */
+  /** Periodic GitHub pull+push (sync.github.mode "auto"); null when off. */
+  private syncLoop: AutoSyncLoop | null = null;
   private hitlPollTimer: ReturnType<typeof setInterval> | null = null;
 
   /** inotify/FSEvents watcher on the tasks directory. */
@@ -190,6 +193,9 @@ export class Daemon {
     // FSEvents on macOS — kernel events, zero overhead at rest.
     this.startTasksWatcher();
 
+    // Periodic GitHub issue sync (only does anything in sync.github.mode "auto")
+    this.startSyncLoop();
+
     // Register signal handlers
     this.registerSignalHandlers();
 
@@ -266,6 +272,10 @@ export class Daemon {
       clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
+
+    // Stop the GitHub sync loop
+    this.syncLoop?.stop();
+    this.syncLoop = null;
 
     // Stop HITL polling
     if (this.hitlPollTimer) {
@@ -649,6 +659,20 @@ export class Daemon {
   // -------------------------------------------------------------------------
 
   /** Poll frequency for filesystem-based HITL question detection (ms). */
+  /** Start the GitHub sync loop. Always started: it idles while auto mode is off and picks it up when enabled later. Never throws. */
+  private startSyncLoop(): void {
+    try {
+      const loop = new AutoSyncLoop({
+        projectRoot: this.projectRoot,
+        log: (level, message) => this.log(level, `[sync] ${message}`),
+      });
+      loop.start();
+      this.syncLoop = loop;
+    } catch (err: any) {
+      this.log("warn", `[sync] could not start GitHub auto-sync: ${err?.message ?? err}`);
+    }
+  }
+
   private static readonly HITL_POLL_MS = 3_000;
 
   /**

@@ -57,6 +57,8 @@ export interface AggregateMetrics {
 export interface AnalyticsGroup {
   key: string | null;
   metrics: AggregateMetrics;
+  /** Distinct models used by the group's executions, sorted; unknown models are omitted. */
+  models: string[];
 }
 
 export interface AnalyticsSummary {
@@ -64,6 +66,8 @@ export interface AnalyticsSummary {
   groupBy: AnalyticsGroupBy | null;
   total: AggregateMetrics;
   groups: AnalyticsGroup[];
+  /** Distinct models used across all filtered executions, sorted. */
+  models: string[];
 }
 
 export interface SummarizeOptions {
@@ -186,6 +190,10 @@ export function aggregateMetrics(records: AgentAnalyticsRecord[]): AggregateMetr
   return m;
 }
 
+function distinctModels(records: AgentAnalyticsRecord[]): string[] {
+  return [...new Set(records.map((r) => r.model).filter((m): m is string => !!m))].sort();
+}
+
 const GROUP_KEY: Record<AnalyticsGroupBy, (r: AgentAnalyticsRecord) => string | null> = {
   task: (r) => r.task_id,
   quest: (r) => r.quest_id,
@@ -215,8 +223,8 @@ export function summarizeAnalytics(records: AgentAnalyticsRecord[], options: Sum
       if (b === null) return -1;
       return a < b ? -1 : a > b ? 1 : 0;
     });
-    for (const key of keys) groups.push({ key, metrics: aggregateMetrics(buckets.get(key)!) });
+    for (const key of keys) groups.push({ key, metrics: aggregateMetrics(buckets.get(key)!), models: distinctModels(buckets.get(key)!) });
   }
 
-  return { filter, groupBy, total: aggregateMetrics(filtered), groups };
+  return { filter, groupBy, total: aggregateMetrics(filtered), groups, models: distinctModels(filtered) };
 }

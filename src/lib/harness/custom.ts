@@ -73,6 +73,7 @@ export const customHarness: HarnessAdapter = {
     providerFlag: false,
     jsonStream: false,
     usage: false,
+    cost: false,
   },
   buildLaunch: (req) => build(req, false),
   buildResume: (req) => build(req, true),

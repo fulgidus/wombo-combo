@@ -10,22 +10,13 @@
  *   - Generic async operation feedback
  *
  * The spinner uses Braille dot characters (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏) which animate
- * via a `useEffect` interval. When a `result` is provided, the spinner
+ * via the shared Spinner. When a `result` is provided, the spinner
  * stops and a result icon + message is shown instead.
  */
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Box, Text } from "ink";
-
-// ---------------------------------------------------------------------------
-// Spinner frames
-// ---------------------------------------------------------------------------
-
-/** Braille dot spinner frames — smooth, terminal-friendly animation. */
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/** Spinner animation interval in ms. */
-const SPINNER_INTERVAL = 80;
+import { Spinner } from "../spinner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,19 +58,6 @@ export function ProgressView({
   status,
   result,
 }: ProgressViewProps): React.ReactElement {
-  const [frame, setFrame] = useState(0);
-
-  // Animate spinner when no result is set
-  useEffect(() => {
-    if (result) return;
-
-    const timer = setInterval(() => {
-      setFrame((prev) => (prev + 1) % SPINNER_FRAMES.length);
-    }, SPINNER_INTERVAL);
-
-    return () => clearInterval(timer);
-  }, [result]);
-
   // Result icons and colors
   const resultIcon = result
     ? result.type === "success"
@@ -122,7 +100,8 @@ export function ProgressView({
         </Box>
       ) : (
         <Box>
-          <Text color="cyan">{SPINNER_FRAMES[frame]} </Text>
+          <Spinner color="cyan" />
+          <Text> </Text>
           <Text>{status}</Text>
         </Box>
       )}

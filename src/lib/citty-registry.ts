@@ -44,6 +44,11 @@ import { versionCommand } from "../commands/citty/version";
 import { describeCommand } from "../commands/citty/describe";
 import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
+import { teamCommand } from "../commands/citty/team";
+import { triageCommand } from "../commands/citty/triage";
+import { retroCommand } from "../commands/citty/retro";
+import { commentCommand } from "../commands/citty/comment";
+import { syncCommand } from "../commands/citty/sync";
 
 // ---------------------------------------------------------------------------
 // Registry entry type
@@ -376,7 +381,8 @@ const ENTRIES: RegistryEntry[] = [
             status: { description: "Filter by status", enum: VALID_STATUSES },
             priority: { description: "Filter by priority", enum: VALID_PRIORITIES },
             difficulty: { description: "Filter by difficulty", enum: VALID_DIFFICULTIES },
-            ready: { description: "Show only ready tasks (backlog + deps met)", default: false },
+            quest: { description: "Filter by quest ID" },
+            ready: { description: "Show only ready tasks (planned + deps met; what launch --all-ready starts)", default: false },
             includeArchive: { description: "Include archived tasks", default: false, name: "--include-archive" },
             fields: { description: "Comma-separated list of fields to include in output" },
           },
@@ -829,6 +835,370 @@ const ENTRIES: RegistryEntry[] = [
           },
           flagOverrides: {
             execution: { description: "Execution: 1-based index (oldest first) or full execution ID (default: latest)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- team ---------------------------------------------------------------
+  {
+    cittyCmd: teamCommand,
+    meta: {
+      summary: "Multi-developer task claims: claim, release, status",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Team task claims",
+      description:
+        "Git-tracked claim files under .wombo-combo/claims/ tell teammates who works on which task. " +
+        "Claims expire after team.claimTtlHours (default 24). With team.enabled the daemon skips tasks " +
+        "claimed by another developer and claims/releases tasks as agents start and finish.",
+    },
+    subEntries: [
+      {
+        subKey: "claim",
+        parentName: "team",
+        meta: {
+          summary: "Claim a task for yourself",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            taskId: { name: "task-id", description: "Task ID to claim" },
+          },
+          flagOverrides: {
+            force: { description: "Take over a claim held by someone else", default: false },
+          },
+        },
+      },
+      {
+        subKey: "release",
+        parentName: "team",
+        meta: {
+          summary: "Release a task claim",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            taskId: { name: "task-id", description: "Task ID to release" },
+          },
+          flagOverrides: {
+            force: { description: "Release a claim held by someone else", default: false },
+          },
+        },
+      },
+      {
+        subKey: "status",
+        parentName: "team",
+        meta: {
+          summary: "Show task claims, expired claims and unclaimed tasks",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "setup",
+        parentName: "team",
+        meta: {
+          summary: "Configure the git merge driver for .wombo-combo task/meta files",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          flagOverrides: {
+            command: { description: "Override the merge driver command (default: woco team merge-meta %O %A %B)" },
+          },
+        },
+      },
+      {
+        subKey: "merge-meta",
+        parentName: "team",
+        meta: {
+          summary: "Git merge driver: merge <base> <ours> <theirs> into <ours> (exit 1 on conflict)",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            base: { name: "base", description: "Common ancestor file (%O)" },
+            ours: { name: "ours", description: "Current version, result is written here (%A)" },
+            theirs: { name: "theirs", description: "Other branch version (%B)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- triage -------------------------------------------------------------
+  {
+    cittyCmd: triageCommand,
+    meta: {
+      summary: "Triage tasks: list, show, set, brief",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Task triage",
+      description:
+        "Move tasks through the triage states needs-triage, needs-info, ready-for-agent, ready-for-human and wontfix " +
+        "(docs/agents/triage-labels.md). State and category live in the task notes and every transition leaves a system comment. " +
+        "Invalid transitions exit 1 and change nothing.",
+    },
+    subEntries: [
+      {
+        subKey: "list",
+        parentName: "triage",
+        meta: {
+          summary: "List the triage queue by bucket",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "show",
+        parentName: "triage",
+        meta: {
+          summary: "Show a task, its triage state and comments",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+          },
+        },
+      },
+      {
+        subKey: "set",
+        parentName: "triage",
+        meta: {
+          summary: "Move a task to a triage state",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+            state: { name: "state", description: "Target state [needs-triage|needs-info|ready-for-agent|ready-for-human|wontfix]" },
+          },
+          flagOverrides: {
+            category: { description: "Category: bug or enhancement" },
+            comment: { description: "Comment recorded with the transition" },
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
+            reopen: { description: "Allow wontfix -> needs-triage", default: false },
+            force: { description: "Skip the transition table (maintainer override)", default: false },
+          },
+        },
+      },
+      {
+        subKey: "brief",
+        parentName: "triage",
+        meta: {
+          summary: "Add an agent-brief comment skeleton to a task",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+          },
+          flagOverrides: {
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- retro --------------------------------------------------------------
+  {
+    cittyCmd: retroCommand,
+    meta: {
+      summary: "Suggest environment improvements from replays, analytics, evals and comments",
+      aliases: [],
+      mutating: false,
+      supportsDryRun: false,
+      completionSummary: "Retro suggestions from failure signals",
+      description:
+        "Collects failure signals from agent replays, analytics snapshots, eval reports and comments for a task, " +
+        "a quest or a time window, groups them into retro categories (navigation, automated checks, coding " +
+        "standards, steering files, tool economy, information access) and prints suggested changes ordered by " +
+        "severity. With --save the report is written to .wombo-combo/retros/<YYYY-MM-DD>-<scope>.md (git-tracked). " +
+        "Offline and read-only apart from --save.",
+    },
+  },
+
+  // --- comment ------------------------------------------------------------
+  {
+    cittyCmd: commentCommand,
+    meta: {
+      summary: "Comments on tasks and quests: add, list, show, link",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Task and quest comments",
+      description:
+        "Durable, git-tracked comments for inter-agent and human communication. One file per comment under " +
+        ".wombo-combo/comments/<task|quest>/<ref-id>/. A ref is a task ID or quest:<quest-id>. " +
+        "The author defaults to WOMBO_AUTHOR, then git user.email, then the OS user.",
+    },
+    subEntries: [
+      {
+        subKey: "add",
+        parentName: "comment",
+        meta: {
+          summary: "Add a comment to a task or quest",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            ref: { name: "ref", description: "Task ID or quest:<quest-id>" },
+            text: { name: "text", description: "Comment text (remaining words are joined)" },
+          },
+          flagOverrides: {
+            role: { description: "Author role: agent (default), human, or system" },
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
+            "reply-to": { description: "Comment ID this comment replies to" },
+            "github-url": { description: "URL of the mirrored GitHub issue comment" },
+            stdin: { description: "Read the comment text from stdin", default: false },
+          },
+        },
+      },
+      {
+        subKey: "list",
+        parentName: "comment",
+        meta: {
+          summary: "List comments of a task or quest, oldest first",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            ref: { name: "ref", description: "Task ID or quest:<quest-id>" },
+          },
+          flagOverrides: {
+            since: { description: "Only comments created after this ISO timestamp" },
+            limit: { description: "Only the newest N comments" },
+            author: { description: "Only comments by this author" },
+          },
+        },
+      },
+      {
+        subKey: "show",
+        parentName: "comment",
+        meta: {
+          summary: "Show one comment",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            id: { name: "comment-id", description: "Comment ID" },
+          },
+        },
+      },
+      {
+        subKey: "link",
+        parentName: "comment",
+        meta: {
+          summary: "Set the GitHub URL of an existing comment",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            id: { name: "comment-id", description: "Comment ID" },
+            url: { name: "github-url", description: "URL of the GitHub issue comment" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- sync ---------------------------------------------------------------
+  {
+    cittyCmd: syncCommand,
+    meta: {
+      summary: "Sync tasks and quests with GitHub issues: push, pull, run, watch, status, labels",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: true,
+      completionSummary: "GitHub issue sync",
+      description:
+        "Mirror tasks, quests and their comments to GitHub issues. The repo comes from sync.github.repo in " +
+        "config or the git origin remote; the token from GITHUB_TOKEN, GH_TOKEN or 'gh auth token'. " +
+        "Issues carry a woco marker so pushes are idempotent and never duplicate." +
+        " With sync.github.mode set to auto (and enabled), local changes are pushed in the background right after they are made, and the daemon or 'sync watch' runs pull and push every sync.github.intervalSeconds.",
+    },
+    subEntries: [
+      {
+        subKey: "push",
+        parentName: "sync",
+        meta: {
+          summary: "Push tasks, quests and comments to GitHub issues",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+            only: { description: "Push a single item: a task ID or quest:<quest-id>" },
+          },
+        },
+      },
+      {
+        subKey: "pull",
+        parentName: "sync",
+        meta: {
+          summary: "Pull GitHub issue changes and comments into tasks",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+          },
+        },
+      },
+      {
+        subKey: "run",
+        parentName: "sync",
+        meta: {
+          summary: "Run one sync cycle: pull from GitHub, then push",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show what would change without writing anything", default: false },
+          },
+        },
+      },
+      {
+        subKey: "watch",
+        parentName: "sync",
+        meta: {
+          summary: "Keep syncing with GitHub on an interval until stopped",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          flagOverrides: {
+            once: { description: "Run a single cycle and exit", default: false },
+            interval: { description: "Seconds between cycles (default: sync.github.intervalSeconds, minimum 15)" },
+          },
+        },
+      },
+      {
+        subKey: "status",
+        parentName: "sync",
+        meta: {
+          summary: "Compare local tasks and quests with GitHub issues (read-only)",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "labels",
+        parentName: "sync",
+        meta: {
+          summary: "Ensure the woco label catalog exists on GitHub",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: true,
+          flagOverrides: {
+            dryRun: { description: "Show which labels would be created without creating them", default: false },
           },
         },
       },

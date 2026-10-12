@@ -11,6 +11,7 @@
 import type { WomboConfig } from "../config";
 import { output, outputError, outputMessage, type OutputFormat } from "../lib/output";
 import { renderRetry } from "../lib/toon";
+import { msg, t } from "../lib/i18n";
 import type { DaemonAgentState } from "../daemon/protocol";
 
 export interface RetryCommandOptions {
@@ -31,7 +32,7 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
   const fmt = opts.outputFmt ?? "text";
 
   if (!opts.featureId) {
-    outputError(fmt, "Usage: woco retry <feature-id>");
+    outputError(fmt, msg("cli.retry.usage"));
     return; // unreachable — outputError calls process.exit
   }
 
@@ -49,15 +50,12 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     const agent = snapshot.agents.find((a) => a.featureId === opts.featureId);
 
     if (!agent) {
-      outputError(fmt, `Agent not found for feature: ${opts.featureId}`);
+      outputError(fmt, msg("cli.retry.notFound", { id: opts.featureId }));
       return; // unreachable
     }
 
     if (agent.status !== "failed") {
-      outputError(
-        fmt,
-        `Agent ${opts.featureId} is not in failed state (current: ${agent.status})`
-      );
+      outputError(fmt, msg("cli.retry.notFailed", { id: opts.featureId, status: agent.status }));
       return; // unreachable
     }
 
@@ -74,12 +72,12 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
       };
 
       output(fmt, dryRunResult, () => {
-        console.log(`\n[dry-run] Would retry agent: ${opts.featureId}`);
-        console.log(`  Current status: ${agent.status}`);
-        console.log(`  Retries so far: ${agent.retries}`);
-        console.log(`  Worktree: ${agent.worktree}`);
-        console.log(`  Mode: headless (daemon manages the process)`);
-        if (opts.model) console.log(`  Model: ${opts.model}`);
+        console.log(`\n${t("cli.retry.dryRunWould", { id: opts.featureId })}`);
+        console.log(`  ${t("cli.retry.currentStatus", { status: agent.status })}`);
+        console.log(`  ${t("cli.retry.retriesSoFar", { count: agent.retries })}`);
+        console.log(`  ${t("cli.retry.worktree", { path: agent.worktree })}`);
+        console.log(`  ${t("cli.retry.mode")}`);
+        if (opts.model) console.log(`  ${t("cli.retry.model", { model: opts.model })}`);
       }, () => {
         console.log(renderRetry(dryRunResult));
       });
@@ -89,21 +87,21 @@ export async function cmdRetry(opts: RetryCommandOptions): Promise<void> {
     // Ask the daemon to retry (resets retries and re-launches)
     client.retryAgent(opts.featureId, opts.model);
     if (fmt === "text") {
-      console.log(`Retry requested for ${opts.featureId}. Waiting for completion...\n`);
+      console.log(`${t("cli.retry.requested", { id: opts.featureId })}\n`);
     }
 
     // Wait for the retried agent to reach a terminal state
     const finalAgent = await waitForAgentTerminal(client, opts.featureId, fmt);
     if (!finalAgent) {
-      outputError(fmt, `Daemon stopped responding while retrying ${opts.featureId}.`);
+      outputError(fmt, msg("cli.retry.daemonStopped", { id: opts.featureId }));
       return; // unreachable
     }
 
     if (fmt === "text") {
       if (finalAgent.status === "failed") {
-        console.log(`\n${opts.featureId}: retry failed — ${finalAgent.error ?? "unknown error"}`);
+        console.log(`\n${t("cli.retry.failed", { id: opts.featureId, error: finalAgent.error ?? t("cli.retry.unknownError") })}`);
       } else {
-        console.log(`\n${opts.featureId}: retry finished with status "${finalAgent.status}".`);
+        console.log(`\n${t("cli.retry.finished", { id: opts.featureId, status: finalAgent.status })}`);
       }
     }
   } finally {
@@ -142,7 +140,7 @@ async function waitForAgentTerminal(
     if (TERMINAL.has(agent.status)) return agent;
 
     if (fmt === "text" && polls % 4 === 0) {
-      console.log(`[daemon] ${featureId}: ${agent.status} (retry ${agent.retries}/${agent.maxRetries})`);
+      console.log(t("cli.retry.poll", { id: featureId, status: agent.status, retries: agent.retries, max: agent.maxRetries }));
     }
   }
 }
