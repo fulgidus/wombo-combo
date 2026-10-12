@@ -138,7 +138,8 @@ function createEmptyStore(): DaemonStore {
   };
 }
 
-const TERMINAL_STATUSES: AgentStatus[] = ["completed", "verified", "failed", "merged"];
+// "completed" and "verified" are in flight: build verification and merge still run.
+const TERMINAL_STATUSES: AgentStatus[] = ["failed", "merged"];
 
 // ---------------------------------------------------------------------------
 // Helper: build DashboardStore from DaemonStore
