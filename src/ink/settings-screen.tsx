@@ -178,9 +178,8 @@ const RESET_IDX = FIELDS.length - 1;
 /**
  * Full settings TUI screen.
  *
- * Navigation: up/down arrows move the cursor, Enter or left/right arrows
- * change the value (left = previous, right = next),
- * Escape or "b" to go back.
+ * Navigation: up/down move the cursor, left/right (or Enter) change the value,
+ * Escape goes back.
  */
 export function SettingsScreen({
   config: initialConfig,
@@ -208,48 +207,31 @@ export function SettingsScreen({
     [onSave, projectRoot]
   );
 
-  /** Apply a new config, update local state and persist it. */
-  const apply = useCallback(
-    (patched: SettingsScreenConfig) => {
-      setCfg(patched);
-      persist(patched);
-    },
-    [persist]
-  );
-
-  /**
-   * Change the selected field's value. `dir` is +1 (next / toggle) or -1
-   * (previous / toggle). The reset row is never triggered by direction keys.
-   */
-  const change = useCallback(
-    (dir: 1 | -1, allowReset: boolean) => {
-      const field = FIELDS[cursor];
-      const step = <T,>(options: T[], current: T): T => {
-        const idx = options.indexOf(current);
-        return options[(idx + dir + options.length) % options.length];
-      };
-      switch (field.id) {
-        case "reset":
-          if (allowReset) apply({});
-          return;
-        case "theme":
-          apply({ ...cfg, tui: { ...cfg.tui, theme: step<string>(THEME_OPTIONS, cfg.tui?.theme ?? "default") } });
-          return;
-        case "locale":
-          apply({ ...cfg, tui: { ...cfg.tui, locale: step(LOCALE_OPTIONS, cfg.tui?.locale ?? "auto") } });
-          return;
-        case "checkForUpdates":
-          apply({ ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } });
-          return;
-        case "autoInstallUpdates":
-          apply({ ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } });
-          return;
-        case "devMode":
-          apply({ ...cfg, devMode: !cfg.devMode });
-          return;
+  /** Step the value of a field: dir=+1 next option, dir=-1 previous (booleans just toggle). */
+  const stepField = useCallback(
+    (field: FieldDef, dir: 1 | -1) => {
+      let patched: SettingsScreenConfig | undefined;
+      if (field.id === "theme") {
+        const idx = THEME_OPTIONS.indexOf((cfg.tui?.theme ?? "default") as ThemeName);
+        const next = THEME_OPTIONS[(idx + dir + THEME_OPTIONS.length) % THEME_OPTIONS.length];
+        patched = { ...cfg, tui: { ...cfg.tui, theme: next } };
+      } else if (field.id === "locale") {
+        const idx = LOCALE_OPTIONS.indexOf(cfg.tui?.locale ?? "auto");
+        const next = LOCALE_OPTIONS[(idx + dir + LOCALE_OPTIONS.length) % LOCALE_OPTIONS.length];
+        patched = { ...cfg, tui: { ...cfg.tui, locale: next } };
+      } else if (field.id === "checkForUpdates") {
+        patched = { ...cfg, tui: { ...cfg.tui, checkForUpdates: !(cfg.tui?.checkForUpdates ?? true) } };
+      } else if (field.id === "autoInstallUpdates") {
+        patched = { ...cfg, tui: { ...cfg.tui, autoInstallUpdates: !(cfg.tui?.autoInstallUpdates ?? false) } };
+      } else if (field.id === "devMode") {
+        patched = { ...cfg, devMode: !cfg.devMode };
+      }
+      if (patched) {
+        setCfg(patched);
+        persist(patched);
       }
     },
-    [cursor, cfg, apply]
+    [cfg, persist]
   );
 
   const handleInput = useCallback(
@@ -269,17 +251,27 @@ export function SettingsScreen({
         onBack();
         return;
       }
+      const field = FIELDS[cursor];
       if (key.leftArrow) {
-        change(-1, false);
+        stepField(field, -1);
         return;
       }
       if (key.rightArrow) {
-        change(1, false);
+        stepField(field, 1);
         return;
       }
-      if (key.return) change(1, true);
+      if (key.return) {
+        if (field.id === "reset") {
+          // Destructive: Enter only, never an arrow key.
+          const reset: SettingsScreenConfig = {};
+          setCfg(reset);
+          persist(reset);
+          return;
+        }
+        stepField(field, 1);
+      }
     },
-    [change, onBack]
+    [cursor, stepField, persist, onBack]
   );
 
   useScreenInput(handleInput);
