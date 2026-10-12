@@ -1,0 +1,32 @@
+id: triage-pull-labels
+title: Keep triage state in sync with GitHub labels (pull and push)
+description: "Check and complete how src/lib/sync/pull.ts and push.ts handle triage: a new GitHub issue becomes a task
+  with 'triage: needs-triage'; when a maintainer changes the triage label on GitHub (one of the five state labels, or
+  bug/enhancement category labels), the next pull updates the task's triage note through the triage core (not by editing
+  notes directly) when the local task did not change since the last sync; push renders the current triage state as
+  exactly one state label. Add category labels bug and enhancement to LABEL_CATALOG in src/lib/sync/github-client.ts
+  (created automatically by ensureLabels). Tests with the fake GitHub server (tests/helpers/fake-github.ts): label
+  change on GitHub reaches the task, local transition reaches GitHub, conflicting changes keep local and report a
+  conflict, and the remote hash stays stable (no phantom changes)."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - triage-core
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Do not break sync round-trip tests
+  - Idempotent
+forbidden: []
+references:
+  - src/lib/sync/pull.ts
+  - src/lib/sync/push.ts
+  - src/lib/sync/hashing.ts
+  - tests/sync-roundtrip.test.ts
+notes: []
+subtasks: []
+quest: woco-triage
+paths: []

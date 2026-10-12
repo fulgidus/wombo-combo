@@ -1,0 +1,35 @@
+id: triage-cli
+title: woco triage list|show|set|brief commands
+description: "Citty command 'triage' (src/commands/triage.ts, src/commands/citty/triage.ts): 'list' prints the queue
+  buckets from listTriageQueue (-o json|toon too); 'show <task>' prints the task, its triage state and its comments;
+  'set <task> <state> [--category bug|enhancement] [--comment text]' calls transition() and prints the result, exit 1
+  with a clear message on an invalid transition; 'brief <task>' adds an agent-brief comment skeleton following
+  .claude/skills/triage/AGENT-BRIEF.md (current behaviour, desired behaviour, key interfaces, acceptance criteria, out
+  of scope) that the maintainer or an agent then fills in. Register in router.ts, citty-registry.ts (COMMAND_REGISTRY
+  derives from it), run bun run docs:gen, add to shell completion via the registry; i18n keys cli.triage.* and
+  cli.help.triage.* in src/locales/{en,it}/cli.json using the helper python3
+  /tmp/claude-0/-home-user-wombo-combo/5ba887b1-26a2-5c73-9e27-d187dc4c7b32/scratchpad/addk.py <spec.json> if present,
+  otherwise edit both files by hand keeping key sets identical (Italian also needs a _many key for each _other). Tests
+  in tests/triage-cli.test.ts (subprocess, temp dir) and tests/i18n-help.test.ts must stay green."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - triage-core
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+  - English output of existing commands unchanged
+forbidden: []
+references:
+  - src/commands/team.ts
+  - src/commands/citty/team.ts
+  - src/lib/citty-registry.ts
+  - tests/comment-cli.test.ts
+notes: []
+subtasks: []
+quest: woco-triage
+paths: []

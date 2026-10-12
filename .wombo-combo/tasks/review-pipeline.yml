@@ -1,0 +1,37 @@
+id: review-pipeline
+title: Wire the review stage into the daemon before merge
+description: "In src/daemon/agent-runner.ts, after build/test verification (including the TDD gate) passes and before
+  the merge, when review.enabled: capture the task diff against its base (reuse src/lib/replay-diff.ts or git diff in
+  the worktree), build the prompt via review.ts and run a reviewer agent through the harness layer (src/lib/harness,
+  routing operation 'review': add 'review' to the routable operations in src/lib/harness/routing.ts and config
+  validation, defaulting to the task's profile), parse findings, post each as a task comment (src/lib/comments.ts,
+  author 'reviewer', role agent, body 'severity axis file:line message'), and decide: pass -> continue to merge;
+  blocking findings and rounds left -> resume/re-run the implementing agent with the findings as the prompt (same
+  mechanism as the build-fix retry), then re-verify and re-review; rounds exhausted -> mark the agent failed with a
+  clear reason and a summary comment. Status 'in_review' must be visible in the daemon state and dashboard if statuses
+  are listed there. A reviewer crash or unparseable output must never block silently: treat as pass with a warning
+  comment when the output cannot be parsed, fail the run only on harness errors after retries. Tests with the existing
+  fake-agent/daemon test helpers (see tests/daemon-agent-runner*.test.ts): disabled = no change in behaviour, pass,
+  blocking then fixed, blocking exhausted, unparseable reviewer output."
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - review-core
+effort: PT5H
+started_at: null
+ended_at: null
+constraints:
+  - review.enabled false must leave current behaviour byte-identical
+  - No AI attribution in generated comments or prompts
+forbidden: []
+references:
+  - src/daemon/agent-runner.ts
+  - src/lib/harness/routing.ts
+  - src/lib/replay-diff.ts
+  - tests/daemon-agent-runner.test.ts
+notes: []
+subtasks: []
+quest: review-gate
+paths: []

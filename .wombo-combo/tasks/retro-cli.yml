@@ -1,0 +1,29 @@
+id: retro-cli
+title: woco retro command
+description: "Citty command 'retro' (src/commands/retro.ts, src/commands/citty/retro.ts): 'woco retro [--task <id>]
+  [--quest <id>] [--since <Nd>] [--save] [-o json|toon]' prints candidates ordered by severity grouped by category with
+  evidence and suggested change; --save writes .wombo-combo/retros/<YYYY-MM-DD>-<scope>.md (tracked in git; add to
+  AGENTS.md rule 4 tracked list and file layout); nothing found prints a clear 'no signals' message. Register in
+  router/citty-registry, bun run docs:gen, completion via registry, i18n cli.retro.* and cli.help.retro.* in en and it
+  (addk.py helper at /tmp/claude-0/-home-user-wombo-combo/5ba887b1-26a2-5c73-9e27-d187dc4c7b32/scratchpad/addk.py
+  <spec.json>, Italian needs _many for each _other). Tests in tests/retro-cli.test.ts. No AI attribution in saved
+  retros."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - retro-collect
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references:
+  - src/commands/team.ts
+  - src/commands/citty/team.ts
+  - src/lib/citty-registry.ts
+notes: []
+subtasks: []
+quest: woco-retro
+paths: []

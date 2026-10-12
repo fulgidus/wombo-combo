@@ -1,0 +1,22 @@
+id: woco-triage
+title: "woco triage: move GitHub-pulled issues through the triage state machine"
+goal: Close the dead end where sync pull creates needs-triage tasks and nothing moves them on. Add a triage state
+  machine (roles from docs/agents/triage-labels.md and the vendored triage skill under .claude/skills/triage), a woco
+  triage command to list, inspect, transition and brief tasks, and make sync pull and push keep triage state consistent
+  with GitHub labels.
+status: draft
+priority: high
+difficulty: medium
+depends_on: []
+branch: quest/woco-triage
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-10-12T02:03:27.163Z
+updated_at: 2026-10-12T02:03:27.163Z
+started_at: null
+ended_at: null
+notes: []

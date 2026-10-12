@@ -1,0 +1,22 @@
+id: woco-retro
+title: "woco retro: turn replays, analytics and eval data into environment improvements"
+goal: Add a retro command that collects failure signals from replays, analytics snapshots, evals and comments for a
+  task, quest or time window, groups them into the improvement categories of the retro skill (navigation, automated
+  checks, coding standards, steering files, tool economy, information access) and prints or saves suggestions ordered by
+  severity.
+status: draft
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/woco-retro
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-10-12T02:03:27.641Z
+updated_at: 2026-10-12T02:03:27.641Z
+started_at: null
+ended_at: null
+notes: []

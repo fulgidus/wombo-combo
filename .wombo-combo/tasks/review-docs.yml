@@ -1,0 +1,22 @@
+id: review-docs
+title: Review gate guide
+description: "docs/src/content/docs/guides/review-gate.md: what is reviewed (Standards and Spec), config block with all
+  fields, routing operation 'review', findings as task comments, retry rounds, how to write CODING_STANDARDS.md
+  (mechanical rules belong in automated checks, judgement rules in standards), limits. Update README, run bun run
+  docs:gen. No AI attribution."
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on:
+  - review-pipeline
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: review-gate
+paths: []

@@ -1,0 +1,37 @@
+id: triage-core
+title: Triage state machine library
+description: "Create src/lib/triage.ts (pure, no network). Roles: category bug|enhancement; state
+  needs-triage|needs-info|ready-for-agent|ready-for-human|wontfix (see docs/agents/triage-labels.md and
+  .claude/skills/triage/SKILL.md for the transitions and rules: exactly one category and one state per triaged item;
+  needs-info returns to needs-triage when the reporter replies; wontfix is terminal unless explicitly reopened). Store
+  state on a task as notes lines 'triage: <state>' and 'category: <bug|enhancement>' (reuse
+  parseTriageRole/applyTriageRole in src/lib/sync/syncable.ts, extend it for category). API: TRIAGE_STATES,
+  TRIAGE_CATEGORIES, getTriage(task), canTransition(from,to), transition(projectRoot, taskId, to, {category?, comment?,
+  author?}) which validates, updates the task notes via the task store, adds a system comment (src/lib/comments.ts
+  addComment) and, if sync.github.mode is auto, calls maybeSyncItem; listTriageQueue(projectRoot) returning buckets
+  oldest-first: needsTriage, needsInfoWithNewComments (comments newer than the last transition), readyForAgent,
+  readyForHuman. Unknown or conflicting states are reported, never silently fixed. Thorough unit tests with temp-dir
+  projects (tests/helpers)."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - Pure functions plus the task store
+  - no network
+  - One category and one state per item
+  - Never lose existing notes
+forbidden: []
+references:
+  - docs/agents/triage-labels.md
+  - .claude/skills/triage/SKILL.md
+  - src/lib/sync/syncable.ts
+  - src/lib/comments.ts
+notes: []
+subtasks: []
+quest: woco-triage
+paths: []

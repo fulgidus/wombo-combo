@@ -1,0 +1,20 @@
+id: retro-docs
+title: Retro guide
+description: "docs/src/content/docs/guides/retro.md: what is collected, categories, severity thresholds, examples,
+  saving retros, how to act on them (when to move a rule from AGENTS.md into checks or standards). Update README, run
+  bun run docs:gen."
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on:
+  - retro-cli
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: woco-retro

@@ -1,0 +1,35 @@
+id: review-core
+title: "Review library: prompt, findings parser, decision, config"
+description: "Create src/lib/review.ts (pure). buildReviewPrompt({task, quest?, diff, standards?, specText}) producing a
+  prompt for a reviewer agent that reviews on two axes: Standards (does the diff follow the repo's documented coding
+  standards: CODING_STANDARDS.md if present, plus the conventions in AGENTS.md) and Spec (does the diff do what the
+  task's description, constraints and forbidden list ask, nothing less and nothing more), instructing it to output ONLY
+  a JSON object {findings:[{axis:'standards'|'spec', severity:'blocking'|'major'|'minor'|'nit', file, line?, message,
+  suggestion?}]}. parseReviewFindings(agentOutput) tolerant of surrounding prose/code fences, validating fields,
+  dropping malformed entries (and reporting how many). decideReview(findings, reviewConfig) -> {pass:boolean,
+  blocking:Finding[]}. loadStandards(projectRoot). Config block 'review' in src/config.ts: {enabled:false,
+  blockOn:'blocking'|'major' (default 'blocking'), maxRounds:2 (1-5), maxDiffChars:60000} with normalizeReviewConfig,
+  validateConfig rules, schemas/config.schema.json, bun run docs:gen. Truncate huge diffs with a clear marker. The
+  review prompt text must contain no AI attribution and must tell the reviewer not to add any. Tests in
+  tests/review-core.test.ts and tests/config.test.ts."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - Pure functions
+  - No network
+  - Mirror the style of src/lib/prompt.ts and the sync/comments config blocks
+forbidden: []
+references:
+  - src/lib/prompt.ts
+  - src/config.ts
+  - docs/agents/no-ai-attribution.md
+notes: []
+subtasks: []
+quest: review-gate
+paths: []

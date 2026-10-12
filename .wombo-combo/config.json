@@ -68,5 +68,16 @@
     "prMode": "skip",
     "prBaseBranch": null,
     "changelog": true
+  },
+  "agentProfiles": {
+    "claude-local": {
+      "harness": "claude-code",
+      "args": [
+        "--allowedTools=Bash,Edit,Write,Read,Glob,Grep"
+      ]
+    }
+  },
+  "routing": {
+    "default": "claude-local"
   }
 }
