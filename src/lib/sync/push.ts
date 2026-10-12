@@ -251,7 +251,7 @@ const norm = (s: string) => s.replace(/\r\n/g, "\n").trim();
 function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknown> | null {
   const patch: Record<string, unknown> = {};
   if (norm(remote.title) !== norm(draft.title)) patch.title = draft.title;
-  if (norm(remote.body) !== norm(draft.body)) patch.body = draft.body;
+  if (norm(remote.body) !== norm(draft.body) || containsAiAttribution(remote.body)) patch.body = draft.body;
   const want = mergeLabels(draft.labels, remote.labels);
   if ([...want].sort().join("\n") !== [...remote.labels].sort().join("\n")) patch.labels = want;
   if (remote.state !== draft.state || (draft.state === "closed" && remote.stateReason !== draft.stateReason)) {
@@ -263,20 +263,24 @@ function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknow
 
 /**
  * Some hosts (a proxy, an integration) append an attribution footer to text
- * created through their API. AI attribution must never stay anywhere (AGENTS.md
- * rule 6), so right after a create we edit the text clean again. Best effort:
- * a failure only warns, and the footer is stripped when it is read back anyway.
+ * created through their API, sometimes only visible when the item is read back
+ * (not in the create response). AI attribution must never stay anywhere
+ * (AGENTS.md rule 6), so right after a create we re-read the issue and edit it
+ * clean again. Best effort: a failure only warns, and the next push retries
+ * (it checks the raw remote body of every mapped issue).
  */
 async function scrubIssue(client: GitHubClient, issue: GitHubIssue, warn?: (m: string) => void): Promise<GitHubIssue> {
-  if (!containsAiAttribution(issue.body ?? "")) return issue;
   try {
-    return await client.updateIssue(issue.number, { body: stripAiAttribution(issue.body ?? "") });
+    const current = await client.getIssue(issue.number);
+    if (!containsAiAttribution(current.body ?? "")) return current;
+    return await client.updateIssue(issue.number, { body: stripAiAttribution(current.body ?? "") });
   } catch (err) {
     (warn ?? console.warn)(`[sync] could not remove host-added attribution from issue #${issue.number}: ${errMsg(err)}`);
     return issue;
   }
 }
 
+/** Edit a comment clean when its raw text carries attribution; a no-op (zero writes) otherwise. */
 async function scrubComment(client: GitHubClient, c: GitHubComment, warn?: (m: string) => void): Promise<GitHubComment> {
   if (!containsAiAttribution(c.body ?? "")) return c;
   try {
@@ -284,6 +288,22 @@ async function scrubComment(client: GitHubClient, c: GitHubComment, warn?: (m: s
   } catch (err) {
     (warn ?? console.warn)(`[sync] could not remove host-added attribution from comment ${c.id}: ${errMsg(err)}`);
     return c;
+  }
+}
+
+/** Re-read a freshly created comment (the create response may lack the host's footer) and scrub it. */
+async function scrubCreatedComment(
+  client: GitHubClient,
+  issue: number,
+  created: GitHubComment,
+  warn?: (m: string) => void,
+): Promise<GitHubComment> {
+  try {
+    const current = (await client.listComments(issue)).find((c) => c.id === created.id);
+    return await scrubComment(client, current ?? created, warn);
+  } catch (err) {
+    (warn ?? console.warn)(`[sync] could not re-read comment ${created.id}: ${errMsg(err)}`);
+    return scrubComment(client, created, warn);
   }
 }
 
@@ -362,6 +382,13 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
     );
   };
 
+  /** The remote issue when its raw body carries attribution (one shared list, not a read per issue). */
+  const findDirtyRemote = async (number: number): Promise<GitHubIssue | null> => {
+    remoteIssues ??= await client.listIssues({ state: "all" });
+    const hit = remoteIssues.find((i) => i.number === number);
+    return hit && containsAiAttribution(hit.body ?? "") ? hit : null;
+  };
+
   for (const item of items) {
     try {
       await pushItem(item);
@@ -385,7 +412,15 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
         report.updated.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
         if (updated) entry = updated;
       } else {
-        report.unchanged.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+        // Unchanged locally, but a host may have added a footer to the remote text since
+        const dirty = await findDirtyRemote(mapping.issue_number);
+        if (dirty) {
+          const updated = await updateExisting(item, dirty.number, toRemoteIssue(dirty));
+          report.updated.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+          if (updated) entry = updated;
+        } else {
+          report.unchanged.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+        }
       }
     } else if (item.finished && !includeFinished) {
       report.unchanged.push({ ...base, reason: "finished" });
@@ -562,6 +597,17 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
     }
     if (dirty) persist();
 
+    // Already-mirrored comments may have gained a host footer: edit them clean
+    if (!dryRun && existedRemotely && issueNumber !== undefined) {
+      const mirrored = new Set(Object.values(known));
+      if (mirrored.size > 0) {
+        const remoteComments = await client.listComments(issueNumber);
+        for (const rc of remoteComments) {
+          if (mirrored.has(rc.id)) await scrubComment(client, rc, opts.warn);
+        }
+      }
+    }
+
     for (const c of pending) {
       const cref = { ref: item.ref, comment: c.id, issue: issueNumber };
       if (dryRun) {
@@ -570,7 +616,7 @@ async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
       }
       if (issueNumber === undefined) break;
       try {
-        const gh = await scrubComment(client, await client.createComment(issueNumber, renderCommentBody(c)), opts.warn);
+        const gh = await scrubCreatedComment(client, issueNumber, await client.createComment(issueNumber, renderCommentBody(c)), opts.warn);
         known[c.id] = gh.id;
         persist();
         report.commented.push({ ...cref, githubId: gh.id });
@@ -645,7 +691,7 @@ export async function postRemoteNotices(
         return m?.kind === "comment" && m.id === id;
       });
       if (dup) continue;
-      const created = await scrubComment(client, await client.createComment(n.issue, body), opts.warn);
+      const created = await scrubCreatedComment(client, n.issue, await client.createComment(n.issue, body), opts.warn);
       out.posted.push({ issue: n.issue, ref: n.ref, githubId: created.id });
       // The local system comment pull left for this conflict says the same thing: link it so push does not mirror it too.
       if (opts.projectRoot) linkConflictComment(opts.projectRoot, n, created.html_url);
