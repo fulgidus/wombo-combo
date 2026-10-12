@@ -355,6 +355,8 @@ export async function runCittyCommand(
 
         case "triage":
             await runCommand(triageCommand, { rawArgs: injectDefaultSubcommand("triage", rawArgs) });
+            break;
+
         case "retro":
             await runCommand(retroCommand, { rawArgs });
             break;

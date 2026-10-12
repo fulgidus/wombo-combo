@@ -1005,6 +1005,8 @@ const ENTRIES: RegistryEntry[] = [
         },
       },
     ],
+  },
+
   // --- retro --------------------------------------------------------------
   {
     cittyCmd: retroCommand,
