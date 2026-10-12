@@ -38,6 +38,7 @@ import { tuiCommand } from "./tui";
 import { daemonCommand } from "./daemon";
 import { replayCommand } from "./replay";
 import { teamCommand } from "./team";
+import { triageCommand } from "./triage";
 import { commentCommand } from "./comment";
 import { syncCommand } from "./sync";
 
@@ -108,6 +109,8 @@ const CITTY_COMMANDS = new Set([
     "rp",         // alias for replay
     // --- Team task claims ---
     "team",
+    // --- Triage
+    "triage",
     // --- Comments on tasks and quests ---
     "comment",
     // --- GitHub issue sync ---
@@ -192,6 +195,7 @@ const DEFAULT_SUBCOMMAND: Record<string, string> = {
     daemon: "status",
     replay: "list",
     team: "status",
+    triage: "list",
 };
 
 /**
@@ -344,6 +348,10 @@ export async function runCittyCommand(
 
         case "team":
             await runCommand(teamCommand, { rawArgs: injectDefaultSubcommand("team", rawArgs) });
+            break;
+
+        case "triage":
+            await runCommand(triageCommand, { rawArgs: injectDefaultSubcommand("triage", rawArgs) });
             break;
 
         case "comment":

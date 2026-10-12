@@ -54,7 +54,7 @@ function refLabel(ref: CommentRef): string {
   return ref.kind === "quest" ? `quest:${ref.id}` : ref.id;
 }
 
-function printComment(c: Comment, indent: string): void {
+export function printComment(c: Comment, indent: string): void {
   console.log(
     `${indent}${BOLD}${t("cli.comment.entry", { when: fmtWhen(c.created_at), author: c.author, role: c.role })}${RESET} ${DIM}${c.id}${RESET}`,
   );
