@@ -8,13 +8,13 @@ description: "Found by dogfooding: 'woco tasks list --ready' is documented as 'b
   src/commands/citty/tasks.ts and the registry in src/lib/citty-registry.ts (help strings are translated: update
   cli.help.* keys in en and it), regenerate docs with bun run docs:gen, and add a test. If any docs or code relies on
   the old meaning, update it."
-status: planned
+status: in_progress
 completion: 0
 difficulty: easy
 priority: low
 depends_on: []
 effort: PT1H
-started_at: null
+started_at: 2026-10-12T02:05:44.297Z
 ended_at: null
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)

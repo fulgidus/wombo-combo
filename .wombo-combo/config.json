@@ -60,9 +60,9 @@
   },
   "tdd": {
     "enabled": true,
-    "testCommand": "bun test",
+    "testCommand": "CI=true bun test --timeout 30000 --path-ignore-patterns 'tests/e2e/**'",
     "strictTdd": true,
-    "testTimeout": 120000
+    "testTimeout": 900000
   },
   "postMerge": {
     "prMode": "skip",

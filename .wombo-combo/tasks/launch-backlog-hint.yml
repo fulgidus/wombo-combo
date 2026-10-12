@@ -8,14 +8,14 @@ description: "Found by dogfooding: 'woco launch --all-ready' prints 'No launchab
   (cli.launch.* keys in src/locales/en/cli.json and it/cli.json, identical key sets, Italian also needs a _many key for
   every _other key) and keep the existing English text byte-identical when no backlog tasks exist. Add tests (see
   tests/launch*.test.ts or tests/e2e for patterns). Run bun run typecheck and the i18n tests."
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on: []
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T02:14:48.952Z
+ended_at: 2026-10-12T02:22:45.603Z
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)
   - Keep existing messages unchanged when the new condition does not apply
