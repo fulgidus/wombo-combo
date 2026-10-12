@@ -563,7 +563,7 @@ describe("dependency resolution", () => {
     state.destroy();
   });
 
-  test("areDepsReady returns true when dep is verified", () => {
+  test("areDepsReady waits for merge when dep is only verified (child forks from base)", () => {
     const state = new DaemonState(tempDir);
     const dep = makeAgent("dep-1");
     const child = makeAgent("child-1", { dependsOn: ["dep-1"] });
@@ -572,7 +572,26 @@ describe("dependency resolution", () => {
 
     state.updateAgentStatus("dep-1", "running");
     state.updateAgentStatus("dep-1", "verified");
+    expect(state.areDepsReady(child)).toBe(false);
+    state.updateAgentStatus("dep-1", "merged");
     expect(state.areDepsReady(child)).toBe(true);
+    state.destroy();
+  });
+
+  test("areDepsReady accepts a verified dep for its chain successor sharing the worktree", () => {
+    const state = new DaemonState(tempDir);
+    const dep = makeAgent("dep-1", { hasChainSuccessor: true, worktree: "/tmp/wt-chain" });
+    const successor = makeAgent("child-1", { dependsOn: ["dep-1"], worktree: "/tmp/wt-chain" });
+    const outsider = makeAgent("other-1", { dependsOn: ["dep-1"] });
+    state.addAgent(dep);
+    state.addAgent(successor);
+    state.addAgent(outsider);
+
+    state.updateAgentStatus("dep-1", "running");
+    state.updateAgentStatus("dep-1", "verified");
+    expect(state.areDepsReady(successor)).toBe(true);
+    // A dependent outside the chain still forks from base and must wait for the merge
+    expect(state.areDepsReady(outsider)).toBe(false);
     state.destroy();
   });
 
