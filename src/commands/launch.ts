@@ -14,7 +14,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
-import { loadFeatures, selectFeatures } from "../lib/tasks";
+import { loadFeatures, selectFeatures, getDoneTaskIds, areDependenciesMet } from "../lib/tasks";
 import { computeTaskWeight } from "../lib/task-weight";
 import { resolveRoute } from "../lib/harness/routing";
 import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
@@ -376,6 +376,40 @@ function getGitattributesUnionFiles(projectRoot: string): Set<string> {
 }
 
 /**
+ * Build the "nothing to launch" error message, context-aware of the active
+ * filters. When no filter narrows the selection, backlog tasks whose
+ * dependencies are met are called out, since launch only takes planned tasks.
+ */
+export function describeNoLaunchable(
+  data: ReturnType<typeof loadFeatures>,
+  opts: Pick<LaunchCommandOptions, "allReady" | "topPriority" | "quickestWins" | "priority" | "difficulty" | "features">,
+): string {
+  const activeFilters: string[] = [];
+  if (opts.allReady) activeFilters.push("--all-ready");
+  if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
+  if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
+  if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
+  if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
+  if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
+
+  if (activeFilters.length > 0 && !(opts.allReady && activeFilters.length === 1)) {
+    return t("cli.launch.noMatchFilters", { filters: activeFilters.join(", ") });
+  }
+
+  let base = t(opts.allReady ? "cli.launch.noLaunchableAllReady" : "cli.launch.noLaunchable");
+  const doneIds = getDoneTaskIds(data, data.archive);
+  const backlog = data.tasks.filter((x) => x.status === "backlog" && areDependenciesMet(x, doneIds));
+  if (backlog.length > 0) {
+    base += "\n" + t("cli.launch.backlogHint", {
+      count: backlog.length,
+      ids: backlog.slice(0, 5).map((x) => x.id).join(", "),
+      more: backlog.length > 5 ? ", ..." : "",
+    });
+  }
+  return base;
+}
+
+/**
  * Pre-flight check: detect barrel files in the project that could cause
  * merge conflicts when multiple agents modify nearby code.
  *
@@ -583,26 +617,8 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   let selected = selectFeatures(data, selOpts);
 
   if (selected.length === 0) {
-    // Build a context-aware message based on which flags were passed
-    const activeFilters: string[] = [];
-    if (opts.allReady) activeFilters.push("--all-ready");
-    if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
-    if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
-    if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
-    if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
-    if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
-
-    let msg: string;
-    if (opts.allReady && activeFilters.length === 1) {
-      msg = "No launchable tasks found (all tasks are done, cancelled, or have unmet dependencies).";
-    } else if (activeFilters.length > 0) {
-      msg = `No tasks matched the current filters: ${activeFilters.join(", ")}.`;
-    } else {
-      msg = "No launchable tasks found.";
-    }
-
     // Throw so callers can catch gracefully (CLI command handler catches).
-    throw new Error(msg);
+    throw new Error(describeNoLaunchable(data, opts));
   }
 
   // -------------------------------------------------------------------------
