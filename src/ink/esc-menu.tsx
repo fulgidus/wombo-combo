@@ -33,7 +33,6 @@ import React, {
   useRef,
   useCallback,
   useEffect,
-  useRef,
   type ReactNode,
 } from "react";
 import { Box, Text, useInput } from "ink";
@@ -79,18 +78,7 @@ export function useScreenInput(
   options: Parameters<typeof useInput>[1] = {},
 ): void {
   const { open } = useEscMenu();
-  // Ink applies `isActive` in an effect, which can run after the frame that
-  // already shows the menu. Track `open` during render (the frame's own render)
-  // and gate synchronously too, so keys sent with the menu on screen can't leak.
-  const openRef = useRef(open);
-  openRef.current = open;
-  useInput(
-    (input, key) => {
-      if (openRef.current) return;
-      inputHandler(input, key);
-    },
-    { ...options, isActive: (options.isActive ?? true) && !open },
-  );
+  useInput(inputHandler, { ...options, isActive: (options.isActive ?? true) && !open });
 }
 
 // ---------------------------------------------------------------------------

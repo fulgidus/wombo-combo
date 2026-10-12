@@ -1,0 +1,60 @@
+id: config-and-locale-docs
+title: Update locale config and contributor guide
+description: |
+  Make the locale setting accept "auto", update the config schema and docs, and write
+  the contributor guide for adding a locale.
+
+  Work:
+  1. src/config.ts: change the tui.locale type to string with default "auto". Update its
+     doc comment to say "auto" detects from the environment and that only shipped locales
+     are accepted. Keep backward compatibility: existing "en" values stay valid.
+  2. schemas/config.schema.json: update the locale description and default; if a
+     schema enum exists for locale, derive it from the shipped list (en plus "auto").
+  3. Regenerate config docs with `bun run docs:gen` only if it succeeds, and commit the
+     changed generated files. If the generator needs network access or fails, record the
+     failure as a wishlist item (bun dev wishlist add or tasks add) and hand-edit the
+     reference page instead.
+  4. Create docs/src/content/docs/guides/i18n.md covering:
+     - How locale is resolved (config tui.locale, then env LC_ALL, LC_MESSAGES, LANG, then en)
+     - Where locale files live (src/locales/<locale>/<namespace>.json) and what each namespace owns
+     - Key naming conventions (dot-notation, unique across namespaces, no namespace prefix)
+     - Plural keys (_one/_other with a count variable)
+     - Interpolation ({{var}}, no HTML escaping)
+     - Rules for what must NOT be translated: JSON/TOON output, IDs, citty help, completion scripts, agent output
+     - Step-by-step guide to add a locale: copy src/locales/en, translate values, add the
+       locale to SUPPORTED_LOCALES in src/lib/i18n.ts, run the i18n verification test
+     - Fallback behavior for missing keys
+  5. Add the new guide to the docs sidebar if the sidebar is explicitly listed in
+     docs/astro.config.mjs (check first).
+  6. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - i18n-core-engine
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Locale default becomes 'auto'; 'en' remains valid
+  - Guide must document the non-translatable surfaces explicitly
+  - Guide must reference the verification test that the i18n-verification task creates
+forbidden:
+  - Do not add new locales
+  - Do not edit src/ink/ or src/commands/ files
+  - Do not edit src/locales/ files
+  - Do not publish or bump package.json version
+references:
+  - src/config.ts
+  - schemas/config.schema.json
+  - docs/src/content/docs/reference/config.md
+  - docs/astro.config.mjs
+  - docs/src/content/docs/guides/tdd-baseline.md
+  - scripts/gen-config-docs.ts
+notes:
+  - Config changes can break tests that assert the default locale is 'en'; update those tests in this task only if they
+    live in tests/ and are config-related
+  - docs/src/content/i18n/en.json is unrelated to this quest; do not touch it
+subtasks: []
+quest: i18n-full

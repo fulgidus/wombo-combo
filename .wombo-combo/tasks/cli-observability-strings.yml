@@ -1,0 +1,58 @@
+id: cli-observability-strings
+title: Extract logs, history, usage and replay messages
+description: |
+  Route human text-mode messages of the observability CLI commands through t() with
+  keys in cli-observability.json.
+
+  Files owned by this task:
+  - src/commands/logs.ts (about 22 console calls)
+  - src/commands/history.ts (about 34)
+  - src/commands/usage.ts (about 31)
+  - src/commands/citty/usage.ts
+  - src/commands/stats.ts (about 9)
+  - src/commands/eval.ts (about 15)
+  - src/commands/replay.ts (about 15)
+  - Colocated or tests/ tests for these commands that assert on text output
+  - src/locales/en/cli-observability.json
+
+  Rules: translate only the text-mode output branch. Never translate JSON/TOON output,
+  IDs, model names, token counts, metric keys, file paths, log content, or citty help text.
+  Use t() from src/lib/i18n.ts. Plural keys for counts.
+
+  Work:
+  1. Keep English identical for every key.
+  2. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Translate only text-mode human output
+  - JSON and TOON output must be byte-identical
+  - English text identical for every key
+forbidden:
+  - Do not translate log content, agent output, or model/provider names
+  - Do not translate citty descriptions or flag help
+  - Do not edit files owned by the other CLI tasks
+  - Do not edit src/lib/i18n.ts or src/ink/i18n.ts
+references:
+  - src/commands/logs.ts
+  - src/commands/history.ts
+  - src/commands/usage.ts
+  - src/commands/citty/usage.ts
+  - src/commands/stats.ts
+  - src/commands/eval.ts
+  - src/commands/replay.ts
+  - src/lib/output.ts
+  - src/locales/en/cli-observability.json
+notes:
+  - Table column headers in usage and history output are human text and should be keys; metric field names in JSON
+    remain untouched
+  - Replay content is recorded agent output and is never translated
+subtasks: []
+quest: i18n-full

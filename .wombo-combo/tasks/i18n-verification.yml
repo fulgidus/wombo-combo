@@ -1,0 +1,61 @@
+id: i18n-verification
+title: Add locale key parity and usage verification test
+description: |
+  Add an automated check that keeps locale files consistent and that every t() key used
+  in source exists in en.
+
+  Work:
+  1. Create tests/i18n-keys.test.ts that:
+     a. Loads every JSON file under src/locales/en/ and collects keys (flattened
+        dot-notation). Fails if the same key appears in more than one namespace file.
+     b. For every other locale directory under src/locales/ (none ship yet), fails if
+        any en key is missing. Pass trivially when only en exists.
+     c. Scans src/**/*.ts and src/**/*.tsx for t("...") and useI18n-based t("...")
+        literal calls with a string-literal first argument and fails if a literal key
+        is not present in en. Allow an explicit exemption list for dynamic keys built
+        with template literals (these are skipped, not failed).
+     d. Fails if any en key is never referenced by source (dead key), with an explicit
+        allowlist for keys referenced via dynamic construction. Include the allowlist as
+        a constant in the test with a comment explaining each entry.
+  2. Ensure src/locales/en/*.json contain only string or plural-suffixed string values.
+  3. Verify the test is green on main after all extraction tasks are merged. If any
+     literal key is unresolved, fix the locale file in this task (add the missing key
+     with the English text found at the call site) and note it in the commit body.
+  4. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - tui-shell-strings
+  - tui-wizard-strings
+  - tui-browser-strings
+  - tui-overlay-strings
+  - tui-onboarding-strings
+  - cli-quest-tasks-strings
+  - cli-runtime-strings
+  - cli-observability-strings
+  - cli-meta-strings
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Test must be deterministic and read files via Bun.file or node:fs
+  - Plural keys (_one/_other) are counted as one logical key
+  - Dynamic-key exemptions must be explicit in the test file
+forbidden:
+  - Do not weaken checks by skipping files to make the test pass
+  - Do not edit src/ink/ or src/commands/ implementation beyond adding a missing locale key
+  - Do not add external dependencies
+references:
+  - src/locales/en/common.json
+  - src/locales/en/tui.json
+  - src/lib/i18n.ts
+  - tests/ink/i18n.test.ts
+notes:
+  - Keep the scanner regex-based; do not add an AST parser dependency
+  - Run it after merging the extraction tasks; it is the final gate for the quest
+  - Update the contributor guide if the rules differ from what the guide documents; the guide is owned by
+    config-and-locale-docs, so raise a wishlist item instead of editing it
+subtasks: []
+quest: i18n-full

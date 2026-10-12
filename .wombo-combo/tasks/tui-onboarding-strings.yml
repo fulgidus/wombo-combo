@@ -1,0 +1,43 @@
+id: tui-onboarding-strings
+title: Extract onboarding wizard strings
+description: |
+  Move the first-run onboarding wizard strings into the tui-onboarding.json namespace.
+
+  Files owned by this task:
+  - Everything under src/ink/onboarding/ (onboarding-app.tsx, profile-review.tsx,
+    confirm-dialog.tsx, progress-view.tsx, and any other files in that directory)
+  - Colocated tests under src/ink/onboarding/
+  - src/locales/en/tui-onboarding.json
+
+  Work:
+  1. Replace every hardcoded English step title, instruction, option, error and
+     button label with t() keys in tui-onboarding.json, accessed via useI18n().
+  2. Preserve the step ordering and the English text exactly.
+  3. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Use useI18n() in components; no module-scope t() calls
+  - English output must remain identical
+forbidden:
+  - Do not edit src/ink/i18n.ts or src/lib/i18n.ts
+  - Do not edit files outside src/ink/onboarding/ except the owned locale file
+  - Do not edit other namespace files
+references:
+  - src/ink/onboarding/onboarding-app.tsx
+  - src/ink/onboarding/profile-review.tsx
+  - src/ink/onboarding/confirm-dialog.tsx
+  - src/ink/onboarding/progress-view.tsx
+  - src/locales/en/tui-onboarding.json
+notes:
+  - Onboarding runs before config is fully loaded; if the locale is not yet known, it must fall back to resolveLocale()
+    with no config
+subtasks: []
+quest: i18n-full

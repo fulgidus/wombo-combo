@@ -1,0 +1,58 @@
+id: tui-overlay-strings
+title: Extract usage, analytics, modal and progress strings
+description: |
+  Move overlay, modal, prompt and progress strings into tui-overlays.json.
+
+  Files owned by this task:
+  - src/ink/usage-overlay.tsx
+  - src/ink/analytics-overlay.tsx
+  - src/ink/question-popup.tsx
+  - src/ink/confirm.tsx
+  - src/ink/modal.tsx
+  - src/ink/progress.tsx
+  - src/ink/run-progress.tsx
+  - src/ink/run-preflight.tsx
+  - src/ink/replay-viewer.tsx
+  - src/ink/sparkline.tsx (only if it contains text)
+  - src/ink/open-editor.ts (only if it contains user-facing text)
+  - Colocated tests for these files
+  - src/locales/en/tui-overlays.json
+
+  Work:
+  1. Replace hardcoded overlay titles, column headers, hints, prompts, yes/no options,
+     and preflight check labels with t() keys in tui-overlays.json.
+  2. Use plural keys for counts and durations where grammatical number matters.
+  3. Keep English identical. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Use useI18n() in components
+  - English output must remain identical
+  - Keys must be unique across namespace files
+forbidden:
+  - Do not edit src/ink/i18n.ts or src/lib/i18n.ts
+  - Do not edit tui.json, common.json, tui-wizards.json, tui-browsers.json, or cli-* namespace files
+  - Do not translate model names, token counts, or agent output text
+references:
+  - src/ink/usage-overlay.tsx
+  - src/ink/analytics-overlay.tsx
+  - src/ink/question-popup.tsx
+  - src/ink/confirm.tsx
+  - src/ink/modal.tsx
+  - src/ink/progress.tsx
+  - src/ink/run-progress.tsx
+  - src/ink/run-preflight.tsx
+  - src/ink/replay-viewer.tsx
+  - src/locales/en/tui-overlays.json
+notes:
+  - Question popups show agent-authored questions; those are data and must not be translated
+  - Check tests that assert on confirm dialog text before changing any key
+subtasks: []
+quest: i18n-full

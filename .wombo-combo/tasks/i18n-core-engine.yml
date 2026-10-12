@@ -1,0 +1,89 @@
+id: i18n-core-engine
+title: Build i18next core engine and locale layout
+description: |
+  Replace the createI18n() skeleton with an i18next-backed engine usable from both the
+  TUI (React) and the CLI (plain Node/Bun code).
+
+  1. Add dependency `i18next` (pin a v23+ release with `initAsync` support). Record the
+     justification in the commit body: the quest explicitly requires i18next for
+     pluralization, interpolation and fallback; hand-rolling those would duplicate
+     well-tested logic. Commit the updated bun.lock.
+  2. Create src/lib/i18n.ts (engine, NO React imports). It must:
+     - Create an instance via i18next.createInstance() (no global singleton).
+     - Load all locale namespaces from src/locales/<locale>/*.json via static JSON
+       imports (so `bun build` bundles them).
+     - Configure: nsSeparator: false, keySeparator: ".", defaultNS: "common",
+       fallbackNS set to the full namespace list (so un-prefixed keys like
+       "dashboard.live" resolve from whichever namespace owns them), escapeValue: false
+       (terminal output must not HTML-escape), initAsync: false (synchronous init).
+     - Export `initI18n(locale?: string): void` (idempotent), `t` (TFunction, English
+       default, same signature as today: (key, vars?) => string), `getLocaleT(locale)`,
+       `SUPPORTED_LOCALES` (readonly array, currently ["en"]), `resolveLocale(configured?, env?)`.
+     - Language detection in resolveLocale: if configured is set and not "auto", use it
+       when supported; otherwise read LC_ALL, then LC_MESSAGES, then LANG from env,
+       normalize e.g. "de_DE.UTF-8" to "de", use it if supported; otherwise fall back
+       to "en". Unknown locales always fall back to "en". Implement detection in-house
+       (do NOT add a language-detector package).
+     - TFunction must support plurals: callers pass { count } and keys use i18next
+       suffixes (key_one / key_other). Missing keys return the key itself (current
+       safe-fallback behavior).
+  3. Create locale files under src/locales/en/. Create ALL of these namespace files now
+     (empty objects `{}` where no keys yet) so later tasks never need to edit a shared
+     registry: common.json, tui.json, tui-wizards.json, tui-browsers.json,
+     tui-overlays.json, tui-onboarding.json, cli-quest-tasks.json, cli-runtime.json,
+     cli-observability.json, cli-meta.json.
+     - Move every key currently in src/ink/strings/en.ts: status.* and ui.* go to
+       common.json; all other existing keys (screen, wave, dashboard, menu, settings,
+       splash) go to tui.json. Keep the English VALUES byte-identical so existing tests
+       and e2e assertions keep passing.
+     - Convert "wave.agentCount" ("{{count}} agent(s)") to plural form
+       "wave.agentCount_one" / "wave.agentCount_other" with the same English output for
+       count 1 and count N, e.g. "{{count}} agent" / "{{count}} agents" is NOT allowed
+       unless tests are updated, so keep "agent(s)" for both forms.
+  4. Keep src/ink/i18n.ts as a thin React wrapper: re-export t, createI18n (kept
+     working for custom maps, used by tests), getLocaleT, EN_STRINGS (or remove it if
+     no callers remain after the migration, but keep it exported for now), and define
+     I18nContext/useI18n exactly as today. Delete src/ink/strings/en.ts once nothing
+     imports it.
+  5. Add "src/locales/**/*.json" to package.json "files".
+  6. Rewrite tests/ink/i18n.test.ts for the new engine. Write the new tests FIRST (TDD):
+     plural selection, interpolation, unknown-key fallback, locale resolution from env
+     (use injected env object, not process.env mutation), unsupported locale falling
+     back to en, fallbackNS lookup across namespaces, and no HTML escaping.
+  7. Typecheck, build, run `bun test`, then `graphify update .`.
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Keep English output byte-identical for every existing key so no existing test assertion changes
+  - Engine module src/lib/i18n.ts must not import React or Ink
+  - Keep the exported t signature (key, vars?) compatible so unmigrated callers still compile
+  - Use nsSeparator false; keys are plain dot-notation, namespaces are found via fallbackNS
+  - Interpolation must not HTML-escape values
+  - Locale JSON must be statically imported so the bundle includes it
+  - Create every namespace file listed in the description, even if empty
+forbidden:
+  - Do not add a language-detection package; implement detection in src/lib/i18n.ts
+  - Do not edit any TUI component or CLI command file beyond what is needed to keep imports compiling
+  - Do not change src/config.ts, schemas/, or docs/ (owned by another task)
+  - Do not add locales other than en
+  - Do not use --no-verify or force push
+references:
+  - src/ink/i18n.ts
+  - src/ink/strings/en.ts
+  - tests/ink/i18n.test.ts
+  - src/ink/index.ts
+  - package.json
+  - src/lib/output.ts
+notes:
+  - "i18next is a new dependency: the quest explicitly requests it, so justify it in the commit body as described"
+  - The existing t() is used at module scope in several files (e.g. settings-screen.tsx builds a field array at import
+    time); those will be fixed by the migration tasks, so keep t() working at import time with the English default
+  - i18next v23+ plural suffixes for en are _one and _other
+subtasks: []
+quest: i18n-full

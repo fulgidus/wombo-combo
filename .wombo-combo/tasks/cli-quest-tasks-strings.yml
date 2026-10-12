@@ -1,0 +1,67 @@
+id: cli-quest-tasks-strings
+title: Extract quest, genesis, task and wishlist CLI messages
+description: |
+  Route human-readable text-mode messages of the quest, genesis, tasks and wishlist
+  commands through t() with keys in cli-quest-tasks.json.
+
+  Files owned by this task:
+  - src/commands/quest.ts (about 74 console calls)
+  - src/commands/genesis.ts
+  - src/commands/tasks/*.ts (add, list, show, check, archive, graph, set-status, and others)
+  - src/commands/citty/wishlist.ts
+  - Colocated or tests/ tests for these commands that assert on text output
+  - src/locales/en/cli-quest-tasks.json
+
+  Rules for what to translate:
+  - Translate ONLY the human text-mode output (the branch taken when output format is "text").
+  - Never translate JSON or TOON output, field names, enum values, IDs, file paths, or
+    error codes. These must stay identical in every format.
+  - Never translate citty command descriptions, flag help text, or `woco describe`
+    content. Those are machine-facing and stay English.
+  - Use the CLI translator from src/lib/i18n.ts (import { t } from "../lib/i18n" or the
+    matching relative path). Do not import React or Ink in CLI code.
+  - Use plural keys with { count } wherever a count is shown as a noun.
+
+  Work:
+  1. Introduce small local key constants or direct string keys; keep messages in one
+     place per command.
+  2. Keep English text identical for every key so existing expectations still pass.
+  3. Typecheck, build, bun test, verify with `bun dev tasks list` and `bun dev quest list`,
+     then `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Translate only text-mode human output
+  - JSON and TOON output must be byte-identical to before
+  - English text must remain identical for every key
+  - Use plural keys for counts
+forbidden:
+  - Do not translate citty descriptions, flag help, or woco describe output
+  - Do not translate IDs, enum values, file paths, or error codes
+  - Do not edit files owned by cli-runtime-strings, cli-observability-strings or cli-meta-strings
+  - Do not edit src/lib/i18n.ts or src/ink/i18n.ts
+references:
+  - src/commands/quest.ts
+  - src/commands/genesis.ts
+  - src/commands/tasks/add.ts
+  - src/commands/tasks/list.ts
+  - src/commands/tasks/show.ts
+  - src/commands/tasks/check.ts
+  - src/commands/tasks/archive.ts
+  - src/commands/tasks/graph.ts
+  - src/commands/citty/wishlist.ts
+  - src/lib/output.ts
+  - src/locales/en/cli-quest-tasks.json
+notes:
+  - output(format, data, textRenderer, toonRenderer) in src/lib/output.ts already separates text from structured output;
+    put the t() calls only in the text renderer
+  - Quest knowledge files and task descriptions are data and never pass through t()
+subtasks: []
+quest: i18n-full

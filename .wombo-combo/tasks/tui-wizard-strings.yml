@@ -1,0 +1,63 @@
+id: tui-wizard-strings
+title: Extract quest, errand and task wizard strings
+description: |
+  Move user-facing strings in the creation and review wizards into the
+  tui-wizards.json namespace and switch the components to useI18n().
+
+  Files owned by this task:
+  - src/ink/quest-wizard.tsx, src/ink/run-quest-wizard.tsx
+  - src/ink/errand-wizard.tsx, src/ink/run-errand-wizard.tsx
+  - src/ink/fake-task-wizard.tsx
+  - src/ink/genesis-review.tsx
+  - src/ink/plan-review.tsx
+  - src/ink/task-editor.tsx
+  - src/ink/init-form.tsx, src/ink/init-app.tsx
+  - Colocated tests for these files, e.g. quest-wizard.test.tsx, errand-wizard.test.tsx,
+    genesis-review.test.tsx, plan-review.test.tsx, init-form.test.tsx, init-app.test.tsx,
+    run-quest-wizard.test.tsx.
+  - src/locales/en/tui-wizards.json
+
+  Work:
+  1. Replace each hardcoded English label, hint, placeholder, validation error and
+     button text with t() keys from tui-wizards.json, read via useI18n() inside
+     components. Keys use the prefix that matches the file, e.g. "questWizard.title".
+  2. Where a helper builds display text outside React components, pass the t function
+     in as a parameter rather than importing the global t.
+  3. Keep English text identical so existing assertions still pass; update a test only
+     when a key was intentionally renamed in the same commit.
+  4. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Use useI18n() in components; avoid module-scope t() calls in owned files
+  - English output must remain identical
+  - Keys must be unique across all namespace files (fallbackNS lookup is global)
+forbidden:
+  - Do not edit src/ink/i18n.ts or src/lib/i18n.ts
+  - Do not edit tui.json, common.json or any cli-* namespace file
+  - Do not translate task or quest IDs, file paths, or agent-generated content
+  - Do not modify files outside the owned list except colocated tests
+references:
+  - src/ink/quest-wizard.tsx
+  - src/ink/run-quest-wizard.tsx
+  - src/ink/errand-wizard.tsx
+  - src/ink/run-errand-wizard.tsx
+  - src/ink/fake-task-wizard.tsx
+  - src/ink/genesis-review.tsx
+  - src/ink/plan-review.tsx
+  - src/ink/task-editor.tsx
+  - src/ink/init-form.tsx
+  - src/ink/init-app.tsx
+  - src/locales/en/tui-wizards.json
+notes:
+  - Prefer a single component-level helper that returns the field definitions from t() instead of module constants
+  - Agent-generated text (genesis plans, quest goals) is data, not UI, and is never passed through t()
+subtasks: []
+quest: i18n-full

@@ -1,0 +1,73 @@
+id: tui-shell-strings
+title: Extract shell, dashboard and wiring strings
+description: |
+  Migrate the top-level TUI chrome and dashboard to the locale system and wire the
+  active locale through the TUI root.
+
+  Files owned by this task:
+  - src/ink/run-tui-app.tsx: compute the locale-bound t via getLocaleT(resolveLocale(config.tui?.locale))
+    and wrap the tree in I18nContext.Provider. Currently it uses getLocaleT(config.tui?.locale ?? "en");
+    change this to use resolveLocale so "auto" works.
+  - src/ink/run-daemon-monitor.tsx: same wiring.
+  - src/ink/shell.tsx, src/ink/chrome.tsx, src/ink/esc-menu.tsx, src/ink/splash-screen.tsx,
+    src/ink/dashboard.tsx, src/ink/status-view.tsx, src/ink/wave-monitor.tsx,
+    src/ink/settings-screen.tsx.
+  - Their colocated tests and tests/ink/esc-menu.test.tsx, tests/ink/monitor-router.test.tsx,
+    tests/ink/tui-app.test.tsx where they assert on text.
+  - Locale file src/locales/en/tui.json (keys added here, keep existing keys).
+
+  Work:
+  1. Replace every hardcoded user-visible English string in the owned files with
+     useI18n() calls (inside components) using keys in tui.json (or common.json for
+     generic ui.* / status.* labels). Use plural keys with { count } where a number
+     is shown as a noun.
+  2. settings-screen.tsx: the FIELDS array is built at module scope with t(...) and
+     getValue/label. Move label construction into a function invoked within the
+     component so labels follow the active locale. Locale cycling must iterate over
+     SUPPORTED_LOCALES from src/lib/i18n.ts and include "auto" as the first option.
+     Persist the value through the existing config write path unchanged.
+  3. chrome.tsx: show the resolved active locale code in the icon strip (not the raw
+     "auto" value).
+  4. Keep all English output identical to current text so existing tests pass.
+  5. Add tests for the locale cycle order and that settings labels change when the
+     provided t changes.
+  6. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Use useI18n() inside components; do not call t() at module scope in owned files
+  - English output must remain identical to current strings
+  - Locale cycling must derive from SUPPORTED_LOCALES, never hardcode 'en'
+  - Plural forms must use i18next count keys
+forbidden:
+  - Do not edit src/ink/i18n.ts or src/lib/i18n.ts (owned by i18n-core-engine)
+  - Do not edit files under src/ink/onboarding/ or the wizard/browser/overlay components (other tasks)
+  - Do not change src/config.ts defaults or schemas (owned by config-and-locale-docs)
+  - Do not modify other namespace locale files
+references:
+  - src/ink/run-tui-app.tsx
+  - src/ink/run-daemon-monitor.tsx
+  - src/ink/settings-screen.tsx
+  - src/ink/chrome.tsx
+  - src/ink/esc-menu.tsx
+  - src/ink/splash-screen.tsx
+  - src/ink/dashboard.tsx
+  - src/ink/status-view.tsx
+  - src/ink/wave-monitor.tsx
+  - src/ink/shell.tsx
+  - src/locales/en/tui.json
+  - tests/ink/esc-menu.test.tsx
+  - tests/ink/monitor-router.test.tsx
+  - tests/ink/tui-app.test.tsx
+notes:
+  - config.tui.locale may be 'auto' once config-and-locale-docs lands; resolveLocale() from core handles both forms
+  - Dashboard metric labels contain units such as 'completions/min'; keep them as separate interpolated keys
+subtasks: []
+quest: i18n-full

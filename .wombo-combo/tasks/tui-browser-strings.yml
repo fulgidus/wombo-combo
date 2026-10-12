@@ -1,0 +1,57 @@
+id: tui-browser-strings
+title: Extract task, quest, wishlist and review browser strings
+description: |
+  Move list/picker/browser strings into the tui-browsers.json namespace.
+
+  Files owned by this task:
+  - src/ink/task-browser.tsx, src/ink/run-task-browser.tsx
+  - src/ink/quest-picker.tsx, src/ink/run-quest-picker.tsx
+  - src/ink/wishlist-picker.tsx, src/ink/run-wishlist-picker.tsx
+  - src/ink/wishlist-overlay.tsx, src/ink/wishlist-helpers.ts
+  - src/ink/review-list.tsx, src/ink/review-list-types.ts, src/ink/use-review-list.ts
+  - src/ink/run-review.tsx
+  - src/ink/select-input.tsx (only if it contains user-facing text)
+  - Colocated tests for these files
+  - src/locales/en/tui-browsers.json
+
+  Work:
+  1. Replace hardcoded column headers, empty-state messages, status-bar hints, sort
+     labels, and confirmation prompts with t() keys in tui-browsers.json.
+  2. Counts shown next to items must use plural keys (count-based _one/_other).
+  3. Helpers in wishlist-helpers.ts and review-list-types.ts that produce labels must
+     accept a t function parameter (default to the global t for backward compatibility)
+     so they can be tested with a custom map.
+  4. Keep English output identical. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Use useI18n() in components; helpers take an optional t parameter
+  - English output must remain identical
+  - Keys must be unique across namespace files
+forbidden:
+  - Do not edit src/ink/i18n.ts or src/lib/i18n.ts
+  - Do not edit tui.json, common.json, tui-wizards.json, or any cli-* namespace file
+  - Do not translate task IDs, quest IDs, wishlist item text, or file paths
+references:
+  - src/ink/task-browser.tsx
+  - src/ink/quest-picker.tsx
+  - src/ink/wishlist-picker.tsx
+  - src/ink/wishlist-overlay.tsx
+  - src/ink/wishlist-helpers.ts
+  - src/ink/review-list.tsx
+  - src/ink/review-list-types.ts
+  - src/ink/use-review-list.ts
+  - src/ink/run-review.tsx
+  - src/locales/en/tui-browsers.json
+notes:
+  - review-list-types.ts is pure logic; keep it free of React imports
+  - Existing *.test.ts files for helpers may assert literal labels; keep values identical
+subtasks: []
+quest: i18n-full

@@ -1,0 +1,60 @@
+id: cli-runtime-strings
+title: Extract launch, merge, daemon and status messages
+description: |
+  Route human text-mode messages of the runtime-control CLI commands through t() with
+  keys in cli-runtime.json.
+
+  Files owned by this task:
+  - src/commands/launch.ts (about 27 console calls)
+  - src/commands/merge.ts (about 18)
+  - src/commands/retry.ts, src/commands/abort.ts, src/commands/resume.ts
+  - src/commands/status.ts, src/commands/tui.ts
+  - src/commands/citty/daemon.ts
+  - src/commands/cleanup.ts (about 21)
+  - Colocated or tests/ tests for these commands that assert on text output
+  - src/locales/en/cli-runtime.json
+
+  Rules: same as the other CLI tasks. Translate only the text-mode output branch.
+  Never translate JSON/TOON output, IDs, branch names, file paths, error codes,
+  citty descriptions, or flag help. Use t() from src/lib/i18n.ts. Plural keys for counts.
+
+  Work:
+  1. Keep English identical for every key.
+  2. Confirm JSON output with `bun dev launch --dry-run --all-ready --output json` still
+     matches the pre-change output.
+  3. Typecheck, build, bun test, `graphify update .`.
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - i18n-core-engine
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Translate only text-mode human output
+  - JSON and TOON output must be byte-identical
+  - English text identical for every key
+forbidden:
+  - Do not translate citty descriptions or flag help
+  - Do not translate branch names, task IDs, worktree paths, or error codes
+  - Do not edit files owned by the other CLI tasks
+  - Do not edit src/lib/i18n.ts or src/ink/i18n.ts
+references:
+  - src/commands/launch.ts
+  - src/commands/merge.ts
+  - src/commands/retry.ts
+  - src/commands/abort.ts
+  - src/commands/resume.ts
+  - src/commands/status.ts
+  - src/commands/tui.ts
+  - src/commands/cleanup.ts
+  - src/commands/citty/daemon.ts
+  - src/lib/output.ts
+  - src/locales/en/cli-runtime.json
+notes:
+  - Daemon and agent log lines written to logs/ are machine/debug output and stay English
+  - Use the dry-run flag in tests to avoid side effects
+subtasks: []
+quest: i18n-full
