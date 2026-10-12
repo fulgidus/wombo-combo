@@ -420,6 +420,37 @@
         }
       }
     },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Review gate: an optional reviewer agent checks the task diff (Standards and Spec) between verification and merge",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run the review stage before merge"
+        },
+        "blockOn": {
+          "type": "string",
+          "enum": ["blocking", "major"],
+          "default": "blocking",
+          "description": "Lowest finding severity that sends the implementing agent back (major also blocks on blocking)"
+        },
+        "maxRounds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2,
+          "description": "Maximum review rounds per task"
+        },
+        "maxDiffChars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 60000,
+          "description": "Maximum diff characters shown to the reviewer; a larger diff is cut with a truncation marker"
+        }
+      }
+    },
     "sync": {
       "type": "object",
       "additionalProperties": false,

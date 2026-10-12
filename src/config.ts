@@ -129,6 +129,12 @@ export interface WomboConfig {
    */
   comments?: CommentsConfig;
   /**
+   * Optional reviewer-agent stage between verification and merge (off by
+   * default). Optional so older config files keep working; read it through
+   * normalizeReviewConfig().
+   */
+  review?: ReviewConfig;
+  /**
    * Integrations that sync woco data with external services (GitHub issues).
    * Optional so older config files keep working; read it through
    * normalizeSyncGithubConfig().
@@ -223,6 +229,24 @@ export interface CommentsConfig {
   promptMaxChars: number;
   /** Daemon posts system comments on lifecycle events (started, failed, merged, retried) */
   autoLifecycle: boolean;
+}
+
+export const REVIEW_BLOCK_ON = ["blocking", "major"] as const;
+export type ReviewBlockOn = (typeof REVIEW_BLOCK_ON)[number];
+/** Allowed range of `review.maxRounds` */
+export const REVIEW_MIN_ROUNDS = 1;
+export const REVIEW_MAX_ROUNDS = 5;
+
+/** Review gate: a reviewer agent checks the task diff before merge */
+export interface ReviewConfig {
+  /** Master switch; the review stage is skipped when false */
+  enabled: boolean;
+  /** Lowest finding severity that sends the implementing agent back */
+  blockOn: ReviewBlockOn;
+  /** Maximum review rounds per task (1-5) */
+  maxRounds: number;
+  /** Diff characters shown to the reviewer; the rest is cut with a marker */
+  maxDiffChars: number;
 }
 
 export const SYNC_GITHUB_MODES = ["manual", "auto"] as const;
@@ -454,6 +478,12 @@ export const DEFAULT_CONFIG: WomboConfig = {
     promptMaxChars: 4000,
     autoLifecycle: false,
   },
+  review: {
+    enabled: false,
+    blockOn: "blocking",
+    maxRounds: 2,
+    maxDiffChars: 60000,
+  },
   sync: {
     github: {
       enabled: false,
@@ -580,6 +610,26 @@ export function normalizeCommentsConfig(block?: Partial<CommentsConfig> | null):
     promptMaxItems: src.promptMaxItems ?? d.promptMaxItems,
     promptMaxChars: src.promptMaxChars ?? d.promptMaxChars,
     autoLifecycle: src.autoLifecycle ?? d.autoLifecycle,
+  };
+}
+
+/** Fill in review defaults for legacy or manually constructed configs. Never throws. */
+export function normalizeReviewConfig(block?: Partial<ReviewConfig> | null): ReviewConfig {
+  const d = DEFAULT_CONFIG.review!;
+  const src = block && typeof block === "object" ? block : {};
+  const rounds =
+    typeof src.maxRounds === "number" && Number.isFinite(src.maxRounds)
+      ? Math.min(REVIEW_MAX_ROUNDS, Math.max(REVIEW_MIN_ROUNDS, Math.floor(src.maxRounds)))
+      : d.maxRounds;
+  const chars =
+    typeof src.maxDiffChars === "number" && Number.isInteger(src.maxDiffChars) && src.maxDiffChars >= 1
+      ? src.maxDiffChars
+      : d.maxDiffChars;
+  return {
+    enabled: typeof src.enabled === "boolean" ? src.enabled : d.enabled,
+    blockOn: REVIEW_BLOCK_ON.includes(src.blockOn as ReviewBlockOn) ? (src.blockOn as ReviewBlockOn) : d.blockOn,
+    maxRounds: rounds,
+    maxDiffChars: chars,
   };
 }
 
@@ -858,6 +908,28 @@ export function validateConfig(config: WomboConfig): void {
       if (v !== undefined && (typeof v !== "number" || !Number.isInteger(v) || v < 1)) {
         throw new Error(`config.comments.${k} must be an integer >= 1`);
       }
+    }
+  }
+  if (config.review !== undefined) {
+    const rv = config.review as Partial<ReviewConfig>;
+    if (rv === null || typeof rv !== "object" || Array.isArray(rv)) {
+      throw new Error("config.review must be an object");
+    }
+    if (rv.enabled !== undefined && typeof rv.enabled !== "boolean") {
+      throw new Error("config.review.enabled must be a boolean");
+    }
+    if (rv.blockOn !== undefined && !REVIEW_BLOCK_ON.includes(rv.blockOn)) {
+      throw new Error(`config.review.blockOn must be one of: ${REVIEW_BLOCK_ON.join(", ")}`);
+    }
+    if (
+      rv.maxRounds !== undefined &&
+      (typeof rv.maxRounds !== "number" || !Number.isInteger(rv.maxRounds) ||
+        rv.maxRounds < REVIEW_MIN_ROUNDS || rv.maxRounds > REVIEW_MAX_ROUNDS)
+    ) {
+      throw new Error(`config.review.maxRounds must be an integer between ${REVIEW_MIN_ROUNDS} and ${REVIEW_MAX_ROUNDS}`);
+    }
+    if (rv.maxDiffChars !== undefined && (typeof rv.maxDiffChars !== "number" || !Number.isInteger(rv.maxDiffChars) || rv.maxDiffChars < 1)) {
+      throw new Error("config.review.maxDiffChars must be an integer >= 1");
     }
   }
   if (config.sync !== undefined) {

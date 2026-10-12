@@ -230,10 +230,17 @@ export function parseTestCounts(stdout: string, stderr: string): TestCounts {
     parsed: false,
   };
 
-  // Bun test format: "42 pass" and "3 fail" on separate or same lines
-  const bunPassMatch = combined.match(/(\d+)\s+pass/i);
-  const bunFailMatch = combined.match(/(\d+)\s+fail/i);
-  const bunSkipMatch = combined.match(/(\d+)\s+skip/i);
+  // Bun test format: "42 pass" and "3 fail" on separate or same lines.
+  // Prefer Bun's own summary lines (a line holding just the count and the
+  // word, last occurrence) so text printed by the tests themselves, such as
+  // nested "10 passed, 0 failed" reports, cannot be mistaken for the summary.
+  const lastCount = (word: string): RegExpMatchArray | null => {
+    const all = [...combined.matchAll(new RegExp(`^\\s*(\\d+)\\s+${word}\\s*$`, "gim"))];
+    return all.length > 0 ? all[all.length - 1] : null;
+  };
+  const bunPassMatch = lastCount("pass") ?? combined.match(/(\d+)\s+pass/i);
+  const bunFailMatch = lastCount("fail") ?? combined.match(/(\d+)\s+fail/i);
+  const bunSkipMatch = lastCount("skip") ?? combined.match(/(\d+)\s+skip/i);
 
   if (bunPassMatch || bunFailMatch) {
     result.passed = bunPassMatch ? parseInt(bunPassMatch[1], 10) : 0;
