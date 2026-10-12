@@ -137,3 +137,9 @@
 <!-- wombo-combo:operation:main-a6cfa66-c91b903 -->
 
 - **tui-planner-telemetry**: Planner progress shows model, tokens and provider cost
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-1caae38-b83b527 -->
+
+- **tui-arrow-confirm-cancel**: Global convention: right arrow confirms, left arrow cancels
