@@ -6,14 +6,16 @@
  * and QuestionPopup components.
  *
  * Features:
+ *   - Opaque: paints blanks behind its content so whatever is rendered under
+ *     it does not show through (works on any terminal background)
  *   - Bordered box with customizable border color
  *   - Title rendered as a label in the border
  *   - Optional footer area for keybind hints
  *   - Flexbox column layout for children
  */
 
-import React, { type ReactNode } from "react";
-import { Box, Text } from "ink";
+import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import { Box, Text, measureElement, type DOMElement } from "ink";
 
 export interface ModalProps {
   /** Title displayed in the modal header. */
@@ -43,13 +45,31 @@ export function Modal({
   footer,
   children,
 }: ModalProps): React.ReactElement {
+  // Ink leaves cells without content untouched, so an overlay would show the
+  // screen behind it. Measure the box and paint blanks over its interior.
+  const ref = useRef<DOMElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const { width, height } = measureElement(ref.current);
+    setSize((prev) => (prev && prev.w === width && prev.h === height ? prev : { w: width, h: height }));
+  });
+  const fillW = size ? Math.max(0, size.w - 2) : 0;
+  const fillH = size ? Math.max(0, size.h - 2) : 0;
+
   return (
     <Box
+      ref={ref}
       flexDirection="column"
       borderStyle="round"
       borderColor={borderColor}
       paddingX={1}
     >
+      {fillW > 0 && fillH > 0 && (
+        <Box position="absolute">
+          <Text>{Array.from({ length: fillH }, () => " ".repeat(fillW)).join("\n")}</Text>
+        </Box>
+      )}
       {/* Title */}
       <Box marginBottom={1}>
         <Text bold color={borderColor}>
