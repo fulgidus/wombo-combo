@@ -23,3 +23,9 @@
 <!-- wombo-combo:operation:quest-woco-retro-3a739ee-b82ced6 -->
 
 - **retro-collect**: Retro signal collectors
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-woco-retro-e6d0cc1-c42ca20 -->
+
+- **retro-cli**: woco retro command
