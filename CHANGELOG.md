@@ -155,3 +155,9 @@
 <!-- wombo-combo:operation:main-db04e66-8e066a9 -->
 
 - **resilience-leak-check**: Leak Detection Test Helper
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-1226b4d-631e379 -->
+
+- **fake-agent-fault-script**: Scriptable Fault Directives for Fake Agent
