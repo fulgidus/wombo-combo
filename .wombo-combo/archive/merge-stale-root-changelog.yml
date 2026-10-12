@@ -1,0 +1,25 @@
+id: merge-stale-root-changelog
+title: Root checkout lags the post-merge changelog commit
+description: "Found by dogfooding after merge-stale-root-checkout: after a daemon merge into main, the root checkout is
+  refreshed before the follow-up changelog commit (docs(changelog): record merge ...) is created, so the root index and
+  tree end up one commit behind, showing CHANGELOG.md as a staged reverse change and tempting `git commit -a` to revert
+  it. Make the post-merge pipeline refresh the root checkout again after the changelog commit (same read-tree approach
+  as merge-stale-root-checkout), with a test that asserts `git status` is clean after a merge plus changelog."
+status: done
+completion: 100
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-10-12T07:20:21.568Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references:
+  - src/lib/merger.ts
+  - src/lib/changelog.ts
+  - src/lib/post-merge.ts
+notes: []
+subtasks: []
+paths: []
