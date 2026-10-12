@@ -16,6 +16,7 @@ import { stripAnsi } from "./ansi";
 import { TaskBrowserScreen, analyticsScopeFilter, ANALYTICS_REFRESH_MS } from "../../src/ink/run-task-browser";
 import { AnalyticsStore, createAnalyticsRecord, type AgentAnalyticsRecord, type AnalyticsLoadResult } from "../../src/lib/analytics";
 import { loadConfig } from "../../src/config";
+import { setStdoutSize } from "../helpers/stdout-size";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,15 +29,13 @@ const realRows = process.stdout.rows;
 const realColumns = process.stdout.columns;
 
 beforeEach(() => {
-  (process.stdout as any).rows = 60;
-  (process.stdout as any).columns = 120;
+  setStdoutSize(60, 120);
   root = mkdtempSync(join(tmpdir(), "analytics-browser-"));
   mkdirSync(join(root, ".wombo-combo"), { recursive: true });
   writeFileSync(join(root, ".wombo-combo", "config.json"), "{}\n");
 });
 afterEach(() => {
-  (process.stdout as any).rows = realRows;
-  (process.stdout as any).columns = realColumns;
+  setStdoutSize(realRows, realColumns);
   rmSync(root, { recursive: true, force: true });
 });
 

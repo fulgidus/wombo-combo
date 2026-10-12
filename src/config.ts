@@ -1005,10 +1005,15 @@ export function generateDefaultConfig(): string {
  * The on-disk file is updated with only the keys present in `partial` — existing
  * keys that are not in `partial` are preserved. This makes it safe to call from
  * the settings screen without accidentally wiping fields the UI doesn't expose.
+ * Keys listed in `opts.replace` are overwritten (or removed when undefined) instead of merged.
  *
  * If the config file does not exist yet, a fresh one is created.
  */
-export function saveConfig(projectRoot: string, partial: Partial<WomboConfig>): void {
+export function saveConfig(
+  projectRoot: string,
+  partial: Partial<WomboConfig>,
+  opts: { replace?: (keyof WomboConfig)[] } = {},
+): void {
   const configPath = resolve(projectRoot, CONFIG_FILE);
   const dir = dirname(configPath);
 
@@ -1028,5 +1033,11 @@ export function saveConfig(projectRoot: string, partial: Partial<WomboConfig>): 
   }
 
   const merged = deepMerge(existing as WomboConfig, partial);
+  // Replaced keys take the new value wholesale (deepMerge cannot delete entries);
+  // an undefined value removes the key.
+  for (const key of opts.replace ?? []) {
+    if (partial[key] === undefined) delete merged[key];
+    else (merged as unknown as Record<string, unknown>)[key] = partial[key];
+  }
   writeFileSync(configPath, JSON.stringify(merged, null, 2) + "\n", "utf-8");
 }

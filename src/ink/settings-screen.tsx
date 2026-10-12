@@ -150,6 +150,8 @@ export interface SettingsScreenProps {
   onBack: () => void;
   /** Project root — required to persist settings to disk */
   projectRoot?: string;
+  /** Opens the Agents & routing screen (Enter or right arrow on its row) */
+  onOpenAgents?: () => void;
 }
 
 type ModelWeight = "light" | "medium" | "heavy";
@@ -159,6 +161,7 @@ type FieldId =
   | "checkForUpdates"
   | "autoInstallUpdates"
   | "devMode"
+  | "agentsRouting"
   | "routingDefault"
   | "modelLight"
   | "modelMedium"
@@ -205,6 +208,11 @@ const FIELDS: FieldDef[] = [
     getValue: (cfg, t) => (cfg.devMode ? t("settings.on") : t("settings.off")),
   },
   {
+    id: "agentsRouting",
+    labelKey: "settings.agentsRouting",
+    getValue: (cfg) => String(Object.keys(cfg.agentProfiles ?? {}).length),
+  },
+  {
     id: "routingDefault",
     labelKey: "settings.routingDefault",
     getValue: (cfg, t) => cfg.routing?.default ?? t("settings.none"),
@@ -224,7 +232,7 @@ const FIELDS: FieldDef[] = [
 // Indices for the render sections
 const APPEARANCE_FIELD_IDS: FieldId[] = ["theme", "locale"];
 const GENERAL_FIELD_IDS: FieldId[] = ["checkForUpdates", "autoInstallUpdates", "devMode"];
-const PROVIDER_FIELD_IDS: FieldId[] = ["routingDefault", "modelLight", "modelMedium", "modelHeavy"];
+const PROVIDER_FIELD_IDS: FieldId[] = ["agentsRouting", "routingDefault", "modelLight", "modelMedium", "modelHeavy"];
 const RESET_IDX = FIELDS.length - 1;
 
 /**
@@ -238,6 +246,7 @@ export function SettingsScreen({
   onSave,
   onBack,
   projectRoot,
+  onOpenAgents,
 }: SettingsScreenProps): React.ReactElement {
   const t = useI18n();
   const [cfg, setCfg] = useState<SettingsScreenConfig>(initialConfig);
@@ -249,7 +258,14 @@ export function SettingsScreen({
       onSave(patched);
       if (projectRoot) {
         try {
-          saveConfig(projectRoot, patched as any);
+          // Profiles and the routing tables are owned by the Agents & routing
+          // screen; writing this snapshot back could resurrect deleted entries,
+          // so only the default profile choice is persisted from here.
+          const { agentProfiles: _profiles, routing, ...rest } = patched;
+          saveConfig(projectRoot, {
+            ...rest,
+            ...(routing?.default !== undefined ? { routing: { default: routing.default } } : {}),
+          } as any);
         } catch {
           // Best-effort: if we can't write, in-memory change still applies
         }
@@ -263,6 +279,10 @@ export function SettingsScreen({
   const stepField = useCallback(
     (field: FieldDef, dir: 1 | -1) => {
       let patched: SettingsScreenConfig | undefined;
+      if (field.id === "agentsRouting") {
+        if (dir === 1) onOpenAgents?.();
+        return;
+      }
       if (field.id === "theme") {
         const idx = THEME_OPTIONS.indexOf((cfg.tui?.theme ?? "default") as ThemeName);
         const next = THEME_OPTIONS[(idx + dir + THEME_OPTIONS.length) % THEME_OPTIONS.length];
@@ -293,7 +313,7 @@ export function SettingsScreen({
         persist(patched);
       }
     },
-    [cfg, persist]
+    [cfg, persist, onOpenAgents]
   );
 
   const handleInput = useCallback(
@@ -402,7 +422,7 @@ export function SettingsScreen({
               value={field.getValue(cfg, t)}
               selected={cursor === idx}
               onEdit={() => {}}
-              hint={t("settings.hintCycle")}
+              hint={field.id === "agentsRouting" ? t("settings.hintOpen") : t("settings.hintCycle")}
             />
           );
         })}
