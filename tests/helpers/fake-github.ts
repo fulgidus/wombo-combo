@@ -63,6 +63,11 @@ export interface FakeGitHubOptions {
   appendOnCreate?: string;
   /** Like appendOnCreate, but also appended to any body set via PATCH (issues and comments) */
   appendOnWrite?: string;
+  /**
+   * Text a host appends to issues/comments created via POST, visible only when they are read back
+   * (GET/list), never in the POST response. Editing the body through PATCH removes it.
+   */
+  appendOnRead?: string;
 }
 
 export interface FakeGitHub {
@@ -125,6 +130,14 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
       const name = typeof n === "string" ? n : n.name;
       return state.labels.find((l) => l.name.toLowerCase() === name.toLowerCase()) ?? { name, color: "ededed", description: null };
     });
+
+  // Items created via POST that a host decorates when read back; PATCHing the body cleans them
+  const decoratedIssues = new Set<number>();
+  const decoratedComments = new Set<number>();
+  const readIssue = (i: FakeIssue): FakeIssue =>
+    opts.appendOnRead && decoratedIssues.has(i.number) ? { ...i, body: (i.body ?? "") + opts.appendOnRead } : i;
+  const readComment = (c: FakeComment): FakeComment =>
+    opts.appendOnRead && decoratedComments.has(c.id) ? { ...c, body: c.body + opts.appendOnRead } : c;
 
   const base = `/repos/${owner}/${repo}`;
   let origin = "";
@@ -193,7 +206,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
         if (since) list = list.filter((i) => Date.parse(i.updated_at) >= Date.parse(since));
         if (labelFilter?.length) list = list.filter((i) => labelFilter.every((l) => i.labels.some((x) => x.name === l)));
         list = [...list].sort((a, b) => a.number - b.number);
-        return paginate(url, list);
+        return paginate(url, list.map(readIssue));
       }
       if (path === `${base}/issues` && req.method === "POST") {
         if (!body?.title) return json({ message: "Validation Failed" }, 422);
@@ -204,15 +217,19 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
           assignees: (body.assignees ?? []).map((login: string) => ({ login })),
         });
         state.issues.push(issue);
+        decoratedIssues.add(issue.number);
         return json(issue, 201);
       }
       if (m_(new RegExp(`^${base}/issues/(\\d+)$`))) {
         const issue = state.issues.find((i) => i.number === Number(m![1]));
         if (!issue) return json({ message: "Not Found" }, 404);
-        if (req.method === "GET") return json(issue);
+        if (req.method === "GET") return json(readIssue(issue));
         if (req.method === "PATCH") {
           if (body.title !== undefined) issue.title = body.title;
-          if (body.body !== undefined) issue.body = body.body + (opts.appendOnWrite ?? "");
+          if (body.body !== undefined) {
+            issue.body = body.body + (opts.appendOnWrite ?? "");
+            decoratedIssues.delete(issue.number);
+          }
           if (body.labels !== undefined) issue.labels = resolveLabels(body.labels);
           if (body.assignees !== undefined) issue.assignees = body.assignees.map((login: string) => ({ login }));
           if (body.state !== undefined) {
@@ -231,7 +248,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
           const since = url.searchParams.get("since");
           let list = state.comments.filter((c) => c.issue === num);
           if (since) list = list.filter((c) => Date.parse(c.updated_at) >= Date.parse(since));
-          return paginate(url, list.map(({ issue: _i, ...rest }) => rest));
+          return paginate(url, list.map(readComment).map(({ issue: _i, ...rest }) => rest));
         }
         if (req.method === "POST") {
           if (!body?.body) return json({ message: "Validation Failed" }, 422);
@@ -247,6 +264,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
             user: { login: "fake-user" },
           };
           state.comments.push(c);
+          decoratedComments.add(id);
           const { issue: _i, ...rest } = c;
           return json(rest, 201);
         }
@@ -255,6 +273,7 @@ export function startFakeGitHub(opts: FakeGitHubOptions = {}): FakeGitHub {
         const c = state.comments.find((x) => x.id === Number(m![1]));
         if (!c) return json({ message: "Not Found" }, 404);
         c.body = body.body + (opts.appendOnWrite ?? "");
+        decoratedComments.delete(c.id);
         c.updated_at = tick();
         const { issue: _i, ...rest } = c;
         return json(rest);

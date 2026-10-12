@@ -48,7 +48,9 @@ edit loop), records the state in the gitignored
 `.wombo-combo/sync/attribution-breaker.json`, makes `woco sync status` warn,
 and exits non-zero. Sync must therefore run from a machine whose network path
 does not append footers. Remove any footer already on GitHub by hand; the
-warning clears after the next clean push.
+warning clears after the next clean push. Older footers on mapped issues and
+mirrored comments are edited clean by the next push (a clean item costs zero
+writes).
 
 The files that document or test this rule are allowlisted in the scanner:
 `AGENTS.md`, this file, `src/lib/attribution.ts`, `scripts/check-attribution.ts`

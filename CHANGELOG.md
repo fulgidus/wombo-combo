@@ -29,3 +29,9 @@
 <!-- wombo-combo:operation:main-95ea75d-08e6c9b -->
 
 - **resume-stuck-completed-agents**: Resume must re-run verification for agents left in 'completed' by a daemon stop
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-8047a5a-b0b0966 -->
+
+- **sync-footer-scrub-reread**: Sync: remove host-added footers found on re-read, not only in the create response

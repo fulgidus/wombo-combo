@@ -211,3 +211,6 @@ retry or edit the text again, records the state, and exits non-zero.
 
 Run sync from a machine whose network path does not append footers. Remove
 the footer already on GitHub by hand.
+
+Every push also checks the raw text of mapped issues and mirrored comments
+and edits older footers clean; a clean item costs no write.
