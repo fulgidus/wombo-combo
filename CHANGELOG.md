@@ -62,3 +62,9 @@
 <!-- wombo-combo:operation:main-4410da4-85879c4 -->
 
 - **sync-attribution-circuit-breaker**: Sync circuit breaker when host re-adds attribution
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-woco-triage-a65dfb4-46ac346 -->
+
+- **triage-docs**: Triage guide and docs
