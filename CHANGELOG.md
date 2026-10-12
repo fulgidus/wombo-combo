@@ -119,3 +119,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-48c1af2-5874851 -->
 
 - **otp-supervisor-prototype**: Prototype Supervisor Core
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-5a4a3b6-ca6aa1b -->
+
+- **otp-concept-mapping**: Map OTP Concepts To Daemon
