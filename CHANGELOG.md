@@ -125,3 +125,9 @@
 <!-- wombo-combo:operation:main-371d771-61b3894 -->
 
 - **tui-settings-horizontal-arrows**: Settings: left/right arrows change values
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-f7b09f0-39bed0d -->
+
+- **tui-provider-model-settings**: Expose provider and model settings in the TUI
