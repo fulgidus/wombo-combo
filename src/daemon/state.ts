@@ -106,6 +106,7 @@ const ACTIVE_STATUSES: ReadonlySet<AgentStatus> = new Set([
   "installing",
   "running",
   "resolving_conflict",
+  "in_review",
   "verified",
 ]);
 

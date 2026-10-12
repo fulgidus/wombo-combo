@@ -134,6 +134,8 @@ export interface RetryOptions {
   featureId: string;
   sessionId: string;
   buildErrors: string;
+  /** Replaces the default "build failed" message (e.g. review findings to address) */
+  retryMessage?: string;
   model?: string;
   config: WomboConfig;
   /** HITL mode for this agent (from quest or config) */
@@ -327,7 +329,7 @@ export function launchHeadless(opts: LaunchOptions): LaunchResult {
 export function retryHeadless(opts: RetryOptions): LaunchResult {
   const { route, isFake } = routeFor(opts, "code");
 
-  const retryMessage = `The build failed. Please fix the following errors and run \`${opts.config.build.command}\` again:\n\n\`\`\`\n${opts.buildErrors}\n\`\`\`\n\nFix all errors, then verify the build passes.`;
+  const retryMessage = opts.retryMessage ?? `The build failed. Please fix the following errors and run \`${opts.config.build.command}\` again:\n\n\`\`\`\n${opts.buildErrors}\n\`\`\`\n\nFix all errors, then verify the build passes.`;
 
   const canResume =
     !!opts.sessionId &&
@@ -392,6 +394,38 @@ export function launchConflictResolver(opts: ConflictResolverOptions): LaunchRes
     model: opts.model ?? route.model,
     agentName,
     title: makeAgentTitle(`conflict-resolve-${opts.featureId}`),
+  });
+  return spawnPrepared(prepared, agentEnv(opts.worktreePath, opts.featureId, opts.config, undefined, undefined, route), opts.worktreePath);
+}
+
+// ---------------------------------------------------------------------------
+// Reviewer Launch
+// ---------------------------------------------------------------------------
+
+export interface ReviewerLaunchOptions {
+  worktreePath: string;
+  featureId: string;
+  prompt: string;
+  model?: string;
+  config: WomboConfig;
+  /** Resolved route for the "review" operation; default: legacy route from config */
+  route?: ResolvedRoute;
+}
+
+/**
+ * Launch a headless reviewer in the task worktree through the "review"
+ * operation profile. Like conflict resolvers, reviewers are NOT added to the
+ * ProcessMonitor: the caller collects stdout and awaits exit itself.
+ */
+export function launchReviewer(opts: ReviewerLaunchOptions): LaunchResult {
+  const route = opts.route ?? resolveRoute(opts.config, { operation: "review", sessionModel: opts.model });
+  const prepared = prepare(route, false, false, {
+    operation: "review",
+    cwd: opts.worktreePath,
+    prompt: opts.prompt,
+    model: opts.model ?? route.model,
+    agentName: opts.config.agent.name,
+    title: makeAgentTitle(`review-${opts.featureId}`),
   });
   return spawnPrepared(prepared, agentEnv(opts.worktreePath, opts.featureId, opts.config, undefined, undefined, route), opts.worktreePath);
 }

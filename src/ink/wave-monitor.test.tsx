@@ -47,6 +47,7 @@ function makeCounts(overrides: Partial<AgentCounts> = {}): AgentCounts {
     merged: 0,
     retry: 0,
     resolving_conflict: 0,
+    in_review: 0,
     ...overrides,
   };
 }

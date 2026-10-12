@@ -230,7 +230,7 @@ export function renderStatus(snapshot: {
     counts[a.status] = (counts[a.status] ?? 0) + 1;
   }
 
-  const active = (counts["running"] ?? 0) + (counts["installing"] ?? 0) + (counts["resolving_conflict"] ?? 0);
+  const active = (counts["running"] ?? 0) + (counts["installing"] ?? 0) + (counts["resolving_conflict"] ?? 0) + (counts["in_review"] ?? 0);
   const completed = (counts["completed"] ?? 0) + (counts["verified"] ?? 0) + (counts["merged"] ?? 0);
   const failed = counts["failed"] ?? 0;
 

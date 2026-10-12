@@ -190,7 +190,7 @@ const FINAL_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set(["merged", "faile
 
 /** Agent statuses where a process or pipeline stage (agent, retry, conflict resolution) is running. */
 const RUNNING_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set([
-  "running", "installing", "resolving_conflict", "retry",
+  "running", "installing", "resolving_conflict", "in_review", "retry",
 ]);
 
 export interface DaemonProgress {

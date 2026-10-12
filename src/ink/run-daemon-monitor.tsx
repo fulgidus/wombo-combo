@@ -559,6 +559,7 @@ function DaemonMonitorAdapter({
     merged: 0,
     retry: 0,
     resolving_conflict: 0,
+    in_review: 0,
   };
   for (const a of liveInfos) {
     counts[a.status] = (counts[a.status] ?? 0) + 1;

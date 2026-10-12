@@ -45,6 +45,7 @@ const STATUS_COLORS: Record<AgentStatus, string> = {
   merged: FG.magenta,
   retry: FG.yellow,
   resolving_conflict: FG.cyan,
+  in_review: FG.cyan,
 };
 
 const STATUS_ICONS: Record<AgentStatus, string> = {
@@ -57,6 +58,7 @@ const STATUS_ICONS: Record<AgentStatus, string> = {
   merged: "#",
   retry: "?",
   resolving_conflict: "!",
+  in_review: "=",
 };
 
 // ---------------------------------------------------------------------------
@@ -184,7 +186,7 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
   lines.push("-".repeat(95));
   const counts: Record<AgentStatus, number> = {
     queued: 0, installing: 0, running: 0, completed: 0, verified: 0,
-    failed: 0, merged: 0, retry: 0, resolving_conflict: 0,
+    failed: 0, merged: 0, retry: 0, resolving_conflict: 0, in_review: 0,
   };
   for (const agent of agents) counts[agent.status]++;
 
@@ -207,6 +209,8 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
     summaryParts.push(colorize(t("cli.status.dashboard.summaryRetry", { count: counts.retry }), FG.yellow));
   if (counts.resolving_conflict > 0)
     summaryParts.push(colorize(t("cli.status.dashboard.summaryResolving", { count: counts.resolving_conflict }), FG.cyan));
+  if (counts.in_review > 0)
+    summaryParts.push(colorize(t("cli.status.dashboard.summaryInReview", { count: counts.in_review }), FG.cyan));
 
   lines.push(summaryParts.join(" | "));
   lines.push("");

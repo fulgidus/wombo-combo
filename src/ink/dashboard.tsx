@@ -119,6 +119,7 @@ const STATUS_COLOR: Partial<Record<AgentStatus, string>> = {
   merged: "magenta",
   retry: "yellow",
   resolving_conflict: "cyan",
+  in_review: "cyan",
 };
 
 const STATUS_ICON: Partial<Record<AgentStatus, string>> = {
@@ -131,6 +132,7 @@ const STATUS_ICON: Partial<Record<AgentStatus, string>> = {
   merged: "◆",
   retry: "↻",
   resolving_conflict: "⚡",
+  in_review: "◎",
 };
 
 export interface DashboardAgentRowProps {

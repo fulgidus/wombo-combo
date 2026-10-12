@@ -179,6 +179,7 @@ function buildStatusJson(snapshot: DaemonSnapshotView): Record<string, unknown> 
       merged: counts.merged ?? 0,
       retry: counts.retry ?? 0,
       resolving_conflict: counts.resolving_conflict ?? 0,
+      in_review: counts.in_review ?? 0,
     },
   };
 }

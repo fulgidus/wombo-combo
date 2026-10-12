@@ -59,6 +59,7 @@ const DEFAULT_THEME: ThemeTokens = {
     merged: "magenta",
     retry: "yellow",
     resolving_conflict: "cyan",
+    in_review: "cyan",
   },
   statusIcons: {
     queued: "·",
@@ -70,6 +71,7 @@ const DEFAULT_THEME: ThemeTokens = {
     merged: "◆",
     retry: "↻",
     resolving_conflict: "⚡",
+    in_review: "◎",
   },
   progressFilled: "█",
   progressEmpty: "░",
@@ -92,6 +94,7 @@ const HIGH_CONTRAST_THEME: ThemeTokens = {
     merged: "magentaBright",
     retry: "yellowBright",
     resolving_conflict: "cyanBright",
+    in_review: "cyanBright",
   },
   statusIcons: {
     queued: "·",
@@ -103,6 +106,7 @@ const HIGH_CONTRAST_THEME: ThemeTokens = {
     merged: "◆",
     retry: "↻",
     resolving_conflict: "⚡",
+    in_review: "◎",
   },
   progressFilled: "▓",
   progressEmpty: "░",
@@ -125,6 +129,7 @@ const MINIMAL_THEME: ThemeTokens = {
     merged: "",
     retry: "",
     resolving_conflict: "",
+    in_review: "",
   },
   statusIcons: {
     queued: ".",
@@ -136,6 +141,7 @@ const MINIMAL_THEME: ThemeTokens = {
     merged: "#",
     retry: "r",
     resolving_conflict: "?",
+    in_review: "?",
   },
   progressFilled: "=",
   progressEmpty: "-",

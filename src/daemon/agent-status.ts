@@ -10,6 +10,7 @@ export type AgentStatus =
   | "installing"
   | "running"
   | "completed"
+  | "in_review"
   | "verified"
   | "failed"
   | "merged"

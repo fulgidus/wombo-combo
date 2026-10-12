@@ -306,7 +306,7 @@ export function TuiApp({
   // Poll daemon-state.json every second for top-right chrome stats
   const [daemonStats, setDaemonStats] = useState<DaemonStats | undefined>(undefined);
   useEffect(() => {
-    const ACTIVE = new Set(["installing", "running", "resolving_conflict"]);
+    const ACTIVE = new Set(["installing", "running", "resolving_conflict", "in_review"]);
     const poll = () => {
       const stateFile = resolve(projectRoot, WOMBO_DIR, "daemon-state.json");
       if (!existsSync(stateFile)) {
