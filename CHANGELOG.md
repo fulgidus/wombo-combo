@@ -125,3 +125,9 @@
 <!-- wombo-combo:operation:quest-otp-supervision-spike-5a4a3b6-ca6aa1b -->
 
 - **otp-concept-mapping**: Map OTP Concepts To Daemon
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-0d1e9fa-cf54de7 -->
+
+- **otp-recovery-map**: Map Current Ad Hoc Recovery
