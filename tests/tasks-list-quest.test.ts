@@ -55,7 +55,7 @@ function writeQuest(id: string): void {
 }
 
 function run(...args: string[]) {
-  const res = Bun.spawnSync(["bun", ENTRY, ...args], {
+  const res = Bun.spawnSync([process.execPath, ENTRY, ...args], {
     cwd: dir,
     env: { ...process.env, NO_COLOR: "1", CI: "1" },
   });
