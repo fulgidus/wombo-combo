@@ -89,11 +89,11 @@ describe("pushToGitHub", () => {
   test("keeps labels woco does not manage when updating", async () => {
     await pushToGitHub({ projectRoot: root, client: client() });
     const ti = fake.issues.find((i) => i.title.startsWith("[t1]"))!;
-    ti.labels.push({ name: "bug", color: "d73a4a", description: null });
+    ti.labels.push({ name: "good first issue", color: "7057ff", description: null });
     saveTask(mkTask({ priority: "low" }));
     await pushToGitHub({ projectRoot: root, client: client() });
     const names = ti.labels.map((l) => l.name);
-    expect(names).toContain("bug");
+    expect(names).toContain("good first issue");
     expect(names).toContain("priority:low");
     expect(names).not.toContain("priority:high");
   });

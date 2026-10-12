@@ -430,6 +430,8 @@ export const LABEL_CATALOG: readonly LabelSpec[] = [
   { name: "ready-for-agent", color: "0e8a16", description: "Fully specified, ready for an AFK agent" },
   { name: "ready-for-human", color: "1d76db", description: "Needs human implementation" },
   { name: "wontfix", color: "ffffff", description: "Will not be worked on" },
+  { name: "bug", color: "d73a4a", description: "Category: something is broken" },
+  { name: "enhancement", color: "a2eeef", description: "Category: new feature or improvement" },
   { name: "spec", color: "5319e7", description: "Specification / design document" },
   { name: "wayfinder:map", color: "bfd4f2", description: "Wayfinder: map of the territory" },
   { name: "wayfinder:research", color: "c5def5", description: "Wayfinder: research step" },
