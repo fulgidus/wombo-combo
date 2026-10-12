@@ -220,6 +220,9 @@ function Header({
         {counts.resolving_conflict > 0 && (
           <Text>  <Text color="cyan">{counts.resolving_conflict} resolving</Text></Text>
         )}
+        {counts.in_review > 0 && (
+          <Text>  <Text color="cyan">{counts.in_review} in review</Text></Text>
+        )}
       </Box>
     </Box>
   );
