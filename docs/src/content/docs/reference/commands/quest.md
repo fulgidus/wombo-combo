@@ -221,6 +221,7 @@ Modifies project state.
 | Flag | Alias | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--force` |  | boolean | `false` | Skip merge, just mark as complete |
+| `--dry-run` |  | boolean |  | Show what would be completed without changing anything |
 
 ### Global flags
 
