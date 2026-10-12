@@ -1,0 +1,28 @@
+id: launch-backlog-hint
+title: "launch: explain when tasks are in backlog instead of planned"
+description: "Found by dogfooding: 'woco launch --all-ready' prints 'No launchable tasks found (all tasks are done,
+  cancelled, or have unmet dependencies)' when tasks exist but are in status backlog (launch only takes status planned
+  with dependencies met, see getReadyTasks in src/lib/tasks.ts). In src/commands/launch.ts (around the 'No launchable
+  tasks found' error): if there are backlog tasks whose dependencies are met, say so, e.g. '3 task(s) are in backlog;
+  mark them planned first: woco tasks set-status <id> planned', listing up to 5 ids. Move both messages into i18n
+  (cli.launch.* keys in src/locales/en/cli.json and it/cli.json, identical key sets, Italian also needs a _many key for
+  every _other key) and keep the existing English text byte-identical when no backlog tasks exist. Add tests (see
+  tests/launch*.test.ts or tests/e2e for patterns). Run bun run typecheck and the i18n tests."
+status: planned
+completion: 0
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+  - Keep existing messages unchanged when the new condition does not apply
+forbidden: []
+references:
+  - src/commands/launch.ts
+  - src/lib/tasks.ts
+notes: []
+subtasks: []
+paths: []

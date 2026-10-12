@@ -1,0 +1,30 @@
+id: tasks-ready-semantics
+title: Make 'tasks list --ready' agree with what launch can start
+description: "Found by dogfooding: 'woco tasks list --ready' is documented as 'backlog + deps met' but launch only
+  starts tasks with status planned and deps met (getReadyTasks in src/lib/tasks.ts), so a task can be 'ready' in the
+  list and not launchable. Inspect src/commands/tasks/list.ts and getReadyTasks, then make them consistent: --ready
+  should list exactly what 'woco launch --all-ready' would select (planned + deps met), and add a second flag
+  --startable? NO: keep it simple: change --ready to planned+deps met, update the help text in
+  src/commands/citty/tasks.ts and the registry in src/lib/citty-registry.ts (help strings are translated: update
+  cli.help.* keys in en and it), regenerate docs with bun run docs:gen, and add a test. If any docs or code relies on
+  the old meaning, update it."
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+  - docs:gen output must be committed
+forbidden: []
+references:
+  - src/commands/tasks/list.ts
+  - src/lib/tasks.ts
+  - src/commands/citty/tasks.ts
+  - src/lib/citty-registry.ts
+notes: []
+subtasks: []
+paths: []
