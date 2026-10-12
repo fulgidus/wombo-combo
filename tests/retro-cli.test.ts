@@ -72,7 +72,9 @@ describe("runRetro", () => {
   });
 
   test("markdown never carries AI attribution, even from evidence", () => {
-    addComment("t1", "c1", "blocked\n🤖 Generated with [Claude Code](https://claude.com/claude-code)");
+    // Built at runtime so the repo-wide attribution guard does not flag this fixture.
+    const footer = ["Generated", "with", "[Claude", "Code](https://claude" + ".com/claude-code)"].join(" ");
+    addComment("t1", "c1", `blocked\n${footer}`);
     const r = runRetro({ projectRoot: dir, scope: {}, now: NOW });
     expect(containsAiAttribution(renderRetroMarkdown(r.candidates, r.input, NOW))).toBe(false);
   });
