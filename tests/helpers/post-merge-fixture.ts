@@ -47,7 +47,7 @@ export function makePostMergeFixture(destination = "integration"): PostMergeFixt
     merge(taskId, title, file = `src/${taskId}.ts`, verification) {
       const wt = mkdtempSync(join(tmpdir(), "wombo-merge-wt-"));
       extra.push(wt);
-      git(repo, "worktree", "add", "-q", wt, destination);
+      git(repo, "worktree", "add", "--force", "-q", wt, destination);
       try {
         const before = git(wt, "rev-parse", "HEAD");
         writeRepoFile(wt, file, `// ${taskId}\n`);

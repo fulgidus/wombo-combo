@@ -44,6 +44,7 @@ import {
   type CommandResult,
   type CommandRunner,
 } from "./github-pr";
+import { refreshRootCheckout } from "./merger";
 import { collectCumulativeReport, sanitizeInline } from "./merge-report";
 import type {
   ChangelogOutcome,
@@ -297,7 +298,13 @@ async function runChangelogPhase(
     const newSha = await git.out(["rev-parse", "HEAD"], { cwd: tmp });
 
     // Compare-and-swap: only advance the branch if nothing else moved it.
+    // Only a root that is checked out on the branch and matches its old tip is
+    // refreshed (the tree is then at tipSha, so the two-way merge is exact).
+    const rootOnBranch =
+      (await git.run(["symbolic-ref", "--short", "-q", "HEAD"])).stdout.trim() === branch &&
+      (await git.run(["rev-parse", "HEAD"])).stdout.trim() === tipSha;
     await git.out(["update-ref", `refs/heads/${branch}`, newSha, tipSha]);
+    if (rootOnBranch) await refreshRootCheckout(req.projectRoot, branch, tipSha, newSha);
     return { status: "written", commit: newSha };
   } catch (err: any) {
     return {
