@@ -45,6 +45,7 @@ import { describeCommand } from "../commands/citty/describe";
 import { daemonCommand } from "../commands/citty/daemon";
 import { replayCommand } from "../commands/citty/replay";
 import { teamCommand } from "../commands/citty/team";
+import { triageCommand } from "../commands/citty/triage";
 import { commentCommand } from "../commands/citty/comment";
 import { syncCommand } from "../commands/citty/sync";
 
@@ -920,6 +921,84 @@ const ENTRIES: RegistryEntry[] = [
             base: { name: "base", description: "Common ancestor file (%O)" },
             ours: { name: "ours", description: "Current version, result is written here (%A)" },
             theirs: { name: "theirs", description: "Other branch version (%B)" },
+          },
+        },
+      },
+    ],
+  },
+
+  // --- triage -------------------------------------------------------------
+  {
+    cittyCmd: triageCommand,
+    meta: {
+      summary: "Triage tasks: list, show, set, brief",
+      aliases: [],
+      mutating: true,
+      supportsDryRun: false,
+      completionSummary: "Task triage",
+      description:
+        "Move tasks through the triage states needs-triage, needs-info, ready-for-agent, ready-for-human and wontfix " +
+        "(docs/agents/triage-labels.md). State and category live in the task notes and every transition leaves a system comment. " +
+        "Invalid transitions exit 1 and change nothing.",
+    },
+    subEntries: [
+      {
+        subKey: "list",
+        parentName: "triage",
+        meta: {
+          summary: "List the triage queue by bucket",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+        },
+      },
+      {
+        subKey: "show",
+        parentName: "triage",
+        meta: {
+          summary: "Show a task, its triage state and comments",
+          aliases: [],
+          mutating: false,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+          },
+        },
+      },
+      {
+        subKey: "set",
+        parentName: "triage",
+        meta: {
+          summary: "Move a task to a triage state",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+            state: { name: "state", description: "Target state [needs-triage|needs-info|ready-for-agent|ready-for-human|wontfix]" },
+          },
+          flagOverrides: {
+            category: { description: "Category: bug or enhancement" },
+            comment: { description: "Comment recorded with the transition" },
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
+            reopen: { description: "Allow wontfix -> needs-triage", default: false },
+            force: { description: "Skip the transition table (maintainer override)", default: false },
+          },
+        },
+      },
+      {
+        subKey: "brief",
+        parentName: "triage",
+        meta: {
+          summary: "Add an agent-brief comment skeleton to a task",
+          aliases: [],
+          mutating: true,
+          supportsDryRun: false,
+          positionalOverrides: {
+            task: { name: "task", description: "Task ID" },
+          },
+          flagOverrides: {
+            author: { description: "Author (default: WOMBO_AUTHOR, git user.email, OS user)" },
           },
         },
       },
