@@ -70,7 +70,11 @@ export function SectionPicker({
       setCursor((prev) => Math.min(TOTAL_ITEMS - 1, prev + 1));
       return;
     }
-    if (key.return || input === " ") {
+    if (key.leftArrow) {
+      onBack();
+      return;
+    }
+    if (key.return || input === " " || key.rightArrow) {
       if (cursor < PROFILE_SECTIONS.length) {
         onSelect(PROFILE_SECTIONS[cursor]);
       } else {

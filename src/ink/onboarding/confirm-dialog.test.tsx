@@ -13,9 +13,10 @@
  *   - Default selection is "Yes"
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, mock } from "bun:test";
 import React from "react";
-import { renderToString } from "ink";
+import { render, renderToString } from "ink";
+import { PassThrough } from "node:stream";
 import { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";
 
 // ---------------------------------------------------------------------------
@@ -71,5 +72,46 @@ describe("ConfirmDialog (static rendering)", () => {
     );
     expect(output).toContain("Genesis Planner");
     expect(output).toContain("Run genesis planner");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Arrow convention: right confirms, left cancels
+// ---------------------------------------------------------------------------
+
+async function press(seq: string) {
+  const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
+  (stdout as any).columns = 80;
+  (stdout as any).rows = 24;
+  const stdin = new PassThrough() as unknown as NodeJS.ReadStream;
+  (stdin as any).isTTY = true;
+  (stdin as any).setRawMode = () => stdin;
+  (stdin as any).ref = () => stdin;
+  (stdin as any).unref = () => stdin;
+  const onConfirm = mock(() => {});
+  const onCancel = mock(() => {});
+  const instance = render(
+    <ConfirmDialog title="T" message="M" onConfirm={onConfirm} onCancel={onCancel} />,
+    { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false },
+  );
+  await new Promise((r) => setTimeout(r, 50));
+  (stdin as any as PassThrough).write(seq);
+  await new Promise((r) => setTimeout(r, 50));
+  instance.unmount();
+  await instance.waitUntilExit();
+  return { onConfirm, onCancel };
+}
+
+describe("ConfirmDialog (arrow convention)", () => {
+  test("right arrow confirms", async () => {
+    const { onConfirm, onCancel } = await press("\x1b[C");
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  test("left arrow cancels", async () => {
+    const { onConfirm, onCancel } = await press("\x1b[D");
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });

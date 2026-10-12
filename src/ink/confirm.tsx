@@ -42,9 +42,9 @@ export function ConfirmDialog({
 }: ConfirmDialogProps): React.ReactElement {
   const t = useI18n();
   useScreenInput((input, key) => {
-    if (input === "y" || input === "Y") {
+    if (input === "y" || input === "Y" || key.rightArrow) {
       onConfirm(true);
-    } else if (input === "n" || input === "N" || key.escape) {
+    } else if (input === "n" || input === "N" || key.escape || key.leftArrow) {
       onConfirm(false);
     }
   });

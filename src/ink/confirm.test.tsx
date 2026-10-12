@@ -73,6 +73,36 @@ describe("ConfirmDialog (static rendering)", () => {
 // ---------------------------------------------------------------------------
 
 describe("ConfirmDialog (interactions)", () => {
+  test("calls onConfirm(true) when Right arrow is pressed", async () => {
+    const { stdin, stdout } = createTestStreams();
+    const onConfirm = mock(() => {});
+    const instance = render(
+      <ConfirmDialog title="Test" message="Proceed?" onConfirm={onConfirm} />,
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false }
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    (stdin as any as PassThrough).write("\x1b[C");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onConfirm).toHaveBeenCalledWith(true);
+    instance.unmount();
+    await instance.waitUntilExit();
+  });
+
+  test("calls onConfirm(false) when Left arrow is pressed", async () => {
+    const { stdin, stdout } = createTestStreams();
+    const onConfirm = mock(() => {});
+    const instance = render(
+      <ConfirmDialog title="Test" message="Proceed?" onConfirm={onConfirm} />,
+      { stdout, stdin, debug: true, exitOnCtrlC: false, patchConsole: false }
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    (stdin as any as PassThrough).write("\x1b[D");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onConfirm).toHaveBeenCalledWith(false);
+    instance.unmount();
+    await instance.waitUntilExit();
+  });
+
   test("calls onConfirm(true) when Y is pressed", async () => {
     const { stdin, stdout } = createTestStreams();
     const onConfirm = mock(() => {});

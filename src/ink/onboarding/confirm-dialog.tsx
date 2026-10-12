@@ -55,7 +55,15 @@ export function ConfirmDialog({
   const [selected, setSelected] = useState<"yes" | "no">("yes");
 
   useScreenInput((input, key) => {
-    if (key.upArrow || key.downArrow || key.leftArrow || key.rightArrow) {
+    if (key.rightArrow) {
+      onConfirm();
+      return;
+    }
+    if (key.leftArrow) {
+      onCancel();
+      return;
+    }
+    if (key.upArrow || key.downArrow) {
       setSelected((prev) => (prev === "yes" ? "no" : "yes"));
       return;
     }
