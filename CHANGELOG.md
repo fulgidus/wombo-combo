@@ -113,3 +113,45 @@
 <!-- wombo-combo:operation:main-6da27fb-0be8a94 -->
 
 - **bug-flaky-monitor-dashboard-test**: Flaky: monitor-router dashboard test times out under load
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-48c1af2-5874851 -->
+
+- **otp-supervisor-prototype**: Prototype Supervisor Core
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-5a4a3b6-ca6aa1b -->
+
+- **otp-concept-mapping**: Map OTP Concepts To Daemon
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-0d1e9fa-cf54de7 -->
+
+- **otp-recovery-map**: Map Current Ad Hoc Recovery
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-463ef83-574c5e9 -->
+
+- **otp-ts-vs-elixir**: Compare TypeScript Versus Elixir
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-a1dc706-2551a0c -->
+
+- **otp-prototype-demo**: Prototype Demo And Tests
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-d6c9e20-38699a4 -->
+
+- **otp-adr-decision**: Write ADR With Go/No-Go
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-otp-supervision-spike-4462437-e5d458a -->
+
+- **otp-supervision-guide-stub**: Add Supervision Guide Stub
