@@ -15,6 +15,7 @@
 import { loadProjectContext } from "./project-store";
 import type { WomboConfig } from "../config";
 import { launchPlanner, canonicalizeOutput } from "./launcher";
+import { createPlannerTelemetry, formatPlannerTelemetry } from "./planner-telemetry";
 import type { ProposedTask, PlanResult } from "./quest-planner";
 import {
   extractPlanYaml,
@@ -216,8 +217,18 @@ export async function runErrandPlanner(
   const chunks: Buffer[] = [];
   let stderrText = "";
 
+  const telemetry = createPlannerTelemetry({
+    model: launch.result.route.model,
+    normalize: launch.result.normalize,
+    onUpdate: (snap) => {
+      const text = formatPlannerTelemetry(snap);
+      if (text) onProgress(text);
+    },
+  });
+
   child.stdout?.on("data", (chunk: Buffer) => {
     chunks.push(chunk);
+    telemetry.feed(chunk);
   });
 
   child.stderr?.on("data", (chunk: Buffer) => {
@@ -261,6 +272,7 @@ export async function runErrandPlanner(
 
   const rawOutput = Buffer.concat(chunks).toString("utf-8");
 
+  telemetry.flush();
   onProgress("Parsing errand planner output...");
 
   if (exitCode === -1) {
