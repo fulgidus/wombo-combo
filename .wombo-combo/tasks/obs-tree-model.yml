@@ -1,0 +1,41 @@
+id: obs-tree-model
+title: Pure Supervision Tree Model
+description: |
+  Create src/lib/supervision-tree.ts: a pure, clock-free module shared by the TUI, the CLI and
+  the daemon. It imports only types from ../daemon/protocol.
+
+  Export:
+    - emptySupervisionTree(now): SupervisionTreeSnapshot
+    - applySupervisionEvent(tree, event, now): SupervisionTreeSnapshot  (immutable; handles
+      supervisor-started, child-restarted, intensity-exceeded, supervisor-escalated; creates
+      missing nodes defensively, increments restartCount/totalRestarts/escalations, sets
+      lastExit/lastExitAt, marks failed on escalation)
+    - flattenSupervisionTree(tree): Array<{ node, depth, isLast, prefix }> for rendering
+    - formatSupervisionTree(tree): string  (compact plain-text ASCII tree, one node per line:
+      label, state, restarts, last exit reason; no colours, no i18n; presentation strings come
+      from callers)
+    - findSupervisionNode(tree, id)
+  Unit tests in tests/supervision-tree.test.ts (deterministic, no clock reads).
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-protocol-types
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - "Pure functions only: no fs, network or Date.now(); take now as a parameter"
+  - Keep under ~400 lines
+forbidden:
+  - Do not import from src/ink or src/commands
+  - Do not add dependencies
+references:
+  - src/daemon/protocol.ts
+  - src/lib/dashboard-metrics.ts
+notes:
+  - Mirror the immutable-reducer style of dashboard-metrics.ts.
+subtasks: []
+quest: supervision-observability
+paths: []

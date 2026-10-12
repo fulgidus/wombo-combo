@@ -1,0 +1,55 @@
+id: otp-adr-decision
+title: Write ADR With Go/No-Go
+description: |
+  Write docs/adr/0001-otp-supervision.md, the ADR that decides how OTP-style supervision applies to
+  wombo-combo. Use the usual ADR sections: Status, Context, Decision, Options considered,
+  Consequences, Follow-ups. Synthesize the research docs under docs/adr/0001-otp-supervision/
+  (recovery-map.md, concept-mapping.md, ts-vs-elixir.md) and the prototype under
+  spikes/otp-supervision/ (including observed behaviour in its README). Link to each.
+
+  Requirements:
+  - Reference closed PR #3 (Elixir/OTP daemon) and state whether this ADR adopts or rejects it.
+  - A clear, one-line go / no-go for in-TS supervision, then the reasoning.
+  - State the single-threaded JS limit: supervised "processes" are async tasks plus child processes
+    (the agent CLIs), not isolated heaps; merges and conflict resolution stay serialized.
+  - Summarise the OTP concept mapping and the recovery map (what primitive replaces which ad hoc
+    recovery) in short tables.
+  - A scoped follow-up list: concrete work items sized for separate quests/tasks (e.g. supervisor
+    module in src/daemon, migrate retry counters, startup reconcile via supervisor, additive protocol
+    events, docs), each with dependencies and a note that the other supervision quests only start
+    on a "go" decision.
+  - Flag any contradiction with existing docs; there are no earlier ADRs.
+  Keep wombo vocabulary (wave, quest, agent, task, harness).
+status: planned
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - otp-recovery-map
+  - otp-concept-mapping
+  - otp-ts-vs-elixir
+  - otp-prototype-demo
+effort: PT1H
+started_at: null
+ended_at: null
+constraints:
+  - Must contain an explicit go / no-go and a scoped follow-up list
+  - "Must reference closed PR #3"
+  - Do not contradict the findings in the research docs; if the recommendation differs from the quest's initial
+    direction, say so plainly
+  - No AI attribution anywhere
+forbidden:
+  - Do not edit the research docs or the spike code
+  - Do not edit any file under src/
+references:
+  - docs/adr/0001-otp-supervision/recovery-map.md
+  - docs/adr/0001-otp-supervision/concept-mapping.md
+  - docs/adr/0001-otp-supervision/ts-vs-elixir.md
+  - spikes/otp-supervision/README.md
+  - docs/agents/domain.md
+notes:
+  - The sidebar for docs/ autogenerates by directory, but ADRs live in docs/adr/ outside the Starlight content tree, so
+    no astro config change is needed
+subtasks: []
+quest: otp-supervision-spike
+paths: []

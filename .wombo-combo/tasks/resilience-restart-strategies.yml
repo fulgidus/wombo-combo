@@ -1,0 +1,52 @@
+id: resilience-restart-strategies
+title: Restart Strategy Resilience Tests
+description: |
+  Add tests/resilience/restart-strategies.test.ts exercising every restart strategy
+  and restart type the tree uses, end to end with the fake agent and FakeClock.
+  Discover the strategy used per level from the merged tree (daemon root -> wave ->
+  quest -> agent) and cover each:
+    - one_for_one: sibling independent tasks; one crashes (crash@before-commit), only it
+      restarts, siblings keep running and complete untouched.
+    - one_for_all: if any level uses it, a crash restarts all siblings in order; assert
+      shutdown-then-start ordering from the event recorder.
+    - rest_for_one: a quest base-branch/baseline-style child failing restarts it and
+      the children started after it, not those before it; dependents are halted cleanly.
+    - restart types: permanent restarts after normal exit, transient restarts only on
+      crash (flaky:2@before-commit becomes healthy on the third attempt and ends merged
+      or verified), temporary is never restarted (repeat-crash ends failed).
+    - backoff: restarts happen only after FakeClock.advance past the backoff; assert no
+      restart before and exactly one after.
+    - Verifier feedback / retry state survives a restart where the agent supervisor
+      promises it (see agent-process-supervision).
+    - hang@after-text under a per-child timeout: advance the clock past the timeout,
+      the child is killed and restarted per policy.
+  Each test uses createScenario from tests/helpers/resilience-harness.ts and the
+  leak assertions in dispose.
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - resilience-harness
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Assert on process, worktree and branch cleanup in every scenario via harness dispose
+  - Order assertions come from recorded events, not wall-clock timing
+  - Cover every strategy actually present in the tree configuration; do not invent unused ones
+forbidden:
+  - Do not weaken or delete existing tests
+  - Do not use fixed sleeps
+  - Do not edit shared helpers; request changes via a tracked task if the harness lacks a hook
+references:
+  - tests/helpers/resilience-harness.ts
+  - tests/helpers/leak-check.ts
+  - src/lib/fake-agent-faults.ts
+  - src/daemon/scheduler.ts
+notes:
+  - "If a strategy misbehaves, do not bend the test: add a bug- task with `bun dev tasks add` and mark the test with a
+    clearly labelled test.todo/skip referencing the task ID"
+subtasks: []
+quest: supervision-fault-injection
+paths: []

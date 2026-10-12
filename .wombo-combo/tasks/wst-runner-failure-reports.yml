@@ -1,0 +1,53 @@
+id: wst-runner-failure-reports
+title: Report Runner Failures to Supervisor
+description: |
+  In src/daemon/agent-runner.ts, add an optional failure reporter that the
+  runner calls at the existing failure points, without changing any current
+  behaviour or retry logic:
+    interface SupervisionReporter {
+      reportFailure(f: { agentId: string; questId: string | null;
+        kind: "agent_crash" | "baseline_failed" | "base_branch_failed";
+        error: string }): void;
+      reportSuccess(agentId: string): void;
+    }
+  with `setSupervisionReporter(r | null)` (default null = no-op).
+  Call sites: test baseline unavailable in doLaunch (~L561-575) and in the
+  session-reuse retry path (~L1956-1965) -> `baseline_failed`; quest base
+  branch missing/unusable when resolving the base branch or preparing the
+  worktree for a quest task -> `base_branch_failed` (add the report where the
+  failure is already detected; do not add new git calls); monitor error /
+  non-recoverable agent exit and retries exhausted -> `agent_crash`; agent
+  reaching verified/merged -> `reportSuccess`.
+  The reporter is advisory in this task: the runner still fails the agent
+  exactly as before. Add tests/daemon-agent-runner-supervision.test.ts using
+  the fake agent runner: reporter receives baseline_failed with the quest id,
+  agent_crash after retries are exhausted, reportSuccess on verified;
+  with no reporter all existing behaviour is unchanged (existing
+  daemon-agent-runner tests pass unmodified).
+status: planned
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - wst-tree-model
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Reporting must never throw into the runner; wrap in try/catch
+  - Do not change retry counts, status transitions or protocol shapes
+  - agent-runner.ts is shared with the agent-process-supervision quest; keep the diff to small call-site insertions
+forbidden:
+  - Do not modify scheduler.ts, state.ts or daemon.ts
+  - Do not restructure or extract code from agent-runner.ts
+references:
+  - src/daemon/agent-runner.ts
+  - tests/daemon-agent-runner.test.ts
+  - tests/daemon-test-baseline.test.ts
+  - src/lib/fake-agent-runner.ts
+notes:
+  - agent-process-supervision may already provide onProcessFailed / onVerifyFailed seams; hook those instead of raw call
+    sites if they exist
+subtasks: []
+quest: wave-supervision-tree
+paths: []

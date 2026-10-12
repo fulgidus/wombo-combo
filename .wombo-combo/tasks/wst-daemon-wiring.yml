@@ -1,0 +1,70 @@
+id: wst-daemon-wiring
+title: Wire Tree and Crash Recovery in Daemon
+description: |
+  Wire everything together in src/daemon/daemon.ts plus a small new module
+  src/daemon/supervision-wiring.ts.
+  1. Build the tree in Daemon construction from resolveSupervision(config)
+     and the persisted snapshot (state.getSupervision()), via
+     createSupervisionTree({ restore }). The tree is a Daemon field so it
+     survives Scheduler reconstruction on cmd:start; pass it as
+     SchedulerDeps.supervisor and runner.setSupervisionReporter(...) adapter.
+  2. Event path: tree.onEvent -> state.emit("evt:supervision") -> broadcast,
+     plus an `evt:log` line, and state.setSupervision(tree.snapshot()) after
+     every transition (debounced save already atomic).
+  3. Escalation handler: on pause_quest, cancel nothing but mark quest paused
+     (scheduler gate does the rest) and fail/halt only the `haltedAgents`
+     that have not started; on degrade_wave, mark wave degraded and continue
+     other quests; on abort_wave, call scheduler.stop() semantics and runner
+     kill of the halted agents, then set scheduler status accordingly.
+     Defaults ("none") do nothing beyond what happens today.
+  4. Single recovery path: replace the three ad hoc calls in Daemon.start
+     (reconcileOrphanedTasks, reconcileVerifiedAgents, plus stale
+     resolving_conflict handling it triggers) with
+     `recoverFromPersistedState({ tree, state, runner })` in
+     supervision-wiring.ts. It (a) restores the tree from the snapshot,
+     (b) re-registers every persisted non-terminal agent under its quest
+     supervisor, (c) re-applies paused quests / wave status, (d) then invokes
+     the same runner reconcile functions in the same order as today, and
+     (e) emits a `recovered` supervision event with counts. Keep the runner
+     methods themselves unchanged and keep restoreAnalytics() before it.
+  5. Preserve the pinned-concurrency pre-pin on state.stateLoaded in
+     Daemon.start exactly as is.
+  Unify the SupervisionSnapshot type (state.ts re-exports or aliases the one
+  from supervision-tree.ts).
+  Add tests/daemon-supervision-wiring.test.ts: default config -> no
+  behaviour change (no escalation, events only for restarts that happen
+  today); recovery with an empty/old state file; recovery order of runner
+  calls.
+status: planned
+completion: 0
+difficulty: very_hard
+priority: high
+depends_on:
+  - wst-config
+  - wst-state-persistence
+  - wst-scheduler-integration
+  - wst-runner-failure-reports
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - "Default config must produce today's behaviour: all escalations 'none', no backoff"
+  - Every escalation emits an evt:supervision event before any side effect
+  - Do not alter the order of runner reconcile calls or the stateLoaded concurrency pre-pin
+forbidden:
+  - Do not modify scheduler.ts or agent-runner.ts beyond what earlier tasks added
+  - Do not add new CLI commands or change existing protocol command shapes
+references:
+  - src/daemon/daemon.ts
+  - src/daemon/state.ts
+  - src/daemon/scheduler.ts
+  - src/daemon/agent-runner.ts
+  - src/daemon/supervision-tree.ts
+  - openspec/specs/scheduler-concurrency-pinning/spec.md
+notes:
+  - daemon.ts is ~950 lines; put new logic in supervision-wiring.ts and keep daemon.ts edits to construction, start()
+    and event forwarding
+  - Daemon.start currently documents why the scheduler is not auto-started; keep that comment true
+subtasks: []
+quest: wave-supervision-tree
+paths: []

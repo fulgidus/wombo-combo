@@ -1,0 +1,43 @@
+id: sup-strategy-tests
+title: Strategy, Escalation and Nesting Tests
+description: >
+  Add tests/supervisor-strategies.test.ts, an exhaustive behavioural suite against the Supervisor from supervisor.ts
+  (fix real bugs found in supervisor.ts minimally and report them in a code comment-free commit message; if a bug is
+  non-trivial, create a task via `bun dev tasks add` instead of working around it).
+
+
+  Required scenarios (FakeClock + controllable fake children that record start/abort order into a shared log array):
+    - one_for_one: only the failed child restarts; siblings untouched.
+    - one_for_all: failed child crashes => the others are stopped in reverse start order, then ALL children start again in start order after the backoff delay; a temporary sibling is stopped but not restarted.
+    - rest_for_one: crash of the first/middle/last child restarts only it and the later children; earlier ones untouched; order of stops/starts asserted exactly.
+    - Intensity: with maxRestarts=3, periodMs=1000: 3 restarts within the window succeed; the 4th triggers supervisor_escalated, exit resolves with crash(SupervisorEscalation), remaining children are stopped in reverse order, no further restarts after escalation. Restarts spaced out over time (older than the window) do NOT escalate. maxRestarts=0 escalates on first crash.
+    - Backoff: successive crashes produce delays initial, initial*factor, ... capped at maxMs (read via child_restarted.delayMs and clock timing); attempt resets after a long healthy run.
+    - Nested supervisors: a child supervisor (Supervisor.childSpec) escalating makes the parent see a crash of that child and restart it with a fresh supervisor; parent escalation propagates upward to a grandparent; snapshot() of the root includes nested `supervisors`.
+    - Graceful shutdown ordering and timeout: a hung child is force-abandoned after its shutdownTimeoutMs (advance fake clock), the others still stop; stop() during backoff cancels the pending restart.
+    - Event sequence assertions for a full crash-restart cycle: child_started, child_exited, child_restarted.
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - sup-supervisor
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - "Deterministic: no real timers, no sleeps"
+  - Every strategy and the intensity escalation must have explicit tests
+forbidden:
+  - Do not rewrite supervisor.ts; only minimal bug fixes
+  - Do not add dependencies
+  - Do not touch existing daemon code
+references:
+  - src/lib/supervision/supervisor.ts
+  - tests/supervisor.test.ts
+  - tests/helpers/fake-clock.ts
+notes:
+  - Reuse any fake-child helper from tests/supervisor.test.ts by copying it; do not edit that test file, to avoid
+    conflicts.
+subtasks: []
+quest: supervisor-core
+paths: []

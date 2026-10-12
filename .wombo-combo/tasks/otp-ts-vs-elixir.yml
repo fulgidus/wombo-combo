@@ -1,0 +1,46 @@
+id: otp-ts-vs-elixir
+title: Compare TypeScript Versus Elixir
+description: |
+  Write docs/adr/0001-otp-supervision/ts-vs-elixir.md: compare keeping the daemon in TypeScript/Bun
+  with adding OTP-style supervision in-process, against the Elixir/OTP daemon migration proposed in
+  closed PR #3.
+
+  First read PR #3 (try `gh pr view 3 --comments` and `gh pr diff 3`; if gh is unavailable or
+  offline, use `git log --all` and any local references, and note that the PR text could not be
+  read). Summarise what it proposed. Then compare on: migration cost (modules, tests, build and
+  release pipeline, bun-only distribution), risk (parity regressions, dual runtime in CI, install
+  friction for `bun add -g wombo-combo` users), the TS CLI/TUI boundary over the WebSocket
+  protocol (src/daemon/protocol.ts, client.ts, launcher.ts: what must stay stable, what a BEAM
+  daemon would have to reimplement, ownership of state.ts persistence), and what OTP gives that
+  in-process supervision cannot (real isolation, preemptive scheduling, hot code reload) versus
+  what wombo actually needs (agents are external CLI processes already isolated by the OS).
+  Finish with a recommendation section and the reasons it could be wrong.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T16:12:10.943Z
+ended_at: null
+constraints:
+  - "Reference closed PR #3 by number"
+  - Cover cost, risk, the CLI/TUI WebSocket boundary and a clear recommendation
+  - Base cost estimates on actual module sizes (agent-runner.ts is about 2.4k lines); do not invent numbers
+forbidden:
+  - Do not introduce Elixir code or tooling into the repo
+  - Do not edit any file under src/
+  - Do not create or edit docs/adr/0001-otp-supervision.md (owned by otp-adr-decision)
+references:
+  - src/daemon/protocol.ts
+  - src/daemon/client.ts
+  - src/daemon/launcher.ts
+  - src/daemon/state.ts
+  - package.json
+  - .github/workflows/release.yml
+notes:
+  - "The existing quest knowledge states that this plan does not adopt PR #3; the comparison must still be honest and
+    able to reverse that"
+subtasks: []
+quest: otp-supervision-spike
+paths: []

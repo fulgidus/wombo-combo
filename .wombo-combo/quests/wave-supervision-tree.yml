@@ -1,0 +1,46 @@
+id: wave-supervision-tree
+title: Wave and Quest Supervision Tree
+goal: |
+  Build the supervision tree on top of per-agent supervision. The tree is
+  daemon root -> wave supervisor -> quest supervisor -> agent supervisors.
+  - Integrate src/daemon/scheduler.ts, which is the DAG scheduler, so it
+    starts agents as children of the right supervisor instead of calling
+    the runner directly.
+  - Choose a strategy per level. For example, one_for_one for independent
+    tasks in a wave. Use rest_for_one or escalation when a quest base
+    branch or baseline capture fails, so dependents are halted cleanly.
+  - Escalation produces a defined outcome: the quest is paused, the wave
+    is marked degraded, or the wave is aborted.
+  - On daemon restart, rebuild the tree from persisted state (state.ts) so
+    crash recovery goes through one path instead of ad hoc stale-agent
+    handling.
+  - Add config under .wombo-combo/config.json (and schemas/) for restart
+    intensity, backoff and escalation policy, with safe defaults that match
+    today's behaviour.
+  Acceptance: scheduler and daemon tests pass. New tests cover escalation
+  and recovery after a simulated daemon crash.
+status: paused
+priority: medium
+difficulty: very_hard
+depends_on:
+  - agent-process-supervision
+branch: quest/wave-supervision-tree
+baseBranch: main
+hitlMode: cautious
+constraints:
+  add:
+    - Config additions must be optional and default to current behaviour
+    - Update schemas/ and src/config.ts validation together
+    - Persist only what is needed to rebuild the tree; keep state.ts atomic writes
+  ban:
+    - Do not change DAG readiness or priority semantics in scheduler.ts
+    - Do not make restart behaviour implicit; every escalation must emit an event
+    - Do not break the pinned-concurrency behaviour covered by existing scheduler specs
+  override: {}
+created_at: 2026-10-12T08:40:26.209Z
+updated_at: 2026-10-12T15:56:41.499Z
+started_at: 2026-10-12T15:56:35.432Z
+ended_at: null
+notes:
+  - Archived OpenSpec change fix-scheduler-launch-and-concurrency documents concurrency pinning that must stay true
+  - Keep wave/quest/agent terminology from docs/agents/domain.md

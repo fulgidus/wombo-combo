@@ -1,0 +1,57 @@
+id: chaos-smoke-scenario
+title: Manual Chaos Smoke Scenario
+description: |
+  Add a manually runnable chaos scenario, executed against the working tree with bun
+  (the repo rule is to run through bun, never the global binary).
+    - scripts/chaos-smoke.ts: creates a temp git repo (no network), writes
+      .wombo-combo/config.json plus a small task graph whose tasks use
+      `agent: fake-agent` and FAKE_FAULT directives in their descriptions (crash,
+      flaky, hang, slow-shutdown, repeat-crash) with short FAKE_SLEEP_MS, then runs
+      `bun <repo>/src/index.ts launch ...` / the daemon against it, with an optional
+      --kill-daemon-at <n-seconds> flag that SIGKILLs the daemon mid-run and restarts
+      it to exercise rebuild. Support --seed for reproducible fault assignment (seeded
+      PRNG for choosing which tasks get which fault) and --keep to retain the temp dir
+      for inspection.
+    - After the run it checks for leaked agent processes, wombo worktrees and
+      feature/ branches (reuse the logic by importing from tests/helpers/leak-check.ts
+      or sharing a small module) and exits non-zero with a report on leaks or a
+      non-terminal state. Output is concise, with --output json support.
+    - Add a package.json script `"chaos": "bun scripts/chaos-smoke.ts"`, so
+      `bun run chaos` works (document that it runs the local sources, like `bun dev`).
+    - Add tests/chaos-smoke-script.test.ts: run the script in a fast, tiny
+      configuration (single healthy task + one flaky) and assert exit 0 and a JSON
+      report with zero leaks. It must be deterministic and finish well within the
+      30s default test timeout.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - fake-agent-fault-script
+  - resilience-leak-check
+effort: PT1H30M
+started_at: 2026-10-12T16:09:05.832Z
+ended_at: null
+constraints:
+  - Wait for completion by polling daemon state with the deadline helper pattern, not fixed sleeps
+  - "Must never touch the developer's real repo: operate only in a temp repo"
+  - Run local sources via bun src/index.ts; never invoke a global woco/wombo binary
+forbidden:
+  - Do not add dependencies
+  - Do not use network or gh
+  - Do not edit .github/workflows/ci.yml
+references:
+  - src/lib/fake-agent-runner.ts
+  - src/lib/fake-agent-faults.ts
+  - tests/helpers/leak-check.ts
+  - tests/helpers/git-repo.ts
+  - src/daemon/launcher.ts
+  - src/index.ts
+  - package.json
+notes:
+  - package.json is also touched by dependency work only rarely; keep the edit to the scripts block to avoid merge
+    conflicts
+  - tests/e2e/cli-smoke.test.ts shows how CLI subprocess tests are run
+subtasks: []
+quest: supervision-fault-injection
+paths: []

@@ -1,0 +1,48 @@
+id: otp-concept-mapping
+title: Map OTP Concepts To Daemon
+description: |
+  Write docs/adr/0001-otp-supervision/concept-mapping.md: a precise mapping of OTP concepts to
+  the wombo-combo daemon.
+
+  Cover: supervisor, child spec (id, start, restart, shutdown, type), restart strategies
+  (one_for_one, one_for_all, rest_for_one), restart intensity and period (max_restarts within
+  max_seconds, escalation to the parent), restart types (permanent, transient, temporary),
+  shutdown semantics (timeout vs brutal kill, ordered shutdown of children), and links versus
+  monitors. For each concept propose the concrete daemon equivalent. Examples:
+  - a child is an agent run (async task plus harness child process)
+  - the merge queue and conflict resolver are serialized children
+  - rest_for_one maps to the task dependency chain (cancelDownstream / rescueChainPredecessors)
+  - one_for_all applies to a quest-scoped group sharing a baseline or base branch
+  - the scheduler is the root supervisor's start policy
+  - events on the WebSocket protocol map to monitor DOWN messages
+  Include a section "Limits of the model in single-threaded JS": there are no isolated heaps; a
+  "process" is a supervised async task plus a child process; an unhandled throw or a stuck
+  event loop in the daemon cannot be contained; merges and conflict resolution share git state and
+  must stay serialized. Include a proposed TypeScript shape (types only, as a fenced code block)
+  for ChildSpec and Supervisor.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T16:12:10.676Z
+ended_at: null
+constraints:
+  - State the single-threaded JS limit explicitly in its own section
+  - Use wombo vocabulary (wave, quest, agent, task); do not rename existing terms
+  - Proposed protocol changes, if any, must be additive
+forbidden:
+  - Do not edit any file under src/
+  - Do not create or edit docs/adr/0001-otp-supervision.md (owned by otp-adr-decision)
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/scheduler.ts
+  - src/daemon/protocol.ts
+  - src/daemon/state.ts
+  - docs/agents/domain.md
+notes:
+  - Output goes under docs/adr/0001-otp-supervision/ alongside the recovery map
+subtasks: []
+quest: otp-supervision-spike
+paths: []

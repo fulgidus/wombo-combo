@@ -1,0 +1,43 @@
+id: extract-merge-stage
+title: Extract Merge Stage, Keep Serialized
+description: |
+  Move the merge pipeline out of agent-runner.ts into
+  src/daemon/runner/merge-stage.ts: attemptMerge, mergeIntoBase,
+  handleMergeSuccess, publishAfterMerge, logPublication, evidenceFor
+  (approx. L1024-1376), delegating to the conflict-resolution module from the
+  previous task.
+
+  Merge and conflict resolution mutate shared git state (the base/quest
+  branch), so they must remain strictly serialized and must NOT be treated
+  as freely restarting supervised siblings. Make the existing serialization
+  (inspect how attemptMerge queues today) explicit: a single MergeQueue
+  (promise-chain mutex) owned by the merge stage, with a small unit test
+  proving two concurrent merges never overlap and a rejected merge does not
+  block the next one. Behaviour otherwise unchanged (mergeBefore map,
+  post-merge pipeline, auto-push).
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - extract-conflict-resolution
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Behaviour-preserving; existing tests pass unchanged
+  - Merge and conflict resolution run one at a time; no restart policy applies to them
+  - Module under ~500 lines
+forbidden:
+  - Do not change merge, post-merge, changelog or PR behaviour
+  - Do not leave orphaned worktrees/branches on merge failure paths
+references:
+  - src/daemon/agent-runner.ts
+  - src/lib/merger.ts
+  - src/lib/post-merge.ts
+  - tests/daemon-agent-runner.test.ts
+notes:
+  - Add tests/daemon-merge-queue.test.ts for the serialization guarantee
+subtasks: []
+quest: agent-process-supervision
+paths: []

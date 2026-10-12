@@ -1,0 +1,51 @@
+id: hang-watchdog-and-restart-tests
+title: Hang Watchdog and Crash Restart Tests
+description: |
+  There is currently no hang detection (monitor.ts has no idle timeout), so
+  add a watchdog and the acceptance tests.
+  1. Watchdog: src/daemon/runner/hang-watchdog.ts. Tracks last activity per
+     running agent (fed by onActivity/onEvent/onOutput callbacks) with an
+     injectable clock and timer; when idle longer than the configured
+     threshold, it kills the process and reports ExitReason
+     { kind: "hang" } to the restart policy. Threshold comes from an
+     optional config.defaults field (e.g. agentIdleTimeoutMs); default is
+     disabled so behaviour is unchanged. Add the field to src/config.ts and
+     schemas/config.schema.json (validator accepts absence).
+  2. Tests (tests/daemon-agent-supervision.test.ts) using the fake agent
+     runner and injected clock, no real timers/CLIs:
+     - crash: process errors -> restarted with feedback, status passes
+       through "retry" to "running"; success after restart ends "completed".
+     - hang: no activity beyond threshold -> process killed, restarted
+       through the policy.
+     - exhausted restart intensity: repeated crashes/hangs beyond
+       maxRetries -> final AgentStatus "failed", downstream cancelled,
+       no orphaned worktree.
+     - maxRetries 0 fails on first crash; normal exit never restarts.
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - persist-retry-feedback
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Watchdog disabled by default
+  - "Tests deterministic: injected clock, no sleeps over a few ms"
+  - Uses src/lib/fake-agent-runner.ts patterns
+forbidden:
+  - Do not change AgentStatus values or protocol shapes
+references:
+  - src/config.ts
+  - schemas/config.schema.json
+  - src/lib/fake-agent-runner.ts
+  - src/lib/monitor.ts
+  - src/lib/supervisor-core.ts
+  - src/daemon/runner/spawn-monitor.ts
+  - docs/src/content/docs/reference/config.md
+notes:
+  - Document the new config field in docs/src/content/docs/reference/config.md in this task since it owns the field
+subtasks: []
+quest: agent-process-supervision
+paths: []

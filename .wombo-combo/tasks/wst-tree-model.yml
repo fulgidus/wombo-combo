@@ -1,0 +1,77 @@
+id: wst-tree-model
+title: Build Pure Supervision Tree Model
+description: |
+  Create src/daemon/supervision-tree.ts: a pure, dependency-free model of
+  the tree daemon root -> wave supervisor -> quest supervisor -> agent
+  supervisors. It knows nothing about git, worktrees, the runner or
+  WebSocket. Use wave/quest/agent terminology from GLOSSARY.md /
+  docs/agents/domain.md.
+
+  Public API (all synchronous and deterministic; clock injectable):
+  - `createSupervisionTree(options)` where options carries a
+    `SupervisionPolicy` (same shape as the resolved config in wst-config but
+    defined locally as a type so this task does not depend on it) plus
+    `now()` and `onEvent(evt)`.
+  - `tree.registerAgent({ agentId, questId | null })` creates quest nodes on
+    demand. Agents without a quest sit directly under the wave node.
+  - `tree.canStart(agentId)` -> `{ ok: true } | { ok: false, reason }`; false
+    when its quest is paused or the wave is aborted. This is a pure gate; it
+    never inspects dependencies or priority.
+  - `tree.reportFailure({ agentId, kind })` where kind is
+    `"agent_crash" | "baseline_failed" | "base_branch_failed"`. Returns a
+    decision: `{ action: "restart", attempt, delayMs }`,
+    `{ action: "give_up" }`, or an escalation
+    `{ action: "escalate", outcome: "pause_quest" | "degrade_wave" | "abort_wave", haltedAgents: string[] }`.
+    Strategies: one_for_one = only the failing agent; rest_for_one at the
+    quest level = failing agent plus later-registered siblings in the same
+    quest (those are the agents to halt). Restart intensity counts restarts
+    and, when windowMs > 0, uses a sliding window; backoff delay =
+    min(maxMs, initialMs * factor^(attempt-1)), 0 when initialMs is 0.
+    Counter semantics must stay exactly "restarts allowed = maxRestarts".
+  - `tree.reportSuccess(agentId)`, `tree.resumeQuest(questId)`,
+    `tree.snapshot()` / `createSupervisionTree({ restore })` for the
+    persisted form.
+  - Outcome states: quest `running | paused`; wave `healthy | degraded |
+    aborted`. Every transition and every escalation calls onEvent with a
+    typed event (`child_restarted`, `child_gave_up`, `quest_paused`,
+    `wave_degraded`, `wave_aborted`, `quest_resumed`), each carrying
+    ids, the trigger and the policy that applied. There must be no code path
+    that changes tree state without emitting an event.
+  Export the persisted snapshot type `SupervisionSnapshot`
+  ({ waveStatus, pausedQuests: {questId, reason, at}[], restarts:
+  Record<agentId, number>, escalations: {...}[] }) and keep it minimal: only
+  what is needed to rebuild the tree.
+  Add tests/supervision-tree.test.ts with a fake clock covering:
+  one_for_one isolation, rest_for_one halting later siblings only,
+  intensity exhaustion -> give_up, backoff growth/cap, windowed intensity,
+  each of the three escalation outcomes, canStart gating, snapshot ->
+  restore round trip, and that every transition emits exactly one event.
+  Keep the file under ~500 lines (split into supervision-tree-types.ts if needed).
+status: in_progress
+completion: 0
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT2H
+started_at: 2026-10-12T16:12:02.557Z
+ended_at: null
+constraints:
+  - No imports from agent-runner, scheduler, state, worktree or git code
+  - No new dependencies; inject clock for deterministic tests
+  - Every escalation and state change emits an event; nothing implicit
+forbidden:
+  - Do not modify existing files except to add the new test file
+  - Do not implement any DAG readiness, priority or concurrency logic
+references:
+  - src/daemon/scheduler.ts
+  - src/daemon/state.ts
+  - src/lib/supervisor-core.ts
+  - docs/agents/domain.md
+  - src/lib/fake-agent-runner.ts
+notes:
+  - If src/lib/supervisor-core.ts (from the agent-process-supervision quest) exports a restart tracker, reuse it for
+    per-agent restart counting instead of re-implementing; otherwise implement the counter locally
+  - Counting must match agent.retries < agent.maxRetries in agent-runner.ts so default behaviour is unchanged
+subtasks: []
+quest: wave-supervision-tree
+paths: []

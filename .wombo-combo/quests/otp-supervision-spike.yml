@@ -1,0 +1,47 @@
+id: otp-supervision-spike
+title: OTP Supervision Design Spike
+goal: |
+  Decide how OTP-style supervision should be applied to wombo-combo before
+  any production refactor. Deliverables:
+  - An ADR in docs/ (and a short guide stub) that maps OTP concepts to the
+    daemon: supervisor, child spec, restart strategies (one_for_one,
+    one_for_all, rest_for_one), restart intensity/period, permanent /
+    transient / temporary restart types, shutdown semantics, links/monitors.
+  - A comparison of staying in TypeScript/Bun against the Elixir/OTP daemon
+    migration proposed in closed PR #3. Cover cost, risk, the TS CLI/TUI
+    boundary over WebSocket, and a recommendation.
+  - A throwaway prototype (kept out of src/ or clearly isolated) that
+    supervises fake agents and shows crash isolation and restart-intensity
+    escalation.
+  - A map of current ad hoc recovery: retry counters in
+    agent-runner.ts, stale-agent recovery in daemon.ts, scheduler requeue.
+    For each, state which supervision primitive replaces it.
+  Acceptance: the ADR has a clear go / no-go and a scoped follow-up list.
+  The other supervision quests are only started if the ADR recommends the
+  in-TS approach.
+status: paused
+priority: medium
+difficulty: medium
+depends_on: []
+branch: quest/otp-supervision-spike
+baseBranch: main
+hitlMode: cautious
+constraints:
+  add:
+    - "Record the decision as an ADR under docs/ and reference closed PR #3"
+    - Keep the prototype isolated; it must not change daemon behaviour
+    - Prefer the fake agent runner (src/lib/fake-agent-runner.ts) for experiments
+  ban:
+    - Do not add new dependencies
+    - Do not rewrite or remove existing daemon modules in this quest
+    - Do not introduce Elixir or other runtimes into the repo build
+  override: {}
+created_at: 2026-10-12T08:40:26.204Z
+updated_at: 2026-10-12T15:43:23.225Z
+started_at: 2026-10-12T15:43:18.823Z
+ended_at: null
+notes:
+  - Read src/daemon/agent-runner.ts, scheduler.ts, state.ts and daemon.ts first; recovery logic is spread across them
+  - The daemon is single-threaded JS, so 'processes' are supervised async tasks plus child processes, not isolated
+    heaps. State this limit in the ADR.
+  - Use docs/agents/domain.md vocabulary; do not rename existing terms (wave, quest, agent)

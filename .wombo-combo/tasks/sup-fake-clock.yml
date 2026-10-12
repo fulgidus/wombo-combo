@@ -1,0 +1,36 @@
+id: sup-fake-clock
+title: Deterministic Fake Clock Test Helper
+description: >
+  Create tests/helpers/fake-clock.ts exporting class FakeClock implements Clock (import type { Clock } from
+  "../../src/lib/supervision/clock").
+
+  Behaviour:
+    - now() returns a virtual time starting at a configurable start (default 0).
+    - setTimeout(fn, ms) registers a timer at now()+ms; returns an opaque handle; clearTimeout cancels it.
+    - advance(ms): moves virtual time forward, firing due timers in time order (ties by registration order). Timers scheduled by callbacks that fall within the advanced window also fire. Set now() to each timer's due time while firing it, and to the final target at the end.
+    - pendingTimers(): number of active timers; nextDueAt(): number | undefined.
+    - async flush(): awaits a few microtask turns (e.g. loop of `await Promise.resolve()` 10 times) so promise chains settle; and async advanceAsync(ms) which advances in steps, flushing microtasks after each fired timer, so promise-based code between timers runs deterministically.
+  Add tests/fake-clock.test.ts covering ordering, cancel, nested scheduling, advanceAsync with a promise continuation.
+status: planned
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - sup-types
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - No real timers in FakeClock
+  - Tests go in tests/*.test.ts, helper in tests/helpers/
+forbidden:
+  - Do not modify src/lib/supervision/types.ts or clock.ts
+  - Do not add dependencies
+references:
+  - src/lib/supervision/clock.ts
+  - tests/helpers
+notes:
+  - Other supervision tests will import FakeClock from ./helpers/fake-clock; keep the API stable.
+subtasks: []
+quest: supervisor-core
+paths: []

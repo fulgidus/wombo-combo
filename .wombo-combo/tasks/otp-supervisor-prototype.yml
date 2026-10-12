@@ -1,0 +1,44 @@
+id: otp-supervisor-prototype
+title: Prototype Supervisor Core
+description: |
+  Build a throwaway supervisor core in spikes/otp-supervision/supervisor.ts (new directory outside
+  src/). It must not import from or modify the daemon's behaviour; it may import types from
+  src/lib/fake-agent-runner.ts if useful.
+
+  Implement: ChildSpec { id, start: () => Promise<void> (resolves = normal exit, rejects = crash),
+  restart: "permanent" | "transient" | "temporary", shutdownMs }, a Supervisor with strategy
+  "one_for_one" | "one_for_all" | "rest_for_one", maxRestarts / periodMs restart intensity, child
+  ordering, ordered shutdown with timeout (AbortSignal passed to start), and escalation: when
+  intensity is exceeded the supervisor terminates its children and fires an onEscalate callback
+  (or crashes up to a parent Supervisor, which is itself a valid child). Take injectable
+  clock/timers so tests are deterministic. Emit structured events (child_started, child_exit,
+  child_restarted, intensity_exceeded, escalated) through an onEvent callback.
+  Keep it under about 250 lines. Add spikes/otp-supervision/README.md stating it is a throwaway,
+  how to run the demo and tests, and that it is not wired into the daemon.
+status: in_progress
+completion: 0
+difficulty: medium
+priority: medium
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T16:12:10.858Z
+ended_at: null
+constraints:
+  - Everything lives under spikes/otp-supervision/
+  - No new dependencies; Bun and TypeScript only
+  - Must not change daemon behaviour or be imported by src/
+  - bun run typecheck and bun run build must still pass; if tsconfig includes spikes/, make the spike typecheck cleanly,
+    otherwise leave tsconfig alone
+forbidden:
+  - Do not modify any file under src/
+  - Do not edit spikes/otp-supervision/demo.ts or *.test.ts (owned by otp-prototype-demo)
+references:
+  - src/lib/fake-agent-runner.ts
+  - tsconfig.json
+  - scripts/build.ts
+notes:
+  - "Decision-side question the prototype answers: is the whole thing expressible in a few hundred lines of TS without
+    new deps?"
+subtasks: []
+quest: otp-supervision-spike
+paths: []

@@ -1,0 +1,80 @@
+id: sup-supervisor
+title: Supervisor Class and Snapshot
+description: >
+  Create src/lib/supervision/supervisor.ts: class Supervisor wiring the previous modules.
+
+
+  Public API:
+    - constructor(opts: SupervisorOptions); readonly events: SupervisorEmitter (TypedEmitter from ./events), plus convenience on(event, listener).
+    - addChild(spec: ChildSpec): void (appends to start order; throws on duplicate id; if supervisor already started, starts it immediately).
+    - async start(): Promise<void> — starts all children in order; emits child_started per child. A start() that throws/rejects is handled as a crash exit of that child (goes through the restart logic) except during the initial start where failure counts the same way.
+    - async stop(): Promise<void> — state "stopping"; stops all children via stopChildrenInOrder in reverse start order with each child's shutdownTimeoutMs; cancels pending backoff timers; final state "stopped"; idempotent; the exit of children caused by stop() must not trigger restarts and must be reported with child_exited (reason shutdown or the forced crash).
+    - readonly exit: Promise<ExitReason> — resolves when the supervisor stops ({ kind: "shutdown" }) or escalates ({ kind: "crash", error: SupervisorEscalation }) so a Supervisor can itself be a child of a parent.
+    - asChildSpec(id: string, opts?: { restart?: RestartType; shutdownTimeoutMs?: number }): ChildSpec — start() calls supervisor.start() and returns a ChildHandle whose exit is supervisor.exit and abort() calls stop(). Because a ChildSpec.start may be invoked again after a restart, asChildSpec must construct a FRESH Supervisor for each restart: therefore accept a factory instead: static childSpec(id, factory: () => Supervisor, opts?): ChildSpec.
+    - snapshot(): SupervisorSnapshot — plain JSON-serializable object (no functions/promises/Errors; serialize errors as { message, name } when placing in lastExit/escalation snapshots, or keep ExitReason type but ensure structuredClone-safe by converting error to string message in the snapshot copy). Include nested supervisors in `supervisors` when a child was created via Supervisor.childSpec (track via a symbol/WeakMap on the spec, or a registry the Supervisor.childSpec adds).
+    - export class SupervisorEscalation extends Error { reason: EscalationReason }.
+
+  Behaviour on child exit (the handle's exit promise resolves):
+    1. Ignore if the supervisor is stopping/stopped or the exit belongs to a child it intentionally stopped as part of a group restart.
+    2. Emit child_exited with the reason.
+    3. If !shouldRestart(spec.restart, reason): mark child "terminated" (temporary / transient+normal); do not restart; (keep it in the snapshot).
+    4. Else record in IntensityTracker; if exceeded => escalate: stop all remaining children in reverse order, state "escalated", emit supervisor_escalated, resolve `exit` with crash(SupervisorEscalation). Do NOT restart.
+    5. Else compute backoff = computeBackoff(attempt, opts.backoff, random), where attempt is the child's consecutive attempt count (reset to 1 if it ran >= DEFAULT_BACKOFF_RESET_MS before crashing). Apply strategy through planRestart: stop the other affected children (reverse order, with timeouts) FIRST, then after the backoff delay (clock.setTimeout) start the planned children in order. Child state "backoff" with nextRestartAt during the wait. Emit child_started + child_restarted {attempt, delayMs} for the restarted children. If a second failure arrives while a group restart is already pending, coalesce (don't schedule twice).
+    6. If a restart's start() fails, treat it like another crash of that child (counts toward intensity); after maxRestarts it escalates with start_failed or max_intensity.
+  Use a per-child AbortController passed in ChildContext.signal; abort it on stop.
+
+  Make exit handling robust to stale exits (use a generation/token per child start so a stale handle's late exit is
+  ignored).
+
+
+  Tests in tests/supervisor.test.ts (use FakeClock + controllable fake children): initial start order, one_for_one
+  restart after crash with backoff delay observed via the fake clock, permanent vs transient vs temporary, stop()
+  ordering and idempotence, events emitted in order, snapshot() shape and JSON round-trip (JSON.stringify works), start
+  failure handling, stale exit ignored. Strategy-group and escalation scenarios are covered by a follow-up task, but the
+  escalation basic path (maxRestarts exceeded => exit resolves with crash) needs one smoke test here.
+
+
+  If the file nears 500 lines, split helpers (child bookkeeping/snapshot building) into
+  src/lib/supervision/child-state.ts.
+status: planned
+completion: 0
+difficulty: very_hard
+priority: medium
+depends_on:
+  - sup-types
+  - sup-fake-clock
+  - sup-events
+  - sup-backoff-intensity
+  - sup-strategies
+  - sup-shutdown
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - All time through the injected Clock; randomness through injected random
+  - Child modelled as abortable handle with an exit promise carrying normal | shutdown | crash(error) (ExitReason)
+  - snapshot() must be a plain serializable object and must not mutate state
+  - Never leave unhandled promise rejections; a throwing event listener must not break supervision
+  - Keep each module under ~500 lines (split into child-state.ts if needed)
+forbidden:
+  - Do not import from agent-runner, scheduler or any git/worktree code
+  - Do not add dependencies
+  - Do not touch src/lib/supervision/index.ts (barrel owned by a later task) or any existing daemon file
+references:
+  - src/lib/supervision/types.ts
+  - src/lib/supervision/clock.ts
+  - src/lib/supervision/events.ts
+  - src/lib/supervision/backoff.ts
+  - src/lib/supervision/intensity.ts
+  - src/lib/supervision/strategies.ts
+  - src/lib/supervision/shutdown.ts
+  - tests/helpers/fake-clock.ts
+notes:
+  - "Model it on Erlang/OTP supervisors: the supervisor owns the child list, and children report exits via their exit
+    promise."
+  - Await microtasks with FakeClock.advanceAsync in tests, since restart paths mix promises and timers.
+  - Group restarts (one_for_all, rest_for_one) are implemented here via planRestart; they get dedicated, exhaustive
+    tests in the next task.
+subtasks: []
+quest: supervisor-core
+paths: []

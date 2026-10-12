@@ -1,0 +1,61 @@
+id: sup-types
+title: Supervision Core Types and Clock
+description: >
+  Create src/lib/supervision/types.ts and src/lib/supervision/clock.ts (pure TypeScript, no imports from the rest of the
+  repo).
+
+
+  clock.ts:
+    - interface Clock { now(): number; setTimeout(fn: () => void, ms: number): TimerHandle; clearTimeout(h: TimerHandle): void }
+    - type TimerHandle = unknown (opaque)
+    - export const systemClock: Clock backed by Date.now / globalThis.setTimeout / clearTimeout.
+
+  types.ts (export all):
+    - ExitReason = { kind: "normal" } | { kind: "shutdown" } | { kind: "crash"; error: unknown }
+    - ChildHandle { readonly exit: Promise<ExitReason>; abort(reason?: unknown): void }  — exit never rejects; it always resolves with an ExitReason. abort() requests a graceful stop (the child should resolve with { kind: "shutdown" } or any reason).
+    - ChildContext { signal: AbortSignal; clock: Clock; attempt: number }
+    - RestartType = "permanent" | "transient" | "temporary"  (permanent: always restart; transient: only restart on crash; temporary: never restart)
+    - ChildSpec { id: string; start(ctx: ChildContext): ChildHandle | Promise<ChildHandle>; restart?: RestartType (default "permanent"); shutdownTimeoutMs?: number (default 5000) }
+    - RestartStrategy = "one_for_one" | "one_for_all" | "rest_for_one"
+    - BackoffOptions { initialMs: number; maxMs: number; factor: number; jitter?: number (0..1) } — jitter uses an injectable random fn elsewhere
+    - IntensityOptions { maxRestarts: number; periodMs: number }
+    - SupervisorOptions { name?: string; strategy?: RestartStrategy (default one_for_one); intensity?: IntensityOptions (default 3 restarts / 5000ms); backoff?: BackoffOptions (default initial 100ms, max 5000ms, factor 2, jitter 0); clock?: Clock; random?: () => number; children?: ChildSpec[] }
+    - Typed event map SupervisorEvents:
+        child_started { supervisor: string; childId: string; attempt: number }
+        child_exited { supervisor: string; childId: string; reason: ExitReason }
+        child_restarted { supervisor: string; childId: string; attempt: number; delayMs: number }
+        supervisor_escalated { supervisor: string; reason: EscalationReason }
+      where EscalationReason = { kind: "max_intensity"; childId: string; restarts: number; periodMs: number } | { kind: "start_failed"; childId: string; error: unknown }
+    - Snapshot types: ChildState = "starting" | "running" | "backoff" | "stopping" | "stopped" | "terminated"; ChildSnapshot { id; state; restart: RestartType; attempt: number; restarts: number; lastExit?: ExitReason; lastExitAt?: number; startedAt?: number; nextRestartAt?: number }; SupervisorState = "running" | "stopping" | "stopped" | "escalated"; SupervisorSnapshot { name; strategy; state: SupervisorState; intensity: IntensityOptions; recentRestarts: number; children: ChildSnapshot[]; supervisors?: SupervisorSnapshot[] (nested child supervisors) ; escalation?: EscalationReason }
+    - A small helper `crash(error: unknown): ExitReason` and constants NORMAL / SHUTDOWN in types.ts.
+
+  Keep it types plus trivial helpers only. No tests required beyond typecheck, but add tests/supervision-types.test.ts
+  with a tiny test for systemClock (now() increments, setTimeout fires and clearTimeout cancels) and the
+  crash/NORMAL/SHUTDOWN helpers.
+status: in_progress
+completion: 0
+difficulty: easy
+priority: medium
+depends_on: []
+effort: PT30M
+started_at: 2026-10-12T16:10:03.191Z
+ended_at: null
+constraints:
+  - Pure TypeScript, ESM, extensionless relative imports
+  - No imports from outside src/lib/supervision/
+  - "ChildHandle.exit must never reject; failures are expressed as { kind: 'crash', error }"
+  - Keep each module under ~500 lines
+forbidden:
+  - Do not import from agent-runner, scheduler or any git/worktree code
+  - Do not add dependencies
+  - Do not change existing daemon behaviour
+references:
+  - src/lib/tasks.ts
+  - tsconfig.json
+notes:
+  - Other tasks import these types; keep names exactly as specified so they can be built in parallel against this
+    contract.
+  - Prefer plain string-literal unions and discriminated unions over enums.
+subtasks: []
+quest: supervisor-core
+paths: []

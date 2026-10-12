@@ -1,0 +1,43 @@
+id: sup-index-docs
+title: Barrel Export, Docs and Build Check
+description: >
+  Create src/lib/supervision/index.ts re-exporting the public API: Supervisor, SupervisorEscalation, TypedEmitter,
+  systemClock, computeBackoff, IntensityTracker, planRestart, shouldRestart, stopChild, stopChildrenInOrder, and all
+  public types from types.ts.
+
+  Add a short architecture doc docs/src/content/docs/architecture/supervision.md (Starlight frontmatter
+  title/description; mirror the style of architecture/overview.md): purpose, ChildSpec/ChildHandle model, restart types,
+  the three strategies, intensity and escalation, backoff, shutdown ordering, events, snapshot(), and a short usage
+  example. State plainly that the library is standalone and not yet wired into the daemon. Check how
+  docs/astro.config.mjs builds its sidebar; add the page there only if the sidebar is explicit, otherwise rely on
+  autogeneration.
+
+  Add tests/supervision-index.test.ts: a smoke test importing only from src/lib/supervision (the barrel) that builds a
+  Supervisor with a FakeClock-driven child and verifies a crash is restarted.
+
+  Run `bun run typecheck`, `bun run build` and `bun test tests/supervision*.test.ts tests/supervisor*.test.ts
+  tests/fake-clock.test.ts` and fix barrel/type problems you introduced. Then run `graphify update .` (project rule).
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - sup-supervisor
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Barrel must not import from outside src/lib/supervision
+  - bun run typecheck and bun run build must pass
+forbidden:
+  - Do not wire the library into the daemon or change daemon behaviour
+  - Do not add dependencies
+references:
+  - docs/src/content/docs/architecture/overview.md
+  - docs/astro.config.mjs
+  - src/lib/supervision/supervisor.ts
+notes:
+  - Docs must be plain, factual and carry no AI attribution (project rule 6).
+subtasks: []
+quest: supervisor-core
+paths: []

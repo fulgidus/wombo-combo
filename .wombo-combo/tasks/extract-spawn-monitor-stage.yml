@@ -1,0 +1,47 @@
+id: extract-spawn-monitor-stage
+title: Extract Spawn and Monitor Stage
+description: |
+  Move launch and monitoring out of agent-runner.ts into
+  src/daemon/runner/spawn-monitor.ts: doLaunch, buildCallbacks, handleRetry
+  (as the "relaunch" operation), registerUsageContext, selectRoute and
+  route helpers, plus the staggered launch queue
+  (enqueueLaunch/processLaunchQueue) if cleanly separable. Keep
+  AgentRunner as a thin facade with the same public API (launchAgent,
+  setAgentOverride, setAutoPush, setMaxRetries, cancelAgent, killAll,
+  reapDeadProcesses, reconcile*, restoreAnalytics, interruptAnalytics,
+  destroy), since daemon.ts, scheduler.ts and the tests use it.
+  After this task agent-runner.ts should be a composition root of roughly
+  500 lines or fewer. Pure move; no semantics changes. Isolate the
+  monitor-failure retry branch (the onError retry/fail logic) as one
+  function onProcessFailed(featureId, error) next to its sibling
+  onVerifyFailed so both can be replaced by the restart policy in a single
+  follow-up.
+status: planned
+completion: 0
+difficulty: very_hard
+priority: high
+depends_on:
+  - extract-verify-and-review-stages
+effort: PT2H
+started_at: null
+ended_at: null
+constraints:
+  - Public AgentRunner API and AgentRunnerConfig unchanged
+  - Existing daemon tests pass unchanged
+  - Each new file under ~500 lines
+forbidden:
+  - Do not change WebSocket protocol shapes or AgentStatus values
+  - Do not change daemon.ts or scheduler.ts behaviour
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/daemon.ts
+  - src/daemon/scheduler.ts
+  - src/lib/launcher.ts
+  - src/lib/monitor.ts
+notes:
+  - Check tests for casts to access private members (e.g. (runner as any).handleRetry) and keep delegating wrappers so
+    they keep working
+  - Update the project structure section of CLAUDE.md only if the file list there lists agent-runner internals
+subtasks: []
+quest: agent-process-supervision
+paths: []

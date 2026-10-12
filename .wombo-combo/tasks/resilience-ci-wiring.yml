@@ -1,0 +1,48 @@
+id: resilience-ci-wiring
+title: Wire Resilience Suite Into CI
+description: |
+  Edit .github/workflows/ci.yml (only that file).
+    - Change the existing 'Unit and component tests' step to also ignore the resilience
+      dir: --path-ignore-patterns 'tests/e2e/**' 'tests/resilience/**' (verify the
+      bun 1.4.2 flag accepts multiple patterns; otherwise use the repeatable form it
+      supports) so the suite runs exactly once.
+    - Add a step 'Resilience tests (fault injection)' after the TUI e2e step:
+        run: bun test --timeout 30000 tests/resilience
+        timeout-minutes: 5   (the time budget)
+      Add `--bail` or similar only if it helps fail fast.
+    - Add a budget guard: wrap the run so wall time above a budget (for example 240 s)
+      fails with a message pointing at docs, using plain shell `SECONDS` arithmetic. Do
+      not add any marketplace action.
+    - Run the chaos smoke (`bun scripts/chaos-smoke.ts --output json`) as a separate
+      step with its own short timeout-minutes, only if scripts/chaos-smoke.ts exists on
+      the branch after merge; keep the step conditional-free by adding it once the
+      script is present (check `ls scripts`).
+    - On failure upload nothing and keep permissions: contents: read.
+    - Pin no new action versions; reuse the existing ones.
+  Validate the YAML locally (for example `bun -e` with the yaml package, or
+  `python3 -c 'import yaml'`) and verify the bun test path-ignore flag with a dry run.
+status: planned
+completion: 0
+difficulty: easy
+priority: medium
+depends_on:
+  - resilience-harness
+  - chaos-smoke-scenario
+effort: PT30M
+started_at: null
+ended_at: null
+constraints:
+  - CI pins bun 1.4.2; use only flags that version supports
+  - Keep the overall job timeout-minutes consistent with the added budget
+forbidden:
+  - Do not modify other workflows
+  - Do not remove or loosen existing CI steps
+references:
+  - .github/workflows/ci.yml
+  - package.json
+notes:
+  - Resilience tests live in tests/resilience/ by convention from resilience-harness
+  - Chaos script path is scripts/chaos-smoke.ts, from chaos-smoke-scenario
+subtasks: []
+quest: supervision-fault-injection
+paths: []

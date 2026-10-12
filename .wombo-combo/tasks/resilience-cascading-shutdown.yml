@@ -1,0 +1,44 @@
+id: resilience-cascading-shutdown
+title: Cascading Shutdown Resilience Tests
+description: |
+  Add tests/resilience/cascading-shutdown.test.ts covering ordered, timeout-bounded
+  shutdown through the tree.
+    - Graceful stop of the daemon root shuts down wave -> quest -> agent children in
+      reverse start order; assert order from recorded events.
+    - slow-shutdown (delay SIGTERM exit): child exits within its shutdown timeout, so no
+      SIGKILL is sent. Use the "sigterm-received" marker.
+    - slow-shutdown:ignore: advance FakeClock past the shutdown timeout; the supervisor
+      escalates to SIGKILL, shutdown still completes, siblings are not blocked.
+    - hang child is killed during cascade; shutdown completes.
+    - Shutdown while a restart is pending on backoff: the pending restart is cancelled
+      and no new process starts after shutdown began.
+    - Shutdown during worktree creation or a merge-in-progress: the child's shutdown
+      hook removes its worktree and branch; nothing is orphaned.
+    - Shutdown is idempotent: stopping twice does not throw or double-kill.
+  After each scenario the leak check must pass (processes, worktrees, branches).
+status: planned
+completion: 0
+difficulty: hard
+priority: medium
+depends_on:
+  - resilience-harness
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Assert cleanup in every scenario
+  - Shutdown deadlines driven by FakeClock, process exits awaited via promises
+forbidden:
+  - Do not use fixed sleeps
+  - Do not weaken existing tests
+references:
+  - tests/helpers/resilience-harness.ts
+  - tests/helpers/leak-check.ts
+  - src/lib/fake-agent-faults.ts
+  - src/daemon/daemon.ts
+  - src/lib/worktree.ts
+notes:
+  - Merges and conflict resolution are serialized (agent-process-supervision); test shutdown while one is queued
+subtasks: []
+quest: supervision-fault-injection
+paths: []

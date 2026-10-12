@@ -1,0 +1,47 @@
+id: obs-analytics-replay
+title: Record Restarts In Analytics And Replay
+description: |
+  Feed supervision records into analytics snapshots and the replay recorder.
+  Analytics: add optional fields to AgentAnalyticsRecord in src/lib/analytics.ts
+  (`restarts?: number`, `last_exit_reason?: string`, `escalations?: number`) with validation that
+  accepts their absence; keep ANALYTICS_SCHEMA_VERSION = 1 and make old files load unchanged.
+  In src/daemon/analytics-tracker.ts subscribe to SupervisionObserver.onEvent and update the
+  record whose task_id matches the child id on child-restarted / supervisor-escalated.
+  Replay: add supervision ReplayEvent kinds (e.g. {type:"supervision", action, childId, reason})
+  to src/lib/replay.ts, keeping the replay format version compatible (older readers/viewers must
+  skip unknown kinds; check src/ink/replay-viewer.tsx and add a single-line fallback rendering with
+  an i18n string in tui.json if the viewer switch is exhaustive). Record them in
+  src/daemon/replay-recorder.ts via a new method (e.g. recordSupervision(featureId, ...)).
+  Wire both consumers to the observer in src/daemon/daemon.ts (small additive change).
+  Tests: extend tests for analytics validation (old record still valid, new fields valid), the
+  tracker, and the replay recorder/normalizer.
+status: planned
+completion: 0
+difficulty: medium
+priority: low
+depends_on:
+  - obs-daemon-observer
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints:
+  - Existing analytics and replay files must still load without migration
+  - Use i18next locale files for any new viewer strings
+forbidden:
+  - Do not bump ANALYTICS_SCHEMA_VERSION or the replay version
+  - Do not edit supervision-observer.ts beyond what obs-daemon-observer defined
+  - Do not change esc-menu.tsx, router.tsx or the CLI
+references:
+  - src/lib/analytics.ts
+  - src/daemon/analytics-tracker.ts
+  - src/lib/replay.ts
+  - src/daemon/replay-recorder.ts
+  - src/ink/replay-viewer.tsx
+  - src/daemon/daemon.ts
+  - src/daemon/supervision-observer.ts
+notes:
+  - Records are keyed by task id; supervisor (non-agent) nodes have no analytics record, so ignore them there but still
+    write them to the daemon-level replay log if one exists, otherwise skip.
+subtasks: []
+quest: supervision-observability
+paths: []

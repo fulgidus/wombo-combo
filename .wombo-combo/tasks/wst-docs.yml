@@ -1,0 +1,40 @@
+id: wst-docs
+title: Document Supervision Tree and Config
+description: |
+  Write docs/src/content/docs/guides/supervision.md (Starlight page, add
+  to the sidebar the same way sibling guides are registered): the tree
+  (daemon root -> wave -> quest -> agent), strategies per level, restart
+  intensity and backoff, the three escalation outcomes (quest paused, wave
+  degraded, wave aborted) and the `evt:supervision` events, how to resume a
+  paused quest as implemented, and the single crash-recovery path. Document
+  the `supervision` config block with the defaults table and an example
+  config.json. Add a short section to
+  docs/src/content/docs/architecture/overview.md. If the config reference
+  page is generated from the schema (check scripts/ and the docs-gen
+  tasks), regenerate it instead of hand-editing. Use wave/quest/agent
+  terms per GLOSSARY.md.
+status: planned
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - wst-daemon-wiring
+effort: PT45M
+started_at: null
+ended_at: null
+constraints:
+  - Document only behaviour that exists after wst-daemon-wiring; read the code first
+  - No AI attribution anywhere in the docs
+forbidden:
+  - Do not modify files under src/ or tests/
+references:
+  - docs/src/content/docs/guides/running-agents.md
+  - docs/src/content/docs/architecture/overview.md
+  - docs/src/content/docs/reference/config.md
+  - docs/astro.config.mjs
+  - src/daemon/supervision-wiring.ts
+notes:
+  - Match the front matter and tone of existing guides
+subtasks: []
+quest: wave-supervision-tree
+paths: []

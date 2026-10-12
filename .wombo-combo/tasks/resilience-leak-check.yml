@@ -1,0 +1,54 @@
+id: resilience-leak-check
+title: Leak Detection Test Helper
+description: |
+  Create tests/helpers/leak-check.ts, a reusable helper asserting that a scenario
+  left nothing behind. Every resilience scenario calls it in afterEach.
+
+  API:
+    snapshotResources(projectRoot): ResourceSnapshot   // before the scenario
+    assertNoLeaks(projectRoot, before: ResourceSnapshot, opts?: {
+      allowBranches?: string[]; trackedPids?: number[] }): Promise<void>
+  Checks:
+    - Child processes: every PID registered via a trackPid(pid) / trackProcess(subprocess)
+      registry is dead (use process.kill(pid, 0) throwing ESRCH, and also scan /proc or
+      `ps -o pid,ppid` for descendants of the test process whose command line contains
+      fake-agent-runner.ts). On failure, kill the survivors so a failing test does not
+      pollute the next one, then fail with the list.
+    - Worktrees: `git worktree list --porcelain` contains no entries beyond the
+      snapshot; also no leftover directories under worktreesDir(projectRoot) (import
+      worktreesDir from src/lib/worktree.ts).
+    - Branches: no new refs/heads/feature/* or quest/* branches beyond the snapshot
+      (or allowBranches).
+    - Prune: report stale worktree admin entries (`git worktree prune --dry-run` output
+      must be empty).
+  Waiting for exit must be event-driven (awaiting the subprocess `exited` promise, with an
+  overall deadline from tests/helpers/wait-for.ts), never a fixed sleep.
+
+  Add tests/leak-check-helper.test.ts proving the helper passes on a clean repo and
+  FAILS (expect rejection) for each of: a live sleeping child, a stray worktree, a stray
+  feature/ branch, and a stale prunable worktree.
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: null
+ended_at: 2026-10-12T15:19:50.158Z
+constraints:
+  - Reuse tests/helpers/git-repo.ts for repo creation and git env isolation
+  - Must work on Linux and macOS (CI is ubuntu); avoid /proc-only logic without a ps fallback
+  - Helper must clean up survivors it finds so failures do not cascade
+forbidden:
+  - Do not use fixed sleeps to wait for process death
+  - Do not touch the developer's global git config
+references:
+  - tests/helpers/git-repo.ts
+  - tests/helpers/wait-for.ts
+  - src/lib/worktree.ts
+notes:
+  - worktree.ts exports listWorktrees, listWomboWorktrees, branchExists, worktreesDir; reuse where it gives the exact
+    notion of 'wombo worktree' the production cleanup uses
+subtasks: []
+quest: supervision-fault-injection
+paths: []

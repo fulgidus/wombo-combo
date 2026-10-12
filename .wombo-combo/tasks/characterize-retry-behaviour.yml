@@ -1,0 +1,64 @@
+id: characterize-retry-behaviour
+title: Characterize Current Retry Behaviour
+description: |
+  Before any code moves, pin down today's retry semantics with a regression
+  suite. Create tests/daemon-agent-runner-retry-characterization.test.ts
+  (do NOT edit tests/daemon-agent-runner.test.ts or
+  tests/daemon-agent-runner-review.test.ts; they must keep passing unchanged).
+  Reuse the harness/fixtures already used in tests/daemon-agent-runner.test.ts
+  and the fake agent runner in src/lib/fake-agent-runner.ts.
+
+  Cover, asserting on state.getAgent() fields (status, retries, maxRetries,
+  error, activity) and emitted events:
+  1. Monitor failure path (buildCallbacks().onError): while retries <
+     maxRetries -> retries+1, error set, status "retry" with message
+     "Retry N/M: <error>", then handleRetry runs; at retries == maxRetries ->
+     status "failed", error set, cancelDownstream and rescueChainPredecessors
+     called.
+  2. Build-failure path (handleBuildVerification): same bounded behaviour,
+     error "Build failed: <first 500 chars>", message "Build failed, retry
+     N/M", and final "Build failed, retries exhausted".
+  3. handleRetry: no sessionId -> status "queued" ("No session, re-queuing");
+     TDD quest with missing baseline -> "failed" with "retry blocked";
+     retryHeadless throwing -> "queued"; success -> "running", pid updated.
+  4. config.defaults.maxRetries and setMaxRetries() override determine
+     agent.maxRetries (launch with 0, 1, 3).
+  5. reapDeadProcesses "retry" safety net: exhausted -> removed + task reset
+     to planned; not exhausted -> "queued".
+  6. Review feedback is handed to retryHeadless exactly once (retryMessage)
+     and cleared afterwards (see tests/daemon-agent-runner-review.test.ts
+     for how the review gate sets it).
+  7. User retry via DaemonState.retryAgent / Scheduler.retryAgent resets an
+     exhausted counter.
+  Tests describe CURRENT behaviour; if you find behaviour that looks like a
+  bug, encode it as-is and add a comment plus a tracking task via
+  `bun dev tasks add` (do not silently work around it).
+status: in_progress
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H30M
+started_at: 2026-10-12T16:10:13.014Z
+ended_at: null
+constraints:
+  - "Tests only: no production source changes"
+  - Must pass against the unmodified runner
+  - Use the fake agent runner / injected deps; no real harness CLI, no network
+forbidden:
+  - Do not modify existing test files
+  - Do not change src/daemon/agent-runner.ts
+references:
+  - src/daemon/agent-runner.ts
+  - src/daemon/state.ts
+  - src/daemon/scheduler.ts
+  - src/lib/fake-agent-runner.ts
+  - tests/daemon-agent-runner.test.ts
+  - tests/daemon-agent-runner-review.test.ts
+notes:
+  - "Retry branches: onError in buildCallbacks (~L373), build failure in handleBuildVerification (~L868), handleRetry
+    (~L1946), reapDeadProcesses (~L2145)"
+  - "maxRetries is resolved at launch: this.maxRetriesOverride ?? config.defaults.maxRetries (~L505)"
+subtasks: []
+quest: agent-process-supervision
+paths: []
