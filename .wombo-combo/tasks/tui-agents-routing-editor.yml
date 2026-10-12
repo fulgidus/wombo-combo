@@ -1,0 +1,31 @@
+id: tui-agents-routing-editor
+title: TUI screen to manage agent profiles, routing and harnesses
+description: "Add an 'Agents & routing' screen reachable from Settings that edits config.agentProfiles and
+  config.routing and persists via saveConfig. Requirements: (1) create, edit and delete profiles (harness, bin, model,
+  provider); (2) edit routing.default, byWeight, byDifficulty, byOperation and fallbacks, choosing from existing profile
+  names; (3) list harnesses (opencode, claude-code, codex, pi, custom) showing whether the binary is on PATH and whether
+  the harness reports cost (see HarnessCapabilities.usage; pi, opencode and claude-code report cost, codex does not);
+  (4) pi is an ultralight harness and must be first-class in the picker; (5) keyboard: left/right change values, no
+  uppercase-only keys, Esc backs out, screen must fit the terminal height (see review-list.tsx); (6) validate with the
+  existing config validator and refuse to save dangling profile references. Cost must come from provider-reported data
+  only, never a hardcoded price table. Add tests under tests/ink/. (7) opencode is already configured in this project
+  via the legacy path (config.agent.bin / modelRouting, no agentProfiles): the harness list must show it as configured
+  (the implicit 'default' profile from LEGACY_PROFILE in src/lib/harness/routing.ts) and never prompt the user to set it
+  up; creating the first explicit profile must not break that legacy route. Do not touch planner-telemetry."
+status: planned
+completion: 0
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints:
+  - Reuse the shared <Spinner> and existing Ink components
+  - do not add new duplicate components
+  - Follow lowercase-key and arrow conventions in AGENTS.md
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
