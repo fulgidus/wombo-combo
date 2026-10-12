@@ -162,6 +162,13 @@ function MetricsBlock({ m, heading }: { m: AggregateMetrics; heading: string }):
   );
 }
 
+/** "Models: a, b" — which models produced these numbers. */
+function ModelsLine({ models, dim }: { models: string[]; dim?: boolean }): React.ReactElement {
+  const t = useI18n();
+  const text = models.length > 0 ? t("analytics.models", { list: models.join(", ") }) : t("analytics.modelsNone");
+  return <Text dimColor={dim}>  {text}</Text>;
+}
+
 function GroupRow({
   label,
   m,
@@ -257,6 +264,7 @@ export function AnalyticsOverlayView({
       ) : (
         <>
           <MetricsBlock m={total!} heading={t("usage.total")} />
+          <ModelsLine models={summary?.models ?? []} />
 
           {groups.length > 0 && (
             <Box flexDirection="column" marginTop={1}>
@@ -270,7 +278,7 @@ export function AnalyticsOverlayView({
           )}
 
           {selectedGroup && (
-            <Box marginTop={1}>
+            <Box marginTop={1} flexDirection="column">
               <Text dimColor>
                 {t("analytics.selectedSummary", {
                   label: truncate(keyLabel(selectedGroup.key, t), 30).trimEnd(),
@@ -282,6 +290,7 @@ export function AnalyticsOverlayView({
                   attempts: selectedGroup.metrics.builds.attempts,
                 })}
               </Text>
+              {groupBy !== "model" && <ModelsLine models={selectedGroup.models} dim />}
             </Box>
           )}
         </>

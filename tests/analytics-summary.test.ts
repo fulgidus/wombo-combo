@@ -199,3 +199,21 @@ describe("summarizeAnalytics", () => {
     expect(b).toEqual(a);
   });
 });
+
+describe("model reporting", () => {
+  test("total and each group list the distinct models used, sorted, ignoring unknown", () => {
+    const out = summarizeAnalytics(
+      [
+        r("a", { task_id: "t1", model: "opus" }),
+        r("b", { task_id: "t1", model: "haiku" }),
+        r("c", { task_id: "t1", model: "opus" }),
+        r("d", { task_id: "t2", model: null }),
+        r("e", { task_id: "t3", model: "sonnet" }),
+      ],
+      { groupBy: "task" },
+    );
+    expect(out.models).toEqual(["haiku", "opus", "sonnet"]);
+    const byKey = Object.fromEntries(out.groups.map((g) => [g.key, g.models]));
+    expect(byKey).toEqual({ t1: ["haiku", "opus"], t2: [], t3: ["sonnet"] });
+  });
+});

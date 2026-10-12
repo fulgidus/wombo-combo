@@ -429,6 +429,8 @@
   "analytics.outcome.failed": "{{count}} falliti",
   "analytics.outcome.stopped": "{{count}} fermati",
   "analytics.outcome.running": "{{count}} in corso",
+  "analytics.models": "Modelli: {{list}}",
+  "analytics.modelsNone": "Modelli: non riportati",
   "analytics.completion": "Completamento:",
   "analytics.completionValue": "media {{mean}}, totale {{total}} ({{samples}} riusciti)",
   "analytics.completionNone": "{{na}} (nessuna esecuzione riuscita)",
