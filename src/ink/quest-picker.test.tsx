@@ -15,7 +15,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { renderToString } from "ink";
-import { QuestPickerView, type QuestPickerViewProps } from "./quest-picker";
+import { QuestPickerView, summarizeQuest, type QuestPickerViewProps } from "./quest-picker";
 import type { Quest } from "../lib/quest";
 import type { UsageTotals } from "../lib/token-usage";
 
@@ -235,5 +235,35 @@ describe("QuestPickerView (static rendering)", () => {
       <QuestPickerView {...defaultProps({ devMode: false })} />
     );
     expect(output).not.toContain("seed-fake");
+  });
+});
+
+describe("summarizeQuest", () => {
+  const task = (id: string, quest?: string) => ({ id, quest } as any);
+
+  test("counts archived tasks so completed quests do not look unplanned", () => {
+    const quest = makeQuest({ id: "q1", status: "completed" });
+    const summary = summarizeQuest(
+      quest,
+      [],
+      [task("a", "q1"), task("b", "q1"), task("c", "other")],
+      new Set(["a", "b"]),
+    );
+    expect(summary.totalTasks).toBe(2);
+    expect(summary.doneTasks).toBe(2);
+    expect(summary.completionPct).toBe(100);
+  });
+
+  test("combines active and archived tasks", () => {
+    const quest = makeQuest({ id: "q1" });
+    const summary = summarizeQuest(
+      quest,
+      [task("a", "q1")],
+      [task("b", "q1")],
+      new Set(["b"]),
+    );
+    expect(summary.totalTasks).toBe(2);
+    expect(summary.doneTasks).toBe(1);
+    expect(summary.completionPct).toBe(50);
   });
 });

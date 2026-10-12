@@ -23,7 +23,8 @@
 
 import React from "react";
 import { Box, Text } from "ink";
-import type { Quest } from "../lib/quest";
+import { getQuestTaskIds, type Quest } from "../lib/quest";
+import type { Task } from "../lib/tasks";
 import type { UsageTotals } from "../lib/token-usage";
 import { formatTokenCount } from "./usage-overlay";
 import {
@@ -45,6 +46,24 @@ export interface QuestSummary {
   totalTasks: number;
   doneTasks: number;
   completionPct: number;
+}
+
+/**
+ * Build a quest's summary from active AND archived tasks. Finished quests
+ * have their tasks moved to the archive, so counting only active tasks made
+ * completed quests look unplanned.
+ */
+export function summarizeQuest(
+  quest: Quest,
+  activeTasks: Task[],
+  archivedTasks: Task[],
+  doneIds: Set<string>,
+): QuestSummary {
+  const questTids = getQuestTaskIds(quest.id, [...activeTasks, ...archivedTasks]);
+  const totalTasks = questTids.length;
+  const doneTasks = questTids.filter((id) => doneIds.has(id)).length;
+  const completionPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  return { quest, totalTasks, doneTasks, completionPct };
 }
 
 export interface QuestPickerViewProps {

@@ -16,10 +16,10 @@ import { render, Box } from "ink";
 import { useTerminalSize } from "./use-terminal-size";
 import { useNavigation } from "./router";
 import { useEscMenu } from "./esc-menu";
-import { QuestPickerView, type QuestSummary } from "./quest-picker";
+import { QuestPickerView, summarizeQuest, type QuestSummary } from "./quest-picker";
 import { FakeTaskWizard, generateFakeTasks, type FakeTaskConfig } from "./fake-task-wizard";
 import type { Quest } from "../lib/quest";
-import { QUEST_STATUS_ORDER, getQuestTaskIds } from "../lib/quest";
+import { QUEST_STATUS_ORDER } from "../lib/quest";
 import { loadAllQuests, saveQuest, deleteQuest } from "../lib/quest-store";
 import { loadTasks, getDoneTaskIds, loadArchive, type Task } from "../lib/tasks";
 import { saveTaskToStore } from "../lib/task-store";
@@ -88,13 +88,9 @@ function QuestPickerApp({
     });
 
     // Build summaries
-    const summaries: QuestSummary[] = sorted.map((quest) => {
-      const questTids = getQuestTaskIds(quest.id, tasksData.tasks);
-      const totalTasks = questTids.length;
-      const doneTasks = questTids.filter((id) => doneIds.has(id)).length;
-      const completionPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-      return { quest, totalTasks, doneTasks, completionPct };
-    });
+    const summaries: QuestSummary[] = sorted.map((quest) =>
+      summarizeQuest(quest, tasksData.tasks, archiveData.tasks, doneIds),
+    );
 
     setQuests(summaries);
 
