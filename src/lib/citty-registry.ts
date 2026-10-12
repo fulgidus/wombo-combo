@@ -379,6 +379,7 @@ const ENTRIES: RegistryEntry[] = [
             status: { description: "Filter by status", enum: VALID_STATUSES },
             priority: { description: "Filter by priority", enum: VALID_PRIORITIES },
             difficulty: { description: "Filter by difficulty", enum: VALID_DIFFICULTIES },
+            quest: { description: "Filter by quest ID" },
             ready: { description: "Show only ready tasks (planned + deps met; what launch --all-ready starts)", default: false },
             includeArchive: { description: "Include archived tasks", default: false, name: "--include-archive" },
             fields: { description: "Comma-separated list of fields to include in output" },
