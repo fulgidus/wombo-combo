@@ -191,3 +191,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-1d6a862-bedc6ee -->
 
 - **sup-backoff-intensity**: Backoff and Restart Intensity Tracker
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:quest-supervisor-core-77be4a1-1fd74c1 -->
+
+- **sup-supervisor**: Supervisor Class and Snapshot
