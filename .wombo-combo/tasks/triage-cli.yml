@@ -11,15 +11,15 @@ description: "Citty command 'triage' (src/commands/triage.ts, src/commands/citty
   /tmp/claude-0/-home-user-wombo-combo/5ba887b1-26a2-5c73-9e27-d187dc4c7b32/scratchpad/addk.py <spec.json> if present,
   otherwise edit both files by hand keeping key sets identical (Italian also needs a _many key for each _other). Tests
   in tests/triage-cli.test.ts (subprocess, temp dir) and tests/i18n-help.test.ts must stay green."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on:
   - triage-core
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T03:06:06.980Z
+ended_at: 2026-10-12T03:32:51.270Z
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)
   - English output of existing commands unchanged

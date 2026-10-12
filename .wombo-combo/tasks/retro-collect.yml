@@ -11,14 +11,14 @@ description: "Create src/lib/retro.ts (pure collectors over files, no network). 
   concrete suggested change (for example 'add a navigation pointer from AGENTS.md to docs/x.md because 3 agents spent N
   reads finding it'). Deterministic, thresholds as named constants. Fixture-driven tests in tests/retro.test.ts with
   synthetic analytics/replay data written into a temp project."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on: []
 effort: PT4H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T03:04:35.415Z
+ended_at: 2026-10-12T04:07:11.775Z
 constraints:
   - Deterministic and offline
   - Missing data sources are skipped, never errors

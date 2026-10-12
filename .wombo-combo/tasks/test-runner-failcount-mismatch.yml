@@ -1,0 +1,26 @@
+id: test-runner-failcount-mismatch
+title: "Baseline comparison fails: listed failures do not match reported fail count"
+description: "Found by dogfooding: with 3 agents verifying in parallel, quest tasks (review-core, retro-collect) fail
+  verification with 'test run results are not comparable (listed failures (N) do not match reported fail count (0))'
+  while the Test Run block shows exit code 1. Reproduce by running the configured test command in a worktree under load,
+  inspect src/lib/test-runner.ts (parser wombo-test-runner/1) and src/lib/test-baseline.ts. Make the parser derive the
+  fail count from the same source as the listed failures (or treat a mismatch with exit code non-zero as failures), and
+  make sure bun test output interleaved from concurrent tests is parsed robustly. Add tests with captured output
+  fixtures."
+status: done
+completion: 100
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H
+started_at: 2026-10-12T03:15:34.975Z
+ended_at: 2026-10-12T03:28:15.710Z
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references:
+  - src/lib/test-runner.ts
+  - src/lib/test-baseline.ts
+notes: []
+subtasks: []
+paths: []

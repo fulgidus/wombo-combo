@@ -13,15 +13,15 @@ description: "In src/daemon/agent-runner.ts, after build/test verification (incl
   comment when the output cannot be parsed, fail the run only on harness errors after retries. Tests with the existing
   fake-agent/daemon test helpers (see tests/daemon-agent-runner*.test.ts): disabled = no change in behaviour, pass,
   blocking then fixed, blocking exhausted, unparseable reviewer output."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - review-core
 effort: PT5H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T03:29:29.436Z
+ended_at: 2026-10-12T04:07:15.274Z
 constraints:
   - review.enabled false must leave current behaviour byte-identical
   - No AI attribution in generated comments or prompts

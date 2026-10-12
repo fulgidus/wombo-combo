@@ -11,14 +11,14 @@ description: "Found by dogfooding: GitHub issues and comments created through th
   when issues/comments are returned by GET/list, not in the POST response) and add tests for create, for a later push
   cleaning an already-dirty issue and comment, and for idempotence (second push sends zero writes). Update
   docs/src/content/docs/guides/github-sync.md and docs/agents/no-ai-attribution.md Limits section."
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: high
 depends_on: []
 effort: PT2H
 started_at: 2026-10-12T02:47:55.992Z
-ended_at: null
+ended_at: 2026-10-12T03:04:31.760Z
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)
   - "Idempotent: a clean issue costs zero writes"

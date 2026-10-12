@@ -8,14 +8,14 @@ description: "Found by dogfooding: when the daemon is stopped (or the old headle
   'verifying'/'verified'/'merging' whose process is gone), re-run the verification->merge pipeline, bounded by the same
   retry rules; log it as an activity line. Add a test with the daemon test helpers: seed a state file with a completed
   agent, resume, expect verification to run and the agent to reach merged or failed."
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT2H
 started_at: 2026-10-12T02:48:25.118Z
-ended_at: null
+ended_at: 2026-10-12T02:58:40.931Z
 constraints:
   - No AI attribution anywhere (AGENTS.md rule 6)
 forbidden: []

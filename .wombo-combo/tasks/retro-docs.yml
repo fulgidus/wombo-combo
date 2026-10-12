@@ -3,15 +3,15 @@ title: Retro guide
 description: "docs/src/content/docs/guides/retro.md: what is collected, categories, severity thresholds, examples,
   saving retros, how to act on them (when to move a rule from AGENTS.md into checks or standards). Update README, run
   bun run docs:gen."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on:
   - retro-cli
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T04:07:20.043Z
+ended_at: 2026-10-12T04:19:11.575Z
 constraints: []
 forbidden: []
 references: []

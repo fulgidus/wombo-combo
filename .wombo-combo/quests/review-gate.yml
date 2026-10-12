@@ -3,7 +3,7 @@ title: "Review gate: standards plus spec review of each task diff before merge"
 goal: Add an optional review stage between verification and merge in the daemon. A reviewer agent (routed through the
   harness, operation 'review') reviews the task diff on two axes, Standards and Spec, findings are posted as task
   comments, blocking findings send the implementing agent back for a bounded number of rounds. Off by default.
-status: draft
+status: active
 priority: high
 difficulty: hard
 depends_on: []
@@ -15,7 +15,7 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-10-12T02:03:27.406Z
-updated_at: 2026-10-12T02:03:27.406Z
-started_at: null
+updated_at: 2026-10-12T02:53:54.209Z
+started_at: 2026-10-12T02:53:54.208Z
 ended_at: null
 notes: []

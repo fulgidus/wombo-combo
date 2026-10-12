@@ -12,14 +12,14 @@ description: "Create src/lib/triage.ts (pure, no network). Roles: category bug|e
   oldest-first: needsTriage, needsInfoWithNewComments (comments newer than the last transition), readyForAgent,
   readyForHuman. Unknown or conflicting states are reported, never silently fixed. Thorough unit tests with temp-dir
   projects (tests/helpers)."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T02:57:03.231Z
+ended_at: 2026-10-12T03:04:59.675Z
 constraints:
   - Pure functions plus the task store
   - no network

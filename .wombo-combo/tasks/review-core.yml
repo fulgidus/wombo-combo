@@ -12,14 +12,14 @@ description: "Create src/lib/review.ts (pure). buildReviewPrompt({task, quest?, 
   validateConfig rules, schemas/config.schema.json, bun run docs:gen. Truncate huge diffs with a clear marker. The
   review prompt text must contain no AI attribution and must tell the reviewer not to add any. Tests in
   tests/review-core.test.ts and tests/config.test.ts."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT3H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T02:58:44.456Z
+ended_at: 2026-10-12T04:07:08.895Z
 constraints:
   - Pure functions
   - No network

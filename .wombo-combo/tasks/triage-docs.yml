@@ -3,16 +3,16 @@ title: Triage guide and docs
 description: docs/src/content/docs/guides/triage.md (the states, commands with examples, how GitHub labels map, how it
   fits with sync and comments); update docs/agents/triage-labels.md (woco triage is now the way to move items), the
   README commands list if it has one, run bun run docs:gen. No AI attribution in any text.
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on:
   - triage-cli
   - triage-pull-labels
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T04:09:17.915Z
+ended_at: 2026-10-12T04:14:07.299Z
 constraints: []
 forbidden: []
 references: []

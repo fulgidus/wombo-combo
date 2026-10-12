@@ -14,14 +14,14 @@ description: "Found by dogfooding (auto mode turned on, then 'woco sync run' whi
   pushToGitHub calls against the fake server (tests/helpers/fake-github.ts) end with exactly one issue per task; stale
   lock is taken over; the guard closes a pre-existing duplicate. Update docs/src/content/docs/guides/github-sync.md
   (remove the 'rare race' limitation, describe the lock)."
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: critical
 depends_on: []
 effort: PT3H
 started_at: 2026-10-12T02:47:55.824Z
-ended_at: null
+ended_at: 2026-10-12T02:55:56.936Z
 constraints:
   - A sync problem must never fail a woco command
   - No AI attribution anywhere (AGENTS.md rule 6)

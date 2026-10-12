@@ -4,15 +4,15 @@ description: "docs/src/content/docs/guides/review-gate.md: what is reviewed (Sta
   fields, routing operation 'review', findings as task comments, retry rounds, how to write CODING_STANDARDS.md
   (mechanical rules belong in automated checks, judgement rules in standards), limits. Update README, run bun run
   docs:gen. No AI attribution."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: trivial
 priority: low
 depends_on:
   - review-pipeline
 effort: PT30M
-started_at: null
-ended_at: null
+started_at: 2026-10-12T04:08:20.444Z
+ended_at: 2026-10-12T04:13:22.608Z
 constraints: []
 forbidden: []
 references: []

@@ -8,15 +8,15 @@ description: "Check and complete how src/lib/sync/pull.ts and push.ts handle tri
   (created automatically by ensureLabels). Tests with the fake GitHub server (tests/helpers/fake-github.ts): label
   change on GitHub reaches the task, local transition reaches GitHub, conflicting changes keep local and report a
   conflict, and the remote hash stays stable (no phantom changes)."
-status: backlog
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: medium
 depends_on:
   - triage-core
 effort: PT2H
-started_at: null
-ended_at: null
+started_at: 2026-10-12T03:11:16.360Z
+ended_at: 2026-10-12T03:32:44.425Z
 constraints:
   - Do not break sync round-trip tests
   - Idempotent

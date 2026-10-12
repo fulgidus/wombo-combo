@@ -4,7 +4,7 @@ goal: Add a retro command that collects failure signals from replays, analytics 
   task, quest or time window, groups them into the improvement categories of the retro skill (navigation, automated
   checks, coding standards, steering files, tool economy, information access) and prints or saves suggestions ordered by
   severity.
-status: draft
+status: active
 priority: medium
 difficulty: medium
 depends_on: []
@@ -16,7 +16,7 @@ constraints:
   ban: []
   override: {}
 created_at: 2026-10-12T02:03:27.641Z
-updated_at: 2026-10-12T02:03:27.641Z
-started_at: null
+updated_at: 2026-10-12T02:53:54.524Z
+started_at: 2026-10-12T02:53:54.523Z
 ended_at: null
 notes: []
