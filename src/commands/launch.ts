@@ -39,7 +39,8 @@ import {
   isSpecializedAgent,
   type AgentResolution,
 } from "../lib/agent-registry";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
+import { loadQuest, loadQuestKnowledge, loadAllQuests } from "../lib/quest-store";
+import { analyzePrerequisites, describeFindings } from "../lib/quest-prerequisites";
 import { resolveQuestConfig, applyQuestConstraintsToTask } from "../lib/quest";
 // Daemon delegation — types only (runtime imports are dynamic to avoid
 // pulling ink's top-level await into the synchronous require() chain
@@ -615,6 +616,20 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
 
   // Select features
   let selected = selectFeatures(data, selOpts);
+
+  // --quest scopes the wave to that quest's tasks only, and the quest's own
+  // prerequisite quests must be completed first.
+  if (questId) {
+    selected = selected.filter((f) => f.quest === questId);
+    const quest = loadQuest(projectRoot, questId)!;
+    const unmet = describeFindings(
+      analyzePrerequisites(quest, loadAllQuests(projectRoot), data.tasks).findings.filter((f) => !f.transitive),
+    );
+    if (unmet.length > 0) {
+      fail(msg("cli.launch.questPrerequisites", { id: questId, unmet: unmet.join("; ") }));
+      return;
+    }
+  }
 
   if (selected.length === 0) {
     // Throw so callers can catch gracefully (CLI command handler catches).

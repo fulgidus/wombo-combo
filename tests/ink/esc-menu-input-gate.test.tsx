@@ -20,6 +20,13 @@ import { SettingsScreen } from "../../src/ink/settings-screen";
 import type { Task } from "../../src/lib/tasks";
 import type { UsageTotals } from "../../src/lib/token-usage";
 
+/**
+ * Bun's default 5s per-test timeout fires when the CPU is saturated, because
+ * each Ink render then takes far longer. The waits are condition-based, so this
+ * only absorbs starvation; it does not loosen any assertion.
+ */
+const SLOW_TEST_TIMEOUT_MS = 30_000;
+
 
 function makeStreams() {
   const stdout = new PassThrough() as unknown as NodeJS.WriteStream;
@@ -149,7 +156,7 @@ describe("task-browser input is gated by the ESC menu", () => {
     // Keys sent while the menu was open produced nothing (stdin is processed in
     // order, so the post-close keys above prove the earlier ones were consumed).
     expect(calls).toEqual(["select:1", "quit"]);
-  });
+  }, SLOW_TEST_TIMEOUT_MS);
 });
 
 describe("settings-screen input is gated by the ESC menu", () => {
@@ -184,5 +191,5 @@ describe("settings-screen input is gated by the ESC menu", () => {
     await waitFor(() => saved.length > 0, "Enter to save after the menu closes");
     h.unmount();
     expect(saved.length).toBeGreaterThan(0);
-  });
+  }, SLOW_TEST_TIMEOUT_MS);
 });
