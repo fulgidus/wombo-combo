@@ -53,3 +53,9 @@
 <!-- wombo-combo:operation:main-f3160b8-31124c5 -->
 
 - **meta-updated-at-merge-conflicts**: Every merge conflicts on updated\_at in tasks/archive \_meta.yml
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-e98eb11-183240b -->
+
+- **scheduler-wake-on-dep-satisfied**: Scheduler idles when deps become satisfied via daemon state only
