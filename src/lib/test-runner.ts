@@ -213,6 +213,18 @@ export function runTests(
 // ---------------------------------------------------------------------------
 
 /**
+ * Find the last "<N> <word>" count in the text. Counts alone on a line (Bun's
+ * summary) win over matches embedded in other output; among equals the last
+ * one wins since the summary is printed at the end of the run.
+ */
+function lastCount(text: string, word: string): RegExpMatchArray | null {
+  const anchored = [...text.matchAll(new RegExp(`^[ \\t]*(\\d+)[ \\t]+${word}[ \\t]*$`, "gim"))];
+  if (anchored.length > 0) return anchored[anchored.length - 1];
+  const loose = [...text.matchAll(new RegExp(`(\\d+)\\s+${word}`, "gi"))];
+  return loose.length > 0 ? loose[loose.length - 1] : null;
+}
+
+/**
  * Parse test counts from test runner output.
  *
  * Supports common formats:
@@ -230,10 +242,14 @@ export function parseTestCounts(stdout: string, stderr: string): TestCounts {
     parsed: false,
   };
 
-  // Bun test format: "42 pass" and "3 fail" on separate or same lines
-  const bunPassMatch = combined.match(/(\d+)\s+pass/i);
-  const bunFailMatch = combined.match(/(\d+)\s+fail/i);
-  const bunSkipMatch = combined.match(/(\d+)\s+skip/i);
+  // Bun test format: "42 pass" and "3 fail" on separate or same lines.
+  // Test output (including fixtures printed by tests) can contain text like
+  // "0 fail", so prefer the summary lines Bun prints on their own at the end
+  // and take the last occurrence rather than the first match anywhere.
+  const text = stripAnsi(combined);
+  const bunPassMatch = lastCount(text, "pass");
+  const bunFailMatch = lastCount(text, "fail");
+  const bunSkipMatch = lastCount(text, "skip");
 
   if (bunPassMatch || bunFailMatch) {
     result.passed = bunPassMatch ? parseInt(bunPassMatch[1], 10) : 0;

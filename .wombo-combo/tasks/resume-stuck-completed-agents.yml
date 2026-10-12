@@ -1,0 +1,28 @@
+id: resume-stuck-completed-agents
+title: Resume must re-run verification for agents left in 'completed' by a daemon stop
+description: "Found by dogfooding: when the daemon is stopped (or the old headless client shut it down) while agents are
+  in status 'completed' (agent exited, verification and merge pending), 'woco resume' restores them as 'completed' but
+  never restarts handleBuildVerification, so they stay in 'completed' forever (two such agents sat for 30+ minutes with
+  no bun test running), and 'woco retry' refuses them ('not in failed state (current: completed)'). Fix in src/daemon
+  (daemon.ts resume path / agent-runner.ts): on resume, for every restored agent in 'completed' (or
+  'verifying'/'verified'/'merging' whose process is gone), re-run the verification->merge pipeline, bounded by the same
+  retry rules; log it as an activity line. Add a test with the daemon test helpers: seed a state file with a completed
+  agent, resume, expect verification to run and the agent to reach merged or failed."
+status: in_progress
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: 2026-10-12T02:48:25.118Z
+ended_at: null
+constraints:
+  - No AI attribution anywhere (AGENTS.md rule 6)
+forbidden: []
+references:
+  - src/daemon/daemon.ts
+  - src/daemon/agent-runner.ts
+  - src/daemon/state.ts
+notes: []
+subtasks: []
+paths: []

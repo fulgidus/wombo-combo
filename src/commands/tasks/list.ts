@@ -5,7 +5,8 @@
  *   woco tasks list                     # list all tasks
  *   woco tasks list --status backlog    # filter by status
  *   woco tasks list --priority high     # filter by priority
- *   woco tasks list --ready             # show only ready tasks
+ *   woco tasks list --quest <id>        # only tasks of one quest
+ *   woco tasks list --ready             # show only ready tasks (planned + deps met)
  *   woco tasks list --archive           # include archived tasks
  */
 
@@ -22,10 +23,10 @@ import {
   type Difficulty,
   type FeaturesFile,
 } from "../../lib/tasks";
-import { output, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output";
-import { t } from "../../lib/i18n";
+import { output, outputError, filterFieldsArray, renderCompactTable, type OutputFormat } from "../../lib/output";
+import { t, msg } from "../../lib/i18n";
 import { renderTasksList } from "../../lib/toon";
-import { loadAllQuests } from "../../lib/quest-store";
+import { loadAllQuests, loadQuest } from "../../lib/quest-store";
 import type { Quest } from "../../lib/quest";
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ export interface TasksListOptions {
   status?: FeatureStatus;
   priority?: Priority;
   difficulty?: Difficulty;
+  quest?: string;
   ready?: boolean;
   includeArchive?: boolean;
   outputFmt?: OutputFormat;
@@ -145,6 +147,10 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
   const { projectRoot, config } = opts;
   const data = loadFeatures(projectRoot, config);
 
+  if (opts.quest && !loadQuest(projectRoot, opts.quest)) {
+    outputError(opts.outputFmt ?? "text", msg("cli.tasks.list.questNotFound", { id: opts.quest }));
+  }
+
   let features: Feature[] = [...data.tasks];
 
   // Include archive if requested
@@ -165,6 +171,11 @@ export async function cmdTasksList(opts: TasksListOptions): Promise<void> {
   // Filter by difficulty
   if (opts.difficulty) {
     features = features.filter((f) => f.difficulty === opts.difficulty);
+  }
+
+  // Filter by quest
+  if (opts.quest) {
+    features = features.filter((f) => f.quest === opts.quest);
   }
 
   // Filter to ready-only

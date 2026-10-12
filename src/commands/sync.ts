@@ -93,6 +93,7 @@ function printPush(report: PushReport, repo: string): void {
     console.error(t("cli.sync.push.errors", { count: report.errors.length }));
     for (const e of report.errors) console.error(`  ${e.ref}: ${e.error}`);
   }
+  if (report.attributionBreaker) console.error(t("cli.sync.attributionBreaker", { ref: report.attributionBreaker.ref }));
 }
 
 export async function cmdSyncPush(opts: SyncOptions): Promise<void> {
@@ -136,6 +137,10 @@ function printStatus(report: SyncStatusReport, repo: string): void {
   if (report.remoteOnly.length > 0) {
     console.log(t("cli.sync.status.remoteOnly", { count: report.remoteOnly.length }));
     for (const r of report.remoteOnly) console.log(`  #${r.issue} ${r.title}`);
+  }
+  if (report.attributionBreaker) {
+    const b = report.attributionBreaker;
+    console.log(t("cli.sync.status.attributionBreaker", { ref: b.ref, time: b.trippedAt }));
   }
   if (report.labelsMissing.length > 0) {
     console.log(t("cli.sync.status.labelsMissing", { count: report.labelsMissing.length, labels: report.labelsMissing.join(", ") }));

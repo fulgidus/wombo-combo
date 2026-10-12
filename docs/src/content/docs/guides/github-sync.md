@@ -174,15 +174,22 @@ and items that changed since the last sync.
 - **Unexpected state**: `sync status`, then `tasks check --mirror`. A mapping
   file can be deleted safely; the next push re-finds the issue by its marker.
 
+## Concurrency
+
+Every sync cycle and every item push or pull takes an advisory lock file,
+`.wombo-combo/sync/.lock` (gitignored), created atomically with the owner's
+pid, host and timestamp. A lock is stale after 2 minutes, or when its pid is
+dead on the same host, and is then taken over. A process waits a few seconds
+for a busy lock, then continues with a warning: a sync problem never blocks a
+woco command. As a second layer, after creating an issue the push lists the
+issues carrying the same woco marker; if there is more than one it keeps the
+lowest number, adopts it in the mapping and closes the others with the
+`duplicate` reason.
+
 ## Known limits
 
 - Auto mode hooks the CLI commands. Changes made by the daemon or agents are
   picked up by the periodic cycle, not instantly.
-- **CLI and daemon race**: a CLI command and the daemon cycle in different
-  processes are not serialised with each other (only inside one process). If
-  both push a brand-new item in the same instant, the marker lookup before
-  creation makes a duplicate issue very unlikely but not impossible; if it
-  happens, close the extra issue and run `sync run`.
 - A task description that contains a line equal to one of the section
   headings used in the issue body (for example `## Constraints`) is read back
   as that section.
@@ -195,6 +202,15 @@ and items that changed since the last sync.
 Nothing woco sends to GitHub or stores from it may credit an AI tool (project
 rule 6). woco removes attribution footers from the text it sends, from issue
 and comment text it pulls, and from new comments. Some hosts append a footer
-to text created through their API; after every create, woco checks the
-returned text and edits it clean again, so the footer does not stay on
-GitHub or reach the repository.
+to text written through their API (a proxy or integration on the network
+path). After every create or update, push re-reads the item from GitHub; if
+the stored text carries attribution although the text sent was clean, a
+circuit breaker trips: push stops all further writes in that run, does not
+retry or edit the text again, records the state, and exits non-zero.
+`woco sync status` then prints a warning until a later push writes cleanly.
+
+Run sync from a machine whose network path does not append footers. Remove
+the footer already on GitHub by hand.
+
+Every push also checks the raw text of mapped issues and mirrored comments
+and edits older footers clean; a clean item costs no write.

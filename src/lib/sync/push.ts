@@ -29,6 +29,14 @@ import {
   type GitHubIssue,
   type LabelSpec,
 } from "./github-client";
+import {
+  AttributionTripped,
+  clearAttributionTrip,
+  readAttributionTrip,
+  writeAttributionTrip,
+  type AttributionTrip,
+} from "./attribution-breaker";
+import { withSyncLock } from "./lock";
 import { TRIAGE_LABELS, remoteSyncHash } from "./hashing";
 import { conflictCommentPrefix } from "./pull";
 import {
@@ -94,6 +102,8 @@ export interface PushReport {
   /** Labels created (or, on a dry run, that would be created) */
   labelsCreated: string[];
   errors: PushError[];
+  /** Set when the circuit breaker tripped: the host appended attribution to a clean write and push stopped writing */
+  attributionBreaker?: AttributionTrip;
 }
 
 export interface PushOptions {
@@ -130,6 +140,8 @@ export interface SyncStatusReport {
   remoteOnly: Array<{ issue: number; title: string; url: string }>;
   /** Catalog / quest labels not yet on GitHub */
   labelsMissing: string[];
+  /** Present while the last push stopped because the host appends AI attribution to writes */
+  attributionBreaker?: AttributionTrip;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,7 +264,7 @@ const norm = (s: string) => s.replace(/\r\n/g, "\n").trim();
 function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknown> | null {
   const patch: Record<string, unknown> = {};
   if (norm(remote.title) !== norm(draft.title)) patch.title = draft.title;
-  if (norm(remote.body) !== norm(draft.body)) patch.body = draft.body;
+  if (norm(remote.body) !== norm(draft.body) || containsAiAttribution(remote.body)) patch.body = draft.body;
   const want = mergeLabels(draft.labels, remote.labels);
   if ([...want].sort().join("\n") !== [...remote.labels].sort().join("\n")) patch.labels = want;
   if (remote.state !== draft.state || (draft.state === "closed" && remote.stateReason !== draft.stateReason)) {
@@ -263,21 +275,19 @@ function patchFor(draft: IssueDraft, remote: RemoteIssue): Record<string, unknow
 }
 
 /**
- * Some hosts (a proxy, an integration) append an attribution footer to text
- * created through their API. AI attribution must never stay anywhere (AGENTS.md
- * rule 6), so right after a create we edit the text clean again. Best effort:
- * a failure only warns, and the footer is stripped when it is read back anyway.
+ * Circuit breaker: some hosts (a proxy, an integration) append an attribution
+ * footer to text written through their API. AI attribution must never stay
+ * anywhere (AGENTS.md rule 6), but editing it away only invites the host to
+ * append it again, so after a write we re-read the stored text and, when it
+ * carries attribution although what we sent was clean, throw so push stops
+ * all further writes. Never retries or loop-edits.
  */
-async function scrubIssue(client: GitHubClient, issue: GitHubIssue, warn?: (m: string) => void): Promise<GitHubIssue> {
-  if (!containsAiAttribution(issue.body ?? "")) return issue;
-  try {
-    return await client.updateIssue(issue.number, { body: stripAiAttribution(issue.body ?? "") });
-  } catch (err) {
-    (warn ?? console.warn)(`[sync] could not remove host-added attribution from issue #${issue.number}: ${errMsg(err)}`);
-    return issue;
-  }
+function assertNoHostAttribution(sent: string, stored: string | null | undefined, trip: Omit<AttributionTrip, "trippedAt">): void {
+  if (containsAiAttribution(sent) || !containsAiAttribution(stored ?? "")) return;
+  throw new AttributionTripped({ trippedAt: new Date().toISOString(), ...trip });
 }
 
+/** Edit a comment clean when its raw text carries attribution; a no-op (zero writes) otherwise. */
 async function scrubComment(client: GitHubClient, c: GitHubComment, warn?: (m: string) => void): Promise<GitHubComment> {
   if (!containsAiAttribution(c.body ?? "")) return c;
   try {
@@ -285,6 +295,31 @@ async function scrubComment(client: GitHubClient, c: GitHubComment, warn?: (m: s
   } catch (err) {
     (warn ?? console.warn)(`[sync] could not remove host-added attribution from comment ${c.id}: ${errMsg(err)}`);
     return c;
+  }
+}
+
+/** Re-read a freshly created comment (the create response may lack the host's footer) and scrub it. */
+async function scrubCreatedComment(
+  client: GitHubClient,
+  issue: number,
+  created: GitHubComment,
+  warn?: (m: string) => void,
+): Promise<GitHubComment> {
+  try {
+    const current = (await client.listComments(issue)).find((c) => c.id === created.id);
+    return await scrubComment(client, current ?? created, warn);
+  } catch (err) {
+    (warn ?? console.warn)(`[sync] could not re-read comment ${created.id}: ${errMsg(err)}`);
+    return scrubComment(client, created, warn);
+  }
+}
+
+/** Re-read a freshly created comment: the create response may lack the host's footer. Falls back to the response. */
+async function rereadCommentOf(client: GitHubClient, issue: number, created: GitHubComment): Promise<GitHubComment> {
+  try {
+    return (await client.listComments(issue)).find((c) => c.id === created.id) ?? created;
+  } catch {
+    return created;
   }
 }
 
@@ -306,7 +341,13 @@ function wantedLabels(items: LocalItem[]): LabelSpec[] {
 // Push
 // ---------------------------------------------------------------------------
 
-export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
+/** Push under the cross-process sync lock (dry runs only read, so they skip it). */
+export function pushToGitHub(opts: PushOptions): Promise<PushReport> {
+  if (opts.dryRun === true) return pushUnlocked(opts);
+  return withSyncLock(opts.projectRoot, () => pushUnlocked(opts), { warn: opts.warn });
+}
+
+async function pushUnlocked(opts: PushOptions): Promise<PushReport> {
   const { projectRoot, client } = opts;
   const dryRun = opts.dryRun === true;
   const report: PushReport = {
@@ -357,12 +398,28 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
     );
   };
 
+  /** The remote issue when its raw body carries attribution (one shared list, not a read per issue). */
+  const findDirtyRemote = async (number: number): Promise<GitHubIssue | null> => {
+    remoteIssues ??= await client.listIssues({ state: "all" });
+    const hit = remoteIssues.find((i) => i.number === number);
+    return hit && containsAiAttribution(hit.body ?? "") ? hit : null;
+  };
+
   for (const item of items) {
     try {
       await pushItem(item);
     } catch (err) {
       report.errors.push({ ref: item.ref, error: errMsg(err) });
+      if (err instanceof AttributionTripped) {
+        report.attributionBreaker = err.trip;
+        writeAttributionTrip(projectRoot, err.trip);
+        break;
+      }
     }
+  }
+  if (!dryRun && !report.attributionBreaker && readAttributionTrip(projectRoot) && (report.created.length + report.updated.length + report.commented.length > 0)) {
+    // A write went through clean since the trip: the host no longer alters text
+    clearAttributionTrip(projectRoot);
   }
   return report;
 
@@ -380,7 +437,15 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
         report.updated.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
         if (updated) entry = updated;
       } else {
-        report.unchanged.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+        // Unchanged locally, but a host may have added a footer to the remote text since
+        const dirty = await findDirtyRemote(mapping.issue_number);
+        if (dirty) {
+          const updated = await updateExisting(item, dirty.number, toRemoteIssue(dirty));
+          report.updated.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+          if (updated) entry = updated;
+        } else {
+          report.unchanged.push({ ...base, issue: mapping.issue_number, url: mapping.issue_url });
+        }
       }
     } else if (item.finished && !includeFinished) {
       report.unchanged.push({ ...base, reason: "finished" });
@@ -410,22 +475,67 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
           body: item.draft.body,
           labels: item.draft.labels,
         });
-        const scrubbed = await scrubIssue(client, created, opts.warn);
-        let final = scrubbed;
+        await verifyIssueWrite(item, created.number, item.draft.body);
+        let final = created;
         if (item.draft.state === "closed") {
           final = await client.updateIssue(created.number, {
             state: "closed",
             state_reason: item.draft.stateReason as "completed" | "not_planned" | null,
           });
         }
-        issueNumber = created.number;
-        issueUrl = created.html_url;
-        entry = saveEntry(item, final, {});
-        report.created.push({ ...base, issue: created.number, url: created.html_url });
+        const winner = await resolveDuplicates(item, created);
+        if (winner.number !== created.number) {
+          // Another client created the same item first: adopt its issue
+          existedRemotely = true;
+          issueNumber = winner.number;
+          issueUrl = winner.html_url;
+          const updated = await updateExisting(item, winner.number, toRemoteIssue(winner));
+          if (updated) entry = updated;
+          report.unchanged.push({ ...base, issue: winner.number, url: winner.html_url });
+        } else {
+          issueNumber = created.number;
+          issueUrl = created.html_url;
+          entry = saveEntry(item, final, {});
+          report.created.push({ ...base, issue: created.number, url: created.html_url });
+        }
       }
     }
 
     await mirrorComments(item, issueNumber, issueUrl, entry, existedRemotely);
+  }
+
+  /**
+   * Duplicate guard: after creating, list every issue carrying the item's
+   * marker; keep the lowest number, close the others as duplicates.
+   * Failures only warn: the next sync cycle re-checks nothing, but the
+   * mapping always points at an existing issue.
+   */
+  async function resolveDuplicates(item: LocalItem, created: GitHubIssue): Promise<GitHubIssue> {
+    try {
+      const all = await client.listIssues({ state: "all" });
+      const same = all
+        .filter((i) => {
+          const m = findMarker(i.body ?? "");
+          return m !== null && m.kind === item.kind && m.id === item.id;
+        })
+        .sort((a, b) => a.number - b.number);
+      if (same.length < 2) return created;
+      const keep = same[0]!;
+      for (const dup of same.slice(1)) {
+        if (dup.state === "closed") continue;
+        await client.updateIssue(dup.number, { state: "closed", state_reason: "duplicate" });
+      }
+      return keep;
+    } catch (err) {
+      opts.warn?.(`duplicate check failed for ${item.ref}: ${errMsg(err)}`);
+      return created;
+    }
+  }
+
+  /** Re-read the issue from GitHub and trip the breaker when the host added attribution to a clean body. */
+  async function verifyIssueWrite(item: LocalItem, number: number, sentBody: string): Promise<void> {
+    const stored = await client.getIssue(number);
+    assertNoHostAttribution(sentBody, stored.body, { ref: item.ref, issue: number });
   }
 
   /** PATCH an existing issue to match the draft and persist the mapping. */
@@ -434,7 +544,10 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
     const remote = known ?? toRemoteIssue(await client.getIssue(number));
     const patch = patchFor(item.draft, remote);
     let issue: GitHubIssue | null = null;
-    if (patch) issue = await client.updateIssue(number, patch);
+    if (patch) {
+      issue = await client.updateIssue(number, patch);
+      await verifyIssueWrite(item, number, typeof patch.body === "string" ? patch.body : item.draft.body);
+    }
     const prev = readMapping(projectRoot, item.kind, item.id);
     return saveEntry(item, issue ?? (await client.getIssue(number)), prev?.comments ?? {});
   }
@@ -518,6 +631,17 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
     }
     if (dirty) persist();
 
+    // Already-mirrored comments may have gained a host footer: edit them clean
+    if (!dryRun && existedRemotely && issueNumber !== undefined) {
+      const mirrored = new Set(Object.values(known));
+      if (mirrored.size > 0) {
+        const remoteComments = await client.listComments(issueNumber);
+        for (const rc of remoteComments) {
+          if (mirrored.has(rc.id)) await scrubComment(client, rc, opts.warn);
+        }
+      }
+    }
+
     for (const c of pending) {
       const cref = { ref: item.ref, comment: c.id, issue: issueNumber };
       if (dryRun) {
@@ -526,12 +650,16 @@ export async function pushToGitHub(opts: PushOptions): Promise<PushReport> {
       }
       if (issueNumber === undefined) break;
       try {
-        const gh = await scrubComment(client, await client.createComment(issueNumber, renderCommentBody(c)), opts.warn);
+        const sent = renderCommentBody(c);
+        const created = await client.createComment(issueNumber, sent);
+        const gh = await rereadCommentOf(client, issueNumber, created);
+        assertNoHostAttribution(sent, gh.body, { ref: item.ref, issue: issueNumber, comment: gh.id });
         known[c.id] = gh.id;
         persist();
         report.commented.push({ ...cref, githubId: gh.id });
         if (!c.github_url) setCommentGithubUrl(projectRoot, c.id, gh.html_url);
       } catch (err) {
+        if (err instanceof AttributionTripped) throw err;
         // Stop here to keep GitHub chronological; later comments retry next run
         report.errors.push({ ref: `${item.ref}#${c.id}`, error: errMsg(err) });
         break;
@@ -601,7 +729,7 @@ export async function postRemoteNotices(
         return m?.kind === "comment" && m.id === id;
       });
       if (dup) continue;
-      const created = await scrubComment(client, await client.createComment(n.issue, body), opts.warn);
+      const created = await scrubCreatedComment(client, n.issue, await client.createComment(n.issue, body), opts.warn);
       out.posted.push({ issue: n.issue, ref: n.ref, githubId: created.id });
       // The local system comment pull left for this conflict says the same thing: link it so push does not mirror it too.
       if (opts.projectRoot) linkConflictComment(opts.projectRoot, n, created.html_url);
@@ -676,8 +804,10 @@ export async function syncStatus(opts: { projectRoot: string; client: GitHubClie
     })
     .map((i) => ({ issue: i.number, title: i.title, url: i.html_url }));
 
+  const attributionBreaker = readAttributionTrip(projectRoot);
   return {
     items: out,
+    ...(attributionBreaker ? { attributionBreaker } : {}),
     remoteOnly,
     labelsMissing: wantedLabels(items)
       .map((s) => s.name)

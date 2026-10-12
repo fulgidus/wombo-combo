@@ -2082,7 +2082,7 @@ export class AgentRunner {
 
   /**
    * On daemon startup, re-trigger the merge pipeline for any agents that were
-   * left in "verified" state by a previous daemon run.
+   * left in "completed" or "verified" state by a previous daemon run.
    *
    * Agents in "verified" state have completed their work and passed the build
    * verification, but the merge has not yet landed (e.g. the daemon was killed
@@ -2097,6 +2097,23 @@ export class AgentRunner {
    * their downstream dependents indefinitely.
    */
   reconcileVerifiedAgents(): void {
+    // Agents left in "completed" (process exited, verification and merge
+    // pending) have no running pipeline after a restart.  Re-run verification
+    // -> merge; handleBuildVerification applies the normal retry bounds.
+    for (const agent of this.state.getAgentsByStatus("completed")) {
+      this.state.emit("evt:log", {
+        level: "info",
+        message: `Reconciling completed agent ${agent.featureId} — re-running verification`,
+      });
+      this.state.updateAgentActivity(agent.featureId, "Resumed after daemon restart — re-running verification");
+      this.handleBuildVerification(agent.featureId).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.state.updateAgentStatus(agent.featureId, "failed", `Verification error: ${msg}`);
+        this.state.updateAgent(agent.featureId, { error: msg });
+        this.rescueChainPredecessors(agent.featureId);
+      });
+    }
+
     const verifiedAgents = this.state.getAgentsByStatus("verified");
     for (const agent of verifiedAgents) {
       this.state.emit("evt:log", {

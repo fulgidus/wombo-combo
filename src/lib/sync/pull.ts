@@ -26,6 +26,7 @@
  *    report (`rateLimited: true`).
  */
 
+import { withSyncLock } from "./lock";
 import { loadConfig, normalizeSyncGithubConfig, type WomboConfig } from "../../config";
 import { addComment, listComments, type CommentRef } from "../comments";
 import { loadQuest, loadArchivedQuest } from "../quest-store";
@@ -132,7 +133,13 @@ function toRemoteComment(c: GitHubComment): RemoteComment {
 
 const refString = (kind: "task" | "quest", id: string) => (kind === "quest" ? `quest:${id}` : id);
 
-export async function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
+/** Pull under the cross-process sync lock (dry runs only read, so they skip it). */
+export function pullFromGitHub(opts: PullOptions): Promise<PullReport> {
+  if (opts.dryRun === true) return pullUnlocked(opts);
+  return withSyncLock(opts.projectRoot, () => pullUnlocked(opts));
+}
+
+async function pullUnlocked(opts: PullOptions): Promise<PullReport> {
   const { projectRoot, client } = opts;
   const dryRun = opts.dryRun === true;
   const now = opts.now ?? (() => new Date());

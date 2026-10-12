@@ -14,7 +14,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, join as pathJoin } from "node:path";
 import type { WomboConfig } from "../config";
 import type { Feature, SelectionOptions, Priority, Difficulty } from "../lib/tasks";
-import { loadFeatures, selectFeatures } from "../lib/tasks";
+import { loadFeatures, selectFeatures, getDoneTaskIds, areDependenciesMet } from "../lib/tasks";
 import { computeTaskWeight } from "../lib/task-weight";
 import { resolveRoute } from "../lib/harness/routing";
 import { scopePartitions, formatScopePartitions } from "../lib/file-scopes";
@@ -46,6 +46,7 @@ import { resolveQuestConfig, applyQuestConstraintsToTask } from "../lib/quest";
 // used by schema.ts / citty-registry.ts).
 import type { DaemonClient } from "../daemon/client";
 import type { SchedulerStatus } from "../daemon/protocol";
+import type { AgentStatus } from "../daemon/agent-status";
 
 /**
  * Delegate the launch to the background daemon. This is the only execution
@@ -155,39 +156,81 @@ export async function waitForDaemonCompletion(
     }
 
     const { scheduler, agents } = snapshot;
-    const active = agents.filter((a) =>
-      a.status === "running" || a.status === "installing" ||
-      a.status === "resolving_conflict" || a.status === "retry"
-    );
-    const queued = agents.filter((a) => a.status === "queued");
-    const done = agents.filter((a) =>
-      a.status === "completed" || a.status === "verified" ||
-      a.status === "merged" || a.status === "failed"
-    );
+    const progress = evaluateDaemonProgress(scheduler.status, agents);
 
     // Print periodic status in text/headless mode
     if (fmt === "text" && polls % DASHBOARD_INTERVAL === 0) {
       console.log(
         t("cli.launch.daemonStatus", {
-          active: active.length,
-          queued: queued.length,
-          done: done.length,
+          active: progress.active,
+          queued: progress.queued,
+          done: progress.done,
           scheduler: scheduler.status,
         })
       );
     }
 
-    // Terminal conditions
-    const terminalStatuses: SchedulerStatus[] = ["idle", "stopping", "draining", "shutdown"];
-    if (terminalStatuses.includes(scheduler.status) && active.length === 0 && queued.length === 0) {
+    if (progress.finished) {
       if (fmt === "text") {
-        const passed = agents.filter((a) => a.status === "merged" || a.status === "verified").length;
-        const failed = agents.filter((a) => a.status === "failed").length;
-        console.log(`\n${t("cli.launch.daemonCompleted", { passed, failed, total: agents.length })}`);
+        console.log(
+          `\n${t("cli.launch.daemonCompleted", {
+            passed: progress.merged,
+            failed: progress.failed,
+            total: agents.length,
+          })}`
+        );
       }
       return;
     }
   }
+}
+
+/** Agent statuses that are final: nothing else will happen to the agent. */
+const FINAL_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set(["merged", "failed"]);
+
+/** Agent statuses where a process or pipeline stage (agent, retry, conflict resolution) is running. */
+const RUNNING_AGENT_STATUSES: ReadonlySet<AgentStatus> = new Set([
+  "running", "installing", "resolving_conflict", "retry",
+]);
+
+export interface DaemonProgress {
+  active: number;
+  queued: number;
+  /** Agents in a final status (merged or failed). */
+  done: number;
+  merged: number;
+  failed: number;
+  finished: boolean;
+}
+
+/**
+ * Decide whether a headless launch is finished from a daemon state snapshot.
+ *
+ * "completed" (agent exited, build verification pending) and "verified"
+ * (awaiting merge) are in flight: an idle scheduler does not mean the work is
+ * over, because verification and merge run after the agent exits. Only
+ * merged/failed agents are final. A shutting-down or stopping/draining
+ * scheduler ends the wait once nothing is actively running.
+ */
+export function evaluateDaemonProgress(
+  schedulerStatus: SchedulerStatus,
+  agents: ReadonlyArray<{ status: AgentStatus }>,
+): DaemonProgress {
+  const active = agents.filter((a) => RUNNING_AGENT_STATUSES.has(a.status)).length;
+  const queued = agents.filter((a) => a.status === "queued").length;
+  const merged = agents.filter((a) => a.status === "merged").length;
+  const failed = agents.filter((a) => a.status === "failed").length;
+  const allFinal = agents.every((a) => FINAL_AGENT_STATUSES.has(a.status));
+
+  let finished: boolean;
+  if (schedulerStatus === "idle") {
+    finished = allFinal;
+  } else if (schedulerStatus === "stopping" || schedulerStatus === "draining" || schedulerStatus === "shutdown") {
+    finished = active === 0 && queued === 0;
+  } else {
+    finished = false;
+  }
+  return { active, queued, done: merged + failed, merged, failed, finished };
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +373,40 @@ function getGitattributesUnionFiles(projectRoot: string): Set<string> {
   }
 
   return unionFiles;
+}
+
+/**
+ * Build the "nothing to launch" error message, context-aware of the active
+ * filters. When no filter narrows the selection, backlog tasks whose
+ * dependencies are met are called out, since launch only takes planned tasks.
+ */
+export function describeNoLaunchable(
+  data: ReturnType<typeof loadFeatures>,
+  opts: Pick<LaunchCommandOptions, "allReady" | "topPriority" | "quickestWins" | "priority" | "difficulty" | "features">,
+): string {
+  const activeFilters: string[] = [];
+  if (opts.allReady) activeFilters.push("--all-ready");
+  if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
+  if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
+  if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
+  if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
+  if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
+
+  if (activeFilters.length > 0 && !(opts.allReady && activeFilters.length === 1)) {
+    return t("cli.launch.noMatchFilters", { filters: activeFilters.join(", ") });
+  }
+
+  let base = t(opts.allReady ? "cli.launch.noLaunchableAllReady" : "cli.launch.noLaunchable");
+  const doneIds = getDoneTaskIds(data, data.archive);
+  const backlog = data.tasks.filter((x) => x.status === "backlog" && areDependenciesMet(x, doneIds));
+  if (backlog.length > 0) {
+    base += "\n" + t("cli.launch.backlogHint", {
+      count: backlog.length,
+      ids: backlog.slice(0, 5).map((x) => x.id).join(", "),
+      more: backlog.length > 5 ? ", ..." : "",
+    });
+  }
+  return base;
 }
 
 /**
@@ -540,26 +617,8 @@ export async function cmdLaunch(opts: LaunchCommandOptions): Promise<void> {
   let selected = selectFeatures(data, selOpts);
 
   if (selected.length === 0) {
-    // Build a context-aware message based on which flags were passed
-    const activeFilters: string[] = [];
-    if (opts.allReady) activeFilters.push("--all-ready");
-    if (opts.topPriority) activeFilters.push(`--top-priority ${opts.topPriority}`);
-    if (opts.quickestWins) activeFilters.push(`--quickest-wins ${opts.quickestWins}`);
-    if (opts.priority) activeFilters.push(`--priority ${opts.priority}`);
-    if (opts.difficulty) activeFilters.push(`--difficulty ${opts.difficulty}`);
-    if (opts.features?.length) activeFilters.push(`--tasks ${opts.features.join(",")}`);
-
-    let msg: string;
-    if (opts.allReady && activeFilters.length === 1) {
-      msg = "No launchable tasks found (all tasks are done, cancelled, or have unmet dependencies).";
-    } else if (activeFilters.length > 0) {
-      msg = `No tasks matched the current filters: ${activeFilters.join(", ")}.`;
-    } else {
-      msg = "No launchable tasks found.";
-    }
-
     // Throw so callers can catch gracefully (CLI command handler catches).
-    throw new Error(msg);
+    throw new Error(describeNoLaunchable(data, opts));
   }
 
   // -------------------------------------------------------------------------

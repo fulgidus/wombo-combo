@@ -83,6 +83,8 @@ under `.wombo-combo/` **are tracked in git**:
   test baselines, agent analytics, recorded agent session replays, eval
   scores, publication journal
 - `sync/pending-notices.json` — conflict notices waiting to be retried on GitHub
+- `sync/.lock` — advisory cross-process sync lock (pid, host, timestamp)
+- `sync/attribution-breaker.json` — set when a host appended AI attribution to a sync write
   (the rest of `sync/` is tracked)
 - `hitl/`, `agents-cache/` — human-in-the-loop exchanges, downloaded agent
   definitions
@@ -216,6 +218,8 @@ All wombo-combo project and runtime files live under `.wombo-combo/`:
   wishlist.yml            # Wishlist items (tracked)
   sync/github/            # GitHub Issues sync mappings: <task|quest>/<id>.yml (tracked)
   sync/pending-notices.json  # Conflict notices to retry on GitHub (gitignored)
+  sync/.lock              # Cross-process sync lock (gitignored)
+  sync/attribution-breaker.json  # Attribution circuit-breaker state (gitignored)
   claims/                 # Team task claims: <task-id>.yml with owner and TTL (tracked)
   comments/               # Task/quest comments: <task|quest>/<ref-id>/<id>.yml, one file per comment (tracked)
   tasks/                  # Active tasks: _meta.yml + one <task-id>.yml per task (tracked)
