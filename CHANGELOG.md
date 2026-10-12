@@ -131,3 +131,9 @@
 <!-- wombo-combo:operation:main-f7b09f0-39bed0d -->
 
 - **tui-provider-model-settings**: Expose provider and model settings in the TUI
+
+## 2026-10-12
+
+<!-- wombo-combo:operation:main-a6cfa66-c91b903 -->
+
+- **tui-planner-telemetry**: Planner progress shows model, tokens and provider cost
