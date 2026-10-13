@@ -35,6 +35,7 @@ import type { DaemonState } from "../state";
 import type { AnalyticsTracker } from "../analytics-tracker";
 import type { ReplayRecorder } from "../replay-recorder";
 import { resolveAgentRoute, selectRoute } from "./routes";
+import type { FeedbackStore } from "./feedback-store";
 import { ensureTaskTestBaseline, questPromptContext, resolveTaskQuestScope } from "./quest-scope";
 
 /** Collaborators the spawn/monitor stage needs from the AgentRunner. */
@@ -46,7 +47,7 @@ export interface SpawnMonitorDeps {
   replay: ReplayRecorder;
   monitor(): ProcessMonitor;
   /** Findings to hand to the implementing agent on its next retry (shared with the review gate). */
-  reviewFeedback: Map<string, string>;
+  reviewFeedback: FeedbackStore;
   loadTask(featureId: string): Task | null;
   /** Relaunch entry point (the facade's handleRetry). */
   relaunch(featureId: string): void;
@@ -404,8 +405,7 @@ export class SpawnMonitorStage {
         agent.agentName === FAKE_AGENT_SENTINEL
           ? undefined
           : resolveAgentRoute(this.deps, "code", featureId, this.deps.loadTask(featureId));
-      const feedback = reviewFeedback.get(featureId);
-      reviewFeedback.delete(featureId);
+      const feedback = reviewFeedback.take(featureId);
       const result = retryHeadless({
         worktreePath: agent.worktree,
         featureId,

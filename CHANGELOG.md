@@ -233,3 +233,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-fd285c4-7f3f65f -->
 
 - **extract-merge-stage**: Extract Merge Stage, Keep Serialized
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-dc12afa-a548414 -->
+
+- **extract-verify-and-review-stages**: Extract Verify and Review Stages
