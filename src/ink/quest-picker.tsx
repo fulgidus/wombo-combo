@@ -26,7 +26,7 @@ import { Box, Text } from "ink";
 import { getQuestTaskIds, type Quest } from "../lib/quest";
 import type { Task } from "../lib/tasks";
 import type { UsageTotals } from "../lib/token-usage";
-import { formatTokenCount } from "./usage-overlay";
+import { formatTokenCount, formatCost } from "./usage-overlay";
 import {
   QUEST_STATUS_COLORS,
   QUEST_STATUS_ABBREV,
@@ -237,7 +237,7 @@ function AllTasksDetail({
           )}
           <Text>{lbl("taskBrowser.detail.total")}{formatTokenCount(overallUsage.total_tokens)}</Text>
           {overallUsage.total_cost > 0 && (
-            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatTokenCount(overallUsage.total_cost)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatCost(overallUsage.total_cost)}</Text></Text>
           )}
           <Text>{lbl("taskBrowser.detail.steps")}{overallUsage.record_count}</Text>
           <Text />
@@ -406,7 +406,7 @@ function QuestDetail({
           )}
           <Text>{lbl("taskBrowser.detail.total")}{formatTokenCount(usage.total_tokens)}</Text>
           {usage.total_cost > 0 && (
-            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatTokenCount(usage.total_cost)}</Text></Text>
+            <Text>{lbl("taskBrowser.detail.cost")}<Text color="yellow">{formatCost(usage.total_cost)}</Text></Text>
           )}
           <Text>{lbl("taskBrowser.detail.steps")}{usage.record_count}</Text>
         </>

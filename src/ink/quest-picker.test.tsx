@@ -178,6 +178,7 @@ describe("QuestPickerView (static rendering)", () => {
     );
     expect(output).toContain("Token Usage");
     expect(output).toContain("15.0k");
+    expect(output).toContain("$1.25");
   });
 
   test("renders quest goal in detail pane", () => {
