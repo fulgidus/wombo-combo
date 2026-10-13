@@ -1,0 +1,23 @@
+id: tui-question-inbox
+title: Question inbox screen and persistent top bar chip
+description: "Board: Question inbox. A screen listing waiting questions across quests with agent, age, context and quick
+  answers plus free text and skip. Persistent amber ? N chip in the chrome top bar on every screen. Answering resumes
+  the agent immediately. Reuse the existing hitl channel. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - lifecycle-display-model
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

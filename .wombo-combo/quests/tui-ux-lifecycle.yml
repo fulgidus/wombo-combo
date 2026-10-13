@@ -1,0 +1,23 @@
+id: tui-ux-lifecycle
+title: TUI UX around the lifecycle
+goal: "Rework the TUI so every screen shows where a quest, task or agent run is in its lifecycle and the single next
+  action: a Needs you strip, lifecycle chips and a next-action row on the quest picker, stage pips on the wave monitor,
+  a question inbox with desktop and bell alerts, and an explicit quest completion gate. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
+status: draft
+priority: high
+difficulty: hard
+depends_on: []
+branch: quest/tui-ux-lifecycle
+baseBranch: main
+hitlMode: yolo
+constraints:
+  add: []
+  ban: []
+  override: {}
+created_at: 2026-10-13T00:39:15.660Z
+updated_at: 2026-10-13T00:39:15.660Z
+started_at: null
+ended_at: null
+notes: []

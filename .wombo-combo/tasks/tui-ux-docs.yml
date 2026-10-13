@@ -1,0 +1,27 @@
+id: tui-ux-docs
+title: Document the lifecycle and the new screens
+description: "Docs guide for the lifecycle map, the Needs you strip, the inbox and alert channels, the completion gate
+  and the WOMBO_NO_NOTIFY switch. Run docs:gen and refresh the graph. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on:
+  - tui-needs-you-strip
+  - tui-quest-picker-lifecycle
+  - tui-monitor-stage-pips
+  - tui-question-inbox
+  - tui-hitl-reminders
+  - tui-quest-complete-gate
+effort: PT1H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

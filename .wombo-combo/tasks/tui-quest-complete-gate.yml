@@ -1,0 +1,23 @@
+id: tui-quest-complete-gate
+title: Quest completion gate screen
+description: "Board: Quest completion gate. A review screen before quest complete: checks (all tasks merged, branch up
+  to date, no test regressions, no agents running), a preview of commits merged and branch deleted, dry run, view diff,
+  then an after panel with unlocked next quests and an activate key. Completing stays manual. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on:
+  - lifecycle-display-model
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

@@ -1,0 +1,22 @@
+id: tui-quest-picker-lifecycle
+title: Quest picker lifecycle chips, stepper and next-action row
+description: "Board: Quest picker. Sort by what needs you first (needs you, waiting), ACTIVE READY LOCKED chips, detail
+  pane with stage stepper, prerequisites with check marks, progress bar split by state, and a NEXT ACTION row where
+  unavailable actions are dashed with the reason. Design reference: https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k
+  (board named in each task). Keep English text via locale files (en and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - lifecycle-display-model
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

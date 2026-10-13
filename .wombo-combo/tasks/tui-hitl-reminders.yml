@@ -1,0 +1,22 @@
+id: tui-hitl-reminders
+title: Reminder alerts for unanswered questions
+description: "Board: Question inbox, channel 4. If a question stays unanswered after 5 minutes send one more desktop
+  alert; after 20 minutes tell the agent it may decide by itself. Configurable, default on. Builds on src/lib/notify.ts.
+  Design reference: https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via
+  locale files (en and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - tui-question-inbox
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

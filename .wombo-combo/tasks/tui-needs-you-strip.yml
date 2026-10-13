@@ -1,0 +1,22 @@
+id: tui-needs-you-strip
+title: Dashboard Needs you strip
+description: "Board: Dashboard. Amber strip at the top of the dashboard listing pending agent questions (h) and quests
+  READY TO COMPLETE (c), each with age and its key. Hidden when empty. Usage panel labels cost as API list price, not
+  billed on a flat-rate plan. Design reference: https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each
+  task). Keep English text via locale files (en and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on:
+  - lifecycle-display-model
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

@@ -1,0 +1,22 @@
+id: tui-monitor-stage-pips
+title: Wave monitor stage pips and inline question panel
+description: "Board: Wave monitor. Per-agent five stage pips (queued, install, run, verify, merge), ASKING rows
+  highlighted amber, summary counts line, merged tasks collapsed into one expandable row, and a question panel beside
+  the log tail with quick answers 1 and 2. Design reference: https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board
+  named in each task). Keep English text via locale files (en and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: medium
+priority: medium
+depends_on:
+  - lifecycle-display-model
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []

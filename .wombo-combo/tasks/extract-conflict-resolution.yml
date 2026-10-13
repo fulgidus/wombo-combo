@@ -15,14 +15,14 @@ description: |
   tests/daemon-*.test.ts for private-member access via `as any`). No
   change to tier ordering, status transitions (resolving_conflict etc.),
   prompts or events.
-status: planned
+status: in_progress
 completion: 0
 difficulty: hard
 priority: high
 depends_on:
   - characterize-retry-behaviour
 effort: PT1H30M
-started_at: null
+started_at: 2026-10-13T00:33:02.184Z
 ended_at: null
 constraints:
   - "Behaviour-preserving: all existing tests pass unchanged, plus the characterization suite"

@@ -1,0 +1,23 @@
+id: lifecycle-display-model
+title: Pure lifecycle display model for quests, tasks and agents
+description: "Add src/lib/lifecycle.ts: pure functions deriving the display stage (quest: DRAFT PLANNING ACTIVE READY
+  LOCKED PAUSED COMPLETED; task; agent run with ASKING VERIFYING) and the allowed next actions with a reason when
+  disabled (for example complete is disabled while tasks remain). READY means every task merged; LOCKED means a
+  prerequisite quest is not completed. Unit tests for every state and transition. No UI. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT1H30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+quest: tui-ux-lifecycle
+paths: []
