@@ -221,3 +221,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-42cdefe-a4534e7 -->
 
 - **characterize-retry-behaviour**: Characterize Current Retry Behaviour
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-7e9bfb8-75ff75f -->
+
+- **extract-conflict-resolution**: Extract Conflict Resolution Module
