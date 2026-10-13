@@ -59,21 +59,32 @@ export interface TieredMergeResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Promise-based mutex that ensures only one merge runs at a time.
- * Without this, concurrent `attemptMerge` calls fight over the base branch
- * checkout in the project root, causing phantom failures.
+ * Promise-chain mutex that ensures only one merge runs at a time.
+ * Without this, concurrent merges fight over the base branch checkout in the
+ * project root, causing phantom failures. Merge and conflict resolution mutate
+ * shared git state, so they are strictly serialized and never restarted by a
+ * supervision policy.
  */
-let mergeQueueTail: Promise<void> = Promise.resolve();
+export class MergeQueue {
+  private tail: Promise<void> = Promise.resolve();
+
+  enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(fn, fn); // run even if previous failed
+    // Update the tail — suppress rejections on the chain itself to prevent
+    // unhandled promise rejection, but log the error for visibility
+    this.tail = result.then(
+      () => {},
+      (err) => { console.warn(`[merge-queue] Queued merge operation failed: ${err?.message ?? err}`); }
+    );
+    return result;
+  }
+}
+
+/** Process-wide queue shared by the daemon merge stage and `merge` command. */
+export const mergeQueue = new MergeQueue();
 
 export function enqueueMerge<T>(fn: () => Promise<T>): Promise<T> {
-  const result = mergeQueueTail.then(fn, fn); // run even if previous failed
-  // Update the tail — suppress rejections on the chain itself to prevent
-  // unhandled promise rejection, but log the error for visibility
-  mergeQueueTail = result.then(
-    () => {},
-    (err) => { console.warn(`[merge-queue] Queued merge operation failed: ${err?.message ?? err}`); }
-  );
-  return result;
+  return mergeQueue.enqueue(fn);
 }
 
 // ---------------------------------------------------------------------------

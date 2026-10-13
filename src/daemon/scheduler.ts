@@ -666,5 +666,6 @@ export class Scheduler {
     this.deps.runner.cancelAgent(featureId);
     this.deps.state.updateAgentStatus(featureId, "failed", "Cancelled by user");
     this.deps.state.cancelDownstream(featureId);
+    this.deps.runner.releaseCancelledWorktree?.(featureId);
   }
 }

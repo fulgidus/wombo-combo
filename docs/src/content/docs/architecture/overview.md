@@ -25,7 +25,7 @@ wombo-combo is a Bun + TypeScript (strict, ESM-only) CLI. Source lives in `src/`
    detects completion and failure.
 5. **Verification.** `lib/verifier.ts` runs the build in the worktree;
    `lib/tdd-verifier.ts` runs the TDD gate against the quest baseline.
-   Failures feed the retry logic in `daemon/agent-runner.ts`.
+   Failures feed the restart policy (see [Supervised agents](#supervised-agents)).
 6. **Merge.** `lib/merger.ts` merges task, quest and base branches and handles
    conflicts; `lib/post-merge.ts` writes the changelog entry and optional PR.
 
@@ -50,6 +50,44 @@ protocol (`daemon/protocol.ts`) defines `Cmd*` messages from clients and `Evt*`
 messages from the daemon. `daemon/client.ts` is the reconnecting client used by
 the CLI and the TUI, and `daemon/launcher.ts` starts and stops the daemon.
 `AgentRunner` is the shared execution seam for CLI and TUI launches.
+
+## Supervised agents
+
+Each agent is a supervised child. `daemon/agent-runner.ts` is a thin
+`AgentRunner` facade that keeps the public API; the lifecycle stages live in
+`daemon/runner/`:
+
+| Module | Stage |
+| --- | --- |
+| `spawn-monitor.ts` | Baseline, worktree, install, prompt, spawn, and the process monitor |
+| `verify-stage.ts` | Build and TDD verification |
+| `merge-stage.ts` | Merge into the quest or base branch, post-merge publication |
+| `conflict-resolution.ts`, `conflict-tiers.ts` | Tiered conflict resolution (including the LLM, rebase and re-run tiers) |
+| `restart-policy.ts` | The single place that decides whether an agent may be restarted |
+| `feedback-store.ts` | Retry feedback handed to the next attempt |
+| `agent-shutdown.ts` | The child's shutdown hook |
+| `routes.ts`, `quest-scope.ts` | Per-operation harness routes and quest scope helpers |
+
+`lib/supervisor-core.ts` is a pure module with the restart tracker and the
+supervised-child primitive. The model:
+
+- **Transient restarts.** An agent is restarted only on an abnormal exit
+  (crash, hang or verify failure). A normal exit never restarts. The restart
+  budget is exactly `defaults.maxRetries`. `agent.retries` and
+  `agent.maxRetries` stay the persisted counters and the tracker is rebuilt
+  from them, so a daemon restart or a manual `woco retry` keeps the count.
+  When the budget is spent the agent ends in the `failed` state. The
+  `AgentStatus` values and the `Evt*`/`Cmd*` messages are unchanged.
+- **Serialized merge and conflict resolution.** These mutate shared git state,
+  so they run behind one merge queue and are never restarted by the policy.
+  Review-gate send-backs are not restarts either.
+- **Shutdown hook.** Killing the process, capturing a best-effort analytics
+  diff, and removing the worktree and branch of an abandoned agent happen in
+  one idempotent hook per execution. A worktree shared through a `depends_on`
+  chain is kept while another live agent still uses it.
+- **Durable retry feedback.** Review findings and verifier output for the next
+  attempt are stored on the agent record in daemon state, so they survive
+  restarts.
 
 ## Command registry
 

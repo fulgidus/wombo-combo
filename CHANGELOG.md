@@ -209,3 +209,63 @@
 <!-- wombo-combo:operation:quest-supervisor-core-7f1d31b-50d33e8 -->
 
 - **sup-strategy-tests**: Strategy, Escalation and Nesting Tests
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-3b8d262-aff7bd0 -->
+
+- **supervisor-core-restart-policy**: Add supervisor-core Restart Policy
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-42cdefe-a4534e7 -->
+
+- **characterize-retry-behaviour**: Characterize Current Retry Behaviour
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-7e9bfb8-75ff75f -->
+
+- **extract-conflict-resolution**: Extract Conflict Resolution Module
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-fd285c4-7f3f65f -->
+
+- **extract-merge-stage**: Extract Merge Stage, Keep Serialized
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-dc12afa-a548414 -->
+
+- **extract-verify-and-review-stages**: Extract Verify and Review Stages
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-ff7e4a0-3ea4e11 -->
+
+- **extract-spawn-monitor-stage**: Extract Spawn and Monitor Stage
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-8a42769-cfe92dd -->
+
+- **wire-transient-restart-policy**: Wire Restart Policy Into Runner
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-97b62e5-3bd8707 -->
+
+- **shutdown-hook-cleanup**: Worktree Cleanup as Shutdown Hook
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-427e99a-49ab0b5 -->
+
+- **persist-retry-feedback**: Persist Retry Feedback Across Restarts
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-8bca9f3-675dbd9 -->
+
+- **hang-watchdog-and-restart-tests**: Hang Watchdog and Crash Restart Tests

@@ -150,7 +150,9 @@ wombo-combo/
       tasks/                # `tasks` subcommands: add, list, show, set-status, check, archive, graph
     daemon/                 # Background daemon: continuous task pipeline over WebSocket
       daemon.ts             # Main daemon process and lifecycle
-      agent-runner.ts       # Per-task lifecycle: launch, monitor, verify, merge, retry
+      agent-runner.ts       # Per-task lifecycle facade: delegates to runner/, keeps the public API
+      runner/               # Lifecycle stages: spawn-monitor, verify-stage, merge-stage,
+                            #   conflict-resolution/-tiers, restart-policy, feedback-store, agent-shutdown
       scheduler.ts          # Continuous DAG scheduler (ready tasks, priority, concurrency)
       state.ts              # Daemon state, persisted atomically and broadcast to clients
       protocol.ts           # WebSocket messages: Cmd* (client to daemon), Evt* (daemon to client)
@@ -165,6 +167,7 @@ wombo-combo/
       onboarding/           # First-run onboarding wizard
       strings/en.ts         # UI strings (i18n.ts resolves them)
     lib/                    # Core logic, no UI
+      supervisor-core.ts    # Pure restart tracker (transient policy) and supervised-child primitive
       task-store.ts         # Folder-based task storage (tasks/, archive/) and legacy migration
       tasks.ts              # Task types, loading, filtering, dependency readiness
       task-schema.ts        # Task field enums, required fields, validation

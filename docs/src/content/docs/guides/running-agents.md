@@ -55,6 +55,14 @@ with `tdd.strictMode` the agent must also add corresponding tests. Pre-existing
 failures are handled by [quest test baselines](../tdd-baseline/). Failed
 verification triggers a retry, up to `--max-retries`.
 
+`maxRetries` (default `defaults.maxRetries`) is the number of restarts an agent
+gets after an abnormal exit: a crash, a hang or a failed verification. A normal
+exit is never restarted, and review send-backs, merges and conflict resolution
+do not use the budget. The count is persisted, so it survives a daemon restart.
+When the budget is used up the agent ends as `failed`; `woco retry` queues it
+again. Agents whose process has died are reaped, and findings from verification
+are passed to the next attempt even across restarts.
+
 ## Merge
 
 ```sh

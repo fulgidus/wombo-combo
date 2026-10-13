@@ -756,10 +756,14 @@ describe("AgentRunner post-merge publication", () => {
   });
 
   test("every handleMergeSuccess call site awaits it (normal path and all escalation tiers)", () => {
-    const src = readFileSync(join(import.meta.dir, "..", "src", "daemon", "agent-runner.ts"), "utf-8");
-    const calls = [...src.matchAll(/^.*this\.handleMergeSuccess\(.*$/gm)].map((m) => m[0]);
+    const daemonDir = join(import.meta.dir, "..", "src", "daemon");
+    // call sites moved into runner/ with the conflict-resolution and merge-stage extractions
+    const src = ["agent-runner.ts", "runner/merge-stage.ts", "runner/conflict-resolution.ts", "runner/conflict-tiers.ts"]
+      .map((f) => readFileSync(join(daemonDir, f), "utf-8"))
+      .join("\n");
+    const calls = [...src.matchAll(/^.*(?:this|ctx)\.handleMergeSuccess\(.*$/gm)].map((m) => m[0]);
     expect(calls.length).toBeGreaterThanOrEqual(6);
-    for (const line of calls) expect(line).toContain("await this.handleMergeSuccess(");
+    for (const line of calls) expect(line).toMatch(/await (this|ctx)\.handleMergeSuccess\(/);
     // merges are always captured through the SHA-recording helper
     expect(src.match(/await mergeBranch\(/g)).toHaveLength(1);
   });

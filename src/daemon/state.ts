@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { resolve } from "node:path";
 import { WOMBO_DIR } from "../config";
+import { mayRestart, dropRestartTracker } from "./runner/restart-policy";
 import type { AgentStatus } from "./agent-status";
 import type { AgentAnalyticsRecord } from "../lib/analytics";
 import type {
@@ -50,6 +51,12 @@ export interface InternalAgentState extends DaemonAgentState {
    * can only be partial. Never sent to clients.
    */
   analyticsUnmonitored?: boolean;
+  /**
+   * Internal: pending retry feedback (review findings) for the next attempt.
+   * Persisted so it survives daemon restarts; cleared once a relaunch
+   * succeeds. Never sent to clients. Absent on state from older daemons.
+   */
+  retryFeedback?: string;
 }
 
 /** Extra context passed to internal status observers. */
@@ -502,6 +509,7 @@ export class DaemonState {
 
   /** Remove an agent from tracking. */
   removeAgent(featureId: string): void {
+    dropRestartTracker(featureId);
     const agent = this.agents.get(featureId);
     if (agent) this.notifyRemoval(agent, "remove");
     this.agents.delete(featureId);
@@ -532,7 +540,7 @@ export class DaemonState {
   retryAgent(featureId: string): boolean {
     const agent = this.agents.get(featureId);
     if (!agent) return false;
-    if (agent.retries >= agent.maxRetries) return false;
+    if (!mayRestart(agent)) return false;
 
     agent.retries++;
     agent.error = null;
@@ -622,6 +630,7 @@ export class DaemonState {
       mergeQueuePosition: _mergeQueuePosition,
       analytics: _analytics,
       analyticsUnmonitored: _analyticsUnmonitored,
+      retryFeedback: _retryFeedback,
       ...clientState
     } = agent;
     return clientState;
