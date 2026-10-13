@@ -5,13 +5,13 @@ description: "Seen 2026-10-13: Claude Code returned 'You have hit your weekly li
   code 1'. Detect usage or rate limit results in the harness normalizers (claude-code first, then codex, gemini,
   opencode), pause the scheduler without consuming retries, raise a Needs you alert with the reset time, and resume
   automatically after it. Failed agents must show the real reason, not the exit code."
-status: backlog
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT2H
-started_at: null
+started_at: 2026-10-13T02:29:34.449Z
 ended_at: null
 constraints: []
 forbidden: []
