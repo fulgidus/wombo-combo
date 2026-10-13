@@ -19,7 +19,7 @@ goal: |
     today's behaviour.
   Acceptance: scheduler and daemon tests pass. New tests cover escalation
   and recovery after a simulated daemon crash.
-status: paused
+status: active
 priority: medium
 difficulty: very_hard
 depends_on:
@@ -38,7 +38,7 @@ constraints:
     - Do not break the pinned-concurrency behaviour covered by existing scheduler specs
   override: {}
 created_at: 2026-10-12T08:40:26.209Z
-updated_at: 2026-10-12T15:56:41.499Z
+updated_at: 2026-10-13T02:28:11.193Z
 started_at: 2026-10-12T15:56:35.432Z
 ended_at: null
 notes:
