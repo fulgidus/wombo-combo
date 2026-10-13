@@ -11,12 +11,12 @@
  * - Build verification and tiered merge conflict resolution
  * - Retry logic with session reuse
  * - Chain predecessor rescue on failure
- * - Merge serialization via enqueueMerge
+ * - Merge serialization via the merge stage's MergeQueue
  * - Dead process reaping
  */
 
 import { execSync, spawnSync } from "node:child_process";
-import { normalizeCommentsConfig, normalizePostMergeConfig, normalizeReviewConfig, type ReviewConfig, replayRetentionOptions, type WomboConfig } from "../config";
+import { normalizeCommentsConfig, normalizeReviewConfig, type ReviewConfig, replayRetentionOptions, type WomboConfig } from "../config";
 import type { Task, Feature, FeaturesFile } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
@@ -32,21 +32,12 @@ import {
   type QuestPromptContext,
 } from "../lib/prompt";
 import { runBuild, runFullVerification } from "../lib/verifier";
-import {
-  mergeBranch,
-  enqueueMerge,
-  canMerge,
-  pushBaseBranch,
-  type MergeResult,
-} from "../lib/merger";
-import { computeOperationId, runPostMerge, type PostMergeDeps } from "../lib/post-merge";
+import { pushBaseBranch } from "../lib/merger";
+import { runPostMerge, type PostMergeDeps } from "../lib/post-merge";
 import { verificationSummaryFromResult } from "../lib/merge-report";
-import type {
-  MergeReportTask,
-  PostMergeResult,
-  VerificationSummary,
-} from "../lib/post-merge-types";
-import { handleMergeConflict, runSafeCmd, type ConflictResolverContext } from "./runner/conflict-resolution";
+import type { VerificationSummary } from "../lib/post-merge-types";
+import { handleMergeConflict, type ConflictResolverContext } from "./runner/conflict-resolution";
+import { MergeStage } from "./runner/merge-stage";
 import { buildDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
 import { prepareAgentDefinitions, writeAgentToWorktree, isSpecializedAgent } from "../lib/agent-registry";
 import { resolveQuestConfig, applyQuestConstraintsToTask, getQuestTaskIds } from "../lib/quest";
@@ -140,8 +131,8 @@ export class AgentRunner {
   private runPostMergeFn: typeof runPostMerge;
   private pushBaseFn: typeof pushBaseBranch;
 
-  /** Destination-branch tip captured just before each merge, keyed by feature ID. */
-  private mergeBefore = new Map<string, string | null>();
+  /** Merge pipeline (serialized through one MergeQueue). */
+  private readonly mergeStage: MergeStage;
 
   /** Review rounds already started per task (review gate) */
   private reviewRounds = new Map<string, number>();
@@ -173,6 +164,21 @@ export class AgentRunner {
       waveId: opts.sessionId ?? `runner-${new Date().toISOString().replace(/[:.]/g, "-")}`,
       onDiagnostic: (message) =>
         state.emit("evt:log", { level: "warn", message: `[analytics] ${message}` }),
+    });
+    this.mergeStage = new MergeStage({
+      projectRoot: this.projectRoot,
+      config: this.config,
+      state,
+      analytics: this.analytics,
+      // Resolved lazily: tests swap these on the runner after construction.
+      postMergeDeps: () => this.postMergeDeps,
+      runPostMerge: (input, deps) => this.runPostMergeFn(input, deps),
+      pushBaseBranch: (root, branch, cfg) => this.pushBaseFn(root, branch, cfg),
+      autoPush: () => this.autoPush,
+      loadTask: (id) => this.loadTask(id),
+      getChainPredecessors: (agent) => this.getChainPredecessors(agent),
+      markFeatureDone: (id, base, skip) => this.markFeatureDone(id, base, skip),
+      handleMergeConflict: (id, task, err) => this.handleMergeConflict(id, task, err),
     });
 
     this.replay = new ReplayRecorder({
@@ -951,280 +957,11 @@ export class AgentRunner {
   }
 
   // -------------------------------------------------------------------------
-  // Merge
+  // Merge — see runner/merge-stage (serialized behind one MergeQueue)
   // -------------------------------------------------------------------------
 
-  private async attemptMerge(featureId: string): Promise<void> {
-    const agent = this.state.getAgent(featureId);
-    if (!agent) return;
-
-    await enqueueMerge(async () => {
-      this.state.updateAgentActivity(featureId, "Merging...");
-
-      try {
-        // Pre-flight check
-        const mergeCheck = await canMerge(
-          this.projectRoot,
-          agent.branch,
-          agent.baseBranch
-        );
-
-        if (!mergeCheck.canMerge) {
-          // Merge conflicts detected — enter tiered resolution
-          this.state.updateAgentStatus(
-            featureId,
-            "resolving_conflict",
-            "Merge conflicts detected"
-          );
-
-          const feature = this.loadTask(featureId);
-          if (!feature) {
-            this.state.updateAgentStatus(featureId, "failed", "Task not found for conflict resolution");
-            return;
-          }
-
-          await this.handleMergeConflict(
-            featureId,
-            feature,
-            mergeCheck.reason ?? "merge conflicts"
-          );
-          return;
-        }
-
-        const mergeResult = await this.mergeIntoBase(
-          featureId,
-          agent.branch,
-          agent.baseBranch
-        );
-
-        if (mergeResult.success) {
-          await this.handleMergeSuccess(featureId, mergeResult.commitHash, "MERGED");
-        } else {
-          // Direct merge failed unexpectedly (canMerge said OK but merge failed)
-          const feature = this.loadTask(featureId);
-          if (feature) {
-            await this.handleMergeConflict(
-              featureId,
-              feature,
-              mergeResult.error ?? "merge failed"
-            );
-          } else {
-            this.state.updateAgentStatus(featureId, "failed", `Merge error: ${mergeResult.error}`);
-            this.state.updateAgent(featureId, { error: mergeResult.error ?? "merge failed" });
-          }
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.state.updateAgentStatus(featureId, "failed", `Merge error: ${msg}`);
-        this.state.updateAgent(featureId, { error: msg });
-        this.state.emit("evt:merge-result", {
-          featureId,
-          success: false,
-          error: msg,
-        });
-      }
-    });
-  }
-
-  // -------------------------------------------------------------------------
-  // Merge success
-  // -------------------------------------------------------------------------
-
-  /**
-   * Merge a feature branch into its base, remembering the base tip taken just
-   * before the merge so post-merge reporting has explicit before/after SHAs.
-   * Runs inside the caller's enqueueMerge section (never acquires the queue).
-   */
-  private async mergeIntoBase(
-    featureId: string,
-    branch: string,
-    baseBranch: string
-  ): Promise<MergeResult> {
-    const before = await runSafeCmd(`git rev-parse --verify "refs/heads/${baseBranch}"`, this.projectRoot);
-    const result = await mergeBranch(this.projectRoot, branch, baseBranch, this.config);
-    if (result.success) {
-      this.mergeBefore.set(featureId, before.ok ? before.output.trim() : null);
-    }
-    return result;
-  }
-
-  /**
-   * Handle a successful merge: mark merged, promote chain predecessors,
-   * mark tasks done, clean up worktrees and branches, then run post-merge
-   * publication (changelog / PR / explicitly requested push).
-   *
-   * Every successful merge path (direct merge and all conflict-escalation
-   * tiers) funnels through here and awaits it, inside the serialized merge
-   * lifecycle. Publication problems never change the agent's merged state.
-   */
-  private async handleMergeSuccess(
-    featureId: string,
-    commitHash: string | null,
-    label: string
-  ): Promise<void> {
-    const agent = this.state.getAgent(featureId);
-    if (!agent) return;
-
-    // Capture publication evidence BEFORE cleanup deletes branches/worktrees.
-    const chainPredecessors = this.getChainPredecessors(agent);
-    const reportTasks: MergeReportTask[] = [
-      { id: agent.featureId, title: agent.taskTitle, verification: this.evidenceFor(agent) },
-      ...chainPredecessors
-        .filter((p) => p.status === "verified")
-        .map((p) => ({ id: p.featureId, title: p.taskTitle, verification: this.evidenceFor(p) })),
-    ];
-    const beforeSha = this.mergeBefore.get(featureId) ?? null;
-    this.mergeBefore.delete(featureId);
-    const destination = agent.baseBranch;
-    // Persist a best-effort diff (only if none was captured at verification)
-    // before the worktree and branches are cleaned up below.
-    this.analytics.captureBestEffort(featureId);
-
-    this.state.updateAgentStatus(featureId, "merged", `${label} (${commitHash?.slice(0, 7)})`);
-    this.state.updateAgent(featureId, {
-      completedAt: new Date().toISOString(),
-      mergeCommitHash: commitHash,
-    });
-    this.state.emit("evt:merge-result", { featureId, success: true });
-
-    // Mark the task as done on disk
-    this.markFeatureDone(featureId, agent.baseBranch);
-
-    // Walk back the chain and mark all deferred predecessors as merged.
-    // Their work was carried forward through branch continuity and is now
-    // included in the terminal merge — no separate merge needed.
-    for (const predAgent of chainPredecessors) {
-      if (predAgent.status === "verified") {
-        this.state.updateAgentStatus(
-          predAgent.featureId,
-          "merged",
-          `MERGED (via chain terminal ${featureId})`
-        );
-        this.state.updateAgent(predAgent.featureId, {
-          completedAt: new Date().toISOString(),
-          mergeCommitHash: commitHash,
-        });
-        this.markFeatureDone(predAgent.featureId, predAgent.baseBranch, true);
-
-        // Clean up predecessor branch — its commits are now reachable via
-        // the terminal branch's merge into base.
-        try {
-          execSync(`git branch -D "${predAgent.branch}"`, {
-            cwd: this.projectRoot,
-            stdio: "pipe",
-          });
-        } catch {
-          // Branch may already be gone
-        }
-      }
-    }
-
-    // Clean up worktree — but preserve it if downstream agents in the same
-    // chain share this worktree (scheduler flag or live state scan).
-    const hasChainSuccessor =
-      agent.hasChainSuccessor === true ||
-      agent.dependedOnBy.some((depId) => {
-        const depAgent = this.state.getAgent(depId);
-        return depAgent && depAgent.worktree === agent.worktree;
-      });
-
-    if (!hasChainSuccessor) {
-      try {
-        removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree, deleteBranch: true });
-      } catch {
-        // Stale worktrees waste disk space but aren't fatal
-      }
-    }
-
-    await this.publishAfterMerge(featureId, destination, beforeSha, commitHash, reportTasks);
-  }
-
-  /** Persisted evidence for the report; legacy records only know the build. */
-  private evidenceFor(agent: InternalAgentState): VerificationSummary {
-    if (agent.verification) return agent.verification;
-    const b = agent.buildPassed;
-    return { build: { status: b === true ? "passed" : b === false ? "failed" : "unknown" } };
-  }
-
-  private log(level: "info" | "warn" | "error", message: string): void {
-    this.state.emit("evt:log", { level, message });
-  }
-
-  /**
-   * Post-merge publication: changelog + (open/draft) push and PR via the
-   * shared coordinator, then the explicitly requested auto-push when the
-   * coordinator did not already own the push. Never throws.
-   */
-  private async publishAfterMerge(
-    featureId: string,
-    destination: string,
-    beforeSha: string | null,
-    afterSha: string | null,
-    tasks: MergeReportTask[]
-  ): Promise<void> {
-    const pm = normalizePostMergeConfig(this.config.postMerge);
-    let published: PostMergeResult | null = null;
-
-    try {
-      let before = beforeSha;
-      if (!before && afterSha) {
-        // Fallback: first parent of the merge commit
-        const parent = await runSafeCmd(`git rev-parse --verify "${afterSha}^1"`, this.projectRoot);
-        before = parent.ok ? parent.output.trim() : null;
-      }
-      if (afterSha && before && before !== afterSha) {
-        published = await this.runPostMergeFn(
-          {
-            projectRoot: this.projectRoot,
-            config: this.config,
-            operation: {
-              operationId: computeOperationId(destination, before, afterSha),
-              destinationBranch: destination,
-              beforeSha: before,
-              afterSha,
-              tasks,
-            },
-            mergeSucceeded: true,
-          },
-          this.postMergeDeps
-        );
-        this.logPublication(featureId, destination, published);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.log("warn", `Post-merge publication for ${featureId} failed: ${msg}`);
-    }
-
-    // Explicitly requested auto-push. In open/draft mode the coordinator owns
-    // the awaited push, so only push here when it did not attempt one.
-    if (this.autoPush) {
-      const coordinatorOwnedPush =
-        pm.prMode !== "skip" &&
-        published !== null &&
-        (published.push.status === "pushed" || published.push.status === "failed");
-      if (!coordinatorOwnedPush) {
-        try {
-          const ok = await this.pushBaseFn(this.projectRoot, destination, this.config);
-          if (!ok) {
-            this.log("warn", `Auto-push of ${destination} to ${this.config.git.remote} failed`);
-          } else {
-            this.log("info", `Auto-pushed ${destination} to ${this.config.git.remote}`);
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.log("warn", `Auto-push of ${destination} failed: ${msg}`);
-        }
-      }
-    }
-  }
-
-  private logPublication(featureId: string, destination: string, r: PostMergeResult): void {
-    const pr = r.pr.url ? `${r.pr.status} ${r.pr.url}` : r.pr.status;
-    this.log(
-      "info",
-      `Post-merge ${featureId} (${destination}): changelog ${r.changelog.status}, push ${r.push.status}, PR ${pr}`
-    );
-    for (const w of r.warnings) this.log("warn", `Post-merge ${featureId}: ${w}`);
+  private attemptMerge(featureId: string): Promise<void> {
+    return this.mergeStage.attemptMerge(featureId);
   }
 
   /**
@@ -1305,8 +1042,8 @@ export class AgentRunner {
       state: this.state,
       analytics: this.analytics,
       trackedBuild: this.trackedBuild.bind(this),
-      mergeIntoBase: this.mergeIntoBase.bind(this),
-      handleMergeSuccess: this.handleMergeSuccess.bind(this),
+      mergeIntoBase: (id, branch, base) => this.mergeStage.mergeIntoBase(id, branch, base),
+      handleMergeSuccess: (id, hash, label) => this.mergeStage.handleMergeSuccess(id, hash, label),
       buildQuestContext: this.buildQuestContext.bind(this),
       conflictRoute: this.conflictRoute.bind(this),
     };

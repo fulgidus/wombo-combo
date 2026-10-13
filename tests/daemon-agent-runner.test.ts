@@ -757,8 +757,8 @@ describe("AgentRunner post-merge publication", () => {
 
   test("every handleMergeSuccess call site awaits it (normal path and all escalation tiers)", () => {
     const daemonDir = join(import.meta.dir, "..", "src", "daemon");
-    // call sites moved into runner/ with the conflict-resolution extraction (ctx.handleMergeSuccess)
-    const src = ["agent-runner.ts", "runner/conflict-resolution.ts", "runner/conflict-tiers.ts"]
+    // call sites moved into runner/ with the conflict-resolution and merge-stage extractions
+    const src = ["agent-runner.ts", "runner/merge-stage.ts", "runner/conflict-resolution.ts", "runner/conflict-tiers.ts"]
       .map((f) => readFileSync(join(daemonDir, f), "utf-8"))
       .join("\n");
     const calls = [...src.matchAll(/^.*(?:this|ctx)\.handleMergeSuccess\(.*$/gm)].map((m) => m[0]);
