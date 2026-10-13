@@ -343,7 +343,7 @@ export interface DaemonAgentState {
   model?: string | null;
   /** Agent profile that runs this task ("default" = legacy agent.bin path); absent in older state files */
   profile?: string | null;
-  /** Harness of that profile (opencode, claude-code, codex, gemini, pi, custom) */
+  /** Harness of that profile (opencode, claude-code, codex, gemini, antigravity, pi, custom) */
   harness?: string | null;
   dependsOn: string[];
   dependedOnBy: string[];

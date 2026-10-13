@@ -68,3 +68,14 @@ describe("profile model fields", () => {
     expect(matchModels("opencode", models, "")).toEqual(models);
   });
 });
+
+describe("antigravity models", () => {
+  test("parses `agy models` output, skipping the progress line", async () => {
+    const { parseAntigravityModels } = await import("../src/lib/harness/models");
+    const out = "Fetching available models...\ngemini-3.8-flash-low\tGemini 3.8 Flash (Low)\nclaude-sonnet-4-6\tClaude Sonnet 4.6 (Thinking)\n";
+    expect(parseAntigravityModels(out)).toEqual([
+      { provider: null, model: "gemini-3.8-flash-low" },
+      { provider: null, model: "claude-sonnet-4-6" },
+    ]);
+  });
+});

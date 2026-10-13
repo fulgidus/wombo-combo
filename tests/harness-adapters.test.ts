@@ -227,3 +227,42 @@ describe("gemini adapter", () => {
     expect(events.some((e) => e.type === "step_finish")).toBe(false);
   });
 });
+
+describe("antigravity adapter", () => {
+  const h = getHarness("antigravity");
+
+  test("command: stream-json accept-edits, prompt is the value of --print", () => {
+    const cmd = h.buildLaunch({ ...base, model: "gemini-3.8-flash-low" });
+    expect(cmd.args).toEqual([
+      "--output-format", "stream-json", "--mode", "accept-edits", "--model", "gemini-3.8-flash-low", "--print",
+    ]);
+    expect(cmd.promptVia).toBe("arg");
+    expect(h.defaultBin).toBe("agy");
+  });
+
+  test("resume uses --conversation", () => {
+    const cmd = h.buildResume({ ...base, sessionId: "c-1" });
+    expect(cmd.args).toContain("--conversation");
+    expect(cmd.args[cmd.args.indexOf("--conversation") + 1]).toBe("c-1");
+  });
+
+  test("normalizes a real agy 1.3.2 stream", () => {
+    const events = run("antigravity", "antigravity.jsonl");
+    expect(events[0]).toMatchObject({ type: "step_start", sessionID: "dcdc263e-c119-4c4a-b832-ada13aa84a82" });
+    const tools = events.filter((e) => e.type === "tool_use");
+    expect(tools.map((t) => [t.part!.tool, t.part!.state!.status])).toEqual([["read", "completed"]]);
+    expect(tools[0].part!.state!.input!.filePath).toContain("a.txt");
+    expect(events.filter((e) => e.type === "text").map((e) => e.part!.text)).toEqual(["hello"]);
+    const finish = events.at(-1)!;
+    expect(finish.part).toMatchObject({ reason: "stop" });
+    expect(finish.part!.tokens).toMatchObject({ input: 23988, output: 102 });
+    expect(parseEvents(normalizeOutput(fixture("antigravity.jsonl"), h)).completed).toBe(true);
+  });
+
+  test("a non-SUCCESS result is an error and not a completion", () => {
+    const n = h.createNormalizer();
+    const out = n(JSON.stringify({ event: "result", result: { status: "ERROR", response: "quota exceeded" } }));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ type: "error" });
+  });
+});

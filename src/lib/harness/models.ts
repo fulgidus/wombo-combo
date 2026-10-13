@@ -2,7 +2,7 @@
  * models.ts — Which models can a harness run?
  *
  * Multi-provider harnesses (opencode, pi) are asked directly: their CLIs list
- * every model they can reach. Vendor harnesses (claude-code, codex, gemini)
+ * every model they can reach (opencode, pi, antigravity). Vendor harnesses (claude-code, codex, gemini)
  * have no listing command, so they propose their own vendor's models from a
  * built-in list. `custom` proposes nothing; the user types a model.
  */
@@ -41,6 +41,7 @@ export const BUILTIN_MODELS: Partial<Record<HarnessId, HarnessModel[]>> = {
 /** Harnesses whose CLI is asked for the model list, with the command to run. */
 const LIST_COMMANDS: Partial<Record<HarnessId, string[]>> = {
   opencode: ["models"],
+  antigravity: ["models"],
   pi: ["--list-models"],
 };
 
@@ -67,8 +68,19 @@ export function parsePiModels(out: string): HarnessModel[] {
   return models;
 }
 
+/** agy prints `id<TAB>Label` per model after a "Fetching…" line. */
+export function parseAntigravityModels(out: string): HarnessModel[] {
+  const models: HarnessModel[] = [];
+  for (const raw of out.split("\n")) {
+    const [id] = raw.split("\t");
+    if (raw.includes("\t") && id && !/\s/.test(id)) models.push({ provider: null, model: id });
+  }
+  return models;
+}
+
 const PARSERS: Partial<Record<HarnessId, (out: string) => HarnessModel[]>> = {
   opencode: parseOpencodeModels,
+  antigravity: parseAntigravityModels,
   pi: parsePiModels,
 };
 

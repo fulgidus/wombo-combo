@@ -1,6 +1,9 @@
 /**
  * gemini.ts — Google Gemini CLI harness adapter.
  *
+ * DEPRECATED: Google replaced the Gemini CLI with Antigravity (`agy`); use the
+ * `antigravity` harness. Kept so existing profiles keep working.
+ *
  * Command: `gemini --output-format stream-json --yolo [-m MODEL] [extra args] PROMPT`.
  * The prompt is the positional argument (or piped on stdin when large). Gemini
  * has no provider flag (always Google) and no resume flag wired here, so a

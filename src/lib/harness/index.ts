@@ -9,6 +9,7 @@ import { opencodeHarness } from "./opencode";
 import { claudeCodeHarness } from "./claude-code";
 import { codexHarness } from "./codex";
 import { geminiHarness } from "./gemini";
+import { antigravityHarness } from "./antigravity";
 import { piHarness } from "./pi";
 import { customHarness } from "./custom";
 
@@ -21,6 +22,7 @@ const REGISTRY = new Map<HarnessId, HarnessAdapter>([
   ["claude-code", claudeCodeHarness],
   ["codex", codexHarness],
   ["gemini", geminiHarness],
+  ["antigravity", antigravityHarness],
   ["pi", piHarness],
   ["custom", customHarness],
 ]);
@@ -46,6 +48,7 @@ export function detectHarnessFromBin(binPath: string): HarnessId {
   if (name.startsWith("opencode")) return "opencode";
   if (name.startsWith("claude")) return "claude-code";
   if (name === "codex" || name.startsWith("codex-")) return "codex";
+  if (name === "agy" || name === "antigravity-cli") return "antigravity";
   if (name === "gemini" || name.startsWith("gemini-")) return "gemini";
   if (name === "pi") return "pi";
   return "opencode";

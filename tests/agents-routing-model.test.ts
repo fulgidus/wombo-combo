@@ -30,9 +30,9 @@ describe("harness cost capability", () => {
 describe("harnessRows", () => {
   const probes = { binExists: (b: string) => b === "pi" || b === "opencode" };
 
-  test("lists all six harnesses with pi first-class", () => {
+  test("lists all seven harnesses with pi first-class", () => {
     const rows = harnessRows(base(), probes);
-    expect(rows.map((r) => r.id).sort()).toEqual(["claude-code", "codex", "custom", "gemini", "opencode", "pi"]);
+    expect(rows.map((r) => r.id).sort()).toEqual(["antigravity", "claude-code", "codex", "custom", "gemini", "opencode", "pi"]);
     expect(rows.find((r) => r.id === "pi")!.onPath).toBe(true);
     expect(rows.find((r) => r.id === "codex")!.onPath).toBe(false);
     expect(rows.find((r) => r.id === "pi")!.reportsCost).toBe(true);

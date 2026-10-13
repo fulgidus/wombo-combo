@@ -304,6 +304,7 @@ export const REPLAY_NORMALIZERS: Record<HarnessId, (event: OpenCodeEvent) => Rep
   "claude-code": normalizeOpenCodeEvent,
   codex: normalizeOpenCodeEvent,
   gemini: normalizeOpenCodeEvent,
+  antigravity: normalizeOpenCodeEvent,
   pi: normalizeOpenCodeEvent,
   custom: normalizeOpenCodeEvent,
 };
