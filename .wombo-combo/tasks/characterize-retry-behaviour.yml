@@ -33,13 +33,13 @@ description: |
   Tests describe CURRENT behaviour; if you find behaviour that looks like a
   bug, encode it as-is and add a comment plus a tracking task via
   `bun dev tasks add` (do not silently work around it).
-status: planned
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H30M
-started_at: 2026-10-12T16:10:13.014Z
+started_at: 2026-10-13T00:21:24.296Z
 ended_at: null
 constraints:
   - "Tests only: no production source changes"

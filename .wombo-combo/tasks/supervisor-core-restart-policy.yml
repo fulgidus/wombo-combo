@@ -27,14 +27,14 @@ description: |
   restarts, crash restarts up to maxRestarts then gives up, maxRestarts 0
   gives up immediately, rehydration from an initial count, shutdown hook runs
   once and is idempotent, shutdown error is contained.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:10:12.924Z
-ended_at: null
+started_at: 2026-10-13T00:21:24.101Z
+ended_at: 2026-10-13T00:24:22.461Z
 constraints:
   - "Pure module: no imports from src/daemon or src/lib/worktree"
   - No new dependencies
