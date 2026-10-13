@@ -192,7 +192,7 @@ export class AgentRunner {
     this.shutdown = new AgentShutdown({
       projectRoot: this.projectRoot,
       state,
-      killProcess: (id) => this.monitor.remove(id),
+      killProcess: (id) => { this.spawnMonitor.untrack(id); this.monitor.remove(id); },
       captureAnalytics: (id) => this.analytics.captureBestEffort(id),
       resetTaskToPlanned: (id) => this.resetTaskToPlanned(id),
     });
@@ -652,6 +652,7 @@ export class AgentRunner {
     // processes cannot alter their snapshots.
     this.analytics.interruptAll("killed");
     this.replay.interruptAll("killed");
+    this.spawnMonitor.dispose();
     this.monitor.killAll();
     // Wait for processes to actually die
     await this.monitor.waitAll(500);
@@ -886,6 +887,7 @@ export class AgentRunner {
     for (const agent of this.state.getAllAgents()) {
       void this.shutdown.shutdown(agent.featureId, { phase: "destroy" });
     }
+    this.spawnMonitor.dispose();
     this.monitor.killAll();
     this.launchQueue = [];
   }

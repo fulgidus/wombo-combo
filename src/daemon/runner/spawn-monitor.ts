@@ -30,7 +30,10 @@ import { loadTestBaseline, type TestBaseline } from "../../lib/test-baseline";
 import { normalizeHarnessEvent } from "../../lib/replay";
 import { recentComments } from "../../lib/comments";
 import type { UsageRecord } from "../../lib/token-collector";
+import type { ExitReason } from "../../lib/supervisor-core";
 import type { DaemonState } from "../state";
+import type { Clock } from "../../lib/supervision/clock";
+import { createHangWatchdog, type HangWatchdog } from "./hang-watchdog";
 import type { AnalyticsTracker } from "../analytics-tracker";
 import type { ReplayRecorder } from "../replay-recorder";
 import { resolveAgentRoute, selectRoute } from "./routes";
@@ -55,10 +58,33 @@ export interface SpawnMonitorDeps {
   rescueChainPredecessors(featureId: string): void;
   /** Shutdown hook for an agent the restart policy gave up on (keeps its worktree). */
   giveUp?(featureId: string): void;
+  /** Time source for the hang watchdog (tests inject a fake clock). */
+  clock?: Clock;
 }
 
 export class SpawnMonitorStage {
-  constructor(private readonly deps: SpawnMonitorDeps) {}
+  private readonly watchdog: HangWatchdog;
+
+  constructor(private readonly deps: SpawnMonitorDeps) {
+    this.watchdog = createHangWatchdog({
+      idleTimeoutMs: deps.config.defaults.agentIdleTimeoutMs,
+      clock: deps.clock,
+      kill: (id) => this.deps.monitor().remove(id),
+      isPaused: (id) => (this.deps.state.getAgent(id)?.pendingQuestions.length ?? 0) > 0,
+      onHang: (id, reason) =>
+        this.onProcessFailed(id, `Agent hung: no activity for ${Math.round(reason.idleMs / 1000)}s`, reason),
+    });
+  }
+
+  /** Stop watching one agent for hangs (its process was stopped on purpose). */
+  untrack(featureId: string): void {
+    this.watchdog.untrack(featureId);
+  }
+
+  /** Stop all hang watches (runner teardown). */
+  dispose(): void {
+    this.watchdog.dispose();
+  }
 
   // -------------------------------------------------------------------------
   // Monitor callbacks
@@ -82,6 +108,7 @@ export class SpawnMonitorStage {
       },
 
       onComplete: (featureId) => {
+        this.watchdog.untrack(featureId);
         state.updateAgentStatus(featureId, "completed", "Agent process exited cleanly");
 
         // Fire-and-forget build verification → merge pipeline
@@ -93,9 +120,13 @@ export class SpawnMonitorStage {
         });
       },
 
-      onError: (featureId, error) => this.onProcessFailed(featureId, error),
+      onError: (featureId, error) => {
+        this.watchdog.untrack(featureId);
+        this.onProcessFailed(featureId, error);
+      },
 
       onEvent: (featureId, event) => {
+        this.watchdog.touch(featureId);
         // Harness-specific normalization happens here only; the recorder
         // stores harness-neutral events.
         const normalized = normalizeHarnessEvent(state.getAgent(featureId)?.harness, event);
@@ -103,10 +134,12 @@ export class SpawnMonitorStage {
       },
 
       onActivity: (featureId, activity) => {
+        this.watchdog.touch(featureId);
         state.updateAgentActivity(featureId, activity);
       },
 
       onOutput: (featureId, data) => {
+        this.watchdog.touch(featureId);
         state.emit("evt:agent-output", { featureId, data });
       },
 
@@ -153,7 +186,7 @@ export class SpawnMonitorStage {
    * The monitored process failed (crash, hang, abnormal exit): retry while the
    * counter allows, otherwise fail the agent and unblock its chain.
    */
-  onProcessFailed(featureId: string, error: string): void {
+  onProcessFailed(featureId: string, error: string, reason?: ExitReason): void {
     onProcessFailed(
       {
         state: this.deps.state,
@@ -163,6 +196,7 @@ export class SpawnMonitorStage {
       },
       featureId,
       error,
+      reason,
     );
   }
 
@@ -345,6 +379,7 @@ export class SpawnMonitorStage {
       // carries quest/model, then register with the monitor.
       this.registerUsageContext(featureId, result.route);
       this.deps.monitor().addProcess(featureId, result.process, { normalize: result.normalize });
+      this.watchdog.track(featureId);
 
       state.emit("evt:task-picked", {
         taskId: featureId,
@@ -414,6 +449,7 @@ export class SpawnMonitorStage {
       replay.recordAttempt(featureId, "retry", agent.error ?? "Previous attempt failed");
       this.registerUsageContext(featureId, result.route);
       this.deps.monitor().addProcess(featureId, result.process, { normalize: result.normalize });
+      this.watchdog.track(featureId);
     } catch {
       // Retry launch failed — queue for fresh launch
       state.updateAgentStatus(featureId, "queued", "Retry launch failed, re-queuing");

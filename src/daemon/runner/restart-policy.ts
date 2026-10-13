@@ -69,10 +69,15 @@ export interface RestartOutcomeContext {
 }
 
 /** Agent process crashed or hung: restart under the policy or fail it. */
-export function onProcessFailed(ctx: RestartOutcomeContext, featureId: string, error: string): void {
+export function onProcessFailed(
+  ctx: RestartOutcomeContext,
+  featureId: string,
+  error: string,
+  reason: ExitReason = { kind: "crash", error },
+): void {
   const agent = ctx.state.getAgent(featureId);
   if (!agent) return;
-  const decision = decideRestart(featureId, agent, { kind: "crash", error });
+  const decision = decideRestart(featureId, agent, reason);
   if (decision.action === "restart") {
     ctx.state.updateAgent(featureId, { retries: decision.attempt, error });
     // QUIRK (pinned by the characterization suite): `agent` is the live state
