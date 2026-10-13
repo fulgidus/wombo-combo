@@ -1,0 +1,19 @@
+id: daemon-multi-quest-scope
+title: A second launch replaces the daemon scheduler scope and strands the running quest
+description: "cmd:start with taskIds or questId calls scheduler.shutdown() and builds a new Scheduler limited to the new
+  scope (src/daemon/daemon.ts, handleStart). Launching quest B while quest A is running therefore stops scheduling A's
+  queued tasks. Make the scope additive: union the task ids and quest ids of overlapping launches, or run one scheduler
+  per quest, and refuse nothing silently. Add a test: launch A, launch B, assert A's queued tasks still start."
+status: backlog
+completion: 0
+difficulty: hard
+priority: high
+depends_on: []
+effort: PT3H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
