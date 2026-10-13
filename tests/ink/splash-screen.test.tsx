@@ -94,3 +94,12 @@ describe("SplashScreen rendering", () => {
     expect(output).toContain(SPLASH_TEXTS[0]);
   });
 });
+
+describe("countBrokenDeps", () => {
+  test("a dependency on an archived task is not broken; a missing one is", async () => {
+    const { countBrokenDeps } = await import("../../src/ink/splash-screen");
+    const known = new Set(["a", "archived-1"]);
+    expect(countBrokenDeps([{ depends_on: ["archived-1"] }, { depends_on: ["a"] }, {}], known)).toBe(0);
+    expect(countBrokenDeps([{ depends_on: ["ghost", "a"] }], known)).toBe(1);
+  });
+});

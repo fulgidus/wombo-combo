@@ -27,6 +27,7 @@ import { resolve } from "node:path";
 import { WOMBO_DIR } from "../config";
 import type { WomboConfig } from "../config";
 import { loadTasks } from "../lib/tasks";
+import { loadArchiveFromStore } from "../lib/task-store";
 import { fetchNpmLatest, getLocalVersion, compareSemver } from "../commands/upgrade";
 import { useScreenInput } from "./esc-menu";
 import { useI18n, EN_STRINGS } from "./i18n";
@@ -36,6 +37,18 @@ import { useI18n, EN_STRINGS } from "./i18n";
 // ---------------------------------------------------------------------------
 
 /** Locale keys of the rotating taglines. */
+
+/** Count depends_on references that point at no known (active or archived) task. */
+export function countBrokenDeps(tasks: { depends_on?: string[] }[], knownIds: ReadonlySet<string>): number {
+  let broken = 0;
+  for (const task of tasks) {
+    for (const dep of task.depends_on ?? []) {
+      if (!knownIds.has(dep)) broken++;
+    }
+  }
+  return broken;
+}
+
 export const SPLASH_TEXT_KEYS: string[] = [
   "splash.text.nowFewerConflicts",
   "splash.text.parallel",
@@ -348,13 +361,11 @@ export function SplashScreen({
           const taskIds = new Set(allIds);
           const allTasks = collectAllTasks(tasks);
 
-          // Broken depends_on references
-          let brokenDeps = 0;
-          for (const task of allTasks) {
-            for (const dep of ((task as any).depends_on ?? [])) {
-              if (!taskIds.has(dep)) brokenDeps++;
-            }
-          }
+          // Finished tasks move to the archive; depending on one is not broken.
+          const knownIds = new Set(taskIds);
+          for (const archived of loadArchiveFromStore(projectRoot, config).tasks) knownIds.add(archived.id);
+
+          const brokenDeps = countBrokenDeps(allTasks, knownIds);
 
           // Duplicate IDs
           const duplicates = allIds.length - taskIds.size;
