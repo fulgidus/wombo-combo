@@ -56,6 +56,7 @@ import type { ReviewerOutput } from "../lib/review-runner";
 import { captureWorktreeDiff } from "../lib/replay-diff";
 import { runReviewGate, type ReviewGateContext, type ReviewStageDeps } from "./review-stage";
 import { FeedbackStore } from "./runner/feedback-store";
+import { onProcessFailed, mayRestart } from "./runner/restart-policy";
 import { handleBuildVerification, trackedBuild, type VerifyStageContext } from "./runner/verify-stage";
 import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
 import type { UsageRecord } from "../lib/token-collector";
@@ -295,28 +296,15 @@ export class AgentRunner {
       },
 
       onError: (featureId, error) => {
-        const agent = this.state.getAgent(featureId);
-        if (!agent) return;
-
-        if (agent.retries < agent.maxRetries) {
-          // Retry
-          this.state.updateAgent(featureId, {
-            retries: agent.retries + 1,
-            error,
-          });
-          this.state.updateAgentStatus(
-            featureId,
-            "retry",
-            `Retry ${agent.retries + 1}/${agent.maxRetries}: ${error}`
-          );
-          this.handleRetry(featureId);
-        } else {
-          // Final failure
-          this.state.updateAgentStatus(featureId, "failed", error);
-          this.state.updateAgent(featureId, { error });
-          this.state.cancelDownstream(featureId);
-          this.rescueChainPredecessors(featureId);
-        }
+        onProcessFailed(
+          {
+            state: this.state,
+            handleRetry: this.handleRetry.bind(this),
+            rescueChainPredecessors: this.rescueChainPredecessors.bind(this),
+          },
+          featureId,
+          error,
+        );
       },
 
       onEvent: (featureId, event) => {
@@ -1121,7 +1109,7 @@ export class AgentRunner {
     // Safety net: agents stuck in "retry" with no process
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
-        if (agent.retries >= agent.maxRetries) {
+        if (!mayRestart(agent)) {
           this.analytics.captureBestEffort(agent.featureId);
           this.resetTaskToPlanned(agent.featureId);
           if (agent.worktree) {
