@@ -123,7 +123,7 @@ export class AgentRunner {
   /** Review rounds already started per task (review gate) */
   private reviewRounds = new Map<string, number>();
   /** Findings to hand to the implementing agent on its next retry */
-  private reviewFeedback = new FeedbackStore();
+  private reviewFeedback: FeedbackStore;
   private readonly runReviewerFn?: (prompt: string, featureId: string) => Promise<ReviewerOutput>;
   private readonly captureReviewDiffFn: ReviewStageDeps["captureDiff"];
 
@@ -138,6 +138,7 @@ export class AgentRunner {
     this.projectRoot = opts.projectRoot;
     this.config = opts.config;
     this.state = state;
+    this.reviewFeedback = new FeedbackStore(state);
     this.postMergeDeps = opts.postMergeDeps;
     this.runPostMergeFn = opts.overrides?.runPostMerge ?? runPostMerge;
     this.pushBaseFn = opts.overrides?.pushBaseBranch ?? pushBaseBranch;
