@@ -16,7 +16,7 @@ goal: |
   Acceptance: the existing agent-runner and daemon tests pass unchanged.
   New tests cover crash, hang, and exhausted restart intensity ending in a
   failed agent state.
-status: active
+status: completed
 priority: medium
 difficulty: very_hard
 depends_on:
@@ -35,9 +35,9 @@ constraints:
     - Do not drop the merge, verify or tiered conflict-resolution behaviour
   override: {}
 created_at: 2026-10-12T08:40:26.209Z
-updated_at: 2026-10-13T00:19:01.363Z
+updated_at: 2026-10-13T02:04:43.781Z
 started_at: 2026-10-12T15:11:05.766Z
-ended_at: null
+ended_at: 2026-10-13T02:04:43.781Z
 notes:
   - Retry paths to convert are around the monitor-failure and build-failure branches in agent-runner.ts, near the
     existing retry status transitions
