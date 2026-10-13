@@ -51,6 +51,12 @@ export interface InternalAgentState extends DaemonAgentState {
    * can only be partial. Never sent to clients.
    */
   analyticsUnmonitored?: boolean;
+  /**
+   * Internal: pending retry feedback (review findings) for the next attempt.
+   * Persisted so it survives daemon restarts; cleared once a relaunch
+   * succeeds. Never sent to clients. Absent on state from older daemons.
+   */
+  retryFeedback?: string;
 }
 
 /** Extra context passed to internal status observers. */
@@ -624,6 +630,7 @@ export class DaemonState {
       mergeQueuePosition: _mergeQueuePosition,
       analytics: _analytics,
       analyticsUnmonitored: _analyticsUnmonitored,
+      retryFeedback: _retryFeedback,
       ...clientState
     } = agent;
     return clientState;

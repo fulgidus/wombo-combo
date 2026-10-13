@@ -394,7 +394,7 @@ export class SpawnMonitorStage {
         agent.agentName === FAKE_AGENT_SENTINEL
           ? undefined
           : resolveAgentRoute(this.deps, "code", featureId, this.deps.loadTask(featureId));
-      const feedback = reviewFeedback.take(featureId);
+      const feedback = reviewFeedback.get(featureId);
       const result = retryHeadless({
         worktreePath: agent.worktree,
         featureId,
@@ -407,6 +407,8 @@ export class SpawnMonitorStage {
         route,
       });
 
+      // Launch succeeded: the feedback is now consumed (one-shot)
+      reviewFeedback.delete(featureId);
       state.updateAgent(featureId, { pid: result.pid });
       state.updateAgentStatus(featureId, "running", "Retry launched");
       replay.recordAttempt(featureId, "retry", agent.error ?? "Previous attempt failed");
