@@ -17,14 +17,13 @@
 
 import { execSync, spawnSync } from "node:child_process";
 import { normalizeCommentsConfig, type ReviewConfig, replayRetentionOptions, type WomboConfig } from "../config";
-import type { Task, Feature, FeaturesFile } from "../lib/tasks";
+import type { Task, Feature } from "../lib/tasks";
 import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
-import { resolveRoute, selectAvailableRoute, RouteError, type ResolvedRoute, type RouteSelection } from "../lib/harness/routing";
+import { resolveRoute, RouteError, type ResolvedRoute, type RouteSelection } from "../lib/harness/routing";
 import { saveTaskToStore } from "../lib/task-store";
-import { createWorktree, installDeps, worktreePath, featureBranchName, removeWorktree, worktreeExists } from "../lib/worktree";
-import { launchHeadless, retryHeadless, isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
-import type { LaunchResult } from "../lib/launcher";
+import { installDeps, worktreePath, featureBranchName, removeWorktree } from "../lib/worktree";
+import { isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
 import { ProcessMonitor } from "../lib/monitor";
 import type { MonitorCallbacks } from "../lib/monitor";
 import {
@@ -36,29 +35,22 @@ import { pushBaseBranch } from "../lib/merger";
 import { runPostMerge, type PostMergeDeps } from "../lib/post-merge";
 import { handleMergeConflict, type ConflictResolverContext } from "./runner/conflict-resolution";
 import { MergeStage } from "./runner/merge-stage";
-import { buildDepGraph, buildSchedulePlan } from "../lib/dependency-graph";
-import { prepareAgentDefinitions, writeAgentToWorktree, isSpecializedAgent } from "../lib/agent-registry";
-import { resolveQuestConfig, applyQuestConstraintsToTask, getQuestTaskIds } from "../lib/quest";
-import { loadQuest, loadQuestKnowledge } from "../lib/quest-store";
-import { patchImportedAgent } from "../lib/templates";
-import { ensureQuestTestBaseline } from "../lib/test-baseline-capture";
-import { loadProjectContext } from "../lib/project-store";
-import { loadTestBaseline, toTestBaselineSummary, type TestBaseline } from "../lib/test-baseline";
+import { SpawnMonitorStage } from "./runner/spawn-monitor";
+import { resolveAgentRoute, selectRoute, conflictRoute, type RouteOperation } from "./runner/routes";
+import { resolveTaskQuestScope, buildSessionQuestContext } from "./runner/quest-scope";
+import { loadTestBaseline, type TestBaseline } from "../lib/test-baseline";
 import type { Quest } from "../lib/quest";
-import type { QuestHitlMode } from "../lib/quest";
 import type { DaemonState, InternalAgentState } from "./state";
 import { createDaemonAgentState } from "./state";
 import { AnalyticsTracker } from "./analytics-tracker";
 import { ReplayRecorder } from "./replay-recorder";
-import { normalizeHarnessEvent } from "../lib/replay";
-import { addComment, recentComments } from "../lib/comments";
+import { addComment } from "../lib/comments";
 import type { ReviewerOutput } from "../lib/review-runner";
 import { captureWorktreeDiff } from "../lib/replay-diff";
 import { runReviewGate, type ReviewGateContext, type ReviewStageDeps } from "./review-stage";
 import { FeedbackStore } from "./runner/feedback-store";
 import { handleBuildVerification, trackedBuild, type VerifyStageContext } from "./runner/verify-stage";
 import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
-import type { UsageRecord } from "../lib/token-collector";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +93,10 @@ export class AgentRunner {
   private config: WomboConfig;
   private state: DaemonState;
   private monitor: ProcessMonitor;
+  /** Shared read-only scope for the route and quest-scope helpers. */
+  private readonly ctx: { projectRoot: string; config: WomboConfig; state: DaemonState };
+  /** Spawn/monitor stage: launch, monitor callbacks, relaunch. */
+  private readonly spawnMonitor: SpawnMonitorStage;
 
   /** Durable per-execution analytics (lifecycle, retries, usage). */
   readonly analytics: AnalyticsTracker;
@@ -186,6 +182,20 @@ export class AgentRunner {
       this.postLifecycleComment(agent.featureId, previous, next, detail ?? agent.error ?? undefined)
     );
 
+    this.ctx = { projectRoot: this.projectRoot, config: this.config, state };
+    this.spawnMonitor = new SpawnMonitorStage({
+      ...this.ctx,
+      analytics: this.analytics,
+      replay: this.replay,
+      // Resolved lazily: tests swap these on the runner after construction.
+      monitor: () => this.monitor,
+      reviewFeedback: this.reviewFeedback,
+      loadTask: (id) => this.loadTask(id),
+      relaunch: (id) => this.handleRetry(id),
+      handleBuildVerification: (id) => this.handleBuildVerification(id),
+      rescueChainPredecessors: (id) => this.rescueChainPredecessors(id),
+    });
+
     // Create monitor with daemon-integrated callbacks
     this.monitor = new ProcessMonitor(this.projectRoot, this.buildCallbacks());
   }
@@ -244,133 +254,8 @@ export class AgentRunner {
     }
   }
 
-  /** Recent task and quest comments for the agent prompt (empty when disabled). */
-  private loadPromptComments(featureId: string, questId?: string | null) {
-    const cfg = normalizeCommentsConfig(this.config.comments);
-    if (!cfg.enabled) return null;
-    try {
-      return {
-        task: recentComments(this.projectRoot, { kind: "task", id: featureId }, cfg.promptMaxItems),
-        quest: questId ? recentComments(this.projectRoot, { kind: "quest", id: questId }, cfg.promptMaxItems) : [],
-      };
-    } catch (err) {
-      this.state.emit("evt:log", {
-        level: "warn",
-        message: `[comments] could not load comments for ${featureId}: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      return null;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Monitor callbacks
-  // -------------------------------------------------------------------------
-
   private buildCallbacks(): MonitorCallbacks {
-    return {
-      onSessionId: (featureId, sessionId) => {
-        // Uniqueness assertion: warn if another agent in the daemon state
-        // already holds this session ID (cross-agent session reuse detection).
-        const conflicting = this.state.getAllAgents().find(
-          (a) => a.featureId !== featureId && a.sessionId === sessionId
-        );
-        if (conflicting) {
-          console.warn(
-            `[WARN] session ID ${sessionId} is already in use by agent ${conflicting.featureId} — possible opencode session reuse bug`
-          );
-        }
-        this.state.updateAgent(featureId, { sessionId });
-      },
-
-      onComplete: (featureId) => {
-        this.state.updateAgentStatus(featureId, "completed", "Agent process exited cleanly");
-
-        // Fire-and-forget build verification → merge pipeline
-        this.handleBuildVerification(featureId).catch((err) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.state.updateAgentStatus(featureId, "failed", `Verification error: ${msg}`);
-          this.state.updateAgent(featureId, { error: msg });
-          this.rescueChainPredecessors(featureId);
-        });
-      },
-
-      onError: (featureId, error) => {
-        const agent = this.state.getAgent(featureId);
-        if (!agent) return;
-
-        if (agent.retries < agent.maxRetries) {
-          // Retry
-          this.state.updateAgent(featureId, {
-            retries: agent.retries + 1,
-            error,
-          });
-          this.state.updateAgentStatus(
-            featureId,
-            "retry",
-            `Retry ${agent.retries + 1}/${agent.maxRetries}: ${error}`
-          );
-          this.handleRetry(featureId);
-        } else {
-          // Final failure
-          this.state.updateAgentStatus(featureId, "failed", error);
-          this.state.updateAgent(featureId, { error });
-          this.state.cancelDownstream(featureId);
-          this.rescueChainPredecessors(featureId);
-        }
-      },
-
-      onEvent: (featureId, event) => {
-        // Harness-specific normalization happens here only; the recorder
-        // stores harness-neutral events.
-        const normalized = normalizeHarnessEvent(this.state.getAgent(featureId)?.harness, event);
-        if (normalized) this.replay.recordEvent(featureId, normalized);
-      },
-
-      onActivity: (featureId, activity) => {
-        this.state.updateAgentActivity(featureId, activity);
-      },
-
-      onOutput: (featureId, data) => {
-        this.state.emit("evt:agent-output", { featureId, data });
-      },
-
-      onQuestion: (featureId, questionText) => {
-        const questionId = `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const agent = this.state.getAgent(featureId);
-        if (agent) {
-          agent.pendingQuestions.push({
-            questionId,
-            questionText,
-            askedAt: new Date().toISOString(),
-          });
-          this.state.emit("evt:hitl-question", {
-            featureId,
-            questionId,
-            questionText,
-          });
-        }
-      },
-
-      onUsage: (featureId, record) => {
-        // The monitor already persisted this record to usage.jsonl; analytics
-        // only accumulates totals and must not append it again.
-        this.analytics.recordUsage(featureId, record as UsageRecord);
-        const agent = this.state.getAgent(featureId);
-        if (agent) {
-          if (!agent.tokenUsage) {
-            agent.tokenUsage = { inputTokens: 0, outputTokens: 0, totalCost: 0 };
-          }
-          agent.tokenUsage.inputTokens += record.input_tokens ?? 0;
-          agent.tokenUsage.outputTokens += record.output_tokens ?? 0;
-          this.state.emit("evt:token-usage", {
-            featureId,
-            inputTokens: agent.tokenUsage.inputTokens,
-            outputTokens: agent.tokenUsage.outputTokens,
-            totalTokens: agent.tokenUsage.inputTokens + agent.tokenUsage.outputTokens,
-          });
-        }
-      },
-    };
+    return this.spawnMonitor.buildCallbacks();
   }
 
   // -------------------------------------------------------------------------
@@ -475,204 +360,8 @@ export class AgentRunner {
   // Launch pipeline
   // -------------------------------------------------------------------------
 
-  /** Actually launch an agent: worktree → install → prompt → spawn. */
-  private async doLaunch(featureId: string, task: Task): Promise<void> {
-    const agent = this.state.getAgent(featureId);
-    if (!agent) return;
-    // Re-entrancy guard: if a duplicate doLaunch was enqueued (e.g. the
-    // scheduler tick fired before the first fire-and-forget set us to
-    // "installing"), bail out silently. Single-threaded JS ensures the first
-    // call already advanced the status before any await yields.
-    if (agent.status !== "queued") return;
-
-    try {
-      // Quest test baseline prerequisite: no real TDD quest agent may spawn
-      // before a valid snapshot of quest.baseBranch is persisted. Selected by
-      // task.quest (not the mutable session quest) to avoid cross-quest leakage.
-      let testBaseline: TestBaseline | null = null;
-      if (agent.agentName !== FAKE_AGENT_SENTINEL) {
-        this.state.updateAgentStatus(featureId, "installing", "Preparing quest test baseline");
-        try {
-          testBaseline = await this.ensureTaskTestBaseline(featureId, task);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.state.updateAgentStatus(featureId, "failed", `Test baseline unavailable: ${msg}`);
-          this.state.updateAgent(featureId, { error: `Test baseline unavailable: ${msg}` });
-          return;
-        }
-      }
-
-      this.state.updateAgentStatus(featureId, "installing", "Creating worktree");
-
-      // Reflect in task file so TUI shows in-progress immediately
-      const taskOnDisk = this.loadTask(featureId);
-      if (taskOnDisk && taskOnDisk.status === "planned") {
-        taskOnDisk.status = "in_progress";
-        taskOnDisk.started_at = new Date().toISOString();
-        saveTaskToStore(this.projectRoot, this.config, taskOnDisk);
-      }
-
-      // Create the worktree. Chain members (dependent tasks that share a
-      // stream head's worktree) reuse the predecessor's worktree and branch
-      // from its tip via `git checkout -B` so the chain accumulates work
-      // instead of forking fresh from base.
-      const depAgent = (agent.dependsOn ?? [])
-        .map((depId) => this.state.getAgent(depId))
-        .find((dep) => dep && dep.worktree === agent.worktree);
-      // NOTE: worktreeExists (valid git worktree), not worktreeReady —
-      // fake agents skip dependency installs, so node_modules may be absent
-      // while the worktree is perfectly reusable for branch continuity.
-      const isChainReuse =
-        depAgent !== undefined && worktreeExists(agent.worktree);
-
-      let wt: string;
-      if (isChainReuse) {
-        try {
-          execSync(`git checkout -B "${agent.branch}"`, {
-            cwd: agent.worktree,
-            stdio: "pipe",
-          });
-          wt = agent.worktree;
-        } catch {
-          // Branch continuity failed — fall back to a fresh worktree from base
-          wt = await createWorktree(
-            this.projectRoot,
-            featureId,
-            agent.baseBranch,
-            this.config
-          );
-        }
-      } else {
-        wt = await createWorktree(
-          this.projectRoot,
-          featureId,
-          agent.baseBranch,
-          this.config
-        );
-      }
-      this.state.updateAgent(featureId, { worktree: wt });
-
-      // Install dependencies (skip for fake-agent — it has no deps)
-      if (agent.agentName !== FAKE_AGENT_SENTINEL) {
-        this.state.updateAgentActivity(featureId, "Installing dependencies...");
-        await installDeps(wt, featureId, this.config);
-      }
-
-      // Resolve quest context if applicable
-      let questContext: QuestPromptContext | undefined = undefined;
-      let hitlMode: string | undefined = undefined;
-      let promptConfig = this.config;
-      if (task.quest) {
-        const quest = loadQuest(this.projectRoot, task.quest);
-        if (quest) {
-          const resolvedTask = applyQuestConstraintsToTask(task, quest);
-          Object.assign(task, resolvedTask);
-          hitlMode = quest.hitlMode;
-          promptConfig = resolveQuestConfig(this.config, quest);
-          questContext = this.questPromptContext(quest, testBaseline);
-        }
-      }
-
-      // Write agent definition if using a specialized agent. The session
-      // override (CLI --agent) is persisted onto the agent state, so apply it
-      // to the task copy used for agent resolution and prompt generation.
-      const effectiveTask = agent.agentName
-        ? ({ ...task, agent: agent.agentName } as Task)
-        : task;
-
-      if (agent.agentName) {
-        try {
-          const agentDefs = await prepareAgentDefinitions(
-            [effectiveTask],
-            this.config,
-            this.projectRoot
-          );
-          const resolution = agentDefs.get(task.id);
-          if (resolution && isSpecializedAgent(resolution)) {
-            const patchedContent = patchImportedAgent(
-              resolution.rawContent,
-              this.config,
-              this.projectRoot,
-              hitlMode as QuestHitlMode | undefined
-            );
-            writeAgentToWorktree(wt, resolution.name, patchedContent);
-          }
-        } catch {
-          // Non-fatal: fall back to generalist
-        }
-      }
-
-      // Generate prompt
-      const prompt = generatePrompt(
-        effectiveTask as Feature,
-        agent.baseBranch,
-        promptConfig,
-        questContext,
-        hitlMode as any,
-        loadProjectContext(this.projectRoot),
-        this.loadPromptComments(featureId, task.quest)
-      );
-
-      // Capture the immutable analytics baseline after worktree preparation
-      // and before the first agent process (preserved across retries; chain
-      // members start from their predecessor's tip).
-      this.analytics.captureBaseline(featureId);
-
-      // Resolve the agent profile (walking its fallback chain when a binary or
-      // account variable is unavailable). The fake agent bypasses routing.
-      let route: ResolvedRoute | undefined;
-      let launchModel = agent.model ?? this.state.getModel() ?? undefined;
-      if (agent.agentName !== FAKE_AGENT_SENTINEL) {
-        const selected = this.selectRoute("code", featureId, task);
-        route = selected.route;
-        if (selected.skipped.length > 0) {
-          const why = selected.skipped.map((x) => `${x.profile}: ${x.reason}`).join("; ");
-          this.state.updateAgentActivity(featureId, `profile fallback -> ${route.profile} (${why})`.slice(0, 200));
-          launchModel = route.model ?? launchModel;
-          this.state.updateAgent(featureId, { model: route.model ?? agent.model ?? null });
-        }
-        this.state.updateAgent(featureId, { profile: route.profile, harness: route.harness });
-      }
-
-      // Launch the agent process
-      this.state.updateAgentStatus(featureId, "running", "Agent spawned");
-
-      const result: LaunchResult = launchHeadless({
-        worktreePath: wt,
-        featureId,
-        prompt,
-        model: launchModel,
-        config: this.config,
-        agentName: agent.agentName ?? undefined,
-        hitlMode,
-        projectRoot: this.projectRoot,
-        route,
-      });
-
-      this.state.updateAgent(featureId, {
-        pid: result.pid,
-        sessionId: result.sessionId ?? null,
-        startedAt: new Date().toISOString(),
-      });
-
-      this.analytics.recordProcessStart(featureId);
-      this.replay.recordPrompt(featureId, prompt);
-      this.replay.recordAttempt(featureId, "start");
-
-      // Register usage context before attaching the process so every record
-      // carries quest/model, then register with the monitor.
-      this.registerUsageContext(featureId, result.route);
-      this.monitor.addProcess(featureId, result.process, { normalize: result.normalize });
-
-      this.state.emit("evt:task-picked", {
-        taskId: featureId,
-        queuePosition: 0,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.state.updateAgentStatus(featureId, "failed", `Launch error: ${msg}`);
-      this.state.updateAgent(featureId, { error: msg });
-    }
+  private doLaunch(featureId: string, task: Task): Promise<void> {
+    return this.spawnMonitor.doLaunch(featureId, task);
   }
 
   // -------------------------------------------------------------------------
@@ -819,84 +508,15 @@ export class AgentRunner {
     return handleMergeConflict(this.conflictContext(), featureId, task, mergeError);
   }
 
-  /**
-   * Quest + effective config for a task's own quest (null when unquested).
-   *
-   * When the task file is gone (e.g. archived mid-run), fall back to the
-   * agent's quest base branch ("quest/<id>") so baseline checks fail closed
-   * instead of silently treating the task as unquested.
-   */
   private resolveTaskQuestScope(
     task: Task | null,
     agent?: InternalAgentState
   ): { quest: Quest; config: WomboConfig } | null {
-    const questId =
-      task?.quest ??
-      (task === null && agent?.baseBranch.startsWith("quest/")
-        ? agent.baseBranch.slice("quest/".length)
-        : undefined);
-    if (!questId) return null;
-    const quest = loadQuest(this.projectRoot, questId);
-    if (!quest) return null;
-    return { quest, config: resolveQuestConfig(this.config, quest) };
+    return resolveTaskQuestScope(this.ctx, task, agent);
   }
 
-  /**
-   * Ensure the quest test baseline for a task exists (capturing it on first
-   * use). Returns null for unquested tasks or when the quest's effective
-   * config has TDD disabled. Throws when a snapshot cannot be established.
-   */
-  private async ensureTaskTestBaseline(
-    featureId: string,
-    task: Task
-  ): Promise<TestBaseline | null> {
-    const scope = this.resolveTaskQuestScope(task);
-    if (!scope || !scope.config.tdd?.enabled) return null;
-    const { quest, config } = scope;
-    this.state.updateAgentActivity(
-      featureId,
-      `Ensuring test baseline for quest ${quest.id} (${quest.baseBranch})...`
-    );
-    const result = await ensureQuestTestBaseline({
-      projectRoot: this.projectRoot,
-      questId: quest.id,
-      baseBranch: quest.baseBranch,
-      config,
-      log: (msg) => this.state.updateAgentActivity(featureId, msg),
-    });
-    return result.status === "disabled" ? null : result.baseline;
-  }
-
-  /** Prompt context for a task's quest, including the baseline summary */
-  private questPromptContext(quest: Quest, baseline: TestBaseline | null): QuestPromptContext {
-    return {
-      questId: quest.id,
-      goal: quest.goal,
-      addedConstraints: quest.constraints.add ?? [],
-      addedForbidden: quest.constraints.ban ?? [],
-      knowledge: loadQuestKnowledge(this.projectRoot, quest.id),
-      ...(baseline ? { testBaseline: toTestBaselineSummary(baseline) } : {}),
-    };
-  }
-
-  /**
-   * Build quest context for conflict resolution prompts.
-   */
   private buildQuestContext(): QuestPromptContext | undefined {
-    const questId = this.state.getQuestId();
-    if (!questId) return undefined;
-
-    const quest = loadQuest(this.projectRoot, questId);
-    if (!quest) return undefined;
-
-    const knowledge = loadQuestKnowledge(this.projectRoot, questId);
-    return {
-      questId: quest.id,
-      goal: quest.goal,
-      addedConstraints: quest.constraints.add ?? [],
-      addedForbidden: quest.constraints.ban ?? [],
-      knowledge,
-    };
+    return buildSessionQuestContext(this.ctx);
   }
 
   // -------------------------------------------------------------------------
@@ -904,59 +524,7 @@ export class AgentRunner {
   // -------------------------------------------------------------------------
 
   private handleRetry(featureId: string): void {
-    const agent = this.state.getAgent(featureId);
-    if (!agent) return;
-
-    if (!agent.sessionId) {
-      // No session — queue for fresh launch (doLaunch enforces the baseline)
-      this.state.updateAgentStatus(featureId, "queued", "No session, re-queuing");
-      return;
-    }
-
-    // Session-reusing retries bypass doLaunch, so enforce the quest baseline
-    // prerequisite here too. Retries reuse the original snapshot; it is
-    // never recaptured, even if the base branch has advanced.
-    if (agent.agentName !== FAKE_AGENT_SENTINEL) {
-      const scope = this.resolveTaskQuestScope(this.loadTask(featureId), agent);
-      if (scope?.config.tdd?.enabled) {
-        const loaded = loadTestBaseline(this.projectRoot, scope.quest.id);
-        if (loaded.status !== "ok") {
-          const msg = `Test baseline for quest "${scope.quest.id}" unavailable (${loaded.status}); retry blocked`;
-          this.state.updateAgentStatus(featureId, "failed", msg);
-          this.state.updateAgent(featureId, { error: msg });
-          return;
-        }
-      }
-    }
-
-    try {
-      // A session belongs to one harness: retries reuse the profile it started with
-      const route =
-        agent.agentName === FAKE_AGENT_SENTINEL
-          ? undefined
-          : this.resolveAgentRoute("code", featureId, this.loadTask(featureId));
-      const reviewFeedback = this.reviewFeedback.take(featureId);
-      const result = retryHeadless({
-        worktreePath: agent.worktree,
-        featureId,
-        sessionId: agent.sessionId,
-        buildErrors: agent.error ?? "Previous attempt failed",
-        retryMessage: reviewFeedback,
-        model: agent.model ?? this.state.getModel() ?? undefined,
-        config: this.config,
-        agentName: agent.agentName ?? undefined,
-        route,
-      });
-
-      this.state.updateAgent(featureId, { pid: result.pid });
-      this.state.updateAgentStatus(featureId, "running", "Retry launched");
-      this.replay.recordAttempt(featureId, "retry", agent.error ?? "Previous attempt failed");
-      this.registerUsageContext(featureId, result.route);
-      this.monitor.addProcess(featureId, result.process, { normalize: result.normalize });
-    } catch {
-      // Retry launch failed — queue for fresh launch
-      this.state.updateAgentStatus(featureId, "queued", "Retry launch failed, re-queuing");
-    }
+    this.spawnMonitor.relaunch(featureId);
   }
 
   // -------------------------------------------------------------------------
@@ -1011,62 +579,24 @@ export class AgentRunner {
 
   /** Register the token collector's per-agent context (quest, model). */
   private registerUsageContext(featureId: string, route?: ResolvedRoute): void {
-    const agent = this.state.getAgent(featureId);
-    this.monitor.tokenCollector.registerAgent(featureId, {
-      quest_id: agent?.analytics?.quest_id ?? null,
-      model: agent?.model ?? this.state.getModel() ?? null,
-      provider: route?.provider ?? null,
-      harness: route?.harness ?? agent?.harness ?? null,
-    });
+    this.spawnMonitor.registerUsageContext(featureId, route);
   }
 
-  /**
-   * Resolve the route for an operation on a task. The profile recorded on the
-   * agent state is forced so retries and later operations stay on the same
-   * profile; "default" (the synthesized legacy profile) is never forced.
-   */
   private resolveAgentRoute(
-    operation: "code" | "conflict" | "review",
+    operation: RouteOperation,
     featureId: string,
     task: Task | null | undefined,
     sessionModel?: string | null,
   ): ResolvedRoute {
-    const agent = this.state.getAgent(featureId);
-    const forced = operation === "code" && agent?.profile && agent.profile !== "default" ? agent.profile : undefined;
-    return resolveRoute(this.config, {
-      operation,
-      task: task ?? null,
-      sessionModel: sessionModel ?? agent?.model ?? this.state.getModel(),
-      profile: forced,
-    });
+    return resolveAgentRoute(this.ctx, operation, featureId, task, sessionModel);
   }
 
-  /** Resolve the route and walk its fallback chain; legacy routes are not probed. */
-  private selectRoute(operation: "code" | "conflict" | "review", featureId: string, task: Task | null, sessionModel?: string | null): RouteSelection {
-    const route = this.resolveAgentRoute(operation, featureId, task, sessionModel);
-    if (route.legacy) return { route, skipped: [] };
-    const agent = this.state.getAgent(featureId);
-    return selectAvailableRoute(this.config, route, {
-      operation,
-      task,
-      sessionModel: sessionModel ?? agent?.model ?? this.state.getModel(),
-      profile: route.profile,
-    });
+  private selectRoute(operation: RouteOperation, featureId: string, task: Task | null, sessionModel?: string | null): RouteSelection {
+    return selectRoute(this.ctx, operation, featureId, task, sessionModel);
   }
 
-  /**
-   * Route for a conflict-resolver launch (operation "conflict"). When no
-   * configured profile can start, the failure is logged on the agent and the
-   * launcher falls back to the legacy agent.bin route.
-   */
   private conflictRoute(featureId: string, task: Task, model: string | undefined): ResolvedRoute | undefined {
-    try {
-      return this.selectRoute("conflict", featureId, task, model ?? null).route;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.state.updateAgentActivity(featureId, `conflict profile unavailable, using default agent: ${msg}`.slice(0, 200));
-      return undefined;
-    }
+    return conflictRoute(this.ctx, featureId, task, model);
   }
 
   /** Restore persisted analytics snapshots (call before startup reconciliation). */
