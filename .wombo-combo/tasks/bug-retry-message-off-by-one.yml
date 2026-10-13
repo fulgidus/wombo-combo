@@ -1,0 +1,20 @@
+id: bug-retry-message-off-by-one
+title: Retry status messages read one ahead of agent.retries
+description: onError and handleBuildVerification mutate the live agent (retries+1) then format 'Retry ${agent.retries +
+  1}/${maxRetries}', so the first retry says 'Retry 2/2' and the last 'Retry 3/2'. Pinned as-is by
+  tests/daemon-agent-runner-retry-characterization.test.ts; fix after the supervisor refactor and update those
+  expectations.
+status: backlog
+completion: 0
+difficulty: trivial
+priority: low
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
