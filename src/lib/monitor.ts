@@ -44,6 +44,7 @@ import { resolve } from "node:path";
 import { TokenCollector, type UsageRecord } from "./token-collector";
 import { UsageStore } from "./token-usage";
 import type { Normalizer } from "./harness/types";
+import { detectUsageLimit, type UsageLimitInfo } from "./harness/usage-limit";
 
 // ---------------------------------------------------------------------------
 // Log directory name (configurable would be overkill here)
@@ -131,6 +132,11 @@ export function parseEvents(rawOutput: string): ParsedOutput {
       ) {
         result.errored = true;
         result.lastError = event.part.state.error ?? "unknown tool error";
+      }
+
+      if (event.type === "error") {
+        result.errored = true;
+        result.lastError = event.error?.message ?? "unknown error";
       }
     } catch {
       // Not valid JSON — skip
@@ -338,7 +344,7 @@ const MAX_ACTIVITY_LINES = 500;
 export interface MonitorCallbacks {
   onSessionId?: (featureId: string, sessionId: string) => void;
   onComplete?: (featureId: string) => void;
-  onError?: (featureId: string, error: string) => void;
+  onError?: (featureId: string, error: string, usageLimit?: UsageLimitInfo) => void;
   onOutput?: (featureId: string, data: string) => void;
   onActivity?: (featureId: string, activity: string) => void;
   /** Called when an agent asks a human question via HITL */
@@ -368,6 +374,8 @@ interface MonitoredProcess {
   reconnected: boolean;
   /** Harness line normalizer; absent = stdout lines are already canonical (opencode) JSON events */
   normalize?: Normalizer;
+  lastError: string | null;
+  usageLimit: UsageLimitInfo | null;
 }
 
 /**
@@ -443,6 +451,8 @@ export class ProcessMonitor {
       sawFinalStop: false,
       reconnected: false,
       normalize,
+      lastError: null,
+      usageLimit: null,
     };
 
     this.pushActivity(featureId, "-- agent process started");
@@ -505,6 +515,19 @@ export class ProcessMonitor {
             // Extract token usage from step_finish events
             this.tokenCollector.ingestEvent(featureId, event);
 
+            if (event.type === "error") {
+              const msg = event.error?.message ?? "unknown error";
+              monitored.lastError = msg;
+              monitored.usageLimit = event.error?.usageLimit ?? detectUsageLimit(msg) ?? null;
+            } else if (event.type === "tool_use" && event.part?.state?.status === "error") {
+              const toolErr = event.part.state.error ?? "";
+              const limit = detectUsageLimit(toolErr);
+              if (limit) {
+                monitored.lastError = toolErr;
+                monitored.usageLimit = limit;
+              }
+            }
+
             if (
               event.type === "step_finish" &&
               event.part?.reason === "stop"
@@ -542,9 +565,11 @@ export class ProcessMonitor {
         this.callbacks.onComplete?.(featureId);
       } else {
         const error =
+          monitored.lastError ||
           monitored.stderr.slice(-2000) ||
           `Process exited with code ${code}`;
-        this.callbacks.onError?.(featureId, error);
+        const limit = monitored.usageLimit ?? detectUsageLimit(error) ?? undefined;
+        this.callbacks.onError?.(featureId, error, limit);
       }
     });
 
@@ -553,7 +578,8 @@ export class ProcessMonitor {
       monitored.done = true;
       this.pushActivity(featureId, `!! process error: ${err.message}`);
       this.writeLog(featureId, `\n[wombo] Process error: ${err.message}\n`);
-      this.callbacks.onError?.(featureId, err.message);
+      const limit = detectUsageLimit(err.message) ?? undefined;
+      this.callbacks.onError?.(featureId, err.message, limit);
     });
 
     this.processes.set(featureId, monitored);
@@ -587,6 +613,8 @@ export class ProcessMonitor {
       lineBuffer: "",
       sawFinalStop: false,
       reconnected: true,
+      lastError: null,
+      usageLimit: null,
     };
 
     this.pushActivity(featureId, `-- reconnected to running process (PID ${pid})`);

@@ -47,13 +47,13 @@ description: |
   each of the three escalation outcomes, canStart gating, snapshot ->
   restore round trip, and that every transition emits exactly one event.
   Keep the file under ~500 lines (split into supervision-tree-types.ts if needed).
-status: planned
+status: in_progress
 completion: 0
 difficulty: hard
 priority: high
 depends_on: []
 effort: PT2H
-started_at: 2026-10-12T16:12:02.557Z
+started_at: 2026-10-13T02:31:11.727Z
 ended_at: null
 constraints:
   - No imports from agent-runner, scheduler, state, worktree or git code

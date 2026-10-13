@@ -212,6 +212,7 @@ export class AgentRunner {
       handleBuildVerification: (id) => this.handleBuildVerification(id),
       rescueChainPredecessors: (id) => this.rescueChainPredecessors(id),
       giveUp: (id) => { void this.shutdown.shutdown(id, { phase: "fail" }); },
+      pauseScheduler: (reason, autoResumeMs) => this.onPauseScheduler?.(reason, autoResumeMs),
     });
 
     // Create monitor with daemon-integrated callbacks
@@ -293,6 +294,13 @@ export class AgentRunner {
   /** Set a session-scoped max-retries override (CLI --max-retries parity). */
   setMaxRetries(n: number | null): void {
     this.maxRetriesOverride = n;
+  }
+
+  private onPauseScheduler?: (reason: string, autoResumeMs?: number | null) => void;
+
+  /** Wire scheduler pause callback for backoff / usage limit pauses. */
+  setPauseScheduler(fn: ((reason: string, autoResumeMs?: number | null) => void) | undefined): void {
+    this.onPauseScheduler = fn;
   }
 
   /**

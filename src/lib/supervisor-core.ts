@@ -3,6 +3,8 @@
  * No daemon, state or worktree imports.
  */
 
+import type { UsageLimitInfo } from "./harness/usage-limit";
+
 /** "transient": restart only on abnormal exit. Others are typed for extensibility. */
 export type RestartPolicy = "transient" | "permanent" | "temporary";
 
@@ -10,12 +12,14 @@ export type ExitReason =
   | { kind: "normal" }
   | { kind: "crash"; error: string }
   | { kind: "hang"; idleMs: number }
-  | { kind: "verify-failed"; error: string };
+  | { kind: "verify-failed"; error: string }
+  | { kind: "usage-limit"; error: string; usageLimit?: UsageLimitInfo };
 
 export type RestartDecision =
   | { action: "restart"; attempt: number; max: number }
   | { action: "stop-normal" }
-  | { action: "give-up"; reason: "intensity" };
+  | { action: "give-up"; reason: "intensity" }
+  | { action: "pause-limit"; error: string; usageLimit?: UsageLimitInfo };
 
 export interface RestartTrackerOptions {
   /** Same meaning as config.defaults.maxRetries (restarts after the first attempt). */
@@ -42,6 +46,9 @@ export function createRestartTracker(opts: RestartTrackerOptions): RestartTracke
     get maxRestarts() { return max; },
     decide(reason) {
       if (reason.kind === "normal") return { action: "stop-normal" };
+      if (reason.kind === "usage-limit") {
+        return { action: "pause-limit", error: reason.error, usageLimit: reason.usageLimit };
+      }
       if (restarts >= max) return { action: "give-up", reason: "intensity" };
       restarts++;
       return { action: "restart", attempt: restarts, max };

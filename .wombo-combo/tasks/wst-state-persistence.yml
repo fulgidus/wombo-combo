@@ -23,13 +23,13 @@ description: |
      save()/load(), loading an old file without the field, atomic write leaves
      no .tmp file, protocol test addition in tests/daemon-protocol.test.ts only
      if it has an exhaustive event list.
-status: planned
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:12:02.472Z
+started_at: 2026-10-13T02:31:11.545Z
 ended_at: null
 constraints:
   - Additive protocol change only; existing event shapes and AgentStatus values unchanged

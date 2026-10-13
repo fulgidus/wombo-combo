@@ -59,13 +59,42 @@ describe("onProcessFailed", () => {
     expect(a.retries).toBe(1);
     expect(calls).toEqual(["rescue:t1"]);
   });
-  test("repeated crashes count up then give up", () => {
+  test("usage-limit pauses scheduler without burning retries", () => {
     const { state, ctx, calls } = setup(2);
-    onProcessFailed(ctx as never, "t1", "a");
-    onProcessFailed(ctx as never, "t1", "b");
-    onProcessFailed(ctx as never, "t1", "c");
-    expect(state.getAgent("t1")!.retries).toBe(2);
-    expect(state.getAgent("t1")!.status).toBe("failed");
-    expect(calls).toEqual(["retry:t1", "retry:t1", "rescue:t1"]);
+    let pausedReason: string | undefined;
+    let pausedAutoResume: number | null | undefined;
+    let alertRaised: string | undefined;
+    (ctx as any).pauseScheduler = (reason: string, autoResumeMs?: number | null) => {
+      pausedReason = reason;
+      pausedAutoResume = autoResumeMs;
+      calls.push(`pause:${reason}`);
+    };
+    (ctx as any).raiseNeedsYouAlert = (_id: string, text: string) => {
+      alertRaised = text;
+      calls.push(`alert:${text}`);
+    };
+
+    const limit = {
+      isLimit: true as const,
+      kind: "weekly_limit" as const,
+      message: "You have hit your weekly limit, resets Oct 15, 7pm",
+      resetsAt: new Date(1760547600000),
+      resetsAtMs: 1760547600000,
+      resetRaw: "Oct 15, 7pm",
+    };
+
+    onProcessFailed(ctx as never, "t1", limit.message, { kind: "usage-limit", error: limit.message, usageLimit: limit });
+
+    const a = state.getAgent("t1")!;
+    expect(a.status).toBe("retry");
+    expect(a.retries).toBe(0); // retries untouched!
+    expect(a.error).toBe(limit.message);
+    expect(pausedReason).toContain("Oct 15, 7pm");
+    expect(pausedAutoResume).toBe(1760547600000);
+    expect(alertRaised).toContain("Usage limit reached");
+    expect(calls.some((c) => c.startsWith("pause:"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("alert:"))).toBe(true);
+    expect(calls).not.toContain("retry:t1");
   });
 });
+

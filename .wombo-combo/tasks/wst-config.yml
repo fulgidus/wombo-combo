@@ -30,13 +30,13 @@ description: |
   style. Add tests/config-supervision.test.ts: defaults resolve to
   today's behaviour, invalid values throw, a config without the block
   validates unchanged.
-status: planned
+status: in_progress
 completion: 0
 difficulty: medium
 priority: high
 depends_on: []
 effort: PT1H
-started_at: 2026-10-12T16:12:02.387Z
+started_at: 2026-10-13T02:31:11.338Z
 ended_at: null
 constraints:
   - The block is optional; a config.json without it must load and validate with no changes

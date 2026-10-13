@@ -4,6 +4,7 @@
  */
 
 import type { HarnessEvent } from "./types";
+import { detectUsageLimit, type UsageLimitInfo } from "./usage-limit";
 
 export interface StepTokens {
   input?: number;
@@ -105,8 +106,19 @@ export function stepFinishEvent(
   return ev;
 }
 
-export function errorEvent(message: string, sessionID?: string | null): HarnessEvent {
-  const ev: HarnessEvent = { type: "error", error: { message } };
+export function errorEvent(
+  message: string,
+  sessionID?: string | null,
+  opts: { usageLimit?: UsageLimitInfo | null } = {},
+): HarnessEvent {
+  const usageLimit = opts.usageLimit !== undefined ? opts.usageLimit : detectUsageLimit(message);
+  const ev: HarnessEvent = {
+    type: "error",
+    error: {
+      message,
+      ...(usageLimit ? { usageLimit } : {}),
+    },
+  };
   if (sessionID) ev.sessionID = sessionID;
   return ev;
 }

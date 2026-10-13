@@ -41,6 +41,9 @@ import type { FeedbackStore } from "./feedback-store";
 import { onProcessFailed } from "./restart-policy";
 import { ensureTaskTestBaseline, questPromptContext, resolveTaskQuestScope } from "./quest-scope";
 
+import { notifyDesktop } from "../../lib/notify";
+import type { UsageLimitInfo } from "../../lib/harness/usage-limit";
+
 /** Collaborators the spawn/monitor stage needs from the AgentRunner. */
 export interface SpawnMonitorDeps {
   projectRoot: string;
@@ -60,6 +63,8 @@ export interface SpawnMonitorDeps {
   giveUp?(featureId: string): void;
   /** Time source for the hang watchdog (tests inject a fake clock). */
   clock?: Clock;
+  /** Optional scheduler pause hook (e.g. for usage limit backoff) */
+  pauseScheduler?(reason: string, autoResumeMs?: number | null): void;
 }
 
 export class SpawnMonitorStage {
@@ -120,9 +125,12 @@ export class SpawnMonitorStage {
         });
       },
 
-      onError: (featureId, error) => {
+      onError: (featureId, error, usageLimit) => {
         this.watchdog.untrack(featureId);
-        this.onProcessFailed(featureId, error);
+        const reason: ExitReason = usageLimit
+          ? { kind: "usage-limit", error, usageLimit }
+          : { kind: "crash", error };
+        this.onProcessFailed(featureId, error, reason);
       },
 
       onEvent: (featureId, event) => {
@@ -193,6 +201,24 @@ export class SpawnMonitorStage {
         handleRetry: (id) => this.deps.relaunch(id),
         giveUp: (id) => this.deps.giveUp?.(id),
         rescueChainPredecessors: (id) => this.deps.rescueChainPredecessors(id),
+        pauseScheduler: (reasonText, autoResumeMs) => this.deps.pauseScheduler?.(reasonText, autoResumeMs),
+        raiseNeedsYouAlert: (id, text) => {
+          notifyDesktop(`wombo: Usage limit reached (${id})`, text);
+          const questionId = `q-limit-${Date.now()}`;
+          const agent = this.deps.state.getAgent(id);
+          if (agent) {
+            agent.pendingQuestions.push({
+              questionId,
+              questionText: text,
+              askedAt: new Date().toISOString(),
+            });
+            this.deps.state.emit("evt:hitl-question", {
+              featureId: id,
+              questionId,
+              questionText: text,
+            });
+          }
+        },
       },
       featureId,
       error,

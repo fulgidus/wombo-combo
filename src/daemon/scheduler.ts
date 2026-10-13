@@ -182,16 +182,40 @@ export class Scheduler {
     this.tick();
   }
 
+  private autoResumeTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Pause the scheduler (running agents continue, no new picks). */
-  pause(): void {
-    this.deps.state.setSchedulerStatus("paused", "User paused");
+  pause(reason = "User paused", autoResumeMs?: number | null): void {
+    if (this.autoResumeTimer) {
+      clearTimeout(this.autoResumeTimer);
+      this.autoResumeTimer = null;
+    }
+
+    this.deps.state.setSchedulerStatus("paused", reason);
+
+    if (autoResumeMs && autoResumeMs > Date.now()) {
+      const delay = Math.max(1000, autoResumeMs - Date.now());
+      this.autoResumeTimer = setTimeout(() => {
+        this.autoResumeTimer = null;
+        if (this.deps.state.getSchedulerStatus() === "paused") {
+          this.resume("Auto-resumed after usage limit reset");
+        }
+      }, delay);
+      if (typeof (this.autoResumeTimer as any)?.unref === "function") {
+        (this.autoResumeTimer as any).unref();
+      }
+    }
   }
 
   /** Resume a paused scheduler. */
-  resume(): void {
+  resume(reason = "User resumed"): void {
+    if (this.autoResumeTimer) {
+      clearTimeout(this.autoResumeTimer);
+      this.autoResumeTimer = null;
+    }
     const status = this.deps.state.getSchedulerStatus();
     if (status === "paused") {
-      this.deps.state.setSchedulerStatus("running", "User resumed");
+      this.deps.state.setSchedulerStatus("running", reason);
       this.tick(); // Immediate tick
     }
   }
@@ -241,6 +265,10 @@ export class Scheduler {
     if (this.tickTimer) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
+    }
+    if (this.autoResumeTimer) {
+      clearTimeout(this.autoResumeTimer);
+      this.autoResumeTimer = null;
     }
     this.deps.state.setSchedulerStatus("shutdown", "Scheduler shutdown");
   }

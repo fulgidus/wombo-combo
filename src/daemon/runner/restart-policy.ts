@@ -66,6 +66,8 @@ export interface RestartOutcomeContext {
   rescueChainPredecessors(featureId: string): void;
   /** Shutdown hook for an agent the policy gave up on. */
   giveUp?(featureId: string): void;
+  pauseScheduler?(reason: string, autoResumeMs?: number | null): void;
+  raiseNeedsYouAlert?(featureId: string, alertText: string): void;
 }
 
 /** Agent process crashed or hung: restart under the policy or fail it. */
@@ -84,6 +86,16 @@ export function onProcessFailed(
     // object, already bumped by updateAgent, so the message runs one ahead.
     ctx.state.updateAgentStatus(featureId, "retry", `Retry ${agent.retries + 1}/${decision.max}: ${error}`);
     ctx.handleRetry(featureId);
+  } else if (decision.action === "pause-limit") {
+    const rawReset = decision.usageLimit?.resetRaw;
+    const resetMsg = rawReset ? ` (resets ${rawReset})` : "";
+    const displayMsg = `Usage limit reached${resetMsg}: ${decision.error}`;
+
+    ctx.state.updateAgent(featureId, { error: decision.error });
+    ctx.state.updateAgentStatus(featureId, "retry", `Paused: usage limit${resetMsg}`);
+
+    ctx.raiseNeedsYouAlert?.(featureId, displayMsg);
+    ctx.pauseScheduler?.(`Usage limit on ${featureId}${resetMsg}`, decision.usageLimit?.resetsAtMs);
   } else {
     ctx.state.updateAgentStatus(featureId, "failed", error);
     ctx.state.updateAgent(featureId, { error });
