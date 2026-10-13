@@ -1,0 +1,20 @@
+id: harness-usage-limit-detection
+title: "Detect provider usage-limit errors: pause the scheduler instead of burning retries"
+description: "Seen 2026-10-13: Claude Code returned 'You have hit your weekly limit, resets Oct 15, 7pm' (is_error
+  result, exit code 1). supervision-docs-graph used both retries in 7 seconds and failed with only 'Process exited with
+  code 1'. Detect usage or rate limit results in the harness normalizers (claude-code first, then codex, gemini,
+  opencode), pause the scheduler without consuming retries, raise a Needs you alert with the reset time, and resume
+  automatically after it. Failed agents must show the real reason, not the exit code."
+status: backlog
+completion: 0
+difficulty: medium
+priority: high
+depends_on: []
+effort: PT2H
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

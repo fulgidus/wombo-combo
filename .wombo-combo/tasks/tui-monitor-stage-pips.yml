@@ -2,8 +2,11 @@ id: tui-monitor-stage-pips
 title: Wave monitor stage pips and inline question panel
 description: "Board: Wave monitor. Per-agent five stage pips (queued, install, run, verify, merge), ASKING rows
   highlighted amber, summary counts line, merged tasks collapsed into one expandable row, and a question panel beside
-  the log tail with quick answers 1 and 2. Also: while any agent is verifying (status completed, activity Running build verification) the chrome top bar must not say Idle or 0 active; count it as active and show VERIFYING with elapsed time and the typical duration (about 4 minutes), so a long verification is not mistaken for a stall. Design reference: https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board
-  named in each task). Keep English text via locale files (en and it), no emoji, plain symbols only."
+  the log tail with quick answers 1 and 2. Also: while any agent is verifying (status completed, activity Running build
+  verification) the chrome top bar must not say Idle or 0 active; count it as active and show VERIFYING with elapsed
+  time and the typical duration (about 4 minutes), so a long verification is not mistaken for a stall. Design reference:
+  https://claude.ai/artifact/8wRVszFChYLpvquAsUqs4k (board named in each task). Keep English text via locale files (en
+  and it), no emoji, plain symbols only."
 status: backlog
 completion: 0
 difficulty: medium
