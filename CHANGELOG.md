@@ -257,3 +257,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-97b62e5-3bd8707 -->
 
 - **shutdown-hook-cleanup**: Worktree Cleanup as Shutdown Hook
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-427e99a-49ab0b5 -->
+
+- **persist-retry-feedback**: Persist Retry Feedback Across Restarts
