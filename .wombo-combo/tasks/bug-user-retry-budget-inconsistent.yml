@@ -1,0 +1,18 @@
+id: bug-user-retry-budget-inconsistent
+title: User retry spends a retry when budget remains but resets to 0 when exhausted
+description: "Scheduler.retryAgent: DaemonState.retryAgent increments retries when retries < maxRetries, but forces
+  retries=0 when exhausted, so the same user action leaves different remaining budgets. Pinned as-is by the retry
+  characterization suite."
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []

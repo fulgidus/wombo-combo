@@ -1,0 +1,19 @@
+id: bug-retry-blocked-no-downstream-cancel
+title: handleRetry 'retry blocked' failure skips cancelDownstream and chain rescue
+description: When handleRetry fails an agent because the quest test baseline is missing, it sets status failed but does
+  not call cancelDownstream or rescueChainPredecessors, unlike every other terminal failure. Pinned as-is by the retry
+  characterization suite.
+status: backlog
+completion: 0
+difficulty: easy
+priority: low
+depends_on: []
+effort: PT30M
+started_at: null
+ended_at: null
+constraints: []
+forbidden: []
+references: []
+notes: []
+subtasks: []
+paths: []
