@@ -215,3 +215,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-3b8d262-aff7bd0 -->
 
 - **supervisor-core-restart-policy**: Add supervisor-core Restart Policy
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-42cdefe-a4534e7 -->
+
+- **characterize-retry-behaviour**: Characterize Current Retry Behaviour
