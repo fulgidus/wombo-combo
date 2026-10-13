@@ -75,6 +75,7 @@ the defaults below. The `$schema` key is accepted for editor validation.
 | --- | --- | --- | --- |
 | `defaults.maxConcurrent` | integer | `10` | Max concurrent agents (0 = unlimited) Minimum: `0`. |
 | `defaults.maxRetries` | integer | `5` | Max retries per agent Minimum: `0`. |
+| `defaults.agentIdleTimeoutMs` | integer | `0` | Kill and restart an agent process that shows no activity for this many milliseconds (0 or absent = watchdog disabled) Minimum: `0`. |
 
 ## `browser`
 
