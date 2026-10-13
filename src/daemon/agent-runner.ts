@@ -22,7 +22,7 @@ import { loadFeatures, parseDurationMinutes } from "../lib/tasks";
 import { resolveTaskModel } from "../lib/task-weight";
 import { resolveRoute, RouteError, type ResolvedRoute, type RouteSelection } from "../lib/harness/routing";
 import { saveTaskToStore } from "../lib/task-store";
-import { installDeps, worktreePath, featureBranchName, removeWorktree } from "../lib/worktree";
+import { installDeps, worktreePath, featureBranchName } from "../lib/worktree";
 import { isProcessRunning, FAKE_AGENT_SENTINEL } from "../lib/launcher";
 import { ProcessMonitor } from "../lib/monitor";
 import type { MonitorCallbacks } from "../lib/monitor";
@@ -36,6 +36,7 @@ import { runPostMerge, type PostMergeDeps } from "../lib/post-merge";
 import { handleMergeConflict, type ConflictResolverContext } from "./runner/conflict-resolution";
 import { MergeStage } from "./runner/merge-stage";
 import { SpawnMonitorStage } from "./runner/spawn-monitor";
+import { AgentShutdown } from "./runner/agent-shutdown";
 import { resolveAgentRoute, selectRoute, conflictRoute, type RouteOperation } from "./runner/routes";
 import { resolveTaskQuestScope, buildSessionQuestContext } from "./runner/quest-scope";
 import { loadTestBaseline, type TestBaseline } from "../lib/test-baseline";
@@ -98,6 +99,9 @@ export class AgentRunner {
   private readonly ctx: { projectRoot: string; config: WomboConfig; state: DaemonState };
   /** Spawn/monitor stage: launch, monitor callbacks, relaunch. */
   private readonly spawnMonitor: SpawnMonitorStage;
+
+  /** Per-agent shutdown hook: kill, capture analytics, remove worktree/branch. */
+  private readonly shutdown: AgentShutdown;
 
   /** Durable per-execution analytics (lifecycle, retries, usage). */
   readonly analytics: AnalyticsTracker;
@@ -184,6 +188,17 @@ export class AgentRunner {
     );
 
     this.ctx = { projectRoot: this.projectRoot, config: this.config, state };
+    this.shutdown = new AgentShutdown({
+      projectRoot: this.projectRoot,
+      state,
+      killProcess: (id) => this.monitor.remove(id),
+      captureAnalytics: (id) => this.analytics.captureBestEffort(id),
+      resetTaskToPlanned: (id) => this.resetTaskToPlanned(id),
+    });
+    // A new execution (submit, retry, user retry) gets a fresh shutdown hook
+    state.observeStatus((agent, _previous, next) => {
+      if (next === "queued" || next === "installing" || next === "running") this.shutdown.reset(agent.featureId);
+    });
     this.spawnMonitor = new SpawnMonitorStage({
       ...this.ctx,
       analytics: this.analytics,
@@ -195,6 +210,7 @@ export class AgentRunner {
       relaunch: (id) => this.handleRetry(id),
       handleBuildVerification: (id) => this.handleBuildVerification(id),
       rescueChainPredecessors: (id) => this.rescueChainPredecessors(id),
+      giveUp: (id) => { void this.shutdown.shutdown(id, { phase: "fail" }); },
     });
 
     // Create monitor with daemon-integrated callbacks
@@ -336,6 +352,7 @@ export class AgentRunner {
       model: model ?? this.state.getModel(),
     });
 
+    this.shutdown.reset(task.id);
     this.state.addAgent(agentState);
 
     // Queue the launch (staggered to avoid SQLite races for real agents)
@@ -613,14 +630,22 @@ export class AgentRunner {
     this.replay.close();
   }
 
-  /** Kill a specific agent's process. */
+  /** Cancel an agent: shut it down and discard its worktree and branch. */
   cancelAgent(featureId: string): void {
     this.analytics.markStopRequested(featureId, "cancelled");
     this.replay.markStopRequested(featureId);
-    this.monitor.remove(featureId);
+    void this.shutdown.shutdown(featureId, { phase: "stop", removeWorktree: true });
   }
 
-  /** Kill all running agents. */
+  /**
+   * After a cancelled agent's dependents were failed, drop a chain worktree
+   * that had to be kept for them while they were still live.
+   */
+  releaseCancelledWorktree(featureId: string): void {
+    this.shutdown.releaseWorktree(featureId);
+  }
+
+  /** Kill all running agents and discard their worktrees and branches. */
   async killAll(): Promise<void> {
     // Mark executions stopped first so exit callbacks from the killed
     // processes cannot alter their snapshots.
@@ -629,23 +654,23 @@ export class AgentRunner {
     this.monitor.killAll();
     // Wait for processes to actually die
     await this.monitor.waitAll(500);
+    const releasing = new Set(this.state.getAllAgents().map((a) => a.featureId));
+    for (const agent of this.state.getAgentsByStatus("running", "installing", "retry")) {
+      void this.shutdown.shutdown(agent.featureId, { phase: "stop", removeWorktree: true, releasing });
+    }
   }
 
   /** Detect dead agent processes and handle them. */
   reapDeadProcesses(): void {
+    // Reset task back to "planned" so the scheduler picks it up again and
+    // remove the agent from state (scheduler re-submits from disk).
+    const reap = (featureId: string) =>
+      void this.shutdown.shutdown(featureId, { phase: "reap", resetTask: true, removeWorktree: true, removeAgent: true });
+
     for (const agent of this.state.getAgentsByStatus("running", "installing")) {
       if (agent.pid && !isProcessRunning(agent.pid)) {
         this.state.emit("evt:log", { level: "warn", message: `Agent ${agent.featureId} PID ${agent.pid} is dead — reaping` });
-        // Reset task back to "planned" so scheduler picks it up again
-        this.resetTaskToPlanned(agent.featureId);
-        // Persist a best-effort diff before the worktree disappears
-        this.analytics.captureBestEffort(agent.featureId);
-        // Clean up worktree if present
-        if (agent.worktree) {
-          try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
-        }
-        // Remove from daemon state entirely (scheduler will re-submit from disk)
-        this.state.removeAgent(agent.featureId);
+        reap(agent.featureId);
       }
     }
 
@@ -653,12 +678,7 @@ export class AgentRunner {
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
         if (!mayRestart(agent)) {
-          this.analytics.captureBestEffort(agent.featureId);
-          this.resetTaskToPlanned(agent.featureId);
-          if (agent.worktree) {
-            try { removeWorktree({ projectRoot: this.projectRoot, wtPath: agent.worktree }); } catch { /* best-effort */ }
-          }
-          this.state.removeAgent(agent.featureId);
+          reap(agent.featureId);
         } else {
           this.state.updateAgentStatus(agent.featureId, "queued", "Re-queuing stuck retry");
         }
@@ -862,6 +882,9 @@ export class AgentRunner {
   destroy(): void {
     this.analytics.close();
     this.replay.close();
+    for (const agent of this.state.getAllAgents()) {
+      void this.shutdown.shutdown(agent.featureId, { phase: "destroy" });
+    }
     this.monitor.killAll();
     this.launchQueue = [];
   }

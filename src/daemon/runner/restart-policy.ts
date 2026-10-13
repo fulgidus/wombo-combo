@@ -64,6 +64,8 @@ export interface RestartOutcomeContext {
   state: DaemonState;
   handleRetry(featureId: string): void;
   rescueChainPredecessors(featureId: string): void;
+  /** Shutdown hook for an agent the policy gave up on. */
+  giveUp?(featureId: string): void;
 }
 
 /** Agent process crashed or hung: restart under the policy or fail it. */
@@ -81,6 +83,7 @@ export function onProcessFailed(ctx: RestartOutcomeContext, featureId: string, e
     ctx.state.updateAgentStatus(featureId, "failed", error);
     ctx.state.updateAgent(featureId, { error });
     ctx.state.cancelDownstream(featureId);
+    ctx.giveUp?.(featureId);
     ctx.rescueChainPredecessors(featureId);
   }
 }
