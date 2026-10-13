@@ -50,6 +50,7 @@ import type { ReviewerOutput } from "../lib/review-runner";
 import { captureWorktreeDiff } from "../lib/replay-diff";
 import { runReviewGate, type ReviewGateContext, type ReviewStageDeps } from "./review-stage";
 import { FeedbackStore } from "./runner/feedback-store";
+import { mayRestart } from "./runner/restart-policy";
 import { handleBuildVerification, trackedBuild, type VerifyStageContext } from "./runner/verify-stage";
 import { claimTask, isTeamEnabled, releaseTask } from "../lib/claims";
 
@@ -676,7 +677,7 @@ export class AgentRunner {
     // Safety net: agents stuck in "retry" with no process
     for (const agent of this.state.getAgentsByStatus("retry")) {
       if (!agent.pid || !isProcessRunning(agent.pid)) {
-        if (agent.retries >= agent.maxRetries) {
+        if (!mayRestart(agent)) {
           reap(agent.featureId);
         } else {
           this.state.updateAgentStatus(agent.featureId, "queued", "Re-queuing stuck retry");

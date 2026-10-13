@@ -5,9 +5,8 @@
  * agent (baseline → worktree → install → prompt → spawn), the process monitor
  * callbacks, and relaunching a failed attempt ("handleRetry" in the facade).
  *
- * The monitor-failure retry/fail branch is isolated as onProcessFailed so it
- * and its verification sibling can be replaced by a restart policy in one
- * follow-up. Collaborators that tests swap on the runner after construction
+ * The monitor-failure retry/fail branch is delegated to the restart policy (restart-policy.ts).
+ * Collaborators that tests swap on the runner after construction
  * (monitor, rescue, retry, verification) are resolved lazily.
  */
 
@@ -36,6 +35,7 @@ import type { AnalyticsTracker } from "../analytics-tracker";
 import type { ReplayRecorder } from "../replay-recorder";
 import { resolveAgentRoute, selectRoute } from "./routes";
 import type { FeedbackStore } from "./feedback-store";
+import { onProcessFailed } from "./restart-policy";
 import { ensureTaskTestBaseline, questPromptContext, resolveTaskQuestScope } from "./quest-scope";
 
 /** Collaborators the spawn/monitor stage needs from the AgentRunner. */
@@ -154,30 +154,16 @@ export class SpawnMonitorStage {
    * counter allows, otherwise fail the agent and unblock its chain.
    */
   onProcessFailed(featureId: string, error: string): void {
-    const { state } = this.deps;
-    const agent = state.getAgent(featureId);
-    if (!agent) return;
-
-    if (agent.retries < agent.maxRetries) {
-      // Retry
-      state.updateAgent(featureId, {
-        retries: agent.retries + 1,
-        error,
-      });
-      state.updateAgentStatus(
-        featureId,
-        "retry",
-        `Retry ${agent.retries + 1}/${agent.maxRetries}: ${error}`
-      );
-      this.deps.relaunch(featureId);
-    } else {
-      // Final failure
-      state.updateAgentStatus(featureId, "failed", error);
-      state.updateAgent(featureId, { error });
-      state.cancelDownstream(featureId);
-      this.deps.giveUp?.(featureId);
-      this.deps.rescueChainPredecessors(featureId);
-    }
+    onProcessFailed(
+      {
+        state: this.deps.state,
+        handleRetry: (id) => this.deps.relaunch(id),
+        giveUp: (id) => this.deps.giveUp?.(id),
+        rescueChainPredecessors: (id) => this.deps.rescueChainPredecessors(id),
+      },
+      featureId,
+      error,
+    );
   }
 
   // -------------------------------------------------------------------------

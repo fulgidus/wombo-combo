@@ -19,6 +19,7 @@ import { runBuild, runFullVerification } from "../../lib/verifier";
 import { loadTestBaseline, type TestBaseline } from "../../lib/test-baseline";
 import { verificationSummaryFromResult } from "../../lib/merge-report";
 import type { VerificationSummary } from "../../lib/post-merge-types";
+import { decideRestart } from "./restart-policy";
 import type { DaemonState, InternalAgentState } from "../state";
 import type { AnalyticsTracker } from "../analytics-tracker";
 
@@ -78,16 +79,17 @@ export function hasChainSuccessor(ctx: Pick<VerifyStageContext, "state">, featur
 export function onVerifyFailed(ctx: VerifyStageContext, featureId: string, summary: string): void {
   const agent = ctx.state.getAgent(featureId);
   if (!agent) return;
-  if (agent.retries < agent.maxRetries) {
+  const decision = decideRestart(featureId, agent, { kind: "verify-failed", error: summary });
+  if (decision.action === "restart") {
     // Retry with build error context
     ctx.state.updateAgent(featureId, {
-      retries: agent.retries + 1,
+      retries: decision.attempt,
       error: `Build failed: ${summary.slice(0, 500)}`,
     });
     ctx.state.updateAgentStatus(
       featureId,
       "retry",
-      `Build failed, retry ${agent.retries + 1}/${agent.maxRetries}`
+      `Build failed, retry ${agent.retries + 1}/${decision.max}` // QUIRK: agent already bumped, see restart-policy
     );
     ctx.handleRetry(featureId);
   } else {

@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { resolve } from "node:path";
 import { WOMBO_DIR } from "../config";
+import { mayRestart, dropRestartTracker } from "./runner/restart-policy";
 import type { AgentStatus } from "./agent-status";
 import type { AgentAnalyticsRecord } from "../lib/analytics";
 import type {
@@ -502,6 +503,7 @@ export class DaemonState {
 
   /** Remove an agent from tracking. */
   removeAgent(featureId: string): void {
+    dropRestartTracker(featureId);
     const agent = this.agents.get(featureId);
     if (agent) this.notifyRemoval(agent, "remove");
     this.agents.delete(featureId);
@@ -532,7 +534,7 @@ export class DaemonState {
   retryAgent(featureId: string): boolean {
     const agent = this.agents.get(featureId);
     if (!agent) return false;
-    if (agent.retries >= agent.maxRetries) return false;
+    if (!mayRestart(agent)) return false;
 
     agent.retries++;
     agent.error = null;

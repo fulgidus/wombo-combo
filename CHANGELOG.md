@@ -245,3 +245,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-ff7e4a0-3ea4e11 -->
 
 - **extract-spawn-monitor-stage**: Extract Spawn and Monitor Stage
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-8a42769-cfe92dd -->
+
+- **wire-transient-restart-policy**: Wire Restart Policy Into Runner
