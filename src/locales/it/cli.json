@@ -312,6 +312,7 @@
   "cli.status.dashboard.header": "Base: {{base}} | Concorrenza: {{concurrency}} | Scheduler: {{scheduler}}",
   "cli.status.dashboard.model": "Modello: {{model}}",
   "cli.status.dashboard.quest": "Quest: {{quest}}",
+  "cli.status.dashboard.question": "{{agent}} chiede:",
   "cli.status.dashboard.colFeature": "Funzionalità",
   "cli.status.dashboard.colStatus": "Stato",
   "cli.status.dashboard.colActivity": "Attività",

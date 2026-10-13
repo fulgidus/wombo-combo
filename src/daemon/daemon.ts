@@ -25,6 +25,7 @@ import { Scheduler } from "./scheduler";
 import type { SchedulerConfig } from "./scheduler";
 import { AgentRunner } from "./agent-runner";
 import type { AgentRunnerConfig } from "./agent-runner";
+import { notifyDesktop } from "../lib/notify";
 import { submitAnswer, getPendingQuestions } from "../lib/hitl-channel";
 import { AutoSyncLoop } from "../lib/sync/loop";
 import { exportDaemonHistory } from "../lib/history";
@@ -144,6 +145,13 @@ export class Daemon {
     // Initialize state
     this.state = new DaemonState(this.projectRoot);
     this.state.load();
+
+    // An agent is blocked on a human: tell the operator even when no monitor is open
+    this.state.subscribe((type, payload) => {
+      if (type !== "evt:hitl-question") return;
+      const q = payload as EventMap["evt:hitl-question"];
+      notifyDesktop(`wombo: ${q.featureId} has a question`, q.questionText);
+    });
 
     // Initialize runner
     const runnerConfig: AgentRunnerConfig = {

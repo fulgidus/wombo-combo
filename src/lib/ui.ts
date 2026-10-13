@@ -213,6 +213,13 @@ export function renderDashboard(snapshot: DaemonSnapshotView): string {
     summaryParts.push(colorize(t("cli.status.dashboard.summaryInReview", { count: counts.in_review }), FG.cyan));
 
   lines.push(summaryParts.join(" | "));
+
+  // Agents blocked on a human answer: surface them so they are not missed
+  for (const agent of agents) {
+    for (const q of agent.pendingQuestions ?? []) {
+      lines.push(colorize(`? ${t("cli.status.dashboard.question", { agent: agent.featureId })} ${q.questionText.replace(/\s+/g, " ").slice(0, 120)}`, FG.yellow));
+    }
+  }
   lines.push("");
 
   return lines.join("\n");

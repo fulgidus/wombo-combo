@@ -290,6 +290,7 @@
   "cli.status.dashboard.header": "Base: {{base}} | Concurrency: {{concurrency}} | Scheduler: {{scheduler}}",
   "cli.status.dashboard.model": "Model: {{model}}",
   "cli.status.dashboard.quest": "Quest: {{quest}}",
+  "cli.status.dashboard.question": "{{agent}} asks:",
   "cli.status.dashboard.colFeature": "Feature",
   "cli.status.dashboard.colStatus": "Status",
   "cli.status.dashboard.colActivity": "Activity",

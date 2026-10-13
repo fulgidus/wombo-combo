@@ -940,6 +940,8 @@ export class InkDaemonTUI {
           text: evt.questionText,
           timestamp: new Date().toISOString(),
         });
+        // Terminal bell: audible/visual cue that an agent is waiting for an answer
+        try { process.stdout.write("\x07"); } catch { /* not a tty */ }
         this.notify();
       })
     );
