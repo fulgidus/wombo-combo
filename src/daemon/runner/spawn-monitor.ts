@@ -53,6 +53,8 @@ export interface SpawnMonitorDeps {
   relaunch(featureId: string): void;
   handleBuildVerification(featureId: string): Promise<void>;
   rescueChainPredecessors(featureId: string): void;
+  /** Shutdown hook for an agent the restart policy gave up on (keeps its worktree). */
+  giveUp?(featureId: string): void;
 }
 
 export class SpawnMonitorStage {
@@ -173,6 +175,7 @@ export class SpawnMonitorStage {
       state.updateAgentStatus(featureId, "failed", error);
       state.updateAgent(featureId, { error });
       state.cancelDownstream(featureId);
+      this.deps.giveUp?.(featureId);
       this.deps.rescueChainPredecessors(featureId);
     }
   }
