@@ -188,6 +188,12 @@
           "default": 5,
           "minimum": 0,
           "description": "Max retries per agent"
+        },
+        "agentIdleTimeoutMs": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "description": "Kill and restart an agent process that shows no activity for this many milliseconds (0 or absent = watchdog disabled)"
         }
       }
     },

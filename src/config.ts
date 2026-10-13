@@ -93,6 +93,11 @@ export interface WomboConfig {
     maxConcurrent: number;
     /** Max retries per agent */
     maxRetries: number;
+    /**
+     * Kill and restart (through the restart policy) an agent process that shows
+     * no activity for this many ms. Optional; absent or 0 disables the watchdog.
+     */
+    agentIdleTimeoutMs?: number;
   };
   /** Browser testing configuration */
   browser: BrowserConfig;
@@ -851,6 +856,10 @@ export function validateConfig(config: WomboConfig): void {
   }
   if (config.defaults.maxRetries < 0) {
     throw new Error("config.defaults.maxRetries must be >= 0");
+  }
+  const idleTimeout = config.defaults.agentIdleTimeoutMs;
+  if (idleTimeout !== undefined && (!Number.isFinite(idleTimeout) || idleTimeout < 0)) {
+    throw new Error("config.defaults.agentIdleTimeoutMs must be >= 0 (0 = disabled)");
   }
   if (config.backup.maxBackups < 0) {
     throw new Error("config.backup.maxBackups must be >= 0");
