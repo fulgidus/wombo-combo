@@ -11,15 +11,15 @@ description: |
   (human-authored voice, no AI attribution). Run `graphify update .` and
   commit-ready graphify-out changes if they changed. Run typecheck, build
   and the full bun test.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: easy
 priority: low
 depends_on:
   - hang-watchdog-and-restart-tests
 effort: PT45M
 started_at: 2026-10-13T01:46:41.157Z
-ended_at: null
+ended_at: 2026-10-13T02:04:41.402Z
 constraints:
   - No AI attribution anywhere (bun scripts/check-attribution.ts must pass)
 forbidden:
