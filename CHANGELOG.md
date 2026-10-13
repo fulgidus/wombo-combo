@@ -209,3 +209,9 @@
 <!-- wombo-combo:operation:quest-supervisor-core-7f1d31b-50d33e8 -->
 
 - **sup-strategy-tests**: Strategy, Escalation and Nesting Tests
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-3b8d262-aff7bd0 -->
+
+- **supervisor-core-restart-policy**: Add supervisor-core Restart Policy
