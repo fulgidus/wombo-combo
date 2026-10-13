@@ -82,7 +82,10 @@
     }
   },
   "routing": {
-    "default": "claude-local"
+    "default": "claude-local",
+    "byOperation": {
+      "code": "antigravity"
+    }
   },
   "sync": {
     "github": {
