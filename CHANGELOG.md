@@ -251,3 +251,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-8a42769-cfe92dd -->
 
 - **wire-transient-restart-policy**: Wire Restart Policy Into Runner
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-97b62e5-3bd8707 -->
+
+- **shutdown-hook-cleanup**: Worktree Cleanup as Shutdown Hook
