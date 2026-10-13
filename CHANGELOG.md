@@ -263,3 +263,9 @@
 <!-- wombo-combo:operation:quest-agent-process-supervision-427e99a-49ab0b5 -->
 
 - **persist-retry-feedback**: Persist Retry Feedback Across Restarts
+
+## 2026-10-13
+
+<!-- wombo-combo:operation:quest-agent-process-supervision-8bca9f3-675dbd9 -->
+
+- **hang-watchdog-and-restart-tests**: Hang Watchdog and Crash Restart Tests
