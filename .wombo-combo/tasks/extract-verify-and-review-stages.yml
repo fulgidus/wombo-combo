@@ -13,15 +13,15 @@ description: |
   restart policy in one place. Likewise keep the review-feedback handoff
   (reviewFeedback map) accessible via a small FeedbackStore object owned by
   the runner and passed in, rather than a raw map.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - extract-merge-stage
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-13T00:50:26.771Z
+ended_at: 2026-10-13T00:59:32.180Z
 constraints:
   - Behaviour-preserving; existing and characterization tests pass unchanged
   - FeedbackStore keeps the same one-shot semantics (get-and-clear)

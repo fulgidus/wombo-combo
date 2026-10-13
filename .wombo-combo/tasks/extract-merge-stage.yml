@@ -15,15 +15,15 @@ description: |
   proving two concurrent merges never overlap and a rejected merge does not
   block the next one. Behaviour otherwise unchanged (mergeBefore map,
   post-merge pipeline, auto-push).
-status: in_progress
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - extract-conflict-resolution
 effort: PT1H30M
 started_at: 2026-10-13T00:41:42.467Z
-ended_at: null
+ended_at: 2026-10-13T00:50:30.373Z
 constraints:
   - Behaviour-preserving; existing tests pass unchanged
   - Merge and conflict resolution run one at a time; no restart policy applies to them

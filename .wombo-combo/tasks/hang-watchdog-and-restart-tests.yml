@@ -21,15 +21,15 @@ description: |
        maxRetries -> final AgentStatus "failed", downstream cancelled,
        no orphaned worktree.
      - maxRetries 0 fails on first crash; normal exit never restarts.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: medium
 depends_on:
   - persist-retry-feedback
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-13T01:29:52.284Z
+ended_at: 2026-10-13T01:46:44.946Z
 constraints:
   - Watchdog disabled by default
   - "Tests deterministic: injected clock, no sleeps over a few ms"

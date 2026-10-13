@@ -21,16 +21,16 @@ description: |
   decides "may this agent be restarted". Review-gate sends-back-to-agent and
   merge/conflict flows are NOT restarts and must not go through the policy.
   The characterization suite from the first task must pass unchanged.
-status: planned
-completion: 0
+status: done
+completion: 100
 difficulty: hard
 priority: high
 depends_on:
   - supervisor-core-restart-policy
   - extract-spawn-monitor-stage
 effort: PT1H30M
-started_at: null
-ended_at: null
+started_at: 2026-10-13T01:05:59.929Z
+ended_at: 2026-10-13T01:17:36.448Z
 constraints:
   - Identical status transitions, messages and counter values as the characterization suite expects
   - AgentStatus values and Evt*/Cmd* shapes unchanged
